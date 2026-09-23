@@ -35,6 +35,14 @@ const LAST_HOUR  = 23;
    is how many days must pass before it can be trained again. Big compound
    muscles get 2, small ones get 1 — that difference is the whole reason for
    modelling muscles individually instead of lumping them into splits.
+
+   `weeklySets` is the range of hard sets a week the muscle is usually given
+   for growth: large muscles take the most direct work, small ones need less
+   because the compound lifts already train them. Only the progress estimate
+   reads it (see estimate.js).
+
+   The `id` is the stable key every other system uses — the anatomy figure,
+   the programs, the selection. Names are for display and may change.
    -------------------------------------------------------------------------- */
 
 const FAMILIES = {
@@ -45,27 +53,37 @@ const FAMILIES = {
 };
 
 class Muscle {
-  constructor(name, family, minutes, recoveryDays) {
-    this.name = name; this.family = family;
+  constructor(id, name, family, minutes, recoveryDays, weeklySets) {
+    this.id = id; this.name = name; this.family = family;
     this.minutes = minutes; this.recoveryDays = recoveryDays;
-    this.selected = true;
+    this.weeklySets = weeklySets;
+    Object.freeze(this);
   }
 }
 
 const MUSCLE_SEED = [
-  ["Chest",      "push", 20, 2],
-  ["Shoulders",  "push", 15, 2],
-  ["Triceps",    "push", 15, 1],
-  ["Upper Back", "pull", 20, 2],
-  ["Lats",       "pull", 20, 2],
-  ["Biceps",     "pull", 15, 1],
-  ["Forearms",   "pull", 10, 1],
-  ["Quads",      "legs", 25, 2],
-  ["Hamstrings", "legs", 20, 2],
-  ["Glutes",     "legs", 20, 2],
-  ["Calves",     "legs", 10, 1],
-  ["Abs",        "core", 15, 1]
+  //  id            name          family  min rec  sets/week
+  ["chest",      "Chest",      "push", 20, 2, [8, 16]],
+  ["shoulders",  "Shoulders",  "push", 15, 2, [6, 12]],
+  ["triceps",    "Triceps",    "push", 15, 1, [4, 10]],
+  ["traps",      "Traps",      "pull", 10, 1, [4, 8]],
+  ["upper-back", "Upper Back", "pull", 20, 2, [8, 16]],
+  ["lats",       "Lats",       "pull", 20, 2, [8, 16]],
+  ["biceps",     "Biceps",     "pull", 15, 1, [4, 10]],
+  ["forearms",   "Forearms",   "pull", 10, 1, [2, 6]],
+  ["quads",      "Quads",      "legs", 25, 2, [8, 16]],
+  ["hamstrings", "Hamstrings", "legs", 20, 2, [6, 12]],
+  ["glutes",     "Glutes",     "legs", 20, 2, [6, 12]],
+  ["adductors",  "Adductors",  "legs", 10, 1, [2, 6]],
+  ["calves",     "Calves",     "legs", 10, 1, [4, 10]],
+  ["abs",        "Abs",        "core", 15, 1, [4, 10]],
+  ["obliques",   "Obliques",   "core", 10, 1, [2, 6]],
+  ["lower-back", "Lower Back", "core", 10, 2, [2, 6]]
 ];
+
+/** The one catalogue of muscles. Muscles are immutable and shared. */
+const MUSCLES = Object.freeze(MUSCLE_SEED.map(s => new Muscle(...s)));
+const MUSCLE_BY_ID = new Map(MUSCLES.map(m => [m.id, m]));
 
 /** A set of muscles trained together in one session. Derived, disposable. */
 class TrainingBlock {

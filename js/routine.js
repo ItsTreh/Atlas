@@ -13,7 +13,8 @@ class WeeklyRoutine {
       for (let h = this.firstHour; h <= this.lastHour; h++)
         this.slots.set(day + "-" + h, new TimeSlot(day, h));
 
-    this.muscles = MUSCLE_SEED.map(s => new Muscle(...s));
+    this.muscles = MUSCLES;
+    this.selection = new MuscleSelection(MUSCLES);
     this.nutrition = new NutritionPlan();
     this.sessions = [];
     this.plannedMeals = [];
@@ -22,7 +23,8 @@ class WeeklyRoutine {
 
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
   allSlots() { return [...this.slots.values()]; }
-  selectedMuscles() { return this.muscles.filter(m => m.selected); }
+  /** What the user chose on the Targets stage; see selection.js. */
+  selectedMuscles() { return this.selection.muscles(); }
 
   /* ------------------------------- editing ------------------------------- */
 
@@ -52,10 +54,10 @@ class WeeklyRoutine {
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
     this.sessions = []; this.plannedMeals = [];
   }
+  /** Clears the week. The target muscles are the Targets stage's to change. */
   reset() {
     for (const s of this.allSlots()) s.release();
     this.sessions = []; this.plannedMeals = []; this.nextId = 1;
-    for (const m of this.muscles) m.selected = true;
     this.sessionsPerWeek = 4; this.sessionMinutes = 60;
     this.preferredWindow = "evening";
     this.nutrition = new NutritionPlan();

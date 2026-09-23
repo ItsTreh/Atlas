@@ -12,19 +12,57 @@
   <header>
     <div>
       <h1>Weekly Gym Routine Planner</h1>
-      <p class="sub">Block the hours you are busy, pick the muscles you want to
-        train, and get a week that respects your recovery — meals included.</p>
+      <p class="sub">Choose the muscles you want to train, block the hours you
+        are busy, and get a week that respects your recovery — meals included.</p>
     </div>
     <button class="theme-btn" id="theme" aria-label="Switch colour theme">
       <span id="theme-icon">☾</span><span id="theme-label">Dark</span>
     </button>
   </header>
 
+  <nav class="steps" aria-label="Planner stages">
+    <button type="button" class="step" data-goto="targets" aria-current="step">
+      <span class="n">1</span><span>Targets</span></button>
+    <span class="step-line" aria-hidden="true"></span>
+    <button type="button" class="step" data-goto="plan">
+      <span class="n">2</span><span>Week plan</span></button>
+  </nav>
+
+  <!-- ============================ Stage 1: targets ========================= -->
+  <section class="stage" id="stage-targets" aria-labelledby="targets-title">
+    <h2 class="visually-hidden" id="targets-title">Choose target muscles</h2>
+
+    <div class="targets">
+      <div class="card anatomy-card">
+        <div class="anatomy" id="anatomy"></div>
+        <p class="anatomy-caption" id="anatomy-caption" aria-live="polite"></p>
+      </div>
+
+      <div class="targets-side">
+        <div class="card side-card">
+          <h2>Recommended programs</h2>
+          <div id="programs"></div>
+        </div>
+        <div class="card side-card" id="selection-summary"></div>
+      </div>
+    </div>
+
+    <section class="card estimate" id="estimate" aria-live="polite"></section>
+
+    <div class="stage-actions">
+      <span class="hint" id="to-plan-hint"></span>
+      <button type="button" class="act primary" id="to-plan" data-goto="plan">
+        Continue to week plan →</button>
+    </div>
+  </section>
+
+  <!-- =========================== Stage 2: week plan ======================== -->
+  <section class="stage" id="stage-plan" hidden>
   <div class="layout">
 
     <aside class="card">
-      <h2>Muscles</h2>
-      <div id="muscles"></div>
+      <h2>Targets</h2>
+      <div class="targets-mini" id="targets-mini"></div>
 
       <h2>Training</h2>
       <div class="field">
@@ -110,16 +148,22 @@
     </main>
 
   </div>
+  </section>
 </div>
 
 <!-- Classic scripts, loaded in dependency order. They share the global scope,
      so the page still works when opened straight from disk (file://), which
      ES modules would not. -->
 <script src="js/model.js"></script>
+<script src="js/programs.js"></script>
+<script src="js/selection.js"></script>
+<script src="js/estimate.js"></script>
 <script src="js/nutrition.js"></script>
 <script src="js/routine.js"></script>
 <script src="js/scheduler.js"></script>
+<script src="js/anatomy.js"></script>
 <script src="js/render.js"></script>
+<script src="js/targets.js"></script>
 <script src="js/paint.js"></script>
 <script src="js/app.js"></script>
 </body>
