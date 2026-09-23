@@ -5,7 +5,7 @@
 const routine = new WeeklyRoutine();
 
 const $ = id => document.getElementById(id);
-const gridEl = $("grid"), musclesEl = $("muscles"), statusEl = $("status"),
+const gridEl = $("grid"), targetsMiniEl = $("targets-mini"), statusEl = $("status"),
       nutriEl = $("nutri");
 
 function hourLabel(h) {
@@ -16,26 +16,6 @@ function hourLabel(h) {
 /* ------------------------------- controls -------------------------------- */
 
 function buildControls() {
-  musclesEl.innerHTML = "";
-  for (const key of ["push", "pull", "legs", "core"]) {
-    const head = document.createElement("div");
-    head.className = "fam-label";
-    head.innerHTML = '<span class="dot" style="background:var(--' + key + ')"></span>' +
-                     FAMILIES[key].name;
-    musclesEl.appendChild(head);
-
-    for (const muscle of routine.muscles.filter(m => m.family === key)) {
-      const row = document.createElement("label");
-      row.className = "muscle";
-      row.innerHTML = '<input type="checkbox" ' + (muscle.selected ? "checked" : "") + '>' +
-                      '<span>' + muscle.name + '</span>' +
-                      '<span class="mins">' + muscle.minutes + 'm</span>';
-      row.querySelector("input").addEventListener("change", e => {
-        muscle.selected = e.target.checked;
-      });
-      musclesEl.appendChild(row);
-    }
-  }
   $("len").value = routine.sessionMinutes;
   $("sessions").value = routine.sessionsPerWeek;
   $("window").value = routine.preferredWindow;
@@ -44,6 +24,31 @@ function buildControls() {
   $("goal").value = routine.nutrition.goal;
   $("mealcount").value = routine.nutrition.mealsPerDay;
   $("showmeals").checked = routine.nutrition.showMeals;
+}
+
+/** The sidebar's short reminder of what the Targets stage chose. */
+function renderTargetsMini() {
+  const muscles = routine.selectedMuscles();
+  const src = routine.selection.source();
+  const label = src.kind === "program"  ? src.program.name
+              : src.kind === "modified" ? src.program.name + " (edited)"
+              : muscles.length ? "Custom" : "None selected";
+  targetsMiniEl.innerHTML =
+    '<div class="tm-head"><span class="tm-name"></span>' +
+    '<button type="button" class="link-btn" data-goto="targets">Change</button></div>' +
+    '<div class="tm-list"></div>';
+  targetsMiniEl.querySelector(".tm-name").textContent =
+    label + " · " + muscles.length + (muscles.length === 1 ? " muscle" : " muscles");
+  const list = targetsMiniEl.querySelector(".tm-list");
+  for (const key of Object.keys(FAMILIES)) {
+    const names = muscles.filter(m => m.family === key).map(m => m.name);
+    if (!names.length) continue;
+    const row = document.createElement("div");
+    row.className = "tm-row";
+    row.innerHTML = '<span class="dot" style="background:var(--' + key + ')"></span>';
+    row.append(names.join(", "));
+    list.appendChild(row);
+  }
 }
 
 function readControls() {
