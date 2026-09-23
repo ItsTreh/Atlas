@@ -16,8 +16,15 @@ const DayOfWeek = Object.freeze({
   values: ["MON","TUE","WED","THU","FRI","SAT","SUN"],
   label: { MON:"Mon", TUE:"Tue", WED:"Wed", THU:"Thu", FRI:"Fri", SAT:"Sat", SUN:"Sun" },
   indexOf(d) { return DayOfWeek.values.indexOf(d); },
-  /** Calendar distance in days. Recovery is written against this. */
-  distance(a, b) { return Math.abs(DayOfWeek.indexOf(a) - DayOfWeek.indexOf(b)); }
+  /**
+   * Days between two weekdays, the short way round. The week repeats, so
+   * Sunday and next Monday are 1 day apart, not 6. Recovery is written
+   * against this.
+   */
+  distance(a, b) {
+    const d = Math.abs(DayOfWeek.indexOf(a) - DayOfWeek.indexOf(b));
+    return Math.min(d, 7 - d);
+  }
 });
 
 const FIRST_HOUR = 6;
@@ -109,30 +116,3 @@ const WINDOWS = {
   midday:  { label: "Midday",   from: 11, to: 16 },
   evening: { label: "Evening",  from: 16, to: 23 }
 };
-
-class FreeBlock {
-  constructor(day, startHour, length) {
-    this.day = day; this.startHour = startHour; this.length = length;
-  }
-  get endHour() { return this.startHour + this.length; }
-  fits(hours) { return this.length >= hours; }
-
-  /**
-   * Where a session of `hours` should start inside this block, given the
-   * preferred window. If the block reaches into the window, the session starts
-   * at the first hour of the overlap; otherwise it starts at the block start.
-   */
-  startFor(hours, window) {
-    const w = WINDOWS[window] || WINDOWS.any;
-    const from = Math.max(this.startHour, w.from);
-    const latest = this.endHour - hours;
-    if (from <= latest && from < w.to) return from;
-    return this.startHour;
-  }
-  /** True when any part of the block falls inside the preferred window. */
-  touches(window, hours) {
-    const w = WINDOWS[window] || WINDOWS.any;
-    const start = this.startFor(hours, window);
-    return start >= w.from && start < w.to;
-  }
-}

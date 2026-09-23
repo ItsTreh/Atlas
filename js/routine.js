@@ -102,19 +102,6 @@ class WeeklyRoutine {
     return blocks;
   }
 
-  findFreeBlocks() {
-    const out = [];
-    for (const day of DayOfWeek.values) {
-      let start = null;
-      for (let h = this.firstHour; h <= this.lastHour + 1; h++) {
-        const free = h <= this.lastHour && this.slot(day, h).isFree();
-        if (free && start === null) start = h;
-        else if (!free && start !== null) { out.push(new FreeBlock(day, start, h - start)); start = null; }
-      }
-    }
-    return out;
-  }
-
   /* ------------------------------- generation ----------------------------- */
 
   generate() {
@@ -124,86 +111,25 @@ class WeeklyRoutine {
     if (requested < 1)       return { placed: 0, requested, meals: 0, reason: "no-sessions" };
 
     this.clearGenerated();
+    if (!this.allSlots().some(s => s.isFree()))
+      return { placed: 0, requested, meals: 0, reason: "no-blocks" };
 
-    const byDay = new Map();
-    for (const fb of this.findFreeBlocks()) {
-      if (!byDay.has(fb.day)) byDay.set(fb.day, []);
-      byDay.get(fb.day).push(fb);
-    }
-    for (const list of byDay.values())
-      list.sort((a, b) => b.length - a.length || a.startHour - b.startHour);
-
-    const days = DayOfWeek.values.filter(d => byDay.has(d));
-    if (days.length === 0) return { placed: 0, requested, meals: 0, reason: "no-blocks" };
-
-    let rotation = 0, placed = 0;
-
-    for (let i = 0; i < requested; i++) {
-      const day = days[i % days.length];
-      const free = byDay.get(day);
-      if (!free || free.length === 0) continue;
-
-      const choice = this.pickBlock(day, blocks, rotation, free);
-      if (!choice) continue;                       // recovery says no — skip, don't force
-
-      const { block, fb } = choice;
-      const start = fb.startFor(block.durationHours, this.preferredWindow);
-      const session = new WorkoutSession(this.nextId++, day, start, block);
+    // Where each session goes is the Scheduler's call; see scheduler.js.
+    const { placements, limit } = new Scheduler(this, blocks).plan(requested);
+    for (const p of placements) {
+      const session = new WorkoutSession(this.nextId++, p.day, p.start, p.block);
       for (let h = session.startHour; h < session.endHour(); h++)
-        this.slot(day, h).assignTo(session);
+        this.slot(p.day, h).assignTo(session);
       this.sessions.push(session);
-
-      // The session may sit in the middle of the block, so up to two remainders
-      // go back into the pool.
-      free.splice(free.indexOf(fb), 1);
-      const headLength = session.startHour - fb.startHour;
-      const tailLength = fb.endHour - session.endHour();
-      if (headLength >= 1) free.push(new FreeBlock(day, fb.startHour, headLength));
-      if (tailLength >= 1) free.push(new FreeBlock(day, session.endHour(), tailLength));
-      free.sort((a, b) => b.length - a.length || a.startHour - b.startHour);
-
-      rotation = (blocks.indexOf(block) + 1) % blocks.length;
-      placed++;
     }
+    const placed = placements.length;
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;
 
     const reason = placed === 0 ? "no-valid-combination"
                  : placed < requested ? "partial" : "ok";
-    return { placed, requested, meals, reason };
-  }
-
-  /**
-   * Walks the block rotation from `startAt` and returns the first block that
-   * (a) respects every muscle's recovery window against what is already
-   * scheduled, and (b) has a free block on this day long enough to hold it.
-   */
-  pickBlock(day, blocks, startAt, freeBlocks) {
-    for (let i = 0; i < blocks.length; i++) {
-      const block = blocks[(startAt + i) % blocks.length];
-      if (!this.respectsRecovery(day, block)) continue;
-      const hours = block.durationHours;
-      const fitting = freeBlocks.filter(f => f.fits(hours));
-      if (fitting.length === 0) continue;
-      // A block inside the preferred window wins; otherwise fall back to the
-      // longest one, which is what the rule was before the preference existed.
-      const inWindow = fitting.find(f => f.touches(this.preferredWindow, hours));
-      return { block, fb: inWindow || fitting[0] };
-    }
-    return null;
-  }
-
-  /** No muscle may be trained again before its recovery window has passed. */
-  respectsRecovery(day, block) {
-    for (const session of this.sessions) {
-      const gap = DayOfWeek.distance(day, session.day);
-      for (const muscle of block.muscles) {
-        if (!session.trains(muscle)) continue;
-        if (gap < muscle.recoveryDays) return false;
-      }
-    }
-    return true;
+    return { placed, requested, meals, reason, limit };
   }
 
   /**
