@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Gym Routine Planner</title>
+<style>
+/* ===========================================================================
+   Theme tokens.
+
+   The four family hues are a colour-vision-validated categorical set used
+   unchanged (worst all-pairs CVD ΔE 9.4, normal-vision ΔE 19.3, in BOTH
+   themes). They appear as soft tints plus a 4px bar, never as flat fills, so
+   the page reads warm while the categories stay distinguishable. The cosy
+   feeling comes from the surfaces, the type and the terracotta UI accent —
+   which is chrome, not data, and therefore free to be earthy.
+   ========================================================================= */
+
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --bg:          #faf6f0;
+  --card:        #fffdf9;
+  --raised:      #f6f1e8;
+  --ink:         #2e2a26;
+  --ink-soft:    #6b6157;
+  --ink-faint:   #9c9285;
+  --line:        #e6dfd4;
+  --line-soft:   #f0e9de;
+
+  --free:        #fffdf9;
+  --free-hover:  #f3ede3;
+  --busy:        #e3ddd2;
+  --busy-hatch:  rgba(0,0,0,.055);
+
+  --push:  #eda100;  --push-bg:  #fbebc7;
+  --pull:  #2a78d6;  --pull-bg:  #d4e2f2;
+  --legs:  #008300;  --legs-bg:  #cce5c7;
+  --core:  #e87ba4;  --core-bg:  #fae3e8;
+  --meal:  #b08a5a;  --meal-bg:  #eee4d6;
+
+  --accent:      #c2603f;
+  --accent-ink:  #fffdf9;
+  --accent-soft: #f5e2d9;
+  --shadow:      0 1px 2px rgba(60,45,30,.05), 0 8px 24px -12px rgba(60,45,30,.14);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:          #1c1917;
+  --card:        #262220;
+  --raised:      #2f2a26;
+  --ink:         #f2ede6;
+  --ink-soft:    #b8afa4;
+  --ink-faint:   #857c72;
+  --line:        #3a342e;
+  --line-soft:   #322c27;
+
+  --free:        #201c1a;
+  --free-hover:  #2c2723;
+  --busy:        #332e2a;
+  --busy-hatch:  rgba(255,255,255,.05);
+
+  --push:  #c98500;  --push-bg:  #574016;
+  --pull:  #3987e5;  --pull-bg:  #2c405b;
+  --legs:  #008300;  --legs-bg:  #1b3f16;
+  --core:  #d55181;  --core-bg:  #5a303d;
+  --meal:  #c9a06a;  --meal-bg:  #544535;
+
+  --accent:      #e0a458;
+  --accent-ink:  #241d16;
+  --accent-soft: #3b2f22;
+  --shadow:      0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 28px 18px 64px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Helvetica, Arial, sans-serif;
+  transition: background .25s ease, color .25s ease;
+}
+
+.wrap { max-width: 1240px; margin: 0 auto; }
+
+/* ------------------------------- header ---------------------------------- */
+
+header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin-bottom: 22px; flex-wrap: wrap;
+}
+h1 {
+  margin: 0 0 2px;
+  font: 600 27px/1.2 ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+  letter-spacing: -0.01em;
+}
+.sub { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 58ch; }
+
+.theme-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.theme-btn:hover { background: var(--raised); }
+
+/* ------------------------------- layout ---------------------------------- */
+
+.layout {
+  display: grid; grid-template-columns: 290px minmax(0, 1fr);
+  gap: 22px; align-items: start;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+aside.card { padding: 18px; position: sticky; top: 18px; }
+
+h2 {
+  margin: 0 0 10px;
+  font: 600 11px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+}
+h2:not(:first-child) { margin-top: 22px; }
+
+.fam-label {
+  display: flex; align-items: center; gap: 7px;
+  margin: 12px 0 4px; font-size: 12px; font-weight: 700; color: var(--ink-soft);
+}
+.fam-label .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+.muscle {
+  display: flex; align-items: center; gap: 9px;
+  padding: 4px 0 4px 16px; cursor: pointer; user-select: none; font-size: 14px;
+}
+.muscle input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; flex: none; }
+.muscle .mins { margin-left: auto; font-size: 11.5px; color: var(--ink-faint);
+                font-variant-numeric: tabular-nums; }
+
+.field { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
+.field label { font-size: 14px; }
+.field input, .field select {
+  font: inherit; font-size: 14px; padding: 6px 9px; text-align: right;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--free); color: var(--ink); width: 132px; flex: none;
+}
+.field select { text-align: left; }
+.field label { flex: 1 1 auto; min-width: 0; }
+.field input[type="number"] { width: 78px; text-align: center; }
+
+.toggle { display: flex; align-items: center; gap: 9px; padding: 8px 0 2px;
+          cursor: pointer; user-select: none; font-size: 14px; }
+.toggle input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+.actions { display: grid; gap: 9px; margin-top: 20px; }
+button.act {
+  font: inherit; font-weight: 600; font-size: 14.5px; padding: 11px 14px;
+  border-radius: 10px; border: 1px solid transparent; cursor: pointer;
+}
+.primary { background: var(--accent); color: var(--accent-ink); }
+.primary:hover { filter: brightness(1.06); }
+.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+.ghost:hover { background: var(--raised); }
+button:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.status { margin-top: 14px; font-size: 13px; line-height: 1.5;
+          color: var(--ink-soft); min-height: 3em; }
+.status.warn { color: #9a5a16; }
+.status.err  { color: #a3452f; }
+[data-theme="dark"] .status.warn { color: #e0a458; }
+[data-theme="dark"] .status.err  { color: #e8846a; }
+
+.legend { margin-top: 20px; display: grid; gap: 7px; }
+.legend .row { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--ink-soft); }
+.legend .chip { width: 26px; height: 16px; border-radius: 5px; flex: none;
+                border: 1px solid var(--line); }
+
+/* -------------------------------- grid ----------------------------------- */
+
+main { display: grid; gap: 18px; }
+.grid-card { padding: 14px; overflow-x: auto; }
+
+.grid {
+  display: grid;
+  grid-template-columns: 62px repeat(7, minmax(92px, 1fr));
+  gap: 3px; min-width: 740px;
+  touch-action: none; user-select: none;
+}
+
+.head, .hour, .corner { background: transparent; display: flex; align-items: center;
+                        justify-content: center; }
+.head { padding: 6px 0 10px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft);
+        font-family: ui-serif, Georgia, serif; letter-spacing: .02em; }
+.hour { font-size: 11px; color: var(--ink-faint); font-variant-numeric: tabular-nums;
+        justify-content: flex-end; padding-right: 10px; }
+
+.cell {
+  background: var(--free); min-height: 38px; border-radius: 7px;
+  border: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; align-items: flex-start;
+  justify-content: center; gap: 1px; padding: 3px 6px 3px 10px;
+  cursor: pointer; position: relative; overflow: hidden;
+  font-size: 10.5px; line-height: 1.25;
+}
+.cell:hover { background: var(--free-hover); }
+
+.cell.busy { background: var(--busy); border-color: transparent; }
+.cell.busy::after {
+  content: ""; position: absolute; inset: 0;
+  background: repeating-linear-gradient(45deg, transparent 0 5px,
+              var(--busy-hatch) 5px 10px);
+}
+
+.cell .bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+.cell .t1 { font-weight: 700; font-size: 11px; letter-spacing: .01em; }
+.cell .t2 { color: var(--ink-soft); font-size: 10px; }
+
+.cell.push { background: var(--push-bg); border-color: transparent; }
+.cell.push .bar { background: var(--push); }
+.cell.pull { background: var(--pull-bg); border-color: transparent; }
+.cell.pull .bar { background: var(--pull); }
+.cell.legs { background: var(--legs-bg); border-color: transparent; }
+.cell.legs .bar { background: var(--legs); }
+.cell.core { background: var(--core-bg); border-color: transparent; }
+.cell.core .bar { background: var(--core); }
+
+/* meals are distinguished by FORM as well as hue: a dashed bar, never solid */
+.cell.meal { background: var(--meal-bg); border-color: transparent; }
+.cell.meal .bar {
+  background: repeating-linear-gradient(to bottom, var(--meal) 0 5px, transparent 5px 9px);
+}
+
+.cell.cont { justify-content: flex-start; padding-top: 2px; }
+.cell.cont .t2 { opacity: .8; }
+
+.hint { margin: 10px 2px 0; font-size: 12.5px; color: var(--ink-faint); }
+
+/* ----------------------------- nutrition --------------------------------- */
+
+.nutri { padding: 18px 20px; }
+.nutri h3 {
+  margin: 0 0 3px;
+  font: 600 17px/1.2 ui-serif, Georgia, serif;
+}
+.nutri .note { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-faint); }
+
+.stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.stat {
+  flex: 1 1 140px; background: var(--raised); border: 1px solid var(--line);
+  border-radius: 11px; padding: 11px 13px;
+}
+.stat .k { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+           color: var(--ink-faint); font-weight: 700; }
+.stat .v { font: 600 21px/1.25 ui-serif, Georgia, serif;
+           font-variant-numeric: tabular-nums; margin-top: 2px; }
+.stat .u { font-size: 12px; color: var(--ink-soft); font-family: ui-sans-serif, system-ui, sans-serif; }
+
+table.meals { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.meals th {
+  text-align: left; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-faint); font-weight: 700; padding: 0 10px 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+table.meals td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line-soft);
+                 font-variant-numeric: tabular-nums; }
+table.meals tr:last-child td { border-bottom: none; }
+table.meals .name { font-weight: 600; font-variant-numeric: normal; }
+table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
+
+.empty-nutri { color: var(--ink-faint); font-size: 13.5px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  aside.card { position: static; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Weekly Gym Routine Planner</h1>
+      <p class="sub">Block the hours you are busy, pick the muscles you want to
+        train, and get a week that respects your recovery — meals included.</p>
+    </div>
+    <button class="theme-btn" id="theme" aria-label="Switch colour theme">
+      <span id="theme-icon">☾</span><span id="theme-label">Dark</span>
+    </button>
+  </header>
+
+  <div class="layout">
+
+    <aside class="card">
+      <h2>Muscles</h2>
+      <div id="muscles"></div>
+
+      <h2>Training</h2>
+      <div class="field">
+        <label for="len">Session length</label>
+        <select id="len">
+          <option value="45">45 min</option>
+          <option value="60" selected>60 min</option>
+          <option value="75">75 min</option>
+          <option value="90">90 min</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sessions">Sessions per week</label>
+        <input id="sessions" type="number" min="1" max="14" value="4">
+      </div>
+      <div class="field">
+        <label for="window">I prefer to train</label>
+        <select id="window">
+          <option value="any">Whenever</option>
+          <option value="morning">Morning</option>
+          <option value="midday">Midday</option>
+          <option value="evening" selected>Evening</option>
+        </select>
+      </div>
+
+      <h2>Nutrition</h2>
+      <div class="field">
+        <label for="weight">Body weight</label>
+        <input id="weight" type="number" min="30" max="250" step="0.5" value="70">
+      </div>
+      <div class="field">
+        <label for="unit">Unit</label>
+        <select id="unit">
+          <option value="kg" selected>kg</option>
+          <option value="lb">lb</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="goal">Goal</label>
+        <select id="goal">
+          <option value="lose">Lose fat</option>
+          <option value="maintain" selected>Maintain</option>
+          <option value="gain">Build muscle</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="mealcount">Meals per day</label>
+        <input id="mealcount" type="number" min="3" max="5" value="3">
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showmeals" checked>
+        <span>Put meals on the calendar</span>
+      </label>
+
+      <div class="actions">
+        <button class="act primary" id="generate">Generate Routine</button>
+        <button class="act ghost" id="reset">Reset</button>
+      </div>
+
+      <p class="status" id="status" role="status" aria-live="polite">
+        Click or drag across the grid to block the hours you are not available.
+      </p>
+
+      <div class="legend">
+        <div class="row"><span class="chip" style="background:var(--free)"></span> Free</div>
+        <div class="row"><span class="chip" style="background:var(--busy)"></span> Busy</div>
+        <div class="row"><span class="chip" style="background:var(--push-bg);border-left:4px solid var(--push)"></span> Push</div>
+        <div class="row"><span class="chip" style="background:var(--pull-bg);border-left:4px solid var(--pull)"></span> Pull</div>
+        <div class="row"><span class="chip" style="background:var(--legs-bg);border-left:4px solid var(--legs)"></span> Legs</div>
+        <div class="row"><span class="chip" style="background:var(--core-bg);border-left:4px solid var(--core)"></span> Core</div>
+        <div class="row"><span class="chip" style="background:var(--meal-bg);border-left:4px dashed var(--meal)"></span> Meal</div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="card grid-card">
+        <div class="grid" id="grid" role="grid" aria-label="Weekly planner"></div>
+        <p class="hint">Click a cell to block it · drag to block a range · click a
+          blocked, scheduled or meal cell to clear it.</p>
+      </div>
+
+      <section class="card nutri" id="nutri"></section>
+    </main>
+
+  </div>
+</div>
+
+<script>
+/* ===========================================================================
+   Weekly Gym Routine Planner — v2
+
+   What changed from v1: sessions are built from SPECIFIC MUSCLES rather than
+   fixed splits. The user picks muscles; the app packs them into blocks that
+   fit the chosen session length, and a block may span more than one hour.
+   Recovery is now per muscle instead of per split. Meals are placed on the
+   same grid.
+   ========================================================================= */
+
+const SlotState = Object.freeze({
+  FREE: "FREE", BUSY: "BUSY", WORKOUT: "WORKOUT", MEAL: "MEAL"
+});
+
+const DayOfWeek = Object.freeze({
+  values: ["MON","TUE","WED","THU","FRI","SAT","SUN"],
+  label: { MON:"Mon", TUE:"Tue", WED:"Wed", THU:"Thu", FRI:"Fri", SAT:"Sat", SUN:"Sun" },
+  indexOf(d) { return DayOfWeek.values.indexOf(d); },
+  /** Calendar distance in days. Recovery is written against this. */
+  distance(a, b) { return Math.abs(DayOfWeek.indexOf(a) - DayOfWeek.indexOf(b)); }
+});
+
+const FIRST_HOUR = 6;
+const LAST_HOUR  = 23;
+
+/* --------------------------------------------------------------------------
+   Muscles. `minutes` is how much of a session the muscle eats; `recoveryDays`
+   is how many days must pass before it can be trained again. Big compound
+   muscles get 2, small ones get 1 — that difference is the whole reason for
+   modelling muscles individually instead of lumping them into splits.
+   -------------------------------------------------------------------------- */
+
+const FAMILIES = {
+  push: { name: "Push",  css: "push" },
+  pull: { name: "Pull",  css: "pull" },
+  legs: { name: "Legs",  css: "legs" },
+  core: { name: "Core",  css: "core" }
+};
+
+class Muscle {
+  constructor(name, family, minutes, recoveryDays) {
+    this.name = name; this.family = family;
+    this.minutes = minutes; this.recoveryDays = recoveryDays;
+    this.selected = true;
+  }
+}
+
+const MUSCLE_SEED = [
+  ["Chest",      "push", 20, 2],
+  ["Shoulders",  "push", 15, 2],
+  ["Triceps",    "push", 15, 1],
+  ["Upper Back", "pull", 20, 2],
+  ["Lats",       "pull", 20, 2],
+  ["Biceps",     "pull", 15, 1],
+  ["Forearms",   "pull", 10, 1],
+  ["Quads",      "legs", 25, 2],
+  ["Hamstrings", "legs", 20, 2],
+  ["Glutes",     "legs", 20, 2],
+  ["Calves",     "legs", 10, 1],
+  ["Abs",        "core", 15, 1]
+];
+
+/** A set of muscles trained together in one session. Derived, disposable. */
+class TrainingBlock {
+  constructor(muscles) {
+    this.muscles = muscles;
+    this.family = muscles[0].family;
+  }
+  get minutes() { return this.muscles.reduce((t, m) => t + m.minutes, 0); }
+  get durationHours() { return Math.max(1, Math.ceil(this.minutes / 60)); }
+  get label() { return this.muscles.map(m => m.name).join(" · "); }
+  get css() { return FAMILIES[this.family].css; }
+  has(muscle) { return this.muscles.includes(muscle); }
+  freeMinutes(limit) { return limit - this.minutes; }
+}
+
+class TimeSlot {
+  constructor(day, hour) {
+    this.day = day; this.hour = hour;
+    this.state = SlotState.FREE; this.session = null; this.meal = null;
+  }
+  isFree() { return this.state === SlotState.FREE; }
+  markBusy() { this.session = null; this.meal = null; this.state = SlotState.BUSY; }
+  release()  { this.session = null; this.meal = null; this.state = SlotState.FREE; }
+  assignTo(session) { this.meal = null; this.session = session; this.state = SlotState.WORKOUT; }
+  assignMeal(meal)  { this.session = null; this.meal = meal; this.state = SlotState.MEAL; }
+}
+
+class WorkoutSession {
+  constructor(id, day, startHour, block) {
+    this.id = id; this.day = day; this.startHour = startHour; this.block = block;
+    this.durationHours = block.durationHours;
+  }
+  endHour() { return this.startHour + this.durationHours; }
+  trains(muscle) { return this.block.has(muscle); }
+}
+
+class PlannedMeal {
+  constructor(id, day, hour, name, kcal, protein, focus) {
+    this.id = id; this.day = day; this.hour = hour;
+    this.name = name; this.kcal = kcal; this.protein = protein; this.focus = focus;
+  }
+}
+
+/* Windows of the day the user can say they prefer to train in. */
+const WINDOWS = {
+  any:     { label: "Whenever", from: FIRST_HOUR, to: LAST_HOUR + 1 },
+  morning: { label: "Morning",  from: 6,  to: 11 },
+  midday:  { label: "Midday",   from: 11, to: 16 },
+  evening: { label: "Evening",  from: 16, to: 23 }
+};
+
+class FreeBlock {
+  constructor(day, startHour, length) {
+    this.day = day; this.startHour = startHour; this.length = length;
+  }
+  get endHour() { return this.startHour + this.length; }
+  fits(hours) { return this.length >= hours; }
+
+  /**
+   * Where a session of `hours` should start inside this block, given the
+   * preferred window. If the block reaches into the window, the session starts
+   * at the first hour of the overlap; otherwise it starts at the block start.
+   */
+  startFor(hours, window) {
+    const w = WINDOWS[window] || WINDOWS.any;
+    const from = Math.max(this.startHour, w.from);
+    const latest = this.endHour - hours;
+    if (from <= latest && from < w.to) return from;
+    return this.startHour;
+  }
+  /** True when any part of the block falls inside the preferred window. */
+  touches(window, hours) {
+    const w = WINDOWS[window] || WINDOWS.any;
+    const start = this.startFor(hours, window);
+    return start >= w.from && start < w.to;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Nutrition. Deliberately a light model: body weight and goal drive daily
+   calories and protein, and the meal times are recommendations, not a
+   prescription. Anything more would need age, height, sex and activity level,
+   and would still be an estimate.
+   -------------------------------------------------------------------------- */
+
+const GOALS = {
+  lose:     { label: "Lose fat",     kcalPerKg: 28, proteinPerKg: 2.2 },
+  maintain: { label: "Maintain",     kcalPerKg: 33, proteinPerKg: 1.8 },
+  gain:     { label: "Build muscle", kcalPerKg: 38, proteinPerKg: 2.0 }
+};
+
+/* Recommended clock times and the share of the day's calories each meal takes. */
+const MEAL_PLANS = {
+  3: [
+    { name: "Breakfast", hour: 8,  share: .30, focus: "Protein + slow carbs" },
+    { name: "Lunch",     hour: 13, share: .40, focus: "Protein + carbs + veg" },
+    { name: "Dinner",    hour: 20, share: .30, focus: "Protein + veg + fats" }
+  ],
+  4: [
+    { name: "Breakfast", hour: 8,  share: .27, focus: "Protein + slow carbs" },
+    { name: "Lunch",     hour: 13, share: .33, focus: "Protein + carbs + veg" },
+    { name: "Snack",     hour: 17, share: .13, focus: "Protein + fruit" },
+    { name: "Dinner",    hour: 20, share: .27, focus: "Protein + veg + fats" }
+  ],
+  5: [
+    { name: "Breakfast",   hour: 7,  share: .22, focus: "Protein + slow carbs" },
+    { name: "Mid-morning", hour: 10, share: .13, focus: "Protein + fruit" },
+    { name: "Lunch",       hour: 13, share: .30, focus: "Protein + carbs + veg" },
+    { name: "Afternoon",   hour: 17, share: .13, focus: "Protein + nuts" },
+    { name: "Dinner",      hour: 20, share: .22, focus: "Protein + veg + fats" }
+  ]
+};
+
+class NutritionPlan {
+  constructor() {
+    this.weight = 70; this.unit = "kg"; this.goal = "maintain";
+    this.mealsPerDay = 3; this.showMeals = true;
+  }
+  get weightKg() { return this.unit === "lb" ? this.weight * 0.45359237 : this.weight; }
+  get kcal()    { return Math.round(this.weightKg * GOALS[this.goal].kcalPerKg / 10) * 10; }
+  get protein() { return Math.round(this.weightKg * GOALS[this.goal].proteinPerKg); }
+  get meals() {
+    const plan = MEAL_PLANS[this.mealsPerDay] || MEAL_PLANS[3];
+    return plan.map(m => ({
+      ...m,
+      kcal:    Math.round(this.kcal * m.share / 10) * 10,
+      protein: Math.round(this.protein * m.share)
+    }));
+  }
+  isValid() { return this.weightKg >= 30 && this.weightKg <= 250; }
+}
+
+/* ------------------------------ aggregate root ---------------------------- */
+
+class WeeklyRoutine {
+  constructor() {
+    this.sessionsPerWeek = 4;
+    this.sessionMinutes = 60;
+    this.preferredWindow = "evening";
+    this.firstHour = FIRST_HOUR;
+    this.lastHour = LAST_HOUR;
+
+    this.slots = new Map();
+    for (const day of DayOfWeek.values)
+      for (let h = this.firstHour; h <= this.lastHour; h++)
+        this.slots.set(day + "-" + h, new TimeSlot(day, h));
+
+    this.muscles = MUSCLE_SEED.map(s => new Muscle(...s));
+    this.nutrition = new NutritionPlan();
+    this.sessions = [];
+    this.plannedMeals = [];
+    this.nextId = 1;
+  }
+
+  slot(day, hour) { return this.slots.get(day + "-" + hour); }
+  allSlots() { return [...this.slots.values()]; }
+  selectedMuscles() { return this.muscles.filter(m => m.selected); }
+
+  /* ------------------------------- editing ------------------------------- */
+
+  markBusy(day, hour) {
+    const s = this.slot(day, hour); if (!s) return;
+    this.detach(s); s.markBusy();
+  }
+  clearSlot(day, hour) {
+    const s = this.slot(day, hour); if (!s) return;
+    this.detach(s); s.release();
+  }
+  /** A session and a meal are atomic: touching one hour removes the whole thing. */
+  detach(slot) {
+    if (slot.session) this.removeSession(slot.session);
+    if (slot.meal) this.removeMeal(slot.meal);
+  }
+  removeSession(session) {
+    this.sessions = this.sessions.filter(s => s !== session);
+    for (const s of this.allSlots()) if (s.session === session) s.release();
+  }
+  removeMeal(meal) {
+    this.plannedMeals = this.plannedMeals.filter(m => m !== meal);
+    for (const s of this.allSlots()) if (s.meal === meal) s.release();
+  }
+  clearGenerated() {
+    for (const s of this.allSlots())
+      if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
+    this.sessions = []; this.plannedMeals = [];
+  }
+  reset() {
+    for (const s of this.allSlots()) s.release();
+    this.sessions = []; this.plannedMeals = []; this.nextId = 1;
+    for (const m of this.muscles) m.selected = true;
+    this.sessionsPerWeek = 4; this.sessionMinutes = 60;
+    this.preferredWindow = "evening";
+    this.nutrition = new NutritionPlan();
+  }
+
+  /* ----------------------------- block building --------------------------- */
+
+  /**
+   * Packs the selected muscles into blocks that fit `sessionMinutes`.
+   * Muscles are grouped by family first — training Chest with Triceps is a
+   * routine, training Chest with Hamstrings is a coincidence. Core is treated
+   * as a filler: it rides along in a block with room to spare, and only forms
+   * its own block when nothing else will take it.
+   */
+  buildBlocks() {
+    const limit = this.sessionMinutes;
+    const picked = this.selectedMuscles();
+    const blocks = [];
+
+    for (const key of ["push", "pull", "legs"]) {
+      const pool = picked.filter(m => m.family === key)
+                         .sort((a, b) => b.minutes - a.minutes);
+      let current = [];
+      let used = 0;
+      for (const muscle of pool) {
+        if (used + muscle.minutes > limit && current.length) {
+          blocks.push(new TrainingBlock(current)); current = []; used = 0;
+        }
+        if (muscle.minutes > limit) {           // a single muscle longer than the
+          blocks.push(new TrainingBlock([muscle])); continue;   // whole session
+        }
+        current.push(muscle); used += muscle.minutes;
+      }
+      if (current.length) blocks.push(new TrainingBlock(current));
+    }
+
+    // Core muscles ride along where there is room, once each.
+    const core = picked.filter(m => m.family === "core");
+    for (const muscle of core) {
+      const host = blocks.find(b => b.freeMinutes(limit) >= muscle.minutes);
+      if (host) host.muscles.push(muscle);
+      else blocks.push(new TrainingBlock([muscle]));
+    }
+    return blocks;
+  }
+
+  findFreeBlocks() {
+    const out = [];
+    for (const day of DayOfWeek.values) {
+      let start = null;
+      for (let h = this.firstHour; h <= this.lastHour + 1; h++) {
+        const free = h <= this.lastHour && this.slot(day, h).isFree();
+        if (free && start === null) start = h;
+        else if (!free && start !== null) { out.push(new FreeBlock(day, start, h - start)); start = null; }
+      }
+    }
+    return out;
+  }
+
+  /* ------------------------------- generation ----------------------------- */
+
+  generate() {
+    const requested = this.sessionsPerWeek;
+    const blocks = this.buildBlocks();
+    if (blocks.length === 0) return { placed: 0, requested, meals: 0, reason: "no-muscles" };
+    if (requested < 1)       return { placed: 0, requested, meals: 0, reason: "no-sessions" };
+
+    this.clearGenerated();
+
+    const byDay = new Map();
+    for (const fb of this.findFreeBlocks()) {
+      if (!byDay.has(fb.day)) byDay.set(fb.day, []);
+      byDay.get(fb.day).push(fb);
+    }
+    for (const list of byDay.values())
+      list.sort((a, b) => b.length - a.length || a.startHour - b.startHour);
+
+    const days = DayOfWeek.values.filter(d => byDay.has(d));
+    if (days.length === 0) return { placed: 0, requested, meals: 0, reason: "no-blocks" };
+
+    let rotation = 0, placed = 0;
+
+    for (let i = 0; i < requested; i++) {
+      const day = days[i % days.length];
+      const free = byDay.get(day);
+      if (!free || free.length === 0) continue;
+
+      const choice = this.pickBlock(day, blocks, rotation, free);
+      if (!choice) continue;                       // recovery says no — skip, don't force
+
+      const { block, fb } = choice;
+      const start = fb.startFor(block.durationHours, this.preferredWindow);
+      const session = new WorkoutSession(this.nextId++, day, start, block);
+      for (let h = session.startHour; h < session.endHour(); h++)
+        this.slot(day, h).assignTo(session);
+      this.sessions.push(session);
+
+      // The session may sit in the middle of the block, so up to two remainders
+      // go back into the pool.
+      free.splice(free.indexOf(fb), 1);
+      const headLength = session.startHour - fb.startHour;
+      const tailLength = fb.endHour - session.endHour();
+      if (headLength >= 1) free.push(new FreeBlock(day, fb.startHour, headLength));
+      if (tailLength >= 1) free.push(new FreeBlock(day, session.endHour(), tailLength));
+      free.sort((a, b) => b.length - a.length || a.startHour - b.startHour);
+
+      rotation = (blocks.indexOf(block) + 1) % blocks.length;
+      placed++;
+    }
+
+    const meals = this.nutrition.showMeals && this.nutrition.isValid()
+      ? this.placeMeals() : 0;
+
+    const reason = placed === 0 ? "no-valid-combination"
+                 : placed < requested ? "partial" : "ok";
+    return { placed, requested, meals, reason };
+  }
+
+  /**
+   * Walks the block rotation from `startAt` and returns the first block that
+   * (a) respects every muscle's recovery window against what is already
+   * scheduled, and (b) has a free block on this day long enough to hold it.
+   */
+  pickBlock(day, blocks, startAt, freeBlocks) {
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks[(startAt + i) % blocks.length];
+      if (!this.respectsRecovery(day, block)) continue;
+      const hours = block.durationHours;
+      const fitting = freeBlocks.filter(f => f.fits(hours));
+      if (fitting.length === 0) continue;
+      // A block inside the preferred window wins; otherwise fall back to the
+      // longest one, which is what the rule was before the preference existed.
+      const inWindow = fitting.find(f => f.touches(this.preferredWindow, hours));
+      return { block, fb: inWindow || fitting[0] };
+    }
+    return null;
+  }
+
+  /** No muscle may be trained again before its recovery window has passed. */
+  respectsRecovery(day, block) {
+    for (const session of this.sessions) {
+      const gap = DayOfWeek.distance(day, session.day);
+      for (const muscle of block.muscles) {
+        if (!session.trains(muscle)) continue;
+        if (gap < muscle.recoveryDays) return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Puts the meals on the grid.
+   *
+   * Each meal gets ONE hour for the whole week, not one per day. Choosing per
+   * day makes breakfast sit at 7am on the days with no session and 8am on the
+   * days where a session covers 7am, and the row ends up ragged for no reason
+   * the user can see. A meal is a habit: it belongs on the same line all week.
+   * Days where that hour is genuinely taken simply miss that meal.
+   */
+  placeMeals() {
+    let count = 0;
+    for (const meal of this.nutrition.meals) {
+      const hour = this.bestHourForWeek(meal.hour, 2);
+      if (hour === null) continue;
+      for (const day of DayOfWeek.values) {
+        if (!this.slot(day, hour).isFree()) continue;
+        const planned = new PlannedMeal(this.nextId++, day, hour,
+          meal.name, meal.kcal, meal.protein, meal.focus);
+        this.slot(day, hour).assignMeal(planned);
+        this.plannedMeals.push(planned);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * The hour near `target` that is free on the most days. Ties go to the hour
+   * closest to the target, and then to the earlier one.
+   */
+  bestHourForWeek(target, radius) {
+    let best = null;
+    for (let d = 0; d <= radius; d++) {
+      for (const h of (d === 0 ? [target] : [target - d, target + d])) {
+        if (h < this.firstHour || h > this.lastHour) continue;
+        const free = DayOfWeek.values.filter(day => this.slot(day, h).isFree()).length;
+        if (free === 0) continue;
+        if (!best || free > best.free) best = { hour: h, free };
+      }
+    }
+    return best ? best.hour : null;
+  }
+}
+
+/* =========================================================================
+   Presentation
+   ========================================================================= */
+
+const routine = new WeeklyRoutine();
+
+const $ = id => document.getElementById(id);
+const gridEl = $("grid"), musclesEl = $("muscles"), statusEl = $("status"),
+      nutriEl = $("nutri");
+
+function hourLabel(h) {
+  const s = h < 12 ? "am" : "pm";
+  return (h % 12 === 0 ? 12 : h % 12) + s;
+}
+
+/* ------------------------------- controls -------------------------------- */
+
+function buildControls() {
+  musclesEl.innerHTML = "";
+  for (const key of ["push", "pull", "legs", "core"]) {
+    const head = document.createElement("div");
+    head.className = "fam-label";
+    head.innerHTML = '<span class="dot" style="background:var(--' + key + ')"></span>' +
+                     FAMILIES[key].name;
+    musclesEl.appendChild(head);
+
+    for (const muscle of routine.muscles.filter(m => m.family === key)) {
+      const row = document.createElement("label");
+      row.className = "muscle";
+      row.innerHTML = '<input type="checkbox" ' + (muscle.selected ? "checked" : "") + '>' +
+                      '<span>' + muscle.name + '</span>' +
+                      '<span class="mins">' + muscle.minutes + 'm</span>';
+      row.querySelector("input").addEventListener("change", e => {
+        muscle.selected = e.target.checked;
+      });
+      musclesEl.appendChild(row);
+    }
+  }
+  $("len").value = routine.sessionMinutes;
+  $("sessions").value = routine.sessionsPerWeek;
+  $("window").value = routine.preferredWindow;
+  $("weight").value = routine.nutrition.weight;
+  $("unit").value = routine.nutrition.unit;
+  $("goal").value = routine.nutrition.goal;
+  $("mealcount").value = routine.nutrition.mealsPerDay;
+  $("showmeals").checked = routine.nutrition.showMeals;
+}
+
+function readControls() {
+  routine.sessionMinutes = Number($("len").value);
+  routine.sessionsPerWeek = Math.max(1, Math.min(14, Number($("sessions").value) || 1));
+  $("sessions").value = routine.sessionsPerWeek;
+  routine.preferredWindow = $("window").value;
+  const n = routine.nutrition;
+  n.weight = Number($("weight").value) || 0;
+  n.unit = $("unit").value;
+  n.goal = $("goal").value;
+  n.mealsPerDay = Math.max(3, Math.min(5, Number($("mealcount").value) || 3));
+  $("mealcount").value = n.mealsPerDay;
+  n.showMeals = $("showmeals").checked;
+}
+
+/* --------------------------------- grid ---------------------------------- */
+
+function buildGrid() {
+  gridEl.innerHTML = "";
+  const corner = document.createElement("div");
+  corner.className = "corner";
+  gridEl.appendChild(corner);
+
+  for (const day of DayOfWeek.values) {
+    const h = document.createElement("div");
+    h.className = "head"; h.textContent = DayOfWeek.label[day];
+    gridEl.appendChild(h);
+  }
+  for (let hour = routine.firstHour; hour <= routine.lastHour; hour++) {
+    const lab = document.createElement("div");
+    lab.className = "hour"; lab.textContent = hourLabel(hour);
+    gridEl.appendChild(lab);
+    for (const day of DayOfWeek.values) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.day = day; cell.dataset.hour = hour;
+      cell.setAttribute("role", "gridcell");
+      gridEl.appendChild(cell);
+    }
+  }
+  render();
+}
+
+function render() { renderGrid(); renderNutrition(); }
+
+/**
+ * Repaints the grid. A cell is only touched when its rendered content actually
+ * changed — during a drag this runs on every pointermove, and rewriting 126
+ * cells each time was slow enough to make the browser drop move events.
+ */
+function renderGrid() {
+  for (const cell of gridEl.querySelectorAll(".cell")) {
+    const slot = routine.slot(cell.dataset.day, Number(cell.dataset.hour));
+
+    const sig = slot.state === SlotState.WORKOUT
+        ? "W" + slot.session.id + ":" + slot.hour
+        : slot.state === SlotState.MEAL ? "M" + slot.meal.id : slot.state;
+    if (cell.dataset.sig === sig) continue;
+    cell.dataset.sig = sig;
+
+    cell.className = "cell";
+    cell.innerHTML = "";
+    const where = DayOfWeek.label[slot.day] + " " + hourLabel(slot.hour);
+
+    if (slot.state === SlotState.BUSY) {
+      cell.classList.add("busy");
+      cell.setAttribute("aria-label", where + ", busy");
+
+    } else if (slot.state === SlotState.WORKOUT) {
+      const s = slot.session, first = slot.hour === s.startHour;
+      cell.classList.add(s.block.css);
+      if (!first) cell.classList.add("cont");
+      cell.innerHTML = '<span class="bar"></span>' +
+        (first
+          ? '<span class="t1">' + s.block.label + '</span>' +
+            '<span class="t2">' + s.block.minutes + ' min · ' +
+              FAMILIES[s.block.family].name + '</span>'
+          : '<span class="t2">…continues</span>');
+      cell.setAttribute("aria-label",
+        where + ", " + s.block.label + " session, " + s.block.minutes + " minutes");
+
+    } else if (slot.state === SlotState.MEAL) {
+      const m = slot.meal;
+      cell.classList.add("meal");
+      cell.innerHTML = '<span class="bar"></span>' +
+        '<span class="t1">' + m.name + '</span>' +
+        '<span class="t2">' + m.kcal + ' kcal · ' + m.protein + 'g P</span>';
+      cell.setAttribute("aria-label",
+        where + ", " + m.name + ", " + m.kcal + " calories, " + m.protein + " grams protein");
+
+    } else {
+      cell.setAttribute("aria-label", where + ", free");
+    }
+  }
+}
+
+function renderNutrition() {
+  const n = routine.nutrition;
+  if (!n.isValid()) {
+    nutriEl.innerHTML = '<h3>Nutrition</h3><p class="empty-nutri">Enter a body ' +
+      'weight between 30 and 250 kg (66–550 lb) to see your daily targets.</p>';
+    return;
+  }
+  const rows = n.meals.map(m => {
+    const placedToday = routine.plannedMeals.filter(p => p.name === m.name && p.day === "MON");
+    const at = placedToday.length ? hourLabel(placedToday[0].hour) : hourLabel(m.hour);
+    return '<tr><td class="name">' + m.name + '</td><td>' + at + '</td><td>' +
+           m.kcal + ' kcal</td><td>' + m.protein + ' g</td>' +
+           '<td class="food">' + m.focus + '</td></tr>';
+  }).join("");
+
+  nutriEl.innerHTML =
+    '<h3>Nutrition</h3>' +
+    '<p class="note">Estimated from body weight and goal. A rough target to eat ' +
+    'against, not a prescription — age, height and activity level would move ' +
+    'these numbers.</p>' +
+    '<div class="stats">' +
+      '<div class="stat"><div class="k">Daily calories</div>' +
+        '<div class="v">' + n.kcal + ' <span class="u">kcal</span></div></div>' +
+      '<div class="stat"><div class="k">Daily protein</div>' +
+        '<div class="v">' + n.protein + ' <span class="u">g</span></div></div>' +
+      '<div class="stat"><div class="k">Goal</div>' +
+        '<div class="v" style="font-size:17px">' + GOALS[n.goal].label + '</div></div>' +
+      '<div class="stat"><div class="k">Meals placed</div>' +
+        '<div class="v">' + routine.plannedMeals.length +
+        ' <span class="u">this week</span></div></div>' +
+    '</div>' +
+    '<table class="meals"><thead><tr><th>Meal</th><th>Around</th><th>Calories</th>' +
+    '<th>Protein</th><th>Build it from</th></tr></thead><tbody>' + rows +
+    '</tbody></table>';
+}
+
+function setStatus(text, kind) {
+  statusEl.textContent = text;
+  statusEl.className = "status" + (kind ? " " + kind : "");
+}
+
+/* --------------------------- click-drag painting -------------------------- */
+
+let painting = false, paintMode = null, anchor = null;
+
+function cellUnder(x, y) {
+  const el = document.elementFromPoint(x, y);
+  return el && el.closest ? el.closest(".cell") : null;
+}
+
+/**
+ * Applies the current paint mode to the whole rectangle between where the drag
+ * started and where the pointer is now.
+ *
+ * Painting only the cell under the pointer looks fine in a test, where the
+ * mouse moves in small steps, and fails for a real person: move the hand at
+ * normal speed and the browser reports three or four positions for the whole
+ * gesture, leaving most of the range untouched. Filling the rectangle makes the
+ * result depend on where the drag started and ended, not on how fast it was.
+ */
+function paintTo(day, hour) {
+  if (!anchor) return;
+  const [d1, d2] = [DayOfWeek.indexOf(anchor.day), DayOfWeek.indexOf(day)].sort((a, b) => a - b);
+  const [h1, h2] = [anchor.hour, hour].sort((a, b) => a - b);
+  for (let di = d1; di <= d2; di++) {
+    const d = DayOfWeek.values[di];
+    for (let h = h1; h <= h2; h++) {
+      if (paintMode === "busy") routine.markBusy(d, h);
+      else routine.clearSlot(d, h);
+    }
+  }
+  renderGrid();
+}
+
+/** The .cell an event landed on, whatever child element it actually hit. */
+function cellOf(target) {
+  return target && target.closest ? target.closest(".cell") : null;
+}
+
+function beginStroke(cell) {
+  const day = cell.dataset.day, hour = Number(cell.dataset.hour);
+  const slot = routine.slot(day, hour);
+  if (!slot) return;
+  // A busy cell clears; anything else becomes busy.
+  paintMode = slot.state === SlotState.BUSY ? "clear" : "busy";
+  painting = true;
+  anchor = { day, hour };
+  paintTo(day, hour);          // the click alone must already do something
+}
+
+function endStroke() {
+  if (!painting) return;
+  painting = false; paintMode = null; anchor = null;
+  renderNutrition();           // the meal count only needs refreshing once
+}
+
+/* Pointer Events are the primary path: one code path for mouse, pen and touch.
+   `pointerSeen` records whether they actually reach us, so the mouse-event
+   fallback below stays dormant when they do and never double-handles. */
+let pointerSeen = false, mouseSeen = false;
+
+gridEl.addEventListener("pointerdown", e => {
+  pointerSeen = true;
+  const cell = cellOf(e.target);
+  if (!cell) return;
+  e.preventDefault();
+  beginStroke(cell);
+});
+
+/* Move and up listen on the window, not the grid: the pointer routinely leaves
+   the grid mid-drag, and this keeps the stroke alive without pointer capture.
+   An earlier version called gridEl.setPointerCapture() here — it throws in
+   embedded contexts where the pointer id is not active for the document, and
+   because it sat BEFORE the painting call, one throw killed the whole
+   interaction: neither click nor drag did anything. */
+window.addEventListener("pointermove", e => {
+  if (!painting) return;
+  const cell = cellUnder(e.clientX, e.clientY);
+  if (cell) paintTo(cell.dataset.day, Number(cell.dataset.hour));
+});
+window.addEventListener("pointerup", endStroke);
+window.addEventListener("pointercancel", endStroke);
+
+/* Fallback for any environment that does not deliver Pointer Events to the
+   page. Dormant whenever the pointer path works. */
+gridEl.addEventListener("mousedown", e => {
+  if (pointerSeen) return;
+  mouseSeen = true;
+  const cell = cellOf(e.target);
+  if (!cell) return;
+  e.preventDefault();
+  beginStroke(cell);
+});
+window.addEventListener("mousemove", e => {
+  if (pointerSeen || !painting) return;
+  const cell = cellUnder(e.clientX, e.clientY);
+  if (cell) paintTo(cell.dataset.day, Number(cell.dataset.hour));
+});
+window.addEventListener("mouseup", () => { if (!pointerSeen) endStroke(); });
+
+/* Last resort: if neither pointer nor mouse events arrive but a click does,
+   a plain click still toggles the cell. */
+gridEl.addEventListener("click", e => {
+  if (pointerSeen || mouseSeen || painting) return;
+  const cell = cellOf(e.target);
+  if (!cell) return;
+  beginStroke(cell);
+  endStroke();
+});
+
+/* -------------------------------- actions -------------------------------- */
+
+$("generate").addEventListener("click", () => {
+  readControls();
+  const r = routine.generate();
+  render();
+
+  const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
+  const plural = n => n === 1 ? "session" : "sessions";
+
+  switch (r.reason) {
+    case "ok":
+      setStatus("Placed " + r.placed + " " + plural(r.placed) + "." + mealNote);
+      break;
+    case "partial":
+      setStatus("Placed " + r.placed + " of " + r.requested + " " +
+        plural(r.requested) + "." + mealNote + " The rest were left out: either " +
+        "no free block was long enough, or every remaining muscle was still " +
+        "inside its recovery window.", "warn");
+      break;
+    case "no-muscles":
+      setStatus("Pick at least one muscle first.", "err");
+      break;
+    case "no-blocks":
+      setStatus("Every hour is blocked. Clear some cells and try again.", "err");
+      break;
+    default:
+      setStatus("Nothing could be placed without breaking a recovery window. " +
+        "Free up more hours, select more muscles, or shorten the session.", "err");
+  }
+});
+
+$("reset").addEventListener("click", () => {
+  routine.reset();
+  buildControls();
+  render();
+  setStatus("Cleared. Click or drag across the grid to block the hours you are " +
+            "not available.");
+});
+
+for (const id of ["weight", "unit", "goal", "mealcount"])
+  $(id).addEventListener("change", () => { readControls(); renderNutrition(); });
+
+/* --------------------------------- theme --------------------------------- */
+
+const root = document.documentElement;
+if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  root.dataset.theme = "dark";
+
+function paintThemeButton() {
+  const dark = root.dataset.theme === "dark";
+  $("theme-icon").textContent = dark ? "☀" : "☾";
+  $("theme-label").textContent = dark ? "Light" : "Dark";
+}
+$("theme").addEventListener("click", () => {
+  root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+  paintThemeButton();
+});
+
+/* ---------------------------------- boot --------------------------------- */
+
+paintThemeButton();
+buildControls();
+buildGrid();
+</script>
+</body>
+</html>
