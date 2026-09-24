@@ -21,10 +21,6 @@ function buildControls() {
   $("len").value = routine.sessionMinutes;
   $("sessions").value = routine.sessionsPerWeek;
   $("window").value = routine.preferredWindow;
-  $("weight").value = routine.nutrition.weight;
-  $("unit").value = routine.nutrition.unit;
-  $("goal").value = routine.nutrition.goal;
-  $("mealcount").value = routine.nutrition.mealsPerDay;
   $("showmeals").checked = routine.nutrition.showMeals;
 }
 
@@ -53,18 +49,27 @@ function renderTargetsMini() {
   }
 }
 
+/** The sidebar's short reminder of what the Nutrition stage set up. */
+function renderNutritionMini() {
+  const n = routine.nutrition;
+  const el = $("nutrition-mini");
+  el.innerHTML =
+    '<div class="tm-head"><span class="tm-name"></span>' +
+    '<button type="button" class="link-btn" data-goto="nutrition">Change</button></div>' +
+    '<div class="tm-list"><div class="tm-row"></div></div>';
+  el.querySelector(".tm-name").textContent = GOALS[n.goal].label;
+  el.querySelector(".tm-row").textContent = n.isValid()
+    ? "≈ " + n.kcal.toLocaleString("en-US") + " kcal · " + n.protein + " g protein · " +
+      n.mealsPerDay + " meals, " + hourLabel(n.hours[0]) + "–" + hourLabel(n.hours[n.hours.length - 1])
+    : "Add your body weight to get a plan.";
+}
+
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
   routine.sessionsPerWeek = Math.max(1, Math.min(14, Number($("sessions").value) || 1));
   $("sessions").value = routine.sessionsPerWeek;
   routine.preferredWindow = $("window").value;
-  const n = routine.nutrition;
-  n.weight = Number($("weight").value) || 0;
-  n.unit = $("unit").value;
-  n.goal = $("goal").value;
-  n.mealsPerDay = Math.max(3, Math.min(5, Number($("mealcount").value) || 3));
-  $("mealcount").value = n.mealsPerDay;
-  n.showMeals = $("showmeals").checked;
+  routine.nutrition.showMeals = $("showmeals").checked;
 }
 
 /* --------------------------------- grid ---------------------------------- */
@@ -152,25 +157,25 @@ function renderNutrition() {
   const n = routine.nutrition;
   if (!n.isValid()) {
     nutriEl.innerHTML = '<h3>Nutrition</h3><p class="empty-nutri">Enter a body ' +
-      'weight between 30 and 250 kg (66–550 lb) to see your daily targets.</p>';
+      'weight between ' + weightRangeText() + ' to see your daily targets.</p>';
     return;
   }
+  const fmtK = v => v.toLocaleString("en-US");
   const rows = n.meals.map(m => {
     const placedToday = routine.plannedMeals.filter(p => p.name === m.name && p.day === "MON");
     const at = placedToday.length ? hourLabel(placedToday[0].hour) : hourLabel(m.hour);
     return '<tr><td class="name">' + m.name + '</td><td>' + at + '</td><td>' +
-           m.kcal + ' kcal</td><td>' + m.protein + ' g</td>' +
+           fmtK(m.kcal) + ' kcal</td><td>' + m.protein + ' g</td>' +
            '<td class="food">' + m.focus + '</td></tr>';
   }).join("");
 
   nutriEl.innerHTML =
     '<h3>Nutrition</h3>' +
-    '<p class="note">Estimated from body weight and goal. A rough target to eat ' +
-    'against, not a prescription — age, height and activity level would move ' +
-    'these numbers.</p>' +
+    '<p class="note">Estimated from your daily burn and goal in the Nutrition ' +
+    'step. A rough target to eat against, not a prescription.</p>' +
     '<div class="stats">' +
       '<div class="stat"><div class="k">Daily calories</div>' +
-        '<div class="v">' + n.kcal + ' <span class="u">kcal</span></div></div>' +
+        '<div class="v">' + fmtK(n.kcal) + ' <span class="u">kcal</span></div></div>' +
       '<div class="stat"><div class="k">Daily protein</div>' +
         '<div class="v">' + n.protein + ' <span class="u">g</span></div></div>' +
       '<div class="stat"><div class="k">Goal</div>' +

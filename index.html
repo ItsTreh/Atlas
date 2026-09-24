@@ -24,8 +24,11 @@
     <button type="button" class="step" data-goto="targets" aria-current="step">
       <span class="n">1</span><span>Targets</span></button>
     <span class="step-line" aria-hidden="true"></span>
+    <button type="button" class="step" data-goto="nutrition">
+      <span class="n">2</span><span>Nutrition</span></button>
+    <span class="step-line" aria-hidden="true"></span>
     <button type="button" class="step" data-goto="plan">
-      <span class="n">2</span><span>Week plan</span></button>
+      <span class="n">3</span><span>Week plan</span></button>
   </nav>
 
   <!-- ============================ Stage 1: targets ========================= -->
@@ -51,12 +54,78 @@
 
     <div class="stage-actions">
       <span class="hint" id="to-plan-hint"></span>
-      <button type="button" class="act primary" id="to-plan" data-goto="plan">
-        Continue to week plan →</button>
+      <button type="button" class="act primary" id="to-plan" data-goto="nutrition">
+        Continue to nutrition →</button>
     </div>
   </section>
 
-  <!-- =========================== Stage 2: week plan ======================== -->
+  <!-- =========================== Stage 2: nutrition ======================== -->
+  <section class="stage" id="stage-nutrition" hidden aria-labelledby="nutrition-title">
+    <h2 class="visually-hidden" id="nutrition-title">Nutrition plan</h2>
+
+    <div class="nutrition">
+      <div class="nconf">
+        <div class="card cfg">
+          <h2 id="goal-label">Your goal</h2>
+          <div class="goal-cards" id="goal-cards" role="radiogroup" aria-labelledby="goal-label"></div>
+        </div>
+
+        <div class="card cfg cfg-pair">
+          <div>
+            <h2><label for="n-weight">Body weight</label></h2>
+            <div class="big-input">
+              <input id="n-weight" type="number" min="30" max="550" step="0.5" inputmode="decimal">
+              <div class="seg small" role="radiogroup" aria-label="Weight unit">
+                <button type="button" class="seg-btn" role="radio" data-unit="kg">kg</button>
+                <button type="button" class="seg-btn" role="radio" data-unit="lb">lb</button>
+              </div>
+            </div>
+            <p class="cfg-hint">Sets your protein target.</p>
+          </div>
+          <div>
+            <h2><label for="n-burn">Calories you burn a day</label></h2>
+            <div class="big-input">
+              <button type="button" class="step-btn" data-step="-50" aria-label="50 kcal less">−</button>
+              <input id="n-burn" type="number" min="1000" max="6000" step="10" inputmode="numeric">
+              <button type="button" class="step-btn" data-step="50" aria-label="50 kcal more">+</button>
+              <span class="unit">kcal</span>
+            </div>
+            <p class="cfg-hint" id="burn-source"></p>
+            <div class="chips" id="activity-chips" role="radiogroup"
+                 aria-label="Estimate from how active your day is"></div>
+          </div>
+        </div>
+
+        <div class="card cfg">
+          <h2>Eating rhythm</h2>
+          <div class="rhythm">
+            <div>
+              <div class="cfg-label" id="meals-label">Meals a day</div>
+              <div class="seg" id="meal-counts" role="radiogroup" aria-labelledby="meals-label"></div>
+            </div>
+            <div class="window">
+              <label>First meal <select id="first-meal"></select></label>
+              <label>Last meal <select id="last-meal"></select></label>
+            </div>
+          </div>
+          <div class="timeline" id="timeline" aria-hidden="true"></div>
+
+          <div class="cfg-label" id="diet-label">Diet style</div>
+          <div class="seg" id="diet-seg" role="radiogroup" aria-labelledby="diet-label"></div>
+        </div>
+      </div>
+
+      <aside class="card nplan" id="nplan" aria-live="polite"></aside>
+    </div>
+
+    <section class="card nmeals" id="nmeals" aria-label="Your day of eating"></section>
+
+    <div class="stage-actions">
+      <button type="button" class="act primary" data-goto="plan">Continue to week plan →</button>
+    </div>
+  </section>
+
+  <!-- =========================== Stage 3: week plan ======================== -->
   <section class="stage" id="stage-plan" hidden>
   <div class="layout">
 
@@ -89,29 +158,7 @@
       </div>
 
       <h2>Nutrition</h2>
-      <div class="field">
-        <label for="weight">Body weight</label>
-        <input id="weight" type="number" min="30" max="250" step="0.5" value="70">
-      </div>
-      <div class="field">
-        <label for="unit">Unit</label>
-        <select id="unit">
-          <option value="kg" selected>kg</option>
-          <option value="lb">lb</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="goal">Goal</label>
-        <select id="goal">
-          <option value="lose">Lose fat</option>
-          <option value="maintain" selected>Maintain</option>
-          <option value="gain">Build muscle</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="mealcount">Meals per day</label>
-        <input id="mealcount" type="number" min="3" max="5" value="3">
-      </div>
+      <div class="targets-mini" id="nutrition-mini"></div>
       <label class="toggle">
         <input type="checkbox" id="showmeals" checked>
         <span>Put meals on the calendar</span>
@@ -161,6 +208,7 @@
 <script src="js/selection.js"></script>
 <script src="js/estimate.js"></script>
 <script src="js/nutrition.js"></script>
+<script src="js/foods.js"></script>
 <script src="js/exercises.js"></script>
 <script src="js/workouts.js"></script>
 <script src="js/routine.js"></script>
@@ -169,6 +217,7 @@
 <script src="js/render.js"></script>
 <script src="js/targets.js"></script>
 <script src="js/workout-view.js"></script>
+<script src="js/nutrition-view.js"></script>
 <script src="js/paint.js"></script>
 <script src="js/app.js"></script>
 </body>

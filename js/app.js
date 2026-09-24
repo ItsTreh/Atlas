@@ -1,8 +1,10 @@
 /* -------------------------------- stages --------------------------------- */
 
-/* Targets first, then the week. Stage 2 is hidden rather than rebuilt, so the
-   grid the user painted survives a trip back to change the muscles. */
-const STAGES = { targets: $("stage-targets"), plan: $("stage-plan") };
+/* Targets, then nutrition, then the week. Stages are hidden rather than
+   rebuilt, so the grid the user painted survives a trip back to change the
+   muscles or the eating plan. */
+const STAGES = { targets: $("stage-targets"), nutrition: $("stage-nutrition"),
+                 plan: $("stage-plan") };
 
 function showStage(name) {
   if (name === "plan" && routine.selection.isEmpty()) name = "targets";
@@ -13,10 +15,13 @@ function showStage(name) {
   if (name === "plan") {
     readControls();
     renderTargetsMini();
-    if (generatedFor && routine.sessions.length &&
-        generatedFor !== routine.selection.muscles().map(m => m.id).join())
-      setStatus("Your target muscles changed since this week was generated. " +
-                "Generate again to plan for the new selection.", "warn");
+    renderNutritionMini();
+    renderNutrition();
+    if (generatedFor && routine.sessions.length && generatedFor !== planInputs())
+      setStatus("Your targets or nutrition changed since this week was generated. " +
+                "Generate again to plan for them.", "warn");
+  } else if (name === "nutrition") {
+    renderNutritionStage();
   } else {
     readControls();            // the estimate uses the session length
     renderTargets();
@@ -37,13 +42,20 @@ routine.selection.onChange(paintSteps);
 
 /* -------------------------------- actions -------------------------------- */
 
-/* Which muscles the grid on screen was generated for, to spot a stale week. */
+/* What the grid on screen was generated from, to spot a stale week: the
+   muscles, and the meals it placed (time, calories and protein, as the grid
+   shows them) and kept sessions away from. */
 let generatedFor = null;
+function planInputs() {
+  const n = routine.nutrition;
+  return routine.selection.muscles().map(m => m.id).join() + "|" +
+         (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
+}
 
 $("generate").addEventListener("click", () => {
   readControls();
   const r = routine.generate();
-  generatedFor = routine.selection.muscles().map(m => m.id).join();
+  generatedFor = planInputs();
   render();
 
   const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
@@ -81,8 +93,6 @@ $("reset").addEventListener("click", () => {
             "not available.");
 });
 
-for (const id of ["weight", "unit", "goal", "mealcount"])
-  $(id).addEventListener("change", () => { readControls(); renderNutrition(); });
 
 /* --------------------------------- theme --------------------------------- */
 
