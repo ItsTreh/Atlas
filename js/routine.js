@@ -54,13 +54,12 @@ class WeeklyRoutine {
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
     this.sessions = []; this.plannedMeals = [];
   }
-  /** Clears the week. The target muscles are the Targets stage's to change. */
+  /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
     for (const s of this.allSlots()) s.release();
     this.sessions = []; this.plannedMeals = []; this.nextId = 1;
     this.sessionsPerWeek = 4; this.sessionMinutes = 60;
     this.preferredWindow = "evening";
-    this.nutrition = new NutritionPlan();
   }
 
   /* ----------------------------- block building --------------------------- */

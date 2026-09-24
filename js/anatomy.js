@@ -198,8 +198,15 @@ class AnatomyFigure {
       const g = e.target.closest && e.target.closest("[data-muscle]");
       return g ? g.dataset.muscle : null;
     };
+    // Some muscles are only a few pixels wide on a phone (adductors, abs,
+    // forearms). A finger that lands just beside one takes the nearest muscle
+    // instead of nothing. Mouse clicks stay exact.
+    let pointerType = "mouse";
+    this.container.addEventListener("pointerdown", e => { pointerType = e.pointerType; });
     this.container.addEventListener("click", e => {
-      const id = idOf(e);
+      let id = idOf(e);
+      if (!id && pointerType === "touch" && e.target.closest && e.target.closest("svg"))
+        id = this.muscleNear(e.clientX, e.clientY);
       if (id) this.selection.toggle(id);
     });
     this.container.addEventListener("keydown", e => {
@@ -215,8 +222,30 @@ class AnatomyFigure {
     const leave = e => { if (!this.container.contains(e.relatedTarget)) this.hover(null); };
     this.container.addEventListener("pointerover", enter);
     this.container.addEventListener("pointerleave", () => this.hover(null));
-    this.container.addEventListener("focusin", enter);
+    // Keyboard focus only: a tap also focuses the muscle, just after the finger
+    // has lifted, and would otherwise leave it stuck in its hover state.
+    this.container.addEventListener("focusin", e => {
+      if (e.target.matches && e.target.matches(":focus-visible")) enter(e);
+    });
     this.container.addEventListener("focusout", leave);
+  }
+
+  /**
+   * The muscle closest to a point, looking outward in rings up to `reach`
+   * pixels, or null. Nearest ring wins, so a tap between two muscles goes to
+   * the one it was closer to.
+   */
+  muscleNear(x, y, reach = 12) {
+    for (let r = 3; r <= reach; r += 3) {
+      const steps = Math.max(8, Math.round(r * 1.5));
+      for (let i = 0; i < steps; i++) {
+        const a = i / steps * 2 * Math.PI;
+        const hit = document.elementFromPoint(x + r * Math.cos(a), y + r * Math.sin(a));
+        const g = hit && hit.closest && hit.closest("[data-muscle]");
+        if (g && this.container.contains(g)) return g.dataset.muscle;
+      }
+    }
+    return null;
   }
 
   hover(id) {

@@ -1,0 +1,22 @@
+{
+  "name": "sd-routine",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Weekly gym routine planner: targets, exercises, nutrition and schedule.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ItsTreh/Routine-Organizer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ItsTreh/Routine-Organizer/issues"
+  },
+  "homepage": "https://github.com/ItsTreh/Routine-Organizer#readme"
+}
