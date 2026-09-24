@@ -104,6 +104,7 @@ function paintPrograms() {
     b.classList.toggle("edited", edited);
     b.setAttribute("aria-pressed", active ? "true" : "false");
   }
+  previewProgram(null);      // the line under the buttons follows the selection
 }
 
 /* -------------------------------- summary -------------------------------- */
