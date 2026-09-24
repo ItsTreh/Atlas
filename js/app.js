@@ -48,10 +48,12 @@ $("generate").addEventListener("click", () => {
 
   const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
   const plural = n => n === 1 ? "session" : "sessions";
+  const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
+  const exNote = exercises ? " with " + exercises + " exercises" : "";
 
   switch (r.reason) {
     case "ok":
-      setStatus("Placed " + r.placed + " " + plural(r.placed) + "." + mealNote);
+      setStatus("Placed " + r.placed + " " + plural(r.placed) + exNote + "." + mealNote);
       break;
     case "partial":
       setStatus("Placed " + r.placed + " of " + r.requested + " " +

@@ -71,14 +71,24 @@ class WeeklyRoutine {
    * routine, training Chest with Hamstrings is a coincidence. Core is treated
    * as a filler: it rides along in a block with room to spare, and only forms
    * its own block when nothing else will take it.
+   *
+   * A muscle the exercise database has nothing for yet (exercises.js) never
+   * anchors a session — it would be a session with nothing in it. It joins
+   * one as a rider instead: named in it, credited with the secondary work
+   * the session gives it, but taking none of its time, since there is no
+   * exercise to spend the time on. Only when nothing else is selected do
+   * such muscles form blocks of their own.
    */
   buildBlocks() {
     const limit = this.sessionMinutes;
     const picked = this.selectedMuscles();
     const blocks = [];
+    const hasExercises = m => exercisesFor(m.id).length > 0;
+    const riders = picked.filter(m => !hasExercises(m));
+    const fillers = picked.filter(m => m.family === "core" && hasExercises(m));
 
     for (const key of ["push", "pull", "legs"]) {
-      const pool = picked.filter(m => m.family === key)
+      const pool = picked.filter(m => m.family === key && hasExercises(m))
                          .sort((a, b) => b.minutes - a.minutes);
       let current = [];
       let used = 0;
@@ -94,9 +104,20 @@ class WeeklyRoutine {
       if (current.length) blocks.push(new TrainingBlock(current));
     }
 
+    // Riders join a block of their own family if there is one (Traps goes
+    // with Back rather than Chest), otherwise the first block.
+    if (blocks.length) {
+      for (const muscle of riders) {
+        const host = blocks.find(b => b.family === muscle.family) || blocks[0];
+        host.muscles.push(muscle);
+        host.riders.add(muscle);
+      }
+    } else {
+      fillers.push(...riders);           // nothing to ride on: plan them as fillers
+    }
+
     // Core muscles ride along where there is room, once each.
-    const core = picked.filter(m => m.family === "core");
-    for (const muscle of core) {
+    for (const muscle of fillers) {
       const host = blocks.find(b => b.freeMinutes(limit) >= muscle.minutes);
       if (host) host.muscles.push(muscle);
       else blocks.push(new TrainingBlock([muscle]));
@@ -125,6 +146,9 @@ class WeeklyRoutine {
       this.sessions.push(session);
     }
     const placed = placements.length;
+
+    // What to do in each session; see workouts.js.
+    new WorkoutBuilder(this.sessions, this.sessionMinutes).build();
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;
