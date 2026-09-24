@@ -16,9 +16,6 @@ const programsEl = $("programs"), summaryEl = $("selection-summary"),
       estimateEl = $("estimate"), captionEl = $("anatomy-caption"),
       toPlanBtn = $("to-plan");
 
-const esc = s => String(s).replace(/[&<>"]/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 
 /* -------------------------------- figure --------------------------------- */
@@ -145,7 +142,8 @@ function renderSummary() {
         (muscles.length ? "" : " disabled") + '>Clear</button>' +
     '</div>' +
     '<p class="sel-origin">' + origin + '</p>' +
-    (muscles.length ? '<ul class="sel-list">' + chips + '</ul>' : '');
+    (muscles.length ? '<ul class="sel-list">' + chips + '</ul>' : '') +
+    noExercisesNote(muscles);
 }
 
 summaryEl.addEventListener("click", e => {
@@ -161,6 +159,20 @@ summaryEl.addEventListener("click", e => {
     selection.clear();
   }
 });
+
+/** Says up front which chosen muscles the exercise database cannot fill yet. */
+function noExercisesNote(muscles) {
+  const bare = muscles.filter(m => !exercisesFor(m.id).length);
+  if (!bare.length) return "";
+  const names = bare.map(m => esc(m.name));
+  const list = names.length === 1 ? names[0]
+             : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  return '<p class="sel-gap">No exercises in the database yet for ' + list + '. ' +
+    (bare.length === muscles.length
+      ? "Sessions for " + (bare.length === 1 ? "it" : "them") + " will be planned without exercises."
+      : (bare.length === 1 ? "It rides" : "They ride") + " along in related sessions, credited " +
+        "with the work other lifts give " + (bare.length === 1 ? "it" : "them") + ".") + '</p>';
+}
 
 /* ------------------------------- estimate -------------------------------- */
 

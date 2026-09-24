@@ -50,6 +50,7 @@ function beginStroke(cell) {
 function endStroke() {
   if (!painting) return;
   painting = false; paintMode = null; anchor = null;
+  renderWorkouts();            // a cleared cell may have removed a session
   renderNutrition();           // the meal count only needs refreshing once
 }
 

@@ -90,8 +90,11 @@ class TrainingBlock {
   constructor(muscles) {
     this.muscles = muscles;
     this.family = muscles[0].family;
+    this.riders = new Set();   // along for the ride: named, but no session time
   }
-  get minutes() { return this.muscles.reduce((t, m) => t + m.minutes, 0); }
+  get minutes() {
+    return this.muscles.reduce((t, m) => t + (this.riders.has(m) ? 0 : m.minutes), 0);
+  }
   get durationHours() { return Math.max(1, Math.ceil(this.minutes / 60)); }
   get label() { return this.muscles.map(m => m.name).join(" · "); }
   get css() { return FAMILIES[this.family].css; }
@@ -115,6 +118,7 @@ class WorkoutSession {
   constructor(id, day, startHour, block) {
     this.id = id; this.day = day; this.startHour = startHour; this.block = block;
     this.durationHours = block.durationHours;
+    this.workout = null;       // the exercises, filled in by WorkoutBuilder
   }
   endHour() { return this.startHour + this.durationHours; }
   trains(muscle) { return this.block.has(muscle); }

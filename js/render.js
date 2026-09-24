@@ -5,6 +5,8 @@
 const routine = new WeeklyRoutine();
 
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const gridEl = $("grid"), targetsMiniEl = $("targets-mini"), statusEl = $("status"),
       nutriEl = $("nutri");
 
@@ -93,7 +95,7 @@ function buildGrid() {
   render();
 }
 
-function render() { renderGrid(); renderNutrition(); }
+function render() { renderGrid(); renderWorkouts(); renderNutrition(); }
 
 /**
  * Repaints the grid. A cell is only touched when its rendered content actually
