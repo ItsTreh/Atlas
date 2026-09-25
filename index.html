@@ -68,6 +68,39 @@
         <div class="card cfg">
           <h2 id="goal-label">Your goal</h2>
           <div class="goal-cards" id="goal-cards" role="radiogroup" aria-labelledby="goal-label"></div>
+          <div class="tune">
+            <div>
+              <div class="cfg-label" id="adjust-label">Calories against your burn</div>
+              <div class="big-input">
+                <button type="button" class="step-btn" data-adjust-step="-0.01" aria-label="1% fewer calories">−</button>
+                <output class="tune-v" id="n-adjust" aria-labelledby="adjust-label" tabindex="-1"></output>
+                <button type="button" class="step-btn" data-adjust-step="0.01" aria-label="1% more calories">+</button>
+              </div>
+              <p class="cfg-hint" id="adjust-source"></p>
+            </div>
+            <div>
+              <div class="cfg-label" id="protein-label">Protein</div>
+              <div class="big-input">
+                <button type="button" class="step-btn" data-protein-step="-0.1" aria-label="0.1 g per kg less">−</button>
+                <output class="tune-v" id="n-protein" aria-labelledby="protein-label" tabindex="-1"></output>
+                <button type="button" class="step-btn" data-protein-step="0.1" aria-label="0.1 g per kg more">+</button>
+                <span class="unit">g per kg</span>
+              </div>
+              <p class="cfg-hint" id="protein-source"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card cfg">
+          <h2>Training it fuels</h2>
+          <div class="fuels">
+            <p class="cfg-hint" id="n-training"></p>
+            <div class="window">
+              <label>Sessions a week <select id="n-sessions"></select></label>
+              <label>Session length <select id="n-len"></select></label>
+            </div>
+          </div>
+          <p class="cfg-hint" id="n-training-effect"></p>
         </div>
 
         <div class="card cfg cfg-pair">
@@ -92,7 +125,7 @@
             </div>
             <p class="cfg-hint" id="burn-source"></p>
             <div class="chips" id="activity-chips" role="radiogroup"
-                 aria-label="Estimate from how active your day is"></div>
+                 aria-label="Estimate from how active your day is outside training"></div>
           </div>
         </div>
 

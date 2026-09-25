@@ -13,17 +13,14 @@ function showStage(name) {
     if (b.dataset.goto === name) b.setAttribute("aria-current", "step");
     else b.removeAttribute("aria-current");
   if (name === "plan") {
-    readControls();
+    buildControls();           // the nutrition stage may have changed sessions or length
     renderTargetsMini();
     renderNutritionMini();
     renderNutrition();
-    if (generatedFor && routine.sessions.length && generatedFor !== planInputs())
-      setStatus("Your targets or nutrition changed since this week was generated. " +
-                "Generate again to plan for them.", "warn");
+    warnIfStale();
   } else if (name === "nutrition") {
     renderNutritionStage();
   } else {
-    readControls();            // the estimate uses the session length
     renderTargets();
   }
   window.scrollTo({ top: 0 });
@@ -42,14 +39,32 @@ routine.selection.onChange(paintSteps);
 
 /* -------------------------------- actions -------------------------------- */
 
+/* The week plan's controls write straight to the routine, so the nutrition
+   stage (whose estimate reads sessions and length) and the targets estimate
+   always see what is on screen. The nutrition summary follows at once. */
+for (const id of ["len", "sessions", "window", "showmeals"])
+  $(id).addEventListener("change", () => {
+    readControls();
+    renderNutritionMini();
+    renderNutrition();
+    warnIfStale();
+  });
+
 /* What the grid on screen was generated from, to spot a stale week: the
-   muscles, and the meals it placed (time, calories and protein, as the grid
-   shows them) and kept sessions away from. */
+   muscles, how many sessions of what length were asked for, and the meals it
+   placed (time, calories and protein, as the grid shows them) and kept
+   sessions away from. */
 let generatedFor = null;
 function planInputs() {
   const n = routine.nutrition;
   return routine.selection.muscles().map(m => m.id).join() + "|" +
+         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" +
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
+}
+function warnIfStale() {
+  if (generatedFor && routine.sessions.length && generatedFor !== planInputs())
+    setStatus("Your targets, training or nutrition changed since this week was generated. " +
+              "Generate again to plan for them.", "warn");
 }
 
 $("generate").addEventListener("click", () => {
@@ -89,6 +104,7 @@ $("reset").addEventListener("click", () => {
   routine.reset();
   buildControls();
   render();
+  renderNutritionMini();       // reset puts sessions and length back, which the targets use
   setStatus("Cleared. Click or drag across the grid to block the hours you are " +
             "not available.");
 });
