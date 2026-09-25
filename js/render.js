@@ -66,7 +66,7 @@ function renderNutritionMini() {
 
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
-  routine.sessionsPerWeek = Math.max(1, Math.min(14, Number($("sessions").value) || 1));
+  routine.sessionsPerWeek = Math.max(1, Math.min(14, Math.round(Number($("sessions").value)) || 1));
   $("sessions").value = routine.sessionsPerWeek;
   routine.preferredWindow = $("window").value;
   routine.nutrition.showMeals = $("showmeals").checked;
@@ -171,8 +171,8 @@ function renderNutrition() {
 
   nutriEl.innerHTML =
     '<h3>Nutrition</h3>' +
-    '<p class="note">Estimated from your daily burn and goal in the Nutrition ' +
-    'step. A rough target to eat against, not a prescription.</p>' +
+    '<p class="note">Estimated in the Nutrition step from your daily burn, your goal ' +
+    'and the training above. A rough target to eat against, not a prescription.</p>' +
     '<div class="stats">' +
       '<div class="stat"><div class="k">Daily calories</div>' +
         '<div class="v">' + fmtK(n.kcal) + ' <span class="u">kcal</span></div></div>' +

@@ -371,6 +371,18 @@ main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
           font-variant-numeric: tabular-nums; }
 .gc-blurb { font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
 
+/* the goal's two targets, recommended until the user steps them */
+.tune { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;
+        padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.tune .cfg-label { margin-top: 0; }
+.tune-v { font: 600 24px/1.1 ui-serif, Georgia, serif; font-variant-numeric: tabular-nums;
+          min-width: 72px; text-align: center; color: var(--ink); }
+
+/* the training the diet fuels */
+.fuels { display: flex; justify-content: space-between; align-items: flex-end;
+         gap: 16px; flex-wrap: wrap; }
+.fuels .cfg-hint { margin: 0; font-size: 13.5px; color: var(--ink); }
+
 /* big numeric inputs */
 .big-input { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .big-input input {
@@ -476,6 +488,9 @@ main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
             font-size: 12px; color: var(--ink-soft); }
 .dist-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
               background: var(--accent); margin-right: 5px; }
+.np-why { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px;
+          font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
+.np-why b { color: var(--ink); font-weight: 600; }
 .nplan .caveat { margin-top: 16px; }
 
 /* meal cards */
@@ -688,7 +703,7 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
 @media (max-width: 620px) {
   body { padding: 20px 16px 48px; }
   .phases { grid-template-columns: 1fr; }
-  .goal-cards, .cfg-pair { grid-template-columns: 1fr; }
+  .goal-cards, .cfg-pair, .tune { grid-template-columns: 1fr; }
   .steps { gap: 6px; }
   .step-line { width: 14px; }
   .step { white-space: nowrap; font-size: 13.5px; }

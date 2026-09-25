@@ -15,7 +15,13 @@ class WeeklyRoutine {
 
     this.muscles = MUSCLES;
     this.selection = new MuscleSelection(MUSCLES);
-    this.nutrition = new NutritionPlan();
+    // The diet fuels this routine's training: its muscles, frequency and length.
+    // Only muscles the exercise database can fill count; the rest get no work.
+    this.nutrition = new NutritionPlan(() => ({
+      muscles: this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0),
+      sessionsPerWeek: this.sessionsPerWeek,
+      sessionMinutes: this.sessionMinutes
+    }));
     this.sessions = [];
     this.plannedMeals = [];
     this.nextId = 1;

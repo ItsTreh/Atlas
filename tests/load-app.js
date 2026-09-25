@@ -32,6 +32,7 @@ const EXPORTS = [
   "ESTIMATE", "estimateTraining",
   "GOALS", "ACTIVITY_LEVELS", "MEAL_PATTERNS", "MEAL_COUNTS", "KCAL_FLOOR", "NutritionPlan",
   "WEIGHT_KG_RANGE", "BURN_RANGE", "weightRangeText",
+  "TRAINING_ENERGY", "ADJUST_RANGE", "PROTEIN_PER_KG_RANGE", "trainingLoad", "recommendTargets",
   "FOODS", "MEAL_IDEAS", "DIETS", "fitsDiet", "portionIdea", "mealIdeasFor", "totals",
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
   "exercisesFor", "tierRank",

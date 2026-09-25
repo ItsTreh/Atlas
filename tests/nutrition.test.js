@@ -17,10 +17,10 @@ describe("calories", () => {
   });
 
   test("the goal moves the target from the burn", () => {
-    n.burnInput = 2500;
-    n.goal = "maintain"; expect(n.kcal).toBe(2500);
-    n.goal = "lose";     expect(n.kcal).toBe(2000);
-    n.goal = "gain";     expect(n.kcal).toBe(2750);
+    n.burnInput = 2500;             // no training: each goal's untrained end
+    n.setGoal("maintain"); expect(n.kcal).toBe(2500);
+    n.setGoal("lose");     expect(n.kcal).toBe(2000);
+    n.setGoal("gain");     expect(n.kcal).toBe(2630);
   });
 
   test("the target never goes below the floor, and says so", () => {
@@ -32,7 +32,7 @@ describe("calories", () => {
   test("pounds are converted, not read as kilograms", () => {
     n.unit = "lb"; n.weight = 154.3;
     expect(n.weightKg).toBeCloseTo(70, 0);
-    expect(n.protein).toBe(Math.round(n.weightKg * app.GOALS[n.goal].protein));
+    expect(n.protein).toBe(Math.round(n.weightKg * n.proteinPerKg));
   });
 
   test("an impossible weight is invalid", () => {
@@ -84,6 +84,150 @@ describe("calories", () => {
     n.setActivity("active");
     expect(n.activity).toBe("active");
     expect(n.burnIsEstimate).toBe(true);
+  });
+});
+
+/* A routine's plan, fed by what it trains. */
+function planFor({ program, sessions = 4, minutes = 60, goal = "maintain", weight = 80 } = {}) {
+  const routine = new app.WeeklyRoutine();
+  if (program) routine.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
+  routine.sessionsPerWeek = sessions;
+  routine.sessionMinutes = minutes;
+  routine.nutrition.weight = weight;
+  routine.nutrition.setGoal(goal);
+  return { routine, n: routine.nutrition };
+}
+
+describe("recommendation from the plan", () => {
+  test("planned training adds to the estimated burn, but never to a typed one", () => {
+    const { routine, n } = planFor({ program: "full-body" });
+    const load = n.load;
+    expect(load.kcalPerDay).toBeGreaterThan(0);
+    expect(n.burn).toBe(Math.round((n.baseBurn + load.kcalPerDay) / 50) * 50);
+
+    routine.sessionsPerWeek = 6;
+    expect(n.load.kcalPerDay).toBeGreaterThan(load.kcalPerDay);
+
+    n.setBurn(2600);
+    expect(n.burn).toBe(2600);
+  });
+
+  test("with no muscles chosen, no training is counted", () => {
+    const { n } = planFor({ sessions: 5 });
+    expect(n.load.kcalPerDay).toBe(0);
+    expect(n.load.hours).toBe(0);
+  });
+
+  test("the plan reads the routine live: a new selection changes the targets", () => {
+    const { routine, n } = planFor({ program: "shoulders-arms", goal: "gain" });
+    const before = n.kcal;
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
+    expect(n.kcal).toBeGreaterThan(before);
+  });
+
+  test("the more you train, the smaller the fat-loss deficit and the higher the protein", () => {
+    const light = planFor({ program: "full-body", goal: "lose", sessions: 2 }).n;
+    const hard  = planFor({ program: "full-body", goal: "lose", sessions: 6 }).n;
+    expect(hard.adjust).toBeGreaterThan(light.adjust);
+    expect(hard.adjust).toBeLessThan(0);
+    expect(hard.proteinPerKg).toBeGreaterThan(light.proteinPerKg);
+  });
+
+  test("the muscle-gain surplus grows with how much of the body is trained", () => {
+    const arms = planFor({ program: "shoulders-arms", goal: "gain" }).n;
+    const full = planFor({ program: "full-body", goal: "gain" }).n;
+    expect(full.adjust).toBeGreaterThan(arms.adjust);
+    expect(arms.adjust).toBeGreaterThan(0);
+  });
+
+  test("every recommendation stays inside its goal's spans, however the week looks", () => {
+    const extremes = [{ coverage: 0, load: 0 }, { coverage: 1, load: 1 },
+                      { coverage: 0, load: 1 }, { coverage: 1, load: 0 }];
+    for (const [key, g] of Object.entries(app.GOALS))
+      for (const load of extremes) {
+        const r = app.recommendTargets(key, load);
+        expect(r.adjust).toBeGreaterThanOrEqual(Math.min(...g.adjust));
+        expect(r.adjust).toBeLessThanOrEqual(Math.max(...g.adjust));
+        expect(r.protein).toBeGreaterThanOrEqual(g.protein[0]);
+        expect(r.protein).toBeLessThanOrEqual(g.protein[1]);
+      }
+  });
+
+  test("the user's own targets survive training changes; a new goal takes its recommendation", () => {
+    const { routine, n } = planFor({ program: "full-body", goal: "lose" });
+    n.setAdjust(-0.25);
+    n.setProtein(2.0);
+    routine.sessionsPerWeek = 6;
+    expect(n.adjust).toBe(-0.25);
+    expect(n.proteinPerKg).toBe(2.0);
+    expect(n.adjustIsRecommended).toBe(false);
+
+    n.setGoal("gain");
+    expect(n.adjustIsRecommended).toBe(true);
+    expect(n.proteinIsRecommended).toBe(true);
+    expect(n.adjust).toBe(n.recommended.adjust);
+  });
+
+  test("stepping back onto the recommendation follows it again", () => {
+    const { n } = planFor({ program: "push", goal: "lose" });
+    const rec = n.recommended.adjust;
+    n.setAdjust(rec - 0.01);
+    expect(n.adjustIsRecommended).toBe(false);
+    n.setAdjust(n.adjust + 0.01);
+    expect(n.adjustIsRecommended).toBe(true);
+  });
+
+  test("training time never exceeds what the chosen muscles' weekly sets take", () => {
+    // Push is about 95 min of sets a week: fourteen 90-minute sessions can't burn 21 hours.
+    const { routine, n } = planFor({ program: "push", goal: "lose", sessions: 14, minutes: 90 });
+    const sets = routine.selectedMuscles().reduce((t, m) => t + m.weeklySets[1], 0);
+    const cap = (sets * app.ESTIMATE.minutesPerSet + 14 * app.ESTIMATE.warmupMinutes) / 60;
+    expect(n.load.hours).toBeCloseTo(cap, 5);
+    expect(n.load.hours).toBeLessThan(14 * 90 / 60);
+    expect(n.adjust).toBeLessThan(0);
+    expect(n.kcal).toBeLessThan(n.burn);
+  });
+
+  test("the hours stay close to what the generated workouts hold", () => {
+    for (const program of ["push", "full-body", "shoulders-arms"]) {
+      const { routine, n } = planFor({ program, sessions: 6, minutes: 90 });
+      routine.generate();
+      const built = routine.sessions.reduce((t, s) => t + s.workout.minutes, 0) / 60;
+      expect(n.load.hours).toBeGreaterThanOrEqual(built * 0.8);
+      expect(n.load.hours).toBeLessThanOrEqual(built * 2);
+    }
+  });
+
+  test("muscles with no exercises yet add no training", () => {
+    const { routine, n } = planFor({ program: "full-body" });
+    const bare = app.MUSCLES.filter(m => !app.exercisesFor(m.id).length);
+    if (!bare.length) return;          // nothing to check once the database covers every muscle
+    routine.selection.clear();
+    for (const m of bare) routine.selection.set(m.id, true);
+    expect(n.load.kcalPerDay).toBe(0);
+    expect(n.load.muscles.length).toBe(0);
+  });
+
+  test("a kept setting the recommendation moves onto reads as recommended", () => {
+    const { routine, n } = planFor({ program: "full-body", goal: "lose", weight: 95 });
+    n.setAdjust(n.recommended.adjust + 0.01);
+    expect(n.adjustIsRecommended).toBe(false);
+    for (let s = 1; s <= 14 && !n.adjustIsRecommended; s++) routine.sessionsPerWeek = s;
+    expect(n.adjustIsRecommended).toBe(true);
+  });
+
+  test("picking the goal that is already chosen keeps the user's targets", () => {
+    const { n } = planFor({ program: "push", goal: "lose" });
+    n.setProtein(2.9);
+    n.setGoal("lose");
+    expect(n.proteinPerKg).toBe(2.9);
+  });
+
+  test("the user's targets are held to a sane range", () => {
+    n.setAdjust(-0.9);  expect(n.adjust).toBe(app.ADJUST_RANGE[0]);
+    n.setAdjust(0.9);   expect(n.adjust).toBe(app.ADJUST_RANGE[1]);
+    n.setProtein(10);   expect(n.proteinPerKg).toBe(app.PROTEIN_PER_KG_RANGE[1]);
+    n.setProtein(0);    expect(n.proteinPerKg).toBe(app.PROTEIN_PER_KG_RANGE[0]);
   });
 });
 
