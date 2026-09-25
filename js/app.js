@@ -6,9 +6,17 @@
 const STAGES = { targets: $("stage-targets"), nutrition: $("stage-nutrition"),
                  plan: $("stage-plan") };
 
+/* The quiet line under the product name: the stage's number and name. */
+const STAGE_LABELS = { targets: "Define your focus", nutrition: "Nutrition", plan: "Week plan" };
+function paintStageLabel(name) {
+  const n = String(Object.keys(STAGES).indexOf(name) + 1).padStart(2, "0");
+  $("stage-label").innerHTML = '<span class="stage-n">' + n + '</span> / ' + STAGE_LABELS[name];
+}
+
 function showStage(name) {
   if (name === "plan" && routine.selection.isEmpty()) name = "targets";
   for (const [key, el] of Object.entries(STAGES)) el.hidden = key !== name;
+  paintStageLabel(name);
   for (const b of document.querySelectorAll(".step"))
     if (b.dataset.goto === name) b.setAttribute("aria-current", "step");
     else b.removeAttribute("aria-current");
@@ -33,7 +41,8 @@ document.addEventListener("click", e => {
 
 /* The Week plan step is only reachable once something is selected. */
 function paintSteps() {
-  document.querySelector('.step[data-goto="plan"]').disabled = routine.selection.isEmpty();
+  for (const b of document.querySelectorAll('button[data-goto="plan"]'))
+    b.disabled = routine.selection.isEmpty();
 }
 routine.selection.onChange(paintSteps);
 
@@ -164,9 +173,9 @@ $("reset").addEventListener("click", () => {
 
 /* --------------------------------- theme --------------------------------- */
 
+/* Light is the primary design, so the page always opens in it; dark is one
+   click away. */
 const root = document.documentElement;
-if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches)
-  root.dataset.theme = "dark";
 
 function paintThemeButton() {
   const dark = root.dataset.theme === "dark";

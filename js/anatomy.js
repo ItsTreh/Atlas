@@ -172,7 +172,7 @@ class AnatomyFigure {
         if (!paths) continue;
         const g = el("g", {
           class: "m", "data-muscle": muscle.id, tabindex: "0",
-          role: "checkbox", "aria-label": muscle.name
+          role: "checkbox", "aria-checked": "false", "aria-label": muscle.name
         });
         const title = el("title", {});
         title.textContent = muscle.name;
