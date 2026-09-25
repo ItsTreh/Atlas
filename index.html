@@ -3,20 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weekly Gym Routine Planner</title>
+<title>ATLAS — weekly training planner</title>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <div class="wrap">
 
-  <header>
-    <div>
-      <h1>Weekly Gym Routine Planner</h1>
-      <p class="sub">Choose the muscles you want to train, block the hours you
-        are busy, and get a week that respects your recovery — meals included.</p>
-    </div>
+  <header class="masthead">
+    <h1 class="brand">ATLAS</h1>
+    <p class="stage-label" id="stage-label"><span class="stage-n">01</span> / Define your focus</p>
     <button class="theme-btn" id="theme" aria-label="Switch colour theme">
-      <span id="theme-icon">☾</span><span id="theme-label">Dark</span>
+      <span id="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Dark</span>
     </button>
   </header>
 
@@ -36,21 +33,21 @@
     <h2 class="visually-hidden" id="targets-title">Choose target muscles</h2>
 
     <div class="targets">
-      <div class="card anatomy-card">
+      <div class="anatomy-stage">
         <div class="anatomy" id="anatomy"></div>
         <p class="anatomy-caption" id="anatomy-caption" aria-live="polite"></p>
       </div>
 
       <div class="targets-side">
-        <div class="card side-card">
+        <div class="side-card">
           <h2>Recommended programs</h2>
           <div id="programs"></div>
         </div>
-        <div class="card side-card" id="selection-summary"></div>
+        <div class="side-card" id="selection-summary"></div>
       </div>
     </div>
 
-    <section class="card estimate" id="estimate" aria-live="polite"></section>
+    <section class="estimate" id="estimate" aria-live="polite"></section>
 
     <div class="stage-actions">
       <span class="hint" id="to-plan-hint"></span>
@@ -212,7 +209,7 @@
 
       <div class="legend">
         <div class="row"><span class="chip" style="background:var(--free)"></span> Free</div>
-        <div class="row"><span class="chip" style="background:var(--busy)"></span> Busy</div>
+        <div class="row"><span class="chip chip-busy"></span> Busy</div>
         <div class="row"><span class="chip" style="background:var(--push-bg);border-left:4px solid var(--push)"></span> Push</div>
         <div class="row"><span class="chip" style="background:var(--pull-bg);border-left:4px solid var(--pull)"></span> Pull</div>
         <div class="row"><span class="chip" style="background:var(--legs-bg);border-left:4px solid var(--legs)"></span> Legs</div>
