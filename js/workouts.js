@@ -15,7 +15,11 @@
        the triceps need fewer direct sets after a chest block;
      • variety across the week — an exercise already used for a muscle this
        week ranks one tier lower the next time, so equal-tier alternatives
-       rotate in while a clearly better exercise can still repeat.
+       rotate in while a clearly better exercise can still repeat;
+     • recovery — an exercise that also works, as a primary, a chosen muscle
+       trained in a different session (a back squat in a quads day, when
+       glutes have their own day) ranks one tier lower, so that muscle is
+       not quietly trained on the day before its own session.
 
    The result is a Workout per session, which the user can then edit freely.
    Nothing here touches the page.
@@ -26,7 +30,18 @@ const WORKOUT = Object.freeze({
   maxSetsPerExercise: 4,   // past this, a second exercise does the job better
   minDirectSets:      2,   // a selected muscle always gets at least one exercise
   secondaryCredit:  0.5,   // a set where the muscle only assists counts as half
-  repeatDemotion:     1    // tier steps an exercise drops once used this week
+  repeatDemotion:     1,   // tier steps an exercise drops once used this week
+  offDayDemotion:     1    // tier steps for one that also works a muscle trained on another day
+});
+
+/**
+ * How each kind of lift is done: reps per set and rest between sets. The
+ * estimate's 2.5 min a set (estimate.js) is the average of the two, rest
+ * included. These are common starting ranges, not a prescription.
+ */
+const LIFT_KINDS = Object.freeze({
+  compound:  { label: "Compound",  reps: "6–10",  rest: "2–3 min" },
+  isolation: { label: "Isolation", reps: "10–15", rest: "60–90 s" }
 });
 
 class WorkoutEntry {
@@ -41,6 +56,9 @@ class WorkoutEntry {
     this.sets = sets; this.manual = manual;
   }
   get tier() { return this.exercise.tierFor(this.muscleId); }
+  get kind() { return LIFT_KINDS[this.exercise.compound ? "compound" : "isolation"]; }
+  get reps() { return this.kind.reps; }
+  get rest() { return this.kind.rest; }
 }
 
 /** The exercises for one session, and the edits the user makes to them. */
@@ -117,6 +135,9 @@ class WorkoutBuilder {
         this.timesThisWeek.set(m.id, (this.timesThisWeek.get(m.id) || 0) + 1);
 
     this.usedThisWeek = new Map();          // muscle id → Set of exercises
+    // Every muscle with work of its own somewhere this week.
+    this.trainedThisWeek = new Set(this.sessions.flatMap(s =>
+      s.block.muscles.filter(m => !s.block.riders.has(m)).map(m => m.id)));
   }
 
   /** Gives every session its Workout, in week order. */
@@ -159,7 +180,9 @@ class WorkoutBuilder {
   /** Sets this muscle should get in one session: its share of the session
       time, but no more than its weekly maximum spread over the week. */
   targetSets(muscle, scale) {
-    const fromTime = Math.floor(muscle.minutes * scale / ESTIMATE.minutesPerSet);
+    // Rounded, not floored: a merged block scaled below 1 would otherwise lose
+    // up to a set per muscle and leave a quarter of the session empty.
+    const fromTime = Math.round(muscle.minutes * scale / ESTIMATE.minutesPerSet);
     const times = this.timesThisWeek.get(muscle.id) || 1;
     const weeklyCap = Math.ceil(muscle.weeklySets[1] / times);
     return Math.max(WORKOUT.minDirectSets, Math.min(fromTime, weeklyCap));
@@ -190,8 +213,11 @@ class WorkoutBuilder {
 
     exercisesFor(muscle.id).forEach((ex, order) => {
       if (workout.has(ex) || workout.clashWith(ex)) return;
+      const elsewhere = ex.primary.some(id => id !== muscle.id && !block.muscles.some(m => m.id === id) &&
+                                              this.trainedThisWeek.has(id));
       const key = [
-        tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0),
+        tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
+          (elsewhere ? WORKOUT.offDayDemotion : 0),
         -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
         order
       ];

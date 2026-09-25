@@ -96,7 +96,7 @@
           <div class="fuels">
             <p class="cfg-hint" id="n-training"></p>
             <div class="window">
-              <label>Sessions a week <select id="n-sessions"></select></label>
+              <label>Training days a week <select id="n-sessions"></select></label>
               <label>Session length <select id="n-len"></select></label>
             </div>
           </div>
@@ -168,7 +168,7 @@
 
       <h2>Training</h2>
       <div class="field">
-        <label for="len">Session length</label>
+        <label for="len">About how long a session</label>
         <select id="len">
           <option value="45">45 min</option>
           <option value="60" selected>60 min</option>
@@ -177,8 +177,12 @@
         </select>
       </div>
       <div class="field">
-        <label for="sessions">Sessions per week</label>
-        <input id="sessions" type="number" min="1" max="14" value="4">
+        <label for="sessions">Training days per week</label>
+        <input id="sessions" type="number" min="1" max="7" value="4">
+      </div>
+      <div class="field-col">
+        <div class="cfg-label" id="off-label">Days I can't train</div>
+        <div class="day-chips" id="off-days" role="group" aria-labelledby="off-label"></div>
       </div>
       <div class="field">
         <label for="window">I prefer to train</label>
@@ -198,7 +202,7 @@
       </label>
 
       <div class="actions">
-        <button class="act primary" id="generate">Generate Routine</button>
+        <button class="act primary" id="generate">Generate my plan</button>
         <button class="act ghost" id="reset">Reset</button>
       </div>
 
@@ -224,7 +228,7 @@
           blocked, scheduled or meal cell to clear it.</p>
       </div>
 
-      <section class="card workouts" id="workouts" aria-label="Workouts"></section>
+      <section class="card workouts" id="workouts" aria-label="Your week"></section>
 
       <section class="card nutri" id="nutri"></section>
     </main>

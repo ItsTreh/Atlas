@@ -36,8 +36,8 @@ const EXPORTS = [
   "FOODS", "MEAL_IDEAS", "DIETS", "fitsDiet", "portionIdea", "mealIdeasFor", "totals",
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
   "exercisesFor", "tierRank",
-  "WORKOUT", "WorkoutBuilder", "Workout",
-  "WeeklyRoutine", "Scheduler"
+  "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
+  "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE"
 ];
 
 /** The logic scripts, in index.html order. */
