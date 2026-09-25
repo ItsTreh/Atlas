@@ -11,6 +11,7 @@ const gridEl = $("grid"), targetsMiniEl = $("targets-mini"), statusEl = $("statu
       nutriEl = $("nutri");
 
 function hourLabel(h) {
+  h = h % 24;                   // a session ending at midnight ends at 12am
   const s = h < 12 ? "am" : "pm";
   return (h % 12 === 0 ? 12 : h % 12) + s;
 }
@@ -19,6 +20,7 @@ function hourLabel(h) {
 
 function buildControls() {
   $("len").value = routine.sessionMinutes;
+  [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
   $("sessions").value = routine.sessionsPerWeek;
   $("window").value = routine.preferredWindow;
   $("showmeals").checked = routine.nutrition.showMeals;
@@ -66,7 +68,8 @@ function renderNutritionMini() {
 
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
-  routine.sessionsPerWeek = Math.max(1, Math.min(14, Math.round(Number($("sessions").value)) || 1));
+  const [lo, hi] = TRAINING_DAYS_RANGE;
+  routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
   $("sessions").value = routine.sessionsPerWeek;
   routine.preferredWindow = $("window").value;
   routine.nutrition.showMeals = $("showmeals").checked;
@@ -100,7 +103,22 @@ function buildGrid() {
   render();
 }
 
-function render() { renderGrid(); renderWorkouts(); renderNutrition(); }
+function render() { renderGrid(); paintOffDays(); renderWorkouts(); renderNutrition(); }
+
+/** The "Days I can't train" toggles, one per day, pressed when the whole day is busy. */
+function buildOffDays() {
+  $("off-days").innerHTML = DayOfWeek.values.map(day =>
+    '<button type="button" class="day-chip" data-off="' + day + '" aria-pressed="false">' +
+      DayOfWeek.label[day] + '</button>').join("");
+}
+function paintOffDays() {
+  for (const b of $("off-days").querySelectorAll("[data-off]")) {
+    const off = routine.isDayUnavailable(b.dataset.off);
+    b.setAttribute("aria-pressed", off ? "true" : "false");
+    b.title = off ? "Can't train " + DayOfWeek.label[b.dataset.off] + " — click to free it"
+                  : "Mark all of " + DayOfWeek.label[b.dataset.off] + " as busy";
+  }
+}
 
 /**
  * Repaints the grid. A cell is only touched when its rendered content actually
@@ -111,13 +129,17 @@ function renderGrid() {
   for (const cell of gridEl.querySelectorAll(".cell")) {
     const slot = routine.slot(cell.dataset.day, Number(cell.dataset.hour));
 
-    const sig = slot.state === SlotState.WORKOUT
-        ? "W" + slot.session.id + ":" + slot.hour
-        : slot.state === SlotState.MEAL ? "M" + slot.meal.id : slot.state;
+    // The session's minutes change as exercises are edited; a day off is
+    // drawn on its free cells. Both are part of what the cell shows.
+    const off = routine.offDays.has(slot.day);
+    const sig = (slot.state === SlotState.WORKOUT
+        ? "W" + slot.session.id + ":" + slot.hour + ":" + sessionMinutes(slot.session)
+        : slot.state === SlotState.MEAL ? "M" + slot.meal.id : slot.state) + (off ? ":off" : "");
     if (cell.dataset.sig === sig) continue;
     cell.dataset.sig = sig;
 
     cell.className = "cell";
+    if (off) cell.classList.add("offday");
     cell.innerHTML = "";
     const where = DayOfWeek.label[slot.day] + " " + hourLabel(slot.hour);
 
@@ -129,14 +151,15 @@ function renderGrid() {
       const s = slot.session, first = slot.hour === s.startHour;
       cell.classList.add(s.block.css);
       if (!first) cell.classList.add("cont");
+      const minutes = sessionMinutes(s);
       cell.innerHTML = '<span class="bar"></span>' +
         (first
           ? '<span class="t1">' + s.block.label + '</span>' +
-            '<span class="t2">' + s.block.minutes + ' min · ' +
-              FAMILIES[s.block.family].name + '</span>'
+            '<span class="t2">≈ ' + minutes + ' min' +
+              (s.block.mixed ? '' : ' · ' + FAMILIES[s.block.family].name) + '</span>'
           : '<span class="t2">…continues</span>');
       cell.setAttribute("aria-label",
-        where + ", " + s.block.label + " session, " + s.block.minutes + " minutes");
+        where + ", " + s.block.label + " session, about " + minutes + " minutes");
 
     } else if (slot.state === SlotState.MEAL) {
       const m = slot.meal;
@@ -148,9 +171,14 @@ function renderGrid() {
         where + ", " + m.name + ", " + m.kcal + " calories, " + m.protein + " grams protein");
 
     } else {
-      cell.setAttribute("aria-label", where + ", free");
+      cell.setAttribute("aria-label", where + (off ? ", day off training" : ", free"));
     }
   }
+}
+
+/** A session's length as the plan below shows it: its workout, else the block's share of the session. */
+function sessionMinutes(session) {
+  return session.workout ? session.workout.minutes : session.block.sessionMinutes;
 }
 
 function renderNutrition() {

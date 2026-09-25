@@ -181,7 +181,10 @@ describe("recommendation from the plan", () => {
     // Push is about 95 min of sets a week: fourteen 90-minute sessions can't burn 21 hours.
     const { routine, n } = planFor({ program: "push", goal: "lose", sessions: 14, minutes: 90 });
     const sets = routine.selectedMuscles().reduce((t, m) => t + m.weeklySets[1], 0);
-    const cap = (sets * app.ESTIMATE.minutesPerSet + 14 * app.ESTIMATE.warmupMinutes) / 60;
+    // Push is one block, trained at most twice a week: only those days count.
+    expect(n.load.sessionsPerWeek).toBe(app.ESTIMATE.timesPerWeek);
+    const cap = (sets * app.ESTIMATE.minutesPerSet +
+                 n.load.sessionsPerWeek * app.ESTIMATE.warmupMinutes) / 60;
     expect(n.load.hours).toBeCloseTo(cap, 5);
     expect(n.load.hours).toBeLessThan(14 * 90 / 60);
     expect(n.adjust).toBeLessThan(0);

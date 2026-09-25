@@ -47,8 +47,9 @@ function buildNutritionControls() {
   $("last-meal").innerHTML = hourOptions(14, LAST_HOUR);
 
   // The same choices as the week plan's controls, which edit the same numbers.
-  $("n-sessions").innerHTML = Array.from({ length: 14 }, (_, i) =>
-    '<option value="' + (i + 1) + '">' + (i + 1) + '</option>').join("");
+  const [lo, hi] = TRAINING_DAYS_RANGE;
+  $("n-sessions").innerHTML = Array.from({ length: hi - lo + 1 }, (_, i) =>
+    '<option value="' + (lo + i) + '">' + (lo + i) + '</option>').join("");
   $("n-len").innerHTML = $("len").innerHTML;
 }
 
@@ -226,6 +227,18 @@ function renderPlan() {
     'the protein range is plenty.</p>';
 }
 
+/** Why fewer training days count than were asked for, if they do. */
+function fewerDays(counted) {
+  const asked = routine.sessionsPerWeek, free = routine.availableDays().length;
+  if (counted >= asked) return "";
+  const n = d => d + (d === 1 ? " day" : " days");
+  if (routine.sessions.length === counted && counted < Math.min(asked, free))
+    return " (" + n(counted) + " in your generated week)";
+  if (free === counted)
+    return " (only " + n(free) + " of the week " + (free === 1 ? "is" : "are") + " free to train)";
+  return " (your targets use " + counted + " of the " + n(asked) + " you offered; the rest are rest days)";
+}
+
 /**
  * How each input shaped the numbers, in the order they apply: what is
  * trained, how often, the goal's calorie change, then protein.
@@ -248,7 +261,8 @@ function planReasons(n) {
       ' of a full-body week\'s training volume' +
       (untrained ? ' (' + untrained + ' more with no exercises yet, not counted).' : '.'));
     out.push('<b>Training:</b> ' + load.sessionsPerWeek + ' × ' + load.sessionMinutes + ' min a week' +
-      ' booked; your targets\' sets take about ' + trainingHours(load.hours) + ' of it' +
+      fewerDays(load.sessionsPerWeek) +
+      '; your targets\' sets take about ' + trainingHours(load.hours) + ' of it' +
       (n.burnIsEstimate ? ', adding ≈ ' + fmtK(load.kcalPerDay) + ' kcal a day to your burn.'
                         : ', already in the burn you entered.'));
   }

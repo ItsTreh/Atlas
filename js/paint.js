@@ -40,8 +40,9 @@ function beginStroke(cell) {
   const day = cell.dataset.day, hour = Number(cell.dataset.hour);
   const slot = routine.slot(day, hour);
   if (!slot) return;
-  // A busy cell clears; anything else becomes busy.
-  paintMode = slot.state === SlotState.BUSY ? "clear" : "busy";
+  // A free cell becomes busy; a busy, session or meal cell clears, as the
+  // hint under the grid says — clearing a session frees its hours.
+  paintMode = slot.state === SlotState.FREE ? "busy" : "clear";
   painting = true;
   anchor = { day, hour };
   paintTo(day, hour);          // the click alone must already do something
@@ -51,7 +52,10 @@ function endStroke() {
   if (!painting) return;
   painting = false; paintMode = null; anchor = null;
   renderWorkouts();            // a cleared cell may have removed a session
+  paintOffDays();              // a painted column is a day off
   renderNutrition();           // the meal count only needs refreshing once
+  renderNutritionMini();       // days free to train change what training counts
+  weekEdited() || warnIfStale();
 }
 
 /* Pointer Events are the primary path: one code path for mouse, pen and touch.

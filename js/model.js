@@ -15,6 +15,8 @@ const SlotState = Object.freeze({
 const DayOfWeek = Object.freeze({
   values: ["MON","TUE","WED","THU","FRI","SAT","SUN"],
   label: { MON:"Mon", TUE:"Tue", WED:"Wed", THU:"Thu", FRI:"Fri", SAT:"Sat", SUN:"Sun" },
+  name:  { MON:"Monday", TUE:"Tuesday", WED:"Wednesday", THU:"Thursday", FRI:"Friday",
+           SAT:"Saturday", SUN:"Sunday" },
   indexOf(d) { return DayOfWeek.values.indexOf(d); },
   /**
    * Days between two weekdays, the short way round. The week repeats, so
@@ -91,11 +93,25 @@ class TrainingBlock {
     this.muscles = muscles;
     this.family = muscles[0].family;
     this.riders = new Set();   // along for the ride: named, but no session time
+    this.limit = Infinity;     // the session length; set when blocks are merged to fit the days
+  }
+  /** One block training both, when the week has fewer days than blocks. */
+  static merge(host, guest) {
+    const block = new TrainingBlock([...host.muscles, ...guest.muscles]);
+    block.riders = new Set([...host.riders, ...guest.riders]);
+    return block;
   }
   get minutes() {
     return this.muscles.reduce((t, m) => t + (this.riders.has(m) ? 0 : m.minutes), 0);
   }
-  get durationHours() { return Math.max(1, Math.ceil(this.minutes / 60)); }
+  /* A merged block longer than the session keeps the session's length; its
+     sets are scaled down to fit (WorkoutBuilder). */
+  get sessionMinutes() { return Math.min(this.minutes, this.limit); }
+  get durationHours() { return Math.max(1, Math.ceil(this.sessionMinutes / 60)); }
+  /** True when the block trains more than one family (a merged upper-and-legs day). */
+  get mixed() {
+    return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;
+  }
   get label() { return this.muscles.map(m => m.name).join(" · "); }
   get css() { return FAMILIES[this.family].css; }
   has(muscle) { return this.muscles.includes(muscle); }

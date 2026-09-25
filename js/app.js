@@ -16,7 +16,7 @@ function showStage(name) {
     buildControls();           // the nutrition stage may have changed sessions or length
     renderTargetsMini();
     renderNutritionMini();
-    renderNutrition();
+    render();                  // the plan's summary shows the day's targets too
     warnIfStale();
   } else if (name === "nutrition") {
     renderNutritionStage();
@@ -47,19 +47,40 @@ for (const id of ["len", "sessions", "window", "showmeals"])
     readControls();
     renderNutritionMini();
     renderNutrition();
+    renderWorkouts();
     warnIfStale();
   });
 
 /* What the grid on screen was generated from, to spot a stale week: the
-   muscles, how many sessions of what length were asked for, and the meals it
-   placed (time, calories and protein, as the grid shows them) and kept
-   sessions away from. */
-let generatedFor = null;
+   muscles, how many days of what length were asked for, the days off, the
+   preferred window, whether meals go on the calendar, the training days the
+   week can hold, and the meals it placed (time, calories and protein, as
+   the grid shows them) and kept sessions away from. Painting over a session
+   or removing one is an edit, not a changed input; see weekEdited(). */
+let generatedFor = null, placedCount = 0;
 function planInputs() {
   const n = routine.nutrition;
   return routine.selection.muscles().map(m => m.id).join() + "|" +
          routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" +
+         [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
+         n.showMeals + "|" + routine.plannedSessions() + "|" +
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
+}
+const days = n => n + (n === 1 ? " day" : " days");
+const timesText = n => ({ 1: "once", 2: "twice", 3: "three times" })[n] || n + " times";
+
+/**
+ * After a session leaves the week by the user's hand — removed, painted
+ * over, or its day marked off — the status says what the week now holds.
+ * Returns true if it did.
+ */
+function weekEdited() {
+  if (!generatedFor || routine.sessions.length === placedCount) return false;
+  placedCount = routine.sessions.length;
+  setStatus("Your week now has " + days(placedCount) + " of training after your edits." +
+    (generatedFor !== planInputs() ? " Your daily targets changed with it; generate again " +
+      "to update the meals on the calendar." : ""), "warn");
+  return true;
 }
 function warnIfStale() {
   if (generatedFor && routine.sessions.length && generatedFor !== planInputs())
@@ -67,32 +88,63 @@ function warnIfStale() {
               "Generate again to plan for them.", "warn");
 }
 
+/* A day toggle paints or clears that whole column of the grid; what the
+   training and diet can use follows at once. */
+$("off-days").addEventListener("click", e => {
+  const b = e.target.closest("[data-off]");
+  if (!b) return;
+  routine.setDayUnavailable(b.dataset.off, !routine.isDayUnavailable(b.dataset.off));
+  render();
+  renderNutritionMini();
+  weekEdited() || warnIfStale();
+});
+
 $("generate").addEventListener("click", () => {
   readControls();
   const r = routine.generate();
   generatedFor = planInputs();
+  placedCount = routine.sessions.length;
   render();
 
   const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
-  const plural = n => n === 1 ? "session" : "sessions";
   const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
   const exNote = exercises ? " with " + exercises + " exercises" : "";
 
   switch (r.reason) {
     case "ok":
-      setStatus("Placed " + r.placed + " " + plural(r.placed) + exNote + "." + mealNote);
+      setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote);
+      break;
+    case "rest": {
+      const spare = Math.min(r.requested, r.free) - r.placed;
+      setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
+        " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
+        " a week each" + (spare > 0 ? ", so the other " + days(spare) + " you offered " +
+        (spare === 1 ? "is a rest day." : "are rest days.") : "."));
+      break;
+    }
+    case "days":
+      setStatus("Planned " + days(r.placed) + " of training" + exNote + " — every day you " +
+        "have free." + mealNote + " Free up " + (r.requested - r.placed === 1 ? "another day"
+        : (r.requested - r.placed) + " more days") + " to train " + days(r.requested) + ".", "warn");
       break;
     case "partial":
-      setStatus("Placed " + r.placed + " of " + r.requested + " " +
-        plural(r.requested) + "." + mealNote + " The rest were left out: either " +
-        "no free block was long enough, or every remaining muscle was still " +
-        "inside its recovery window.", "warn");
+      setStatus("Planned " + days(r.placed) + " of the " + days(r.requested) + " you asked for." +
+        mealNote + " The rest were left out: either no free day had a long enough " +
+        "gap, or every remaining muscle was still inside its recovery window.", "warn");
       break;
     case "no-muscles":
       setStatus("Pick at least one muscle first.", "err");
       break;
+    case "no-exercises":
+      setStatus("None of your target muscles have exercises in the database yet, so there " +
+        "is nothing to schedule. Add a muscle such as Chest, Lats or Quads.", "err");
+      break;
+    case "no-room":
+      setStatus("No free gap is long enough for a " + routine.sessionMinutes + "-minute session. " +
+        "Clear some hours or shorten the session.", "err");
+      break;
     case "no-blocks":
-      setStatus("Every hour is blocked. Clear some cells and try again.", "err");
+      setStatus("Every hour is blocked. Free some days or clear some cells and try again.", "err");
       break;
     default:
       setStatus("Nothing could be placed without breaking a recovery window. " +
@@ -129,6 +181,7 @@ $("theme").addEventListener("click", () => {
 /* ---------------------------------- boot --------------------------------- */
 
 paintThemeButton();
+buildOffDays();
 buildControls();
 buildGrid();
 paintSteps();

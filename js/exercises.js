@@ -62,6 +62,17 @@ const MOVEMENTS = Object.freeze({
   "glute-kickback":     "Glute kickback"
 });
 
+/**
+ * Compound movements: several joints working, heavy loads. They are done
+ * for fewer reps with longer rests than isolation work (see LIFT_KINDS in
+ * workouts.js). Every other movement counts as isolation.
+ */
+const COMPOUND_MOVEMENTS = Object.freeze(new Set([
+  "flat-press", "incline-press", "dip", "close-grip-press", "overhead-press",
+  "vertical-pull", "row", "wide-row",
+  "squat", "lunge", "leg-press", "hip-thrust", "hinge"
+]));
+
 /* --------------------------------------------------------------------------
    Catalogue:  [name, movement, primary muscles, secondary muscles]
    Primary muscles do the work; secondary ones assist and get partial credit.
@@ -241,6 +252,7 @@ class Exercise {
     this.tiers = {};              // muscle id → tier label, e.g. { quads: "S" }
     this.listOrder = {};          // muscle id → position in its tier list
   }
+  get compound() { return COMPOUND_MOVEMENTS.has(this.movement); }
   /** The tier label for this muscle, or null if it is not rated for it. */
   tierFor(muscleId) { return this.tiers[muscleId] || null; }
   trainsPrimarily(muscleId) { return this.primary.includes(muscleId); }
@@ -260,6 +272,8 @@ const EXERCISE_BY_NAME = new Map();
 (function buildIndex() {
   const problem = msg => console.error("Exercise data: " + msg);
   const muscleOk = id => MUSCLE_BY_ID.has(id) || (problem("unknown muscle " + id), false);
+  for (const m of COMPOUND_MOVEMENTS)
+    if (!MOVEMENTS[m]) problem("compound movement " + m + " is not a movement");
 
   for (const [name, movement, primary, secondary] of EXERCISE_CATALOGUE) {
     if (EXERCISE_BY_NAME.has(name)) { problem("\"" + name + "\" is in the catalogue twice"); continue; }
