@@ -3,8 +3,8 @@
 
    The renderer the anatomy stage mounts when the browser has WebGL2; the
    SVG AnatomyFigure (anatomy.js) takes over where it does not. It has the
-   same contract: new AnatomySculpture(mount, selection, { onHover }),
-   paint() and preview(ids), and like the figure it only ever calls
+   same contract: new AnatomySculpture(mount, selection, { onHover, onFail }),
+   paint() and preview(ids), plus destroy(), and like the figure it only ever calls
    selection.toggle(). The selection stays the one source of truth.
 
    What it draws: ANATOMY_MODEL from the front and from the back, side by
@@ -29,6 +29,10 @@ const SCULPTURE_VIEWS = [
   { id: "back",  label: "Back",  back: true }
 ];
 
+// How long a lost WebGL context gets to come back before the stage swaps in
+// the next renderer.
+const SCULPTURE_RESTORE_MS = 3000;
+
 class AnatomySculpture {
   /** True when this browser can draw the sculpture. */
   static supported() {
@@ -48,6 +52,7 @@ class AnatomySculpture {
     this.mount = mount;
     this.selection = selection;
     this.onHover = opts.onHover || (() => {});
+    this.onFail = opts.onFail || (() => {});
     this.model = ANATOMY_MODEL;
     // Region index → app muscle id, or null where the region is not selectable.
     this.muscleOf = this.model.regions.map(name => ANATOMY_REGIONS[name] || null);
@@ -82,11 +87,28 @@ class AnatomySculpture {
     this.initGL();
     this.readColors();
     this.bind();
-    new ResizeObserver(() => this.schedule(true)).observe(mount);
-    window.addEventListener("resize", () => this.schedule(true));     // a zoom changes the pixel ratio only
-    new MutationObserver(() => { this.readColors(); this.schedule(); })
-      .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    selection.onChange(() => this.paint());
+    const resized = new ResizeObserver(() => this.schedule(true));
+    resized.observe(mount);
+    const zoomed = () => this.schedule(true);                         // a zoom changes the pixel ratio only
+    window.addEventListener("resize", zoomed);
+    const themed = new MutationObserver(() => { this.readColors(); this.schedule(); });
+    themed.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    const unsubscribe = selection.onChange(() => this.paint());
+    this.unbind = () => {
+      resized.disconnect();
+      window.removeEventListener("resize", zoomed);
+      themed.disconnect();
+      unsubscribe();
+    };
+  }
+
+  /** Stops following the page and the selection, once the stage has replaced it. */
+  destroy() {
+    this.unbind();
+    clearTimeout(this.lostTimer);
+    cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.ready = false;
   }
 
   /* ------------------------------- WebGL --------------------------------- */
@@ -506,8 +528,24 @@ class AnatomySculpture {
       this.schedule();
     });
 
-    this.canvas.addEventListener("webglcontextlost", e => { e.preventDefault(); this.ready = false; });
-    this.canvas.addEventListener("webglcontextrestored", () => { this.initGL(); this.schedule(true); });
+    // A lost context usually comes back within moments. If it does not, or
+    // comes back unusable, hand over (onFail) rather than stay blank.
+    this.canvas.addEventListener("webglcontextlost", e => {
+      e.preventDefault();
+      this.ready = false;
+      this.lostTimer = setTimeout(() => this.onFail(), SCULPTURE_RESTORE_MS);
+    });
+    this.canvas.addEventListener("webglcontextrestored", () => {
+      clearTimeout(this.lostTimer);
+      try {
+        this.initGL();
+      } catch (e) {
+        console.warn("The sculpture could not restore its WebGL context.", e);
+        this.onFail();
+        return;
+      }
+      this.schedule(true);
+    });
   }
 
   hover(id) {
