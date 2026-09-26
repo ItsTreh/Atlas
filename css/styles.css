@@ -52,9 +52,12 @@
   --sel:         #2f3337;
   --sel-hover:   #474c51;
   /* the sculpture's surfaces before light: form (bone, tendon, head,
-     hands) and muscle. Shading darkens them; lit faces sit near them. */
-  --sculpt-form:   #e2e5e8;
-  --sculpt-muscle: #bfc4ca;
+     hands), muscle, and a selected muscle (the selection charcoal, lifted
+     so the light still models it). Shading darkens them; lit faces sit
+     near them. */
+  --sculpt-form:     #e2e5e8;
+  --sculpt-muscle:   #bfc4ca;
+  --sculpt-selected: #585e64;
 }
 
 [data-theme="dark"] {
@@ -93,9 +96,10 @@
   --muscle-hover:#4c535a;
   --seam:        #141618;
   --sel:         #e4e7ea;
-  --sel-hover:   #ffffff;
-  --sculpt-form:   #454b51;
-  --sculpt-muscle: #5b636b;
+  --sel-hover:   #c9cdd0;
+  --sculpt-form:     #454b51;
+  --sculpt-muscle:   #5b636b;
+  --sculpt-selected: #b6bbc0;
 }
 
 /* Type and shape, shared by both themes. One sans family throughout: the
