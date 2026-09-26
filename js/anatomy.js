@@ -1,5 +1,8 @@
 /* ===========================================================================
-   Anatomy figure — an interactive front and back view of the body.
+   Anatomy figure — an interactive front and back view of the body, in SVG.
+
+   The fallback renderer: the anatomy stage mounts it where the browser has
+   no WebGL2 for the 3D sculpture (anatomy-sculpture.js). Same contract.
 
    The drawing is data. Each view lists shapes for the LEFT half of the
    figure (x ≤ 100 in a 200-wide viewBox); the renderer mirrors every shape

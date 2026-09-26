@@ -51,6 +51,10 @@
   --seam:        #f4f5f6;
   --sel:         #2f3337;
   --sel-hover:   #474c51;
+  /* the sculpture's surfaces before light: form (bone, tendon, head,
+     hands) and muscle. Shading darkens them; lit faces sit near them. */
+  --sculpt-form:   #e2e5e8;
+  --sculpt-muscle: #bfc4ca;
 }
 
 [data-theme="dark"] {
@@ -90,6 +94,8 @@
   --seam:        #141618;
   --sel:         #e4e7ea;
   --sel-hover:   #ffffff;
+  --sculpt-form:   #454b51;
+  --sculpt-muscle: #5b636b;
 }
 
 /* Type and shape, shared by both themes. One sans family throughout: the
@@ -674,11 +680,12 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
    ground, and most of the first screen. It sets one size, --stage-h: the
    screen's height less the masthead, or the height two figures side by
    side reach at the page's width, whichever is smaller, so a phone gets a
-   smaller room rather than empty space around the body. `isolation`
-   keeps anything layered in it later (a backdrop, a blur, labels)
-   stacking inside it. */
+   smaller room rather than empty space around the body. The pair of views
+   is about 1.14 times as tall as it is wide; 86px holds the view captions
+   and the two-line caption below. `isolation` keeps anything layered in
+   it later (a backdrop, a blur, labels) stacking inside it. */
 .anatomy-stage {
-  --stage-h: clamp(260px, min(100svh - 180px, (100vw - 2 * var(--space)) * 1.1 + 64px), 1200px);
+  --stage-h: clamp(260px, min(100svh - 180px, (100vw - 2 * var(--space)) * 1.14 + 86px), 1200px);
   position: relative; isolation: isolate;
   height: var(--stage-h);
   display: grid; grid-template-rows: minmax(0, 1fr) auto;
@@ -737,6 +744,28 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
   text-align: center;
 }
 .anatomy-caption.live { color: var(--ink); }
+
+/* The 3D sculpture: a canvas the renderer sizes to the viewport, with a
+   caption under each view and, for the keyboard, a checkbox on each
+   muscle. The checkboxes are invisible until focused (the canvas draws the
+   focused muscle's outline; the ring marks the point). */
+.anatomy-sculpture { position: relative; }
+.anatomy-sculpture canvas {
+  display: block; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.anatomy-sculpture .view-cap {
+  position: absolute; margin-top: 10px; transform: translateX(-50%); white-space: nowrap;
+  font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase;
+  color: var(--ink-faint);
+}
+/* Clipped: while a resize settles, checkboxes still at their old places
+   must not widen the page. */
+.anatomy-sculpture .hits { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.anatomy-sculpture .hit {
+  position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border-radius: 50%; outline: none;
+}
+.anatomy-sculpture .hit:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--bg); }
 
 /* Everything else on the stage sits below the body, at a readable measure:
    programs and the summary side by side, then the estimate. */

@@ -20,8 +20,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 /* Scripts that draw or wire up the page. Everything else must run without a DOM. */
 const VIEW_FILES = new Set([
-  "anatomy.js", "anatomy-stage.js", "render.js", "targets.js", "workout-view.js",
-  "nutrition-view.js", "paint.js", "app.js"
+  "anatomy.js", "anatomy-sculpture.js", "anatomy-stage.js", "render.js", "targets.js",
+  "workout-view.js", "nutrition-view.js", "paint.js", "app.js"
 ]);
 
 /* The globals tests can use. Adding a name here is all it takes to expose one. */
@@ -37,7 +37,8 @@ const EXPORTS = [
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
   "exercisesFor", "tierRank",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
-  "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE"
+  "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE",
+  "ANATOMY_MODEL", "ANATOMY_REGIONS"
 ];
 
 /** The logic scripts, in index.html order. */
