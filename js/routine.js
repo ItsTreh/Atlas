@@ -66,6 +66,40 @@ class WeeklyRoutine {
     this.nextId = 1;
   }
 
+  /**
+   * A plain object describing every setting the user chose, safe to store:
+   * the muscle selection, the nutrition inputs, the schedule preferences,
+   * and the availability grid the user painted. Sessions and workouts are derived and are not
+   * included - restore() rebuilds them with generate(), the same way
+   * clicking Generate always has.
+   */
+  snapshot() {
+    return {
+      version: 1,
+      selection: this.selection.snapshot(),
+      nutrition: this.nutrition.snapshot(),
+      sessionsPerWeek: this.sessionsPerWeek,
+      sessionMinutes: this.sessionMinutes,
+      preferredWindow: this.preferredWindow,
+      offDays: [...this.offDays],
+      busy: this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => [s.day, s.hour]),
+      hadPlan: this.sessions.length > 0
+    };
+  }
+
+  /** Restores a snapshot(): every input, then the week it had, regenerated. */
+  restore(snap) {
+    if (!snap) return;
+    this.selection.restore(snap.selection || {});
+    this.nutrition.restore(snap.nutrition || {});
+    if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;
+    if (snap.sessionMinutes) this.sessionMinutes = snap.sessionMinutes;
+    if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
+    this.offDays = new Set(snap.offDays || []);
+    for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
+    if (snap.hadPlan) this.generate();
+  }
+
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
   allSlots() { return [...this.slots.values()]; }
   /** What the user chose on the Targets stage; see selection.js. */

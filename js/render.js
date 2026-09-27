@@ -103,7 +103,10 @@ function buildGrid() {
   render();
 }
 
-function render() { renderGrid(); paintOffDays(); renderWorkouts(); renderNutrition(); }
+function render() {
+  renderGrid(); paintOffDays(); renderWorkouts(); renderNutrition();
+  saveRoutine(routine);   // every change that reaches render() should survive a reload
+}
 
 /** The "Days I can't train" toggles, one per day, pressed when the whole day is busy. */
 function buildOffDays() {

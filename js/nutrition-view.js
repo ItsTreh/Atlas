@@ -354,7 +354,7 @@ function renderNutritionStage() {
   renderMealCards();
 }
 
-function changed(fn) { fn(nutrition()); renderNutritionStage(); }
+function changed(fn) { fn(nutrition()); renderNutritionStage(); saveRoutine(routine); }
 
 $("stage-nutrition").addEventListener("click", e => {
   const b = e.target.closest("button");
