@@ -14,7 +14,7 @@
 
    null marks a region that is drawn but not selectable: the app has no
    muscle for it (the neck, the hip flexors).
-   The form — head, hands, feet, bone and tendon — is the region "body" and
+   The form — the armature under the muscles, hands, feet, bone and tendon — is the region "body" and
    is never selectable.
 
    To make a muscle selectable in finer detail later, give it its own id in

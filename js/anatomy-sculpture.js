@@ -46,7 +46,7 @@ const SCULPTURE_RESTORE_MS = 3000;
    muscle it takes a small step back, so the two never add up to more than
    selection. A program's muscles show part of the way while its button is
    pointed at, as in the SVG figure. */
-const SCULPTURE_TONE = { hover: 0.24, selectedHover: 0.78, preview: 0.45 };
+const SCULPTURE_TONE = { hover: 0.32, selectedHover: 0.78, preview: 0.45 };
 
 /* How much deeper a selected muscle is shaded (an exponent on the light),
    so it keeps its form rather than reading as a flat cut-out laid on it.
@@ -696,9 +696,11 @@ void main() {
   vRegionId = aAttr.x;
 }`;
 
-/* Soft studio light that follows the viewer: a broad key from the upper
-   left, a weak fill from the right, a sky-to-ground ambient, and the baked
-   occlusion for creases and hollows. No highlights: the finish is matte. */
+/* Light that carves: a raking key from the upper left whose edge between
+   light and shade is firm enough to model every belly and valley, a weak
+   fill from the right, a low sky-to-ground ambient, and the baked occlusion
+   for creases and hollows. It follows the viewer. No highlights: the
+   finish is matte, like plaster or stone. */
 const SCULPTURE_FRAGMENT = `
 precision highp float;
 in vec3 vNormal;
@@ -722,12 +724,13 @@ vec3 toLinear(vec3 c) {
 
 void main() {
   vec3 n = normalize(vNormal);
-  vec3 key = normalize(vec3(-0.45, 0.6, 0.66));
+  vec3 key = normalize(vec3(-0.55, 0.62, 0.56));
   vec3 fill = normalize(vec3(0.75, 0.05, 0.62));
-  float k = clamp((dot(n, key) + 0.3) / 1.3, 0.0, 1.0);
+  float k = clamp((dot(n, key) + 0.12) / 1.12, 0.0, 1.0);
+  k = mix(k, k * k * (3.0 - 2.0 * k), 0.5);
   float f = clamp((dot(n, fill) + 0.2) / 1.2, 0.0, 1.0);
   float sky = 0.5 + 0.5 * n.y;
-  float light = 0.26 + 0.14 * sky + 0.66 * k + 0.1 * f;
+  float light = 0.2 + 0.12 * sky + 0.74 * k + 0.12 * f;
   // Surfaces turning away darken a little, as a matte sculpture does.
   float turn = mix(0.8, 1.0, sqrt(max(n.z, 0.0)));
   float shade = light * turn * mix(1.0, vOcclusion, 0.95);
@@ -738,7 +741,9 @@ void main() {
   float px = vSeam / max(fwidth(vSeam), 1e-4);
   float near = 1.0 - smoothstep(0.2, 0.45, vSeam);
   float seam = (1.0 - smoothstep(uLineWidth - 0.6, uLineWidth + 0.6, px)) * near;
-  c *= 1.0 - 0.22 * seam;
+  // Deepest in real creases; only a trace where the surface runs smooth
+  // across a boundary, so it never reads as a panel line.
+  c *= 1.0 - mix(0.12, 0.05, smoothstep(0.85, 1.0, vOcclusion)) * seam;
 
   // Keyboard focus: an ink edge round the focused muscle, in the resting
   // muscle tone on a selected one, where ink would vanish into it.

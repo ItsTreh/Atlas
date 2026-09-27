@@ -51,11 +51,11 @@
   --seam:        #f4f5f6;
   --sel:         #2f3337;
   --sel-hover:   #474c51;
-  /* the sculpture's surfaces before light: form (bone, tendon, head,
-     hands), muscle, and a selected muscle (the selection charcoal, lifted
-     so the light still models it). Shading darkens them; lit faces sit
-     near them. */
-  --sculpt-form:     #e2e5e8;
+  /* the sculpture's surfaces before light: form (bone, tendon, hands) and
+     muscle are one material — the light carves them apart, not the tone —
+     and a selected muscle is the selection charcoal, lifted so the light
+     still models it. Shading darkens them; lit faces sit near them. */
+  --sculpt-form:     #bfc4ca;
   --sculpt-muscle:   #bfc4ca;
   --sculpt-selected: #585e64;
 }
@@ -97,7 +97,7 @@
   --seam:        #141618;
   --sel:         #e4e7ea;
   --sel-hover:   #c9cdd0;
-  --sculpt-form:     #454b51;
+  --sculpt-form:     #5b636b;
   --sculpt-muscle:   #5b636b;
   --sculpt-selected: #b6bbc0;
 }
@@ -684,16 +684,20 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
    ground, and most of the first screen. It sets one size, --stage-h: the
    screen's height less the masthead, or the height two figures side by
    side reach at the page's width, whichever is smaller, so a phone gets a
-   smaller room rather than empty space around the body. The pair of views
-   is about 1.14 times as tall as it is wide; 86px holds the view captions
-   and the two-line caption below. `isolation` keeps anything layered in
-   it later (a backdrop, a blur, labels) stacking inside it. */
+   smaller room rather than empty space around the body. --pair is how
+   many times taller than wide the pair of views is: the headless
+   sculpture is about square, the SVG figure (with a head) 1.14. 86px
+   holds the view captions and the two-line caption below. `isolation` keeps anything
+   layered in it later (a backdrop, a blur, labels) stacking inside it. */
 .anatomy-stage {
-  --stage-h: clamp(260px, min(100svh - 180px, (100vw - 2 * var(--space)) * 1.14 + 86px), 1200px);
+  --pair: 1;
+  --stage-h: clamp(260px, min(100svh - 180px, (100vw - 2 * var(--space)) * var(--pair) + 86px), 1200px);
   position: relative; isolation: isolate;
   height: var(--stage-h);
   display: grid; grid-template-rows: minmax(0, 1fr) auto;
 }
+.anatomy-stage:has(.anatomy) { --pair: 1.14; }
+
 /* Where the renderer is mounted. It is a size container, so what is drawn
    in it sizes to this box (cqw, cqh), never to the window: the stage can
    change size, or a different renderer move in, without either knowing

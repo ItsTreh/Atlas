@@ -23,7 +23,7 @@ describe("regions → muscles", () => {
     expect(Object.keys(REGIONS).sort()).toEqual([...muscleRegions].sort());
   });
 
-  test("the form (bone, tendon, head, hands, feet) is never selectable", () => {
+  test("the form (armature, bone, tendon, hands, feet) is never selectable", () => {
     expect(MODEL.kinds[MODEL.regions.indexOf("body")]).toBe("form");
     expect("body" in REGIONS).toBe(false);
   });
@@ -36,6 +36,11 @@ describe("the model", () => {
     ? new Uint32Array(bytes.buffer.slice(bytes.byteOffset + vertexBytes, bytes.byteOffset + bytes.length))
     : new Uint16Array(bytes.buffer.slice(bytes.byteOffset + vertexBytes, bytes.byteOffset + bytes.length));
   const regionOf = v => bytes[v * MODEL.vertexBytes + 10];
+
+  test("has a finite size, and every vertex a finite position", () => {
+    for (const v of [...MODEL.bounds.min, ...MODEL.bounds.max]) expect(Number.isFinite(v)).toBe(true);
+    for (let i = 0; i < 3; i++) expect(MODEL.bounds.max[i]).toBeGreaterThan(MODEL.bounds.min[i]);
+  });
 
   test("holds exactly the vertices and triangles it declares", () => {
     expect(bytes.length).toBe(vertexBytes + MODEL.indexCount * (MODEL.wideIndices ? 4 : 2));
@@ -51,6 +56,14 @@ describe("the model", () => {
     }
     expect(bad).toBe(0);
     expect(mixed).toBe(0);
+  });
+
+  test("no muscle is buried under its neighbours", () => {
+    // Muscles overlap to make the body's surface; one that ends up under
+    // the others has (almost) no surface left, and nothing to click.
+    const triangles = new Array(MODEL.regions.length).fill(0);
+    for (let i = 0; i < indices.length; i += 3) triangles[regionOf(indices[i])]++;
+    MODEL.regions.forEach((region, r) => expect(triangles[r], region).toBeGreaterThanOrEqual(60));
   });
 
   test("every vertex names a region the model has", () => {
