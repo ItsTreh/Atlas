@@ -2,8 +2,7 @@
    Local persistence — remembers the routine between visits.
 
    Only the INPUTS are stored (muscle selection, nutrition settings, the
-   schedule preferences, the availability grid, which alternative arrangement
-   was showing) plus whether a week had been generated. Sessions and workouts
+   schedule preferences, the availability grid) plus whether a week had been generated. Sessions and workouts
    are derived and are rebuilt by generate() on load, deterministically, from
    those same inputs — nothing generated is stored directly, so this stays
    correct even if the exercise or food database changes later.

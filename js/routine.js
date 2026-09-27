@@ -64,14 +64,12 @@ class WeeklyRoutine {
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
-    this.variation = 0;             // which legal arrangement of the blocks to build
   }
 
   /**
    * A plain object describing every setting the user chose, safe to store:
    * the muscle selection, the nutrition inputs, the schedule preferences,
-   * the availability grid the user painted, and which alternative
-   * arrangement was showing. Sessions and workouts are derived and are not
+   * and the availability grid the user painted. Sessions and workouts are derived and are not
    * included - restore() rebuilds them with generate(), the same way
    * clicking Generate always has.
    */
@@ -85,7 +83,6 @@ class WeeklyRoutine {
       preferredWindow: this.preferredWindow,
       offDays: [...this.offDays],
       busy: this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => [s.day, s.hour]),
-      variation: this.variation,
       hadPlan: this.sessions.length > 0
     };
   }
@@ -100,7 +97,6 @@ class WeeklyRoutine {
     if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
     this.offDays = new Set(snap.offDays || []);
     for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
-    this.variation = snap.variation || 0;
     if (snap.hadPlan) this.generate();
   }
 
@@ -175,7 +171,6 @@ class WeeklyRoutine {
     this.offDays.clear();
     this.sessionsPerWeek = 4; this.sessionMinutes = 60;
     this.preferredWindow = "evening";
-    this.variation = 0;
   }
 
   /* ----------------------------- block building --------------------------- */
