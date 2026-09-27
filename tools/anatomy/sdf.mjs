@@ -119,9 +119,13 @@ export class RoundCone {
  * and for the short-range queries the shading bake makes.
  */
 export class Field {
-  constructor(regions, { seamK = 0.5, floorK = 0.35, reach = 3, cell = 3 } = {}) {
+  /**
+   * `cuts` are planes the sculpture is cut off at, as { n, c, k }: only
+   * n·p ≤ c is kept, and the cut's edge is rounded over k cm (the neck).
+   */
+  constructor(regions, { seamK = 0.5, floorK = 0.35, reach = 3, cell = 3, cuts = [] } = {}) {
     this.regions = regions;
-    this.seamK = seamK; this.floorK = floorK; this.reach = reach;
+    this.seamK = seamK; this.floorK = floorK; this.reach = reach; this.cuts = cuts;
     this.prims = [];                        // flat, in region then part order
     regions.forEach((region, ri) => region.parts.forEach(part =>
       this.prims.push({ prim: part.prim, k: part.k, region: ri })));
@@ -174,6 +178,7 @@ export class Field {
       acc = smin(acc, rd, seamK);
       total = Math.min(acc, this.reach);
     }
+    for (const { n, c, k } of this.cuts) total = smax(total, n[0] * x + n[1] * y + n[2] * z - c, k);
     return smax(total, -y, this.floorK);          // a flat sole at the floor
   }
 
@@ -205,11 +210,17 @@ export class Field {
    */
   score(ri, x, y, z) {
     const region = this.regions[ri];
-    let claim = region.kind === "form" ? 0 : -Infinity;
-    if (region.kind !== "form")
-      for (const part of region.parts)
-        if (part.prim.claim) claim = Math.max(claim, part.prim.claim(x, y, z));
-        else claim = Math.max(claim, 0);
+    if (region.kind === "form") return -8 * Math.max(0, this.regionD(ri, x, y, z));
+    // The face of a cut (the neck) and its rounded rim are form. (A large
+    // finite penalty, not -Infinity: splitRegions subtracts scores.)
+    for (const { n, c, k } of this.cuts)
+      if (n[0] * x + n[1] * y + n[2] * z - c > -k) return -1e3;
+    // A part with no outline of its own (a band, a cap) claims only where
+    // it is the surface: by how deep the point is inside it.
+    let claim = -Infinity;
+    for (const part of region.parts)
+      claim = Math.max(claim, part.prim.claim ? part.prim.claim(x, y, z)
+                                              : Math.min(1, -part.prim.d(x, y, z)));
     return claim - 8 * Math.max(0, this.regionD(ri, x, y, z));
   }
 
@@ -294,28 +305,39 @@ export class Memo {
  * By default `soft` is the outline's inradius, so the muscle is domed
  * right across; a smaller one gives a plateau with rounded edges.
  *
+ * `grow` lets the muscle's volume run that many cm past its outline, so
+ * muscles drawn edge to edge overlap and meet in a valley rather than
+ * leaving the form bare between them. The outline still decides which
+ * muscle the surface belongs to (claim).
+ *
  * `chart(x, y, z, out)` writes the point's outline coordinates [u, v] and
  * a clip distance (negative on the side of the body the muscle is on) into
  * `out`. Options: `taper` [gu, gv] thickens the muscle along u and v (per
  * cm, from the outline's centre); `grooves` [{ v, w, depth }] cut shallow
- * furrows across it (the tendinous lines of the abdomen); `belly` swells it
- * in the middle of its length and thins it towards its ends (0 = even).
+ * furrows across it (the tendinous lines of the abdomen), each tilted by
+ * `slope` (v per u) so they need not run level; `belly` swells it towards
+ * `peak` (0 at the outline's v start … 1 at its end; 0.5 by default) and
+ * thins it towards both ends (0 = even), so a belly can sit high like
+ * the calf's or low like the teardrop above the knee.
  */
 export class Shell {
-  constructor(base, chart, outline, { t, soft = null, taper = null, grooves = [], belly = 0 }, box) {
+  constructor(base, chart, outline, { t, soft = null, grow = 0, taper = null, grooves = [], belly = 0, peak = 0.5 }, box) {
+    if (!(peak > 0 && peak < 1)) throw new Error("Shell: peak must lie strictly between 0 and 1");
     this.base = base; this.chart = chart; this.outline = outline;
-    this.t = t; this.soft = soft ?? outline.inradius * 0.95;
+    this.t = t; this.grow = grow; this.soft = soft ?? (outline.inradius + grow) * 0.95;
     this.taper = taper; this.grooves = grooves; this.belly = belly; this.box = box;
     const [u0, v0, u1, v1] = outline.box;
     this.centre = [(u0 + u1) / 2, (v0 + v1) / 2];
-    this.halfLength = (v1 - v0) / 2;             // the length runs along v
+    this.peakV = v0 + (v1 - v0) * peak;          // the length runs along v
+    this.reach = [this.peakV - v0, v1 - this.peakV];
     this.c = new Float64Array(3);
   }
   bounds() { return this.box; }
   d(x, y, z) {
     const c = this.c;
     this.chart(x, y, z, c);
-    let m = this.outline.d(c[0], c[1], this.soft + this.t + 1);
+    // `grow` widens the outline, never the clip: a muscle stays on its side of the body.
+    let m = this.outline.d(c[0], c[1], this.soft + this.t + this.grow + 1) - this.grow;
     if (c[2] > m) m = c[2];
     const db = this.base.d(x, y, z);
     if (m >= 0) return Math.max(db, m * 0.5);
@@ -328,11 +350,11 @@ export class Shell {
       h *= Math.min(2, Math.max(0.25, f));
     }
     if (this.belly) {
-      const q = Math.min(1, Math.abs(c[1] - this.centre[1]) / this.halfLength);
+      const dv = c[1] - this.peakV, q = Math.min(1, Math.abs(dv) / this.reach[dv < 0 ? 0 : 1]);
       h *= 1 - this.belly * q * q;
     }
     for (const g of this.grooves) {
-      const q = Math.min(1, Math.abs(c[1] - g.v) / g.w);
+      const q = Math.min(1, Math.abs(c[1] - g.v - (g.slope || 0) * (c[0] - this.centre[0])) / g.w);
       h *= 1 - g.depth * (1 - q * q * (3 - 2 * q));
     }
     return Math.max(db - h, m * 0.5);
@@ -347,15 +369,88 @@ export class Shell {
   mirrored() { return new Mirror(this); }
 }
 
+/**
+ * A muscle belly raised off a limb's bone. `limb` is { a, u, f, l, length,
+ * ra, rb }: the bone runs from a along u, f points to the front and l to
+ * the side, and the bone's radius goes from ra to rb. The belly stands `d`
+ * cm off the bone at its peak and falls smoothly to nothing round the limb
+ * (`span` degrees either side of `angle`: 0 front, 90 the side l points
+ * to) and along it (from t0 through the peak at tp to t1, as fractions of
+ * the bone's length). `twist` turns its line round the limb as it runs
+ * down (degrees per unit t), for a muscle that spirals like the sartorius;
+ * `full` shapes it across: 2 is round, higher is fuller over the top. It
+ * always lands softly at its edges, so where it meets bare bone there is
+ * no step.
+ *
+ * The field is the radial distance to the raised surface. The belly's
+ * volume is only the layer it adds over the bone, thinning to nothing at
+ * its edges, so it has no walls there to show.
+ */
+export class Bulge {
+  constructor(limb, { t0, t1, tp = (t0 + t1) / 2, angle, span, d, twist = 0, full = 3 }) {
+    if (!(t0 < tp && tp < t1)) throw new Error("Bulge: the peak tp must lie strictly between t0 and t1");
+    if (!(span > 0 && d > 0)) throw new Error("Bulge: span and d must be positive");
+    this.L = limb; this.t0 = t0; this.t1 = t1; this.tp = tp;
+    const rad = Math.PI / 180;
+    this.angle = angle * rad; this.span = span * rad; this.twist = twist * rad;
+    this.h = d; this.full = full;
+    const { a, u, length, ra, rb } = limb, r = Math.max(ra, rb) + d + 1;
+    const p0 = add(a, mul(u, t0 * length)), p1 = add(a, mul(u, t1 * length));
+    this.box = [0, 1, 2].map(i => Math.min(p0[i], p1[i]) - r).concat([0, 1, 2].map(i => Math.max(p0[i], p1[i]) + r));
+  }
+  bounds() { return this.box; }
+  /**
+   * A point in the limb's frame: t along the bone, the bone's radius rc
+   * there, the point's distance rl from its axis, its angle da from the
+   * belly's centre line, and how far it is outside the footprint along
+   * the bone and round it (cm, negative inside).
+   */
+  frame(x, y, z) {
+    const { a, u, f, l, length, ra, rb } = this.L;
+    const wx = x - a[0], wy = y - a[1], wz = z - a[2];
+    const along = wx * u[0] + wy * u[1] + wz * u[2], t = along / length;
+    const rx = wx - u[0] * along, ry = wy - u[1] * along, rz = wz - u[2] * along;
+    const rl = Math.hypot(rx, ry, rz), rc = ra + (rb - ra) * Math.min(1, Math.max(0, t));
+    let da = Math.atan2(rx * l[0] + ry * l[1] + rz * l[2], rx * f[0] + ry * f[1] + rz * f[2]) -
+             this.angle - this.twist * (t - this.tp);
+    da -= 2 * Math.PI * Math.round(da / (2 * Math.PI));
+    const outAlong = Math.max(this.t0 - t, t - this.t1) * length;
+    const outAround = (Math.abs(da) - this.span) * rc;
+    return { t, rc, rl, da, outAlong, outAround };
+  }
+  d(x, y, z) {
+    const { t, rc, rl, da, outAlong, outAround } = this.frame(x, y, z);
+    let h = 0;
+    if (outAlong < 0 && outAround < 0) {
+      const qa = t < this.tp ? (this.tp - t) / (this.tp - this.t0) : (t - this.tp) / (this.t1 - this.tp);
+      const ea = 1 - qa * qa, ex = 1 - Math.pow(Math.abs(da) / this.span, this.full);
+      h = this.h * ea * Math.sqrt(ea) * ex * Math.sqrt(ex);
+    }
+    // Past the bone's ends there is no bone under the belly: it is solid.
+    const inner = t < 0 || t > 1 ? -Infinity : rc - Math.min(0.8, 2 * h) - rl;
+    return Math.max(rl - rc - h, inner, outAlong, outAround);
+  }
+  /**
+   * How deep a point lies inside the footprint (cm, up to 1; negative
+   * outside), so the belly, not the bone under it, owns its surface right
+   * to its edge. Between bellies the one standing highest still wins.
+   */
+  claim(x, y, z) {
+    const { outAlong, outAround } = this.frame(x, y, z);
+    return Math.min(1, -Math.max(outAlong, outAround));
+  }
+  mirrored() { return new Mirror(this); }
+}
+
 /** Any primitive reflected across x = 0. */
 export class Mirror {
   constructor(prim) {
     this.prim = prim;
     const b = prim.bounds();
     this.box = [-b[3], b[1], b[2], -b[0], b[4], b[5]];
+    if (prim.claim) this.claim = (x, y, z) => prim.claim(-x, y, z);   // only what it mirrors has one
   }
   bounds() { return this.box; }
   d(x, y, z) { return this.prim.d(-x, y, z); }
-  claim(x, y, z) { return this.prim.claim(-x, y, z); }
   mirrored() { return this.prim; }
 }

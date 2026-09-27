@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MeshoptSimplifier, MeshoptEncoder } from "meshoptimizer";
 import { Field, norm, cross, dot, add, mul } from "./sdf.mjs";
-import { sculpture } from "./sculpture.mjs";
+import { sculpture, CUTS } from "./sculpture.mjs";
 import { surfaceNets, vertexRegions, splitRegions, seamDistances } from "./mesh.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -28,17 +28,19 @@ const GRID = 0.5;            // cm between samples when meshing
 const SEAM_CAP = 3;          // cm; seam distances beyond this are stored as the cap
 const TARGET_TRIANGLES = 42000;
 const MAX_ERROR = 0.0006;    // of the figure's size: about 1 mm
+const NORMAL_SPAN = 0.35;    // cm the normals are measured over: creases shade as valleys, not steps
 
 const t0 = Date.now();
 const log = msg => console.log(((Date.now() - t0) / 1000).toFixed(1).padStart(5) + "s  " + msg);
 
 const regions = sculpture();
-const field = new Field(regions, { seamK: 0.5, reach: 2.5, cell: 3 });
-const farField = new Field(regions, { seamK: 0.5, reach: 12, cell: 6 });
+const field = new Field(regions, { seamK: 1.0, reach: 2.5, cell: 3, cuts: CUTS });
+const farField = new Field(regions, { seamK: 1.0, reach: 12, cell: 6, cuts: CUTS });
 log(regions.length + " regions, " + field.prims.length + " primitives");
 
 /* 1. Mesh. */
-const lo = [-42, -0.5, -18], hi = [42, 182.5, 26];
+const top = Math.max(...CUTS.map(cut => cut.c)) + 2;          // nothing stands above the neck cut
+const lo = [-42, -0.5, -18], hi = [42, top, 26];
 const nets = surfaceNets(field, lo, hi, GRID);
 log("surface nets: " + nets.positions.length + " vertices, " + nets.triangles.length / 3 + " triangles");
 
@@ -76,7 +78,7 @@ function occlusion(p, n) {
     crease += w * Math.min(1, Math.max(0, (h - d) / h)); wsum += w;
   });
   crease /= wsum;
-  // Cavities: armpits, between the legs, under the chin.
+  // Cavities: armpits, between the legs.
   const t = norm(Math.abs(n[1]) < 0.9 ? cross(n, [0, 1, 0]) : cross(n, [1, 0, 0]));
   const b = cross(n, t);
   let blocked = 0, total = 0;
@@ -102,7 +104,7 @@ for (let v = 0; v < vertexCount; v++) {
 const ext = bmax.map((m, i) => m - bmin[i]);
 for (let v = 0; v < vertexCount; v++) {
   const s = source[v], p = split.positions[s];
-  const n = field.normal(p[0], p[1], p[2]);
+  const n = field.normal(p[0], p[1], p[2], NORMAL_SPAN);
   const o = v * VERTEX_BYTES;
   for (let i = 0; i < 3; i++) view.setUint16(o + i * 2, Math.round((p[i] - bmin[i]) / ext[i] * 65535), true);
   const [ox, oy] = octEncode(n);
