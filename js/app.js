@@ -45,6 +45,7 @@ function paintSteps() {
     b.disabled = routine.selection.isEmpty();
 }
 routine.selection.onChange(paintSteps);
+routine.selection.onChange(() => saveRoutine(routine));
 
 /* -------------------------------- actions -------------------------------- */
 
@@ -58,6 +59,7 @@ for (const id of ["len", "sessions", "window", "showmeals"])
     renderNutrition();
     renderWorkouts();
     warnIfStale();
+    saveRoutine(routine);
   });
 
 /* What the grid on screen was generated from, to spot a stale week: the
@@ -189,9 +191,22 @@ $("theme").addEventListener("click", () => {
 
 /* ---------------------------------- boot --------------------------------- */
 
+/* Bring back whatever was saved (see storage.js) before anything else reads
+   the routine, so the controls below are built from the restored values,
+   not the defaults. A restored week counts as generated already, the same
+   bookkeeping the Generate button does, so an edit right after loading is
+   correctly seen as an edit rather than a silent, unflagged change. */
+const restored = loadRoutine(routine);
+if (restored && routine.sessions.length) {
+  generatedFor = planInputs();
+  placedCount = routine.sessions.length;
+}
+
 paintThemeButton();
 buildOffDays();
 buildControls();
 buildGrid();
 paintSteps();
-showStage("targets");
+showStage(restored && routine.sessions.length ? "plan"
+        : restored && !routine.selection.isEmpty() ? "nutrition"
+        : "targets");

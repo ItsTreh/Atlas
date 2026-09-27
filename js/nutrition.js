@@ -219,6 +219,28 @@ class NutritionPlan {
       this.weight = Math.round((unit === "lb" ? kg / KG_PER_LB : kg) * 2) / 2;
   }
 
+  /**
+   * A plain object describing every setting the user chose, safe to store.
+   * Nothing derived (burn, load, recommended) is included - it is worked
+   * out again from these on read, the same way it always is.
+   */
+  snapshot() {
+    return {
+      weight: this.weight, unit: this.unit, goal: this.goal, activity: this.activity,
+      burnInput: this.burnInput, adjustInput: this.adjustInput, proteinInput: this.proteinInput,
+      mealsPerDay: this.mealsPerDay, firstMeal: this.firstMeal, lastMeal: this.lastMeal,
+      moved: { ...this.moved }, diet: this.diet, showMeals: this.showMeals
+    };
+  }
+
+  /** Restores a snapshot(). Missing fields keep whatever the plan already has. */
+  restore(snap) {
+    for (const key of ["weight", "unit", "goal", "activity", "burnInput", "adjustInput",
+                        "proteinInput", "mealsPerDay", "firstMeal", "lastMeal", "diet", "showMeals"])
+      if (snap[key] !== undefined) this[key] = snap[key];
+    this.moved = { ...(snap.moved || {}) };
+  }
+
   /* ---------------------------- recommendation --------------------------- */
 
   /** What the planned training asks of the diet; see trainingLoad(). */

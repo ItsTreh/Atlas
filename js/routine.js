@@ -64,6 +64,44 @@ class WeeklyRoutine {
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
+    this.variation = 0;             // which legal arrangement of the blocks to build
+  }
+
+  /**
+   * A plain object describing every setting the user chose, safe to store:
+   * the muscle selection, the nutrition inputs, the schedule preferences,
+   * the availability grid the user painted, and which alternative
+   * arrangement was showing. Sessions and workouts are derived and are not
+   * included - restore() rebuilds them with generate(), the same way
+   * clicking Generate always has.
+   */
+  snapshot() {
+    return {
+      version: 1,
+      selection: this.selection.snapshot(),
+      nutrition: this.nutrition.snapshot(),
+      sessionsPerWeek: this.sessionsPerWeek,
+      sessionMinutes: this.sessionMinutes,
+      preferredWindow: this.preferredWindow,
+      offDays: [...this.offDays],
+      busy: this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => [s.day, s.hour]),
+      variation: this.variation,
+      hadPlan: this.sessions.length > 0
+    };
+  }
+
+  /** Restores a snapshot(): every input, then the week it had, regenerated. */
+  restore(snap) {
+    if (!snap) return;
+    this.selection.restore(snap.selection || {});
+    this.nutrition.restore(snap.nutrition || {});
+    if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;
+    if (snap.sessionMinutes) this.sessionMinutes = snap.sessionMinutes;
+    if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
+    this.offDays = new Set(snap.offDays || []);
+    for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
+    this.variation = snap.variation || 0;
+    if (snap.hadPlan) this.generate();
   }
 
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
@@ -137,6 +175,7 @@ class WeeklyRoutine {
     this.offDays.clear();
     this.sessionsPerWeek = 4; this.sessionMinutes = 60;
     this.preferredWindow = "evening";
+    this.variation = 0;
   }
 
   /* ----------------------------- block building --------------------------- */

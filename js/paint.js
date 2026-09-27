@@ -56,6 +56,7 @@ function endStroke() {
   renderNutrition();           // the meal count only needs refreshing once
   renderNutritionMini();       // days free to train change what training counts
   weekEdited() || warnIfStale();
+  saveRoutine(routine);
 }
 
 /* Pointer Events are the primary path: one code path for mouse, pen and touch.
