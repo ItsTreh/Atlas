@@ -1,0 +1,203 @@
+{
+ "asset": "male-body-base",
+ "version": 1,
+ "description": "Evaluation: the user's AI-generated Male_Body.blend, aligned to ATLAS, decimated to 70k triangles, with the procedural model's regions transferred by nearest surface. Derived by tools/anatomy/authored/derive_male_body.py; Male_Body.blend is not modified.",
+ "source": "assets/anatomy/male-body-base.blend",
+ "glb": "assets/anatomy/male-body-base.glb",
+ "output": "js/anatomy-model-male-body.js",
+ "global": "ANATOMY_MODEL_MALE_BODY",
+ "units": {
+  "asset": "metre",
+  "toCm": 100
+ },
+ "axes": "glTF as exported by Blender: +y up, +z the figure's front, +x the figure's left (ATLAS axes).",
+ "mirror": {
+  "axis": "none",
+  "authored": "the whole figure (contrapposto, not symmetric)",
+  "regions": "a region id names both sides",
+  "landmarks": "none"
+ },
+ "minTriangles": 40,
+ "targetTriangles": 80000,
+ "simplifyError": 0.0004,
+ "landmarkTolerance": 0.1,
+ "regions": [
+  {
+   "id": "body",
+   "structure": "form",
+   "atlasRegion": null
+  },
+  {
+   "id": "sternocleidomastoid",
+   "structure": "muscle",
+   "atlasRegion": "sternocleidomastoid"
+  },
+  {
+   "id": "trapezius",
+   "structure": "muscle",
+   "atlasRegion": "trapezius"
+  },
+  {
+   "id": "pectoralis-major",
+   "structure": "muscle",
+   "atlasRegion": "pectoralis-major"
+  },
+  {
+   "id": "serratus-anterior",
+   "structure": "muscle",
+   "atlasRegion": "serratus-anterior"
+  },
+  {
+   "id": "rectus-abdominis",
+   "structure": "muscle",
+   "atlasRegion": "rectus-abdominis"
+  },
+  {
+   "id": "external-oblique",
+   "structure": "muscle",
+   "atlasRegion": "external-oblique"
+  },
+  {
+   "id": "infraspinatus",
+   "structure": "muscle",
+   "atlasRegion": "infraspinatus"
+  },
+  {
+   "id": "teres-major",
+   "structure": "muscle",
+   "atlasRegion": "teres-major"
+  },
+  {
+   "id": "latissimus-dorsi",
+   "structure": "muscle",
+   "atlasRegion": "latissimus-dorsi"
+  },
+  {
+   "id": "erector-spinae",
+   "structure": "muscle",
+   "atlasRegion": "erector-spinae"
+  },
+  {
+   "id": "gluteus-medius",
+   "structure": "muscle",
+   "atlasRegion": "gluteus-medius"
+  },
+  {
+   "id": "gluteus-maximus",
+   "structure": "muscle",
+   "atlasRegion": "gluteus-maximus"
+  },
+  {
+   "id": "tensor-fasciae-latae",
+   "structure": "muscle",
+   "atlasRegion": "tensor-fasciae-latae"
+  },
+  {
+   "id": "deltoid",
+   "structure": "muscle",
+   "atlasRegion": "deltoid"
+  },
+  {
+   "id": "biceps-brachii",
+   "structure": "muscle",
+   "atlasRegion": "biceps-brachii"
+  },
+  {
+   "id": "brachialis",
+   "structure": "muscle",
+   "atlasRegion": "brachialis"
+  },
+  {
+   "id": "triceps-brachii",
+   "structure": "muscle",
+   "atlasRegion": "triceps-brachii"
+  },
+  {
+   "id": "brachioradialis",
+   "structure": "muscle",
+   "atlasRegion": "brachioradialis"
+  },
+  {
+   "id": "forearm-flexors",
+   "structure": "muscle",
+   "atlasRegion": "forearm-flexors"
+  },
+  {
+   "id": "forearm-extensors",
+   "structure": "muscle",
+   "atlasRegion": "forearm-extensors"
+  },
+  {
+   "id": "rectus-femoris",
+   "structure": "muscle",
+   "atlasRegion": "rectus-femoris"
+  },
+  {
+   "id": "vastus-lateralis",
+   "structure": "muscle",
+   "atlasRegion": "vastus-lateralis"
+  },
+  {
+   "id": "vastus-medialis",
+   "structure": "muscle",
+   "atlasRegion": "vastus-medialis"
+  },
+  {
+   "id": "sartorius",
+   "structure": "muscle",
+   "atlasRegion": "sartorius"
+  },
+  {
+   "id": "iliopsoas",
+   "structure": "muscle",
+   "atlasRegion": "iliopsoas"
+  },
+  {
+   "id": "adductors",
+   "structure": "muscle",
+   "atlasRegion": "adductors"
+  },
+  {
+   "id": "gracilis",
+   "structure": "muscle",
+   "atlasRegion": "gracilis"
+  },
+  {
+   "id": "biceps-femoris",
+   "structure": "muscle",
+   "atlasRegion": "biceps-femoris"
+  },
+  {
+   "id": "semitendinosus",
+   "structure": "muscle",
+   "atlasRegion": "semitendinosus"
+  },
+  {
+   "id": "semimembranosus",
+   "structure": "muscle",
+   "atlasRegion": "semimembranosus"
+  },
+  {
+   "id": "gastrocnemius",
+   "structure": "muscle",
+   "atlasRegion": "gastrocnemius"
+  },
+  {
+   "id": "soleus",
+   "structure": "muscle",
+   "atlasRegion": "soleus"
+  },
+  {
+   "id": "tibialis-anterior",
+   "structure": "muscle",
+   "atlasRegion": "tibialis-anterior"
+  },
+  {
+   "id": "fibularis",
+   "structure": "muscle",
+   "atlasRegion": "fibularis"
+  }
+ ],
+ "landmarks": [],
+ "states": []
+}
