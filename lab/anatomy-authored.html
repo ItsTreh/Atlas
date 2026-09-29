@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Torso study (ATLAS lab)</title>
+<!-- A development page, not part of the app and not linked from it. It opens
+     straight from disk, like the app, and uses the app's own modules: the
+     MuscleSelection, the anatomy stage, the WebGL sculpture renderer and the
+     region table. Only the model differs: the authored torso study
+     (js/anatomy-model-authored.js) instead of the procedural figure. -->
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  .lab { max-width: 1120px; margin: 0 auto; padding: 32px var(--space) 64px; }
+  .lab h1 { font: var(--t-title); margin: 0 0 6px; color: var(--ink); }
+  .lab .lede { margin: 0 0 20px; color: var(--ink-soft); max-width: 62ch; }
+  .lab .lab-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 24px; }
+  @media (min-width: 900px) { .lab .lab-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .lab h2 { font: var(--t-heading); margin: 0 0 10px; color: var(--ink); text-transform: none; letter-spacing: normal; }
+  /* The fragment is wider than tall: a shorter room than the full figure's. */
+  .lab .anatomy-stage { --stage-h: clamp(300px, 44vw, 600px); }
+  .lab .ids { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin: 0; padding: 0; list-style: none; }
+  .lab .ids li { padding: 3px 9px; border-radius: 999px; background: var(--raised); color: var(--ink);
+                 font-variant-numeric: tabular-nums; }
+  .lab .ids .none { background: none; color: var(--ink-faint); padding-left: 0; }
+  .lab .pointer { margin: 12px 0 0; color: var(--ink-soft); min-height: 1.5em; }
+  .lab table { width: 100%; border-collapse: collapse; font: var(--t-meta); }
+  .lab th, .lab td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line-soft); }
+  .lab th { color: var(--ink-faint); font-weight: 500; }
+  .lab td.muscle { color: var(--ink); }
+  .lab td.form { color: var(--ink-faint); }
+  .lab .clear { margin-top: 14px; }
+  .lab footer { margin-top: 36px; color: var(--ink-faint); font: var(--t-meta); max-width: 70ch; }
+  .lab code { font-size: 0.85em; }
+</style>
+</head>
+<body>
+<main class="lab">
+  <h1>Torso study</h1>
+  <p class="lede">An authored anatomical sculpture, modelled in Blender and drawn by the app's own renderer.
+    Point at a muscle to see which ATLAS muscle it belongs to; click to select it. Bone, tendon and the cut
+    faces are part of the sculpture but cannot be selected.</p>
+
+  <div class="anatomy-stage" id="lab-stage">
+    <div class="anatomy-viewport" data-anatomy-mount></div>
+    <p class="anatomy-caption" id="lab-caption" aria-live="polite"></p>
+  </div>
+
+  <div class="lab-grid">
+    <section aria-labelledby="sel-title">
+      <h2 id="sel-title">Selected ATLAS muscle ids</h2>
+      <ul class="ids" id="lab-ids"></ul>
+      <p class="pointer" id="lab-pointer"></p>
+      <button type="button" class="act ghost clear" id="lab-clear">Clear selection</button>
+    </section>
+    <section aria-labelledby="map-title">
+      <h2 id="map-title">Regions in this model</h2>
+      <table>
+        <thead><tr><th scope="col">Region</th><th scope="col">What it is</th><th scope="col">ATLAS muscle</th></tr></thead>
+        <tbody id="lab-regions"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <footer>
+    Source: <code>assets/anatomy/torso-study.blend</code>. After editing it in Blender, export with
+    <code>tools/anatomy/authored/export_glb.py</code> (also saved inside the .blend), then run
+    <code>npm run build:anatomy-authored</code> and reload this page.
+  </footer>
+</main>
+
+<script src="../js/model.js"></script>
+<script src="../js/programs.js"></script>
+<script src="../js/selection.js"></script>
+<script src="../js/anatomy-model-authored.js"></script>
+<script src="../js/anatomy-regions.js"></script>
+<script src="../js/anatomy.js"></script>
+<script src="../js/anatomy-sculpture.js"></script>
+<script src="../js/anatomy-stage.js"></script>
+<script>
+/* The lab's only code of its own: the authored model handed to the real
+   renderer, and a readout of the selection. Nothing here is forked. */
+validateAnatomyModel(ANATOMY_MODEL_AUTHORED);
+
+class AuthoredSculpture extends AnatomySculpture {
+  static supported() { return AnatomySculpture.supported(ANATOMY_MODEL_AUTHORED); }
+  constructor(mount, selection, opts) { super(mount, selection, { ...opts, model: ANATOMY_MODEL_AUTHORED }); }
+}
+
+const selection = new MuscleSelection(MUSCLES);
+const $ = id => document.getElementById(id);
+const caption = $("lab-caption"), ids = $("lab-ids"), pointer = $("lab-pointer");
+const model = ANATOMY_MODEL_AUTHORED;
+
+function paintCaption(muscle) {
+  caption.textContent = muscle
+    ? muscle.name + (selection.has(muscle.id) ? " · selected, click to remove" : " · click to add")
+    : "Click a muscle to select it · click again to deselect";
+}
+
+const stage = new AnatomyStage($("lab-stage"), selection, { renderers: [AuthoredSculpture, AnatomyFigure],
+                                                            onHover: paintCaption });
+paintCaption(null);
+
+function paintIds() {
+  const chosen = selection.snapshot().muscleIds;
+  ids.replaceChildren(...(chosen.length ? chosen.map(id => Object.assign(document.createElement("li"), { textContent: id }))
+                                        : [Object.assign(document.createElement("li"), { className: "none", textContent: "None yet" })]));
+}
+selection.onChange(paintIds);
+paintIds();
+$("lab-clear").addEventListener("click", () => selection.clear());
+
+/* Which region is under the pointer, and where it leads. */
+const structure = model.structures || model.kinds;
+const renderer = stage.renderer;
+if (renderer instanceof AnatomySculpture) {
+  renderer.canvas.addEventListener("pointermove", e => {
+    const r = renderer.canvas.getBoundingClientRect();
+    const i = renderer.regionAt(e.clientX - r.left, e.clientY - r.top);
+    if (i < 0) { pointer.textContent = ""; return; }
+    const name = model.regions[i], id = ANATOMY_REGIONS[name];
+    pointer.textContent = "Region " + name + " → " + (id ? "muscle id " + id : "not selectable (" + structure[i] + ")");
+  });
+  renderer.canvas.addEventListener("pointerleave", () => { pointer.textContent = ""; });
+}
+
+$("lab-regions").replaceChildren(...model.regions.map((name, i) => {
+  const tr = document.createElement("tr"), id = ANATOMY_REGIONS[name];
+  for (const [text, cls] of [[name, ""], [structure[i], ""], [id || "not selectable", id ? "muscle" : "form"]]) {
+    const td = document.createElement("td"); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td);
+  }
+  return tr;
+}));
+</script>
+</body>
+</html>

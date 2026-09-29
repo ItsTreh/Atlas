@@ -12,10 +12,12 @@
 
    So the drawing can be replaced without touching the page or the
    selection. A renderer is any class built as
-   `new Renderer(mount, selection, { onHover, onFail })` with a
+   `new Renderer(mount, selection, { model, onHover, onFail })` with a
    `preview(ids)` method; it fills `mount` itself, follows the selection on
    its own, and sizes itself to the mount (see .anatomy-viewport in the
-   CSS). A renderer may have a static `supported()`; the stage mounts the
+   CSS). The stage hands every renderer the same `model` (the anatomy, in
+   the ANATOMY_MODEL shape); a renderer that draws its own figure ignores
+   it. A renderer may have a static `supported(model)`; the stage mounts the
    first one that is supported and starts without an error. A renderer that
    stops being able to draw later calls `onFail()`: the stage calls its
    `destroy()` (if it has one) and mounts the next.
@@ -27,14 +29,16 @@
 class AnatomyStage {
   /**
    * @param root            the .anatomy-stage element
+   * @param opts.model      the anatomy to draw; ANATOMY_MODEL when left out
    * @param opts.renderers  renderer classes in order of preference
    * @param opts.onHover    called with a Muscle when one is pointed at or
    *                        focused, and with null when it is left
    */
-  constructor(root, selection, { renderers = [AnatomySculpture, AnatomyFigure], onHover } = {}) {
+  constructor(root, selection, { model = typeof ANATOMY_MODEL === "object" ? ANATOMY_MODEL : null, renderers = [AnatomySculpture, AnatomyFigure], onHover } = {}) {
     this.root = root;
     this.mount = root.querySelector("[data-anatomy-mount]");
     this.selection = selection;
+    this.model = model;
     this.renderers = renderers;
     this.onHover = onHover || (() => {});
     this.start(0);
@@ -49,10 +53,10 @@ class AnatomyStage {
   start(from) {
     for (let i = from; i < this.renderers.length; i++) {
       const Renderer = this.renderers[i];
-      if (Renderer.supported && !Renderer.supported()) continue;
+      if (Renderer.supported && !Renderer.supported(this.model)) continue;
       try {
         this.renderer = new Renderer(this.mount, this.selection,
-          { onHover: this.onHover, onFail: () => this.fail(i) });
+          { model: this.model, onHover: this.onHover, onFail: () => this.fail(i) });
         return;
       } catch (e) {
         console.warn("Anatomy renderer " + Renderer.name + " failed; trying the next.", e);
