@@ -7,42 +7,32 @@ assets/anatomy/male-body.manifest.json` (-> js/anatomy-model-male-body.js).
         --python tools/anatomy/authored/male_body.py [-- <out.glb>]
 
 Male_Body.blend is only read: its mesh is appended into an empty scene and
-nothing is saved back. It is one watertight mesh (297,628 triangles) with a
-UV map and three textures and NO anatomy of its own: no regions, vertex
-groups or landmarks. So the regions here are BORROWED, as in
-prototype/male-body/derive_male_body.py (which this supersedes; that copy
-cannot run from where it now lives):
+nothing is saved back. Its anatomy is AUTHORED on the sculpture itself (see
+male_body_regions.py and the manifest): every face carries one material,
+whose name is its region's id ("pectoralis-major.L", "rectus-abdominis"…);
+faces still wearing the sculpture's own material, atlas-stone, are the
+unselectable "body". This script only carries those assignments out:
 
   1. align   the figure faces -y in Blender, as export_glb.py expects;
              scaled so floor-to-neck-cut matches the procedural figure
              (157.5 cm), centred on the midline, its chest centred front
              to back
-  2. regions each face takes the region of the nearest surface of the
-             procedural figure (js/anatomy-model.js), then a majority vote
-             over neighbouring faces and absorption of small islands
-  3. export  one material per region, through export_glb.py
+  2. regions atlas-stone becomes "body"; every other material is a region
+             id and is exported as it is (the build checks each against
+             the manifest and stops on one it does not list)
+  3. export  one glTF primitive per region, through export_glb.py
 
-Step 2 is a stand-in, not anatomy: the procedural figure has different
-proportions and pose, so borders do not follow this sculpture's own muscle
-forms, and some faces land on the wrong structure (the hands, hanging
-beside the thighs, take the vastus lateralis). The real fix is regions
-authored on this mesh; the chain from material to ATLAS muscle id stays.
-
-Full resolution by default. ATLAS_TARGET_TRIANGLES decimates first; the
-cleanup is scaled to the face density so it acts over the same distances.
+Full resolution by default. ATLAS_TARGET_TRIANGLES decimates first (the
+faces keep their materials).
 """
 
-import base64
 import json
 import os
-import re
 import sys
 from collections import Counter
 
-import bmesh
 import bpy
 import numpy as np
-from mathutils.bvhtree import BVHTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True
@@ -55,23 +45,8 @@ SOURCE = os.environ.get("ATLAS_MALE_BODY_SOURCE", os.path.join(ROOT, "assets", "
 OBJECT = "male-body"
 TARGET = int(os.environ.get("ATLAS_TARGET_TRIANGLES", "0"))     # 0: keep every triangle
 NECK_CUT = 157.5            # the procedural figure's neck cut, cm
-# The prototype's cleanup at 70k faces, kept at the same physical reach.
-BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
-
-
-def procedural_model():
-    """Positions (cm), triangles and per-vertex regions of js/anatomy-model.js."""
-    src = open(os.path.join(ROOT, "js", "anatomy-model.js")).read()
-    get = lambda k: json.loads(re.search(r"\b" + k + r": (\[[^\]]*\]|\d+|true|false)", src).group(1))
-    bmin, bmax = get("min"), get("max")
-    regions = json.loads(re.search(r'regions: Object.freeze\((\[.*?\])\)', src).group(1))
-    n, vb = get("vertexCount"), get("vertexBytes")
-    raw = base64.b64decode(re.search(r'data: "([^"]+)"', src).group(1))
-    v = np.frombuffer(raw[:n * vb], dtype=np.uint8).reshape(n, vb)
-    q = v[:, :6].copy().view(np.uint16).astype(float) / 65535.0
-    pos = np.array(bmin) + q * (np.array(bmax) - np.array(bmin))
-    idx = np.frombuffer(raw[n * vb:], dtype=np.uint32 if get("wideIndices") else np.uint16).reshape(-1, 3)
-    return pos, idx, v[:, 10].copy(), regions
+STONE = "atlas-stone"       # the sculpture's own material: faces no region claims
+BODY = "body"
 
 
 def main(out_glb):
@@ -79,7 +54,9 @@ def main(out_glb):
     with bpy.data.libraries.load(SOURCE, link=False) as (src, dst):
         dst.meshes = ["Mesh_0"] if "Mesh_0" in src.meshes else src.meshes[:1]
     me = dst.meshes[0]
-    me.materials.clear()
+    names = [m.name if m else None for m in me.materials]
+    if not names or None in names:
+        raise SystemExit("male_body: every material slot of Mesh_0 must hold a material (%r)" % names)
     obj = bpy.data.objects.new(OBJECT, me)
     bpy.context.scene.collection.objects.link(obj)
 
@@ -108,55 +85,22 @@ def main(out_glb):
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.modifier_apply(modifier=m.name)
     faces = len(me.polygons)
-    density = faces / BASE_FACES
-    passes = max(1, round(BASE_PASSES * density ** 0.5))          # a pass reaches one face further
-    min_island = max(1, round(BASE_ISLAND * density))              # an island's area, in faces
 
-    # 2. Regions: nearest procedural surface, in ATLAS cm.
-    ppos, pidx, preg, names = procedural_model()
-    ptree = BVHTree.FromPolygons([tuple(p) for p in bl.to_blender(ppos) * 100.0], [tuple(t) for t in pidx])
-    centres = np.empty(faces * 3); me.polygons.foreach_get("center", centres)
-    labels = np.array([preg[pidx[ptree.find_nearest(tuple(c))[2]][0]] for c in centres.reshape(-1, 3) * 100.0])
-    raw_labels = labels.copy()
-    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
-    nbrs = [[g.index for e in f.edges for g in e.link_faces if g.index != f.index] for f in bm.faces]
-    bm.free()
-    for _ in range(passes):
-        new = labels.copy()
-        for i, nb in enumerate(nbrs):
-            c = Counter(labels[j] for j in nb); c[labels[i]] += 1
-            new[i] = c.most_common(1)[0][0]
-        labels = new
-    seen = np.zeros(len(labels), bool); absorbed = 0
-    for i in range(len(labels)):
-        if seen[i]:
-            continue
-        comp, stack = [], [i]; seen[i] = True
-        while stack:
-            f = stack.pop(); comp.append(f)
-            for j in nbrs[f]:
-                if not seen[j] and labels[j] == labels[i]:
-                    seen[j] = True; stack.append(j)
-        if len(comp) < min_island:
-            ring = Counter(labels[j] for f in comp for j in nbrs[f] if labels[j] != labels[i])
-            if ring:
-                labels[comp] = ring.most_common(1)[0][0]; absorbed += 1
-
-    used = [names[k] for k in sorted(set(labels.tolist()))]
-    for r in used:
-        me.materials.append(bl.region_material(r, (0.8, 0.8, 0.8) if r == "body" else (0.7, 0.5, 0.46)))
-    slot = {names.index(r): i for i, r in enumerate(used)}
-    me.polygons.foreach_set("material_index", [slot[l] for l in labels])
+    # 2. Regions: the sculpture's own material is the body; every other one is a region id.
+    for mat in me.materials:
+        if mat.name == STONE:
+            mat.name = BODY
+    idx = np.empty(faces, np.int64); me.polygons.foreach_get("material_index", idx)
+    region_of_slot = [m.name for m in me.materials]
+    labels = [region_of_slot[i] for i in idx]
     me.polygons.foreach_set("use_smooth", [True] * faces)
     me.update()
 
     # 3. Export.
     export_glb.export(out_glb, obj_name=OBJECT)
-    counts = Counter(names[l] for l in labels.tolist())
+    counts = Counter(labels)
     return dict(source_triangles=source_faces, triangles=faces, vertices=len(me.vertices), scale=round(s, 4),
-                smooth_passes=passes, min_island=min_island, islands_absorbed=absorbed,
-                relabelled_by_cleanup=round(float(np.mean(labels != raw_labels)), 3),
-                regions={k: counts.get(k, 0) for k in names})
+                regions={k: counts[k] for k in sorted(counts)})
 
 
 if __name__ == "__main__":

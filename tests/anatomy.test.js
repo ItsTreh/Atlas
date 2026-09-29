@@ -1,11 +1,14 @@
 /* The anatomy sculpture's data: the model, and the table that ties its
    regions to the app's muscles. The drawing itself is checked in a browser. */
+import fs from "node:fs";
 import { describe, expect, test } from "vitest";
 import { loadApp } from "./load-app.js";
 import { sculpture } from "../tools/anatomy/sculpture.mjs";
 
 const app = loadApp();
 const MODEL = app.ANATOMY_MODEL, REGIONS = app.ANATOMY_REGIONS;
+const AUTHORED_MANIFESTS = ["torso-study", "male-body"].map(name =>
+  JSON.parse(fs.readFileSync(new URL("../assets/anatomy/" + name + ".manifest.json", import.meta.url), "utf8")));
 
 describe("regions → muscles", () => {
   test("every region points at a muscle that exists, or at nothing", () => {
@@ -18,9 +21,13 @@ describe("regions → muscles", () => {
       expect(MODEL.regions.some(r => REGIONS[r] === m.id), m.id).toBe(true);
   });
 
-  test("the table and the model name the same muscle regions", () => {
+  test("the table names every muscle region of the model, and nothing no model draws", () => {
     const muscleRegions = MODEL.regions.filter((r, i) => MODEL.kinds[i] === "muscle");
-    expect(Object.keys(REGIONS).sort()).toEqual([...muscleRegions].sort());
+    for (const r of muscleRegions) expect(REGIONS, r).toHaveProperty(r);
+    // A region the procedural figure lacks must be drawn by an authored model (a group region).
+    const authored = new Set(AUTHORED_MANIFESTS.flatMap(m => m.regions.map(r => r.atlasRegion)).filter(Boolean));
+    for (const r of Object.keys(REGIONS))
+      expect(muscleRegions.includes(r) || authored.has(r), r + " is drawn by no model").toBe(true);
   });
 
   test("the form (armature, bone, tendon, hands, feet) is never selectable", () => {

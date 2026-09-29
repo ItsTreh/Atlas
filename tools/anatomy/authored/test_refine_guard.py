@@ -9,8 +9,12 @@ The end-to-end tests run the real refinement in Blender (BLENDER, or
 are skipped when Blender is not there. assets/anatomy/Male_Body.blend and its
 record are only read, and checked unchanged at the end.
 
-  A  untouched target     a copy of the committed Male_Body.blend and its
-                          record: rebuilt, with the same content
+The untouched target is the refinement's own output, taken from git (the
+version whose bytes the record names): the committed Male_Body.blend has been
+hand-authored since (its regions), and the refinement must refuse it.
+
+  A  untouched target     a copy of the refinement's output and its record:
+                          rebuilt, with the same content
   B  edited target        a region-like material assignment, a metadata-only
                           change, a re-save with no change, a missing record,
                           and --force: all refused, the file left untouched
@@ -99,7 +103,9 @@ def read_json(path):
 
 
 def blender(*args):
-    return subprocess.run([BLENDER, "-b", "--factory-startup", *args], capture_output=True, text=True)
+    # Blender's Python ignores PYTHONDONTWRITEBYTECODE; this keeps __pycache__ from beside the tools.
+    return subprocess.run([BLENDER, "-b", "--factory-startup", "--python-expr",
+                           "import sys; sys.dont_write_bytecode = True", *args], capture_output=True, text=True)
 
 
 def refine(out, *extra):
@@ -222,7 +228,21 @@ class RefineEndToEndTest(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp(prefix="refine-e2e-")
         cls.real_record = guard.record_path(REAL)
         cls.before = (sha(REAL), sha(cls.real_record))
-        cls.real_digest = cls.digest(REAL)
+        # The refinement's own output, from git: the bytes its record names.
+        cls.refined = os.path.join(cls.tmp, "refined.blend")
+        want = read_json(cls.real_record)["output_sha256"]
+        revs = subprocess.run(["git", "-C", ROOT, "log", "--format=%H", "--", "assets/anatomy/Male_Body.blend"],
+                              check=True, capture_output=True, text=True).stdout.split()
+        for rev in revs:
+            data = subprocess.run(["git", "-C", ROOT, "show", rev + ":assets/anatomy/Male_Body.blend"],
+                                  check=True, capture_output=True).stdout
+            if hashlib.sha256(data).hexdigest() == want:
+                with open(cls.refined, "wb") as f:
+                    f.write(data)
+                break
+        else:
+            raise unittest.SkipTest("the refinement's output is not in this checkout's history")
+        cls.real_digest = cls.digest(cls.refined)
 
     @classmethod
     def tearDownClass(cls):
@@ -242,7 +262,7 @@ class RefineEndToEndTest(unittest.TestCase):
         d = os.path.join(self.tmp, name)
         os.makedirs(d)
         out = os.path.join(d, "Male_Body.blend")
-        shutil.copy2(REAL, out)
+        shutil.copy2(self.refined, out)
         if record:
             shutil.copy2(self.real_record, guard.record_path(out))
         return out
@@ -258,8 +278,13 @@ class RefineEndToEndTest(unittest.TestCase):
         self.assertNotIn("original:", r.stdout, "it must refuse before doing any work")
         self.assertEqual((sha(out), os.path.getmtime(out)), before, "the protected file was touched")
 
-    def test_real_asset_is_the_recorded_refinement_output(self):
-        self.assertEqual(guard.check_target(REAL), self.before[0])
+    def test_refined_output_is_what_the_record_names(self):
+        self.assertEqual(guard.check_target(self.copy_real("record")), sha(self.refined))
+
+    def test_committed_asset_is_hand_authored_and_refused(self):
+        # Male_Body.blend carries its authored regions now: the refinement must not touch it.
+        with self.assertRaises(guard.Refusal):
+            guard.check_target(REAL)
 
     def test_a_untouched_target_is_rebuilt_to_the_same_content(self):
         out = self.copy_real("a")
@@ -272,7 +297,7 @@ class RefineEndToEndTest(unittest.TestCase):
             with self.subTest(edit=name):
                 out = self.copy_real("b-" + name)
                 run_py(out, code, self.tmp)
-                self.assertNotEqual(sha(out), self.before[0], "the edit should change the file")
+                self.assertNotEqual(sha(out), sha(self.refined), "the edit should change the file")
                 if name != "resave":
                     self.assertNotEqual(self.digest(out), self.real_digest, "the edit should change the content")
                 record = read_bytes(guard.record_path(out))

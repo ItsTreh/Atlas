@@ -1,0 +1,95 @@
+{
+  "note": "Written by tools/anatomy/authored/male_body_regions.py. It may rewrite Male_Body.blend only while the file's SHA-256 matches output_sha256; any hand edit makes the .blend the source of truth.",
+  "output": "Male_Body.blend",
+  "output_sha256": "74ea722d863cbe1936f79d6932dee30111659aa8fdf1f7eba7770305a9fc0a97",
+  "script": "male-body-regions@1",
+  "regions": {
+    "pectoralis-major.R": {
+      "faces": 6649,
+      "area": 0.06713
+    },
+    "pectoralis-major.L": {
+      "faces": 4707,
+      "area": 0.05884
+    },
+    "rectus-abdominis": {
+      "faces": 8131,
+      "area": 0.09697
+    },
+    "external-oblique.R": {
+      "faces": 2707,
+      "area": 0.04715
+    },
+    "external-oblique.L": {
+      "faces": 3352,
+      "area": 0.04055
+    },
+    "serratus-anterior.R": {
+      "faces": 2737,
+      "area": 0.03701
+    },
+    "serratus-anterior.L": {
+      "faces": 2738,
+      "area": 0.03273
+    },
+    "deltoid.R": {
+      "faces": 5084,
+      "area": 0.06591
+    },
+    "deltoid.L": {
+      "faces": 6725,
+      "area": 0.05447
+    },
+    "biceps-brachii.R": {
+      "faces": 3014,
+      "area": 0.02911
+    },
+    "biceps-brachii.L": {
+      "faces": 1484,
+      "area": 0.02327
+    },
+    "triceps-brachii.R": {
+      "faces": 2182,
+      "area": 0.04437
+    },
+    "triceps-brachii.L": {
+      "faces": 2589,
+      "area": 0.0524
+    },
+    "gluteus-maximus.R": {
+      "faces": 3488,
+      "area": 0.05898
+    },
+    "gluteus-maximus.L": {
+      "faces": 5190,
+      "area": 0.06424
+    },
+    "gastrocnemius.R": {
+      "faces": 3243,
+      "area": 0.06742
+    },
+    "gastrocnemius.L": {
+      "faces": 2306,
+      "area": 0.05391
+    },
+    "latissimus-dorsi.R": {
+      "faces": 423,
+      "area": 0.02431
+    },
+    "latissimus-dorsi.L": {
+      "faces": 595,
+      "area": 0.02484
+    },
+    "quadriceps-femoris.R": {
+      "faces": 3239,
+      "area": 0.13256
+    },
+    "quadriceps-femoris.L": {
+      "faces": 4991,
+      "area": 0.13471
+    },
+    "body": {
+      "faces": 211645
+    }
+  }
+}

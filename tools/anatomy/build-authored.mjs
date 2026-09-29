@@ -41,6 +41,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const SEAM_CAP = 3;                 // cm, as in the procedural build
 const VERTEX_BYTES = 14;            // the renderer's vertex format (see js/anatomy-model.js)
 const STRUCTURES = new Set(["muscle", "bone", "tendon", "cut", "form"]);
+const SIDES = new Set(["left", "right", "midline"]);     // a region's side, where the manifest gives one
 
 const t0 = Date.now();
 const log = msg => console.log(((Date.now() - t0) / 1000).toFixed(1).padStart(5) + "s  " + msg);
@@ -75,6 +76,7 @@ for (const r of manifest.regions) {
   if (seen.has(r.id)) fail("region " + r.id + " is listed twice in the manifest");
   seen.add(r.id);
   if (!STRUCTURES.has(r.structure)) fail("region " + r.id + ": unknown structure " + r.structure);
+  if (r.side !== undefined && !SIDES.has(r.side)) fail("region " + r.id + ": unknown side " + r.side);
   if (r.atlasRegion !== null && !(r.atlasRegion in atlas.regions))
     fail("region " + r.id + " maps to ATLAS region " + r.atlasRegion + ", which js/anatomy-regions.js does not list");
   const name = r.atlasRegion ?? r.id;
@@ -94,7 +96,8 @@ const { json } = glb;
 const toCm = manifest.units.toCm;
 const matrices = worldMatrices(json);
 
-const P = [], Nrm = [], R = [], idx = [], morphNames = [], morphs = [];
+const P = [], Nrm = [], R = [], S = [], idx = [], morphNames = [], morphs = [];
+const sourceIndex = new Map(manifest.regions.map((r, i) => [r.id, i]));   // per vertex: its manifest region
 const regionTris = new Array(emitted.length).fill(0), present = new Set();
 (json.nodes || []).forEach((node, ni) => {
   if (node.mesh === undefined) return;
@@ -106,7 +109,7 @@ const regionTris = new Array(emitted.length).fill(0), present = new Set();
     if (!mat || !toEmitted.has(mat)) fail("mesh " + mesh.name + " has faces in region " + JSON.stringify(mat) +
                                           ", which the manifest does not list");
     present.add(mat);
-    const region = toEmitted.get(mat);
+    const region = toEmitted.get(mat), src = sourceIndex.get(mat);
     const pos = readAccessor(glb, prim.attributes.POSITION);
     const nrm = prim.attributes.NORMAL !== undefined ? readAccessor(glb, prim.attributes.NORMAL) : fail("no normals");
     const base = P.length / 3, count = pos.length / 3;
@@ -116,6 +119,7 @@ const regionTris = new Array(emitted.length).fill(0), present = new Set();
       const n = transform(m, nrm[i * 3], nrm[i * 3 + 1], nrm[i * 3 + 2], 0), l = Math.hypot(...n) || 1;
       Nrm.push(n[0] / l, n[1] / l, n[2] / l);
       R.push(region);
+      S.push(src);
     }
     const ind = prim.indices !== undefined ? readAccessor(glb, prim.indices) : Uint32Array.from({ length: count }, (_, i) => i);
     for (const v of ind) idx.push(base + v);
@@ -170,6 +174,7 @@ for (const id of authoredMarks.keys())
 /* ------------------------------------------------------------- simplify */
 
 let positions = Float32Array.from(P), normals = Float32Array.from(Nrm), regions = Uint8Array.from(R);
+let sources = Uint16Array.from(S);
 let indices = Uint32Array.from(idx), states = morphs.map(m => Float32Array.from(m, v => v || 0));
 await MeshoptSimplifier.ready;
 await MeshoptEncoder.ready;
@@ -186,6 +191,7 @@ const pick = (arr, k) => { const o = new Float32Array(unique * k);
   for (let v = 0; v < unique; v++) for (let j = 0; j < k; j++) o[v * k + j] = arr[source[v] * k + j]; return o; };
 positions = pick(positions, 3); normals = pick(normals, 3); states = states.map(s => pick(s, 3));
 regions = Uint8Array.from(source, s => regions[s]);
+sources = Uint16Array.from(source, s => sources[s]);
 log("simplified: " + unique + " vertices, " + indices.length / 3 + " triangles");
 
 const triCount = indices.length / 3;
@@ -309,10 +315,34 @@ function anchorOf(tris) {
   const r3 = v => Math.round(v * 1000) / 1000;
   return { area: r3(area), centroid: c.map(r3), axis: e.map(r3) };
 }
+/* A region authored per side must lie on that side (+x is the figure's
+   left): a .L painted on the right, or a swapped name, stops the build. */
+for (const [i, r] of manifest.regions.entries()) {
+  if (r.side !== "left" && r.side !== "right") continue;
+  const tris = [];
+  for (let t = 0; t < triCount; t++) if (sources[indices[t * 3]] === i) tris.push(t);
+  const cx = anchorOf(tris).centroid[0];
+  if ((r.side === "left") !== (cx > 0))
+    fail("region " + r.id + " is authored as " + r.side + " but its centroid lies at x = " + cx + " cm");
+}
+
+/* Where each region is, per side: from the sides the manifest authors where
+   it gives them, otherwise split at the midline. */
 const regionAnchors = {};
 emitted.forEach((e, ri) => {
   const all = [];
   for (let t = 0; t < triCount; t++) if (regions[indices[t * 3]] === ri) all.push(t);
+  const sides = e.sources.map(id => manifest.regions[sourceIndex.get(id)].side);
+  if (sides.every(Boolean)) {
+    const bySide = { left: [], right: [], centre: [] };
+    for (const t of all) {
+      const side = manifest.regions[sources[indices[t * 3]]].side;
+      bySide[side === "midline" ? "centre" : side].push(t);
+    }
+    regionAnchors[e.name] = Object.fromEntries(Object.entries(bySide).filter(([, ts]) => ts.length)
+                                                 .map(([k, ts]) => [k, anchorOf(ts)]));
+    return;
+  }
   const onMidline = all.some(t => [0, 1, 2].some(k => Math.abs(positions[indices[t * 3 + k] * 3]) < 1e-3));
   if (onMidline) regionAnchors[e.name] = { centre: anchorOf(all) };
   else regionAnchors[e.name] = {
@@ -354,6 +384,7 @@ const packedStates = morphNames.map((name, j) => {
 });
 
 const round = a => a.map(v => Math.round(v * 1000) / 1000);
+const sided = manifest.regions.some(r => r.side);         // regions authored per side: name their sources
 const model = {
   version: manifest.asset + "@" + manifest.version + "+" + sha256.slice(0, 12),
   source: { asset: manifest.source, glb: path.relative(ROOT, glbPath), sha256, manifest: path.relative(ROOT, manifestPath) },
@@ -369,6 +400,7 @@ const model = {
   data: Buffer.from(bytes).toString("base64"),
   landmarks,
   regionAnchors,
+  ...(sided ? { regionSources: Object.fromEntries(emitted.map(e => [e.name, e.sources])) } : {}),
   morphs: packedStates
 };
 const name = manifest.global;
@@ -391,7 +423,10 @@ const js = `/* =================================================================
      landmarks      points bound to a triangle by barycentric weights, so
                     they follow any state
      regionAnchors  each region's area, centroid and principal axis (per
-                    side where it has two)
+                    side where it has two)${sided ? `
+     regionSources  the asset's own region ids behind each region (its
+                    Blender materials: one per side, as the manifest
+                    authors them; the anchors follow those sides)` : ""}
      morphs         authored states: per-vertex deltas, int16 × scale (cm)
    ========================================================================= */
 

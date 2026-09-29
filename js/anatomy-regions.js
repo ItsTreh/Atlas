@@ -19,6 +19,10 @@
 
    To make a muscle selectable in finer detail later, give it its own id in
    MUSCLES and point its regions at it; the model does not change.
+
+   A group region stands for several anatomical ones where a sculpture does
+   not separate them: the authored Male_Body's thigh shows the quadriceps as
+   one mass, so it is one region there ("quadriceps-femoris").
    ========================================================================= */
 
 const ANATOMY_REGIONS = Object.freeze({
@@ -38,6 +42,7 @@ const ANATOMY_REGIONS = Object.freeze({
   "vastus-lateralis":     "quads",
   "vastus-medialis":      "quads",
   "sartorius":            "quads",
+  "quadriceps-femoris":   "quads",
   "biceps-femoris":       "hamstrings",
   "semitendinosus":       "hamstrings",
   "semimembranosus":      "hamstrings",
