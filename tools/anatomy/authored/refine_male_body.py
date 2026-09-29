@@ -2,16 +2,20 @@
 Refines the Male_Body sculpture for ATLAS: writes assets/anatomy/Male_Body.blend.
 
     /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup \
-        --python tools/anatomy/authored/refine_male_body.py [-- --force] [--source <original.blend>] [--out <path>]
+        --python tools/anatomy/authored/refine_male_body.py [-- --source <original.blend>] [--out <path>]
 
 It always starts from the generated sculpture exactly as first committed
 (git 8766948:assets/anatomy/Male_Body.blend, checked by its SHA-256), so a run
 is reproducible and never compounds on its own output. It records what it
-wrote on the mesh (atlas_refinement, and a hash of the geometry). If the
-.blend's geometry no longer matches that hash because someone has sculpted it
-by hand since, it stops rather than overwrite that work (--force overrides).
-From the first hand edit on, the .blend is the source of truth and this script
-is its provenance.
+wrote on the mesh (atlas_refinement, and a hash of the geometry).
+
+It never overwrites hand-authored work (refine_guard.py). Next to the output
+it writes a record (Male_Body.refinement.json) of the exact bytes it saved,
+and it replaces an existing output only while that file still matches its
+record. Any edit since (regions or materials painted, metadata added, even a
+re-save in Blender), or a missing record, makes it stop before doing any work;
+there is no override. From the first hand edit on, the .blend is the source of
+truth and this script is its provenance. Tests: test_refine_guard.py.
 
 Every change is local, blends out over a soft margin, and answers something
 seen in matte renders of the original. Nothing is added for rendering effects,
@@ -74,6 +78,9 @@ from mathutils.bvhtree import BVHTree
 from mathutils.geometry import delaunay_2d_cdt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import refine_guard as guard  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 TARGET = os.path.join(ROOT, "assets", "anatomy", "Male_Body.blend")
 ORIGINAL_GIT = "8766948:assets/anatomy/Male_Body.blend"
@@ -150,22 +157,6 @@ def geometry_hash(me):
     co = np.empty(len(me.vertices) * 3, dtype=np.float32)
     me.vertices.foreach_get("co", co)
     return hashlib.sha256(co.tobytes() + str(len(me.polygons)).encode()).hexdigest()[:16]
-
-
-def guard_target(force):
-    """Refuses to overwrite a refined .blend that has been edited by hand since."""
-    if not os.path.exists(TARGET) or force:
-        return
-    with bpy.data.libraries.load(TARGET, link=False) as (src, dst):
-        dst.meshes = ["Mesh_0"] if "Mesh_0" in src.meshes else []
-    if not dst.meshes:
-        return
-    me = dst.meshes[0]
-    recorded = me.get("atlas_refinement_geometry")
-    if recorded and recorded != geometry_hash(me):
-        raise SystemExit("refine-male-body: %s has been edited since it was refined (its geometry no longer "
-                         "matches %s); not overwriting it. Pass --force to regenerate it anyway." % (TARGET, recorded))
-    bpy.data.meshes.remove(me)
 
 
 # ------------------------------------------------------------ mesh maths
@@ -546,11 +537,13 @@ def stone_material(me):
 
 def main():
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    force = "--force" in args
-    source = args[args.index("--source") + 1] if "--source" in args else None
-    out = os.path.abspath(args[args.index("--out") + 1]) if "--out" in args else TARGET
-    if out == TARGET:
-        guard_target(force)
+    opts = dict(zip(args[::2], args[1::2]))
+    if len(args) % 2 or set(opts) - {"--source", "--out"}:
+        raise SystemExit("refine-male-body: unknown arguments %s; it takes only --source <path> and --out <path> "
+                         "(there is no --force: see refine_guard.py)" % " ".join(args))
+    source = opts.get("--source")
+    out = os.path.abspath(opts.get("--out", TARGET))
+    checked = guard.check_target(out)
     obj, me = load_original(source)
     log("original: %d vertices, %d triangles" % (len(me.vertices), len(me.polygons)))
 
@@ -582,7 +575,10 @@ def main():
     # The generator's material and its packed textures (~22 MB) are unused now; don't save them.
     bpy.data.orphans_purge(do_local_ids=True, do_linked_ids=True, do_recursive=True)
     bpy.context.preferences.filepaths.save_version = 0
+    guard.check_unchanged(out, checked)
     bpy.ops.wm.save_as_mainfile(filepath=out, compress=True)
+    guard.write_record(out, script=VERSION, source=ORIGINAL_GIT, source_sha256=ORIGINAL_SHA256,
+                       geometry=me["atlas_refinement_geometry"])
     log("wrote %s: %d vertices, %d faces" % (out, len(me.vertices), len(me.polygons)))
 
 

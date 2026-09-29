@@ -1,0 +1,9 @@
+{
+  "note": "Written by tools/anatomy/authored/refine_male_body.py. It may overwrite Male_Body.blend only while the file's SHA-256 matches output_sha256; any edit protects the file.",
+  "output": "Male_Body.blend",
+  "output_sha256": "27b6889c6ca95c6ae5bc40ef1187d53af06f2a083be5f7ab87e179f905ecad9c",
+  "script": "male-body-refine@1",
+  "source": "8766948:assets/anatomy/Male_Body.blend",
+  "source_sha256": "ac954ccfe3064b2f7c88251e14f7de169ce9310722eacc9304b2a43aa07b63c0",
+  "geometry": "309d95c9bc6216be"
+}
