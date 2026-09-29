@@ -33,7 +33,16 @@ function paintCaption() {
     (selection.has(m.id) ? "selected — click to remove" : "click to add") + '</span>';
 }
 
+/* The anatomy on the stage: the procedural figure, or the Male_Body
+   sculpture under evaluation when index.html?anatomy=male-body loaded it.
+   Either may be missing (a file failed to load); the stage then falls back
+   to the SVG figure. */
+const anatomyModel = typeof ANATOMY_MODEL_MALE_BODY === "object" ? ANATOMY_MODEL_MALE_BODY
+  : typeof ANATOMY_MODEL === "object" ? ANATOMY_MODEL : null;
+if (typeof ANATOMY_MODEL_MALE_BODY === "object") validateAnatomyModel(anatomyModel);
+
 const stage = new AnatomyStage($("anatomy-stage"), selection, {
+  model: anatomyModel,
   onHover(muscle) { pointedAt = muscle; paintCaption(); }
 });
 

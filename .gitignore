@@ -1,1 +1,3 @@
 node_modules/
+# Blender backup files
+*.blend1

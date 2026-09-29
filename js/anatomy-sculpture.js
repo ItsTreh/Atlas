@@ -60,9 +60,9 @@ const SCULPTURE_SELECTED_GAIN = 1.4;
 const SCULPTURE_EASE = { hoverIn: 35, hoverOut: 90, select: 60 };
 
 class AnatomySculpture {
-  /** True when this browser can draw the sculpture. */
-  static supported() {
-    if (typeof ANATOMY_MODEL !== "object" || typeof WebGL2RenderingContext !== "function") return false;
+  /** True when this browser can draw the sculpture (ANATOMY_MODEL, or `model`). */
+  static supported(model = typeof ANATOMY_MODEL === "object" ? ANATOMY_MODEL : null) {
+    if (!model || typeof WebGL2RenderingContext !== "function") return false;
     const gl = document.createElement("canvas").getContext("webgl2");
     if (!gl) return false;
     const lose = gl.getExtension("WEBGL_lose_context");
@@ -73,13 +73,15 @@ class AnatomySculpture {
   /**
    * @param opts.onHover  called with a Muscle when one is pointed at or
    *                      focused, and with null when it is left
+   * @param opts.model    the model to draw, in the ANATOMY_MODEL shape;
+   *                      ANATOMY_MODEL when left out
    */
   constructor(mount, selection, opts = {}) {
     this.mount = mount;
     this.selection = selection;
     this.onHover = opts.onHover || (() => {});
     this.onFail = opts.onFail || (() => {});
-    this.model = ANATOMY_MODEL;
+    this.model = opts.model || ANATOMY_MODEL;
     // Region index → app muscle id, or null where the region is not selectable.
     this.muscleOf = this.model.regions.map(name => ANATOMY_REGIONS[name] || null);
     this.isForm = this.model.kinds.map(kind => kind === "form");

@@ -64,8 +64,17 @@ const ANATOMY_REGIONS = Object.freeze({
   for (const [region, id] of Object.entries(ANATOMY_REGIONS))
     if (id !== null && !MUSCLE_BY_ID.has(id))
       console.error("Anatomy region " + region + " maps to unknown muscle " + id);
-  ANATOMY_MODEL.regions.forEach((region, i) => {
-    if (ANATOMY_MODEL.kinds[i] === "muscle" && !(region in ANATOMY_REGIONS))
+})();
+
+/**
+ * Checks a model in the ANATOMY_MODEL shape against the table: every
+ * region it calls a muscle must be listed. A model may hold only some of
+ * the listed regions, and "form" regions (bone, tendon, a cut) of its own.
+ */
+function validateAnatomyModel(model) {
+  model.regions.forEach((region, i) => {
+    if (model.kinds[i] === "muscle" && !(region in ANATOMY_REGIONS))
       console.error("Anatomy region " + region + " is not in ANATOMY_REGIONS");
   });
-})();
+}
+if (typeof ANATOMY_MODEL === "object") validateAnatomyModel(ANATOMY_MODEL);

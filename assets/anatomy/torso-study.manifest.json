@@ -1,0 +1,61 @@
+{
+  "asset": "torso-study",
+  "version": 1,
+  "description": "Headless torso fragment with shoulders and arms to mid-forearm, authored in Blender. Its surface is its anatomy: every face belongs to a muscle, a tendon, a bone at the surface, or a cut.",
+  "source": "assets/anatomy/torso-study.blend",
+  "glb": "assets/anatomy/torso-study.glb",
+  "output": "js/anatomy-model-authored.js",
+  "global": "ANATOMY_MODEL_AUTHORED",
+  "units": { "asset": "metre", "toCm": 100 },
+  "axes": "glTF as exported by Blender: +y up, +z the figure's front, +x the figure's left (ATLAS axes).",
+  "mirror": {
+    "axis": "x",
+    "authored": "left half (+x); the Blender Mirror modifier makes the right, merged on the midline",
+    "regions": "a region id names both sides: the left and right deltoid are one region, as ATLAS muscle ids are bilateral",
+    "landmarks": "authored on the left; a bilateral landmark is emitted as <id>.l and <id>.r (mirrored), a midline one as <id>"
+  },
+  "minTriangles": 60,
+  "targetTriangles": 40000,
+  "simplifyError": 0.0004,
+  "landmarkTolerance": 0.1,
+  "regions": [
+    { "id": "pectoralis-major", "structure": "muscle", "atlasRegion": "pectoralis-major" },
+    { "id": "deltoid", "structure": "muscle", "atlasRegion": "deltoid" },
+    { "id": "biceps-brachii", "structure": "muscle", "atlasRegion": "biceps-brachii" },
+    { "id": "brachialis", "structure": "muscle", "atlasRegion": "brachialis" },
+    { "id": "triceps-brachii", "structure": "muscle", "atlasRegion": "triceps-brachii" },
+    { "id": "trapezius", "structure": "muscle", "atlasRegion": "trapezius" },
+    { "id": "infraspinatus", "structure": "muscle", "atlasRegion": "infraspinatus" },
+    { "id": "teres-major", "structure": "muscle", "atlasRegion": "teres-major" },
+    { "id": "latissimus-dorsi", "structure": "muscle", "atlasRegion": "latissimus-dorsi" },
+    { "id": "serratus-anterior", "structure": "muscle", "atlasRegion": "serratus-anterior" },
+    { "id": "external-oblique", "structure": "muscle", "atlasRegion": "external-oblique" },
+    { "id": "rectus-abdominis", "structure": "muscle", "atlasRegion": "rectus-abdominis" },
+    { "id": "erector-spinae", "structure": "muscle", "atlasRegion": "erector-spinae" },
+    { "id": "brachioradialis", "structure": "muscle", "atlasRegion": "brachioradialis" },
+    { "id": "forearm-flexors", "structure": "muscle", "atlasRegion": "forearm-flexors" },
+    { "id": "forearm-extensors", "structure": "muscle", "atlasRegion": "forearm-extensors" },
+    { "id": "sternocleidomastoid", "structure": "muscle", "atlasRegion": "sternocleidomastoid" },
+    { "id": "infrahyoid", "structure": "muscle", "atlasRegion": null },
+    { "id": "scalenes", "structure": "muscle", "atlasRegion": null },
+    { "id": "sternum", "structure": "bone", "atlasRegion": null },
+    { "id": "clavicle", "structure": "bone", "atlasRegion": null },
+    { "id": "scapular-spine", "structure": "bone", "atlasRegion": null },
+    { "id": "elbow", "structure": "bone", "atlasRegion": null },
+    { "id": "trapezius-aponeurosis", "structure": "tendon", "atlasRegion": null },
+    { "id": "linea-alba", "structure": "tendon", "atlasRegion": null },
+    { "id": "triceps-tendon", "structure": "tendon", "atlasRegion": null },
+    { "id": "cut", "structure": "cut", "atlasRegion": null }
+  ],
+  "landmarks": [
+    { "id": "jugular-notch", "region": "sternum", "type": "bony", "bilateral": false },
+    { "id": "clavicle-crest", "region": "clavicle", "type": "bony", "bilateral": true },
+    { "id": "acromion", "region": "scapular-spine", "type": "bony", "bilateral": true },
+    { "id": "spine-root", "region": "scapular-spine", "type": "bony", "bilateral": true },
+    { "id": "pectoral-centre", "region": "pectoralis-major", "type": "centroid", "bilateral": true },
+    { "id": "deltoid-insertion", "region": "deltoid", "type": "insertion", "bilateral": true }
+  ],
+  "states": [
+    { "id": "state:arm-raised", "note": "the left and right arms lifted about 18 degrees from the side; one authored state on the base topology, validation only" }
+  ]
+}

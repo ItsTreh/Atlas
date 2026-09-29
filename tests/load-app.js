@@ -52,14 +52,15 @@ export function logicScripts() {
 /**
  * A fresh copy of the app. Each call is independent, so tests cannot leak
  * state into each other. `errors` collects anything the data files report
- * with console.error while loading.
+ * with console.error while loading. `extra` scripts (not in index.html, such
+ * as a lab model) run after the app's, and `exports` names more globals.
  */
-export function loadApp() {
+export function loadApp({ extra = [], exports = [] } = {}) {
   const errors = [];
   const context = vm.createContext({
     console: { ...console, error: (...args) => errors.push(args.join(" ")) }
   });
-  for (const src of logicScripts()) {
+  for (const src of [...logicScripts(), ...extra]) {
     const code = fs.readFileSync(path.join(ROOT, src), "utf8");
     try {
       vm.runInContext(code, context, { filename: src });
@@ -69,7 +70,7 @@ export function loadApp() {
           ? " — if it is a page script, add it to VIEW_FILES in tests/load-app.js" : ""));
     }
   }
-  const app = vm.runInContext("({" + EXPORTS.join(",") + "})", context);
+  const app = vm.runInContext("({" + [...EXPORTS, ...exports].join(",") + "})", context);
   app.errors = errors;
   return app;
 }

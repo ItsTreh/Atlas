@@ -248,6 +248,13 @@
 <script src="js/routine.js"></script>
 <script src="js/scheduler.js"></script>
 <script src="js/anatomy-model.js"></script>
+<!-- Evaluation: index.html?anatomy=male-body puts the Male_Body sculpture on
+     the anatomy stage (js/anatomy-model-male-body.js, 7.5 MB, loaded only then). -->
+<script>
+  var MALE_BODY_SRC = "js/anatomy-model-male-body.js";
+  if (new URLSearchParams(location.search).get("anatomy") === "male-body")
+    document.write('<script src="' + MALE_BODY_SRC + '"><\/script>');
+</script>
 <script src="js/anatomy-regions.js"></script>
 <script src="js/anatomy.js"></script>
 <script src="js/anatomy-sculpture.js"></script>
