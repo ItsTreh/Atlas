@@ -22,7 +22,9 @@
 
    A group region stands for several anatomical ones where a sculpture does
    not separate them: the authored Male_Body's thigh shows the quadriceps as
-   one mass, so it is one region there ("quadriceps-femoris").
+   one mass, so it is one region there ("quadriceps-femoris"), and likewise
+   the hamstrings ("hamstrings") and the adductor group with the gracilis
+   ("adductors").
    ========================================================================= */
 
 const ANATOMY_REGIONS = Object.freeze({
@@ -46,6 +48,7 @@ const ANATOMY_REGIONS = Object.freeze({
   "biceps-femoris":       "hamstrings",
   "semitendinosus":       "hamstrings",
   "semimembranosus":      "hamstrings",
+  "hamstrings":           "hamstrings",
   "gluteus-maximus":      "glutes",
   "gluteus-medius":       "glutes",
   "tensor-fasciae-latae": "glutes",

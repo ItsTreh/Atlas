@@ -1,7 +1,7 @@
 {
   "asset": "male-body",
   "version": 1,
-  "description": "The Male_Body sculpture (assets/anatomy/Male_Body.blend), the candidate anatomical base, at full resolution, as refined by tools/anatomy/authored/refine_male_body.py. Its regions are authored on the sculpture itself (tools/anatomy/authored/male_body_regions.py): each follows the forms this mesh shows, and a muscle whose edges it does not show is left to the body rather than guessed.",
+  "description": "The Male_Body sculpture (assets/anatomy/Male_Body.blend), the candidate anatomical base, at full resolution, as refined by tools/anatomy/authored/refine_male_body.py. Most of its regions are authored on the sculpture itself (tools/anatomy/authored/male_body_regions.py) and follow the forms this mesh shows. The muscles not authored yet are borrowed from the procedural figure by nearest surface (tools/anatomy/authored/male_body.py; \"source\": \"borrowed\"): provisional stand-ins whose borders do not follow this sculpture, each replaced when that muscle is authored.",
   "source": "assets/anatomy/Male_Body.blend",
   "importer": "tools/anatomy/authored/male_body.py",
   "glb": "assets/anatomy/male-body.glb",
@@ -15,11 +15,11 @@
   "mirror": {
     "axis": "none",
     "authored": "the whole figure (contrapposto, not symmetric)",
-    "regions": "each side is its own region (.L the figure's left, .R its right); a midline region has one",
+    "regions": "each side is its own region (.L the figure's left, .R its right); a midline region has one; a borrowed region may have one side only (the procedural figure's pose puts the teres major on the sculpture's left only)",
     "landmarks": "none yet"
   },
-  "regionSource": "authored",
-  "representation": "One material per region on Mesh_0; the material's name is the region id below. Faces still on the sculpture's own material (atlas-stone) are the body, exported as \"body\" by tools/anatomy/authored/male_body.py.",
+  "regionSource": "hybrid",
+  "representation": "One material per region on Mesh_0; the material's name is the region id below. Faces still on the sculpture's own material (atlas-stone) are the body, exported as \"body\" by tools/anatomy/authored/male_body.py. Borrowed regions are not in the .blend: male_body.py labels them at export, on faces no authored region claims.",
   "minTriangles": 100,
   "targetTriangles": 0,
   "simplifyError": 0.0004,
@@ -156,6 +156,107 @@
       "structure": "muscle",
       "atlasRegion": "quadriceps-femoris",
       "side": "left"
+    },
+    {
+      "id": "hamstrings.R",
+      "structure": "muscle",
+      "atlasRegion": "hamstrings",
+      "side": "right"
+    },
+    {
+      "id": "hamstrings.L",
+      "structure": "muscle",
+      "atlasRegion": "hamstrings",
+      "side": "left"
+    },
+    {
+      "id": "adductors.R",
+      "structure": "muscle",
+      "atlasRegion": "adductors",
+      "side": "right"
+    },
+    {
+      "id": "adductors.L",
+      "structure": "muscle",
+      "atlasRegion": "adductors",
+      "side": "left"
+    },
+    {
+      "id": "brachioradialis.R",
+      "structure": "muscle",
+      "atlasRegion": "brachioradialis",
+      "side": "right",
+      "source": "borrowed"
+    },
+    {
+      "id": "brachioradialis.L",
+      "structure": "muscle",
+      "atlasRegion": "brachioradialis",
+      "side": "left",
+      "source": "borrowed"
+    },
+    {
+      "id": "forearm-flexors.R",
+      "structure": "muscle",
+      "atlasRegion": "forearm-flexors",
+      "side": "right",
+      "source": "borrowed"
+    },
+    {
+      "id": "forearm-flexors.L",
+      "structure": "muscle",
+      "atlasRegion": "forearm-flexors",
+      "side": "left",
+      "source": "borrowed"
+    },
+    {
+      "id": "forearm-extensors.R",
+      "structure": "muscle",
+      "atlasRegion": "forearm-extensors",
+      "side": "right",
+      "source": "borrowed"
+    },
+    {
+      "id": "forearm-extensors.L",
+      "structure": "muscle",
+      "atlasRegion": "forearm-extensors",
+      "side": "left",
+      "source": "borrowed"
+    },
+    {
+      "id": "infraspinatus.R",
+      "structure": "muscle",
+      "atlasRegion": "infraspinatus",
+      "side": "right",
+      "source": "borrowed"
+    },
+    {
+      "id": "infraspinatus.L",
+      "structure": "muscle",
+      "atlasRegion": "infraspinatus",
+      "side": "left",
+      "source": "borrowed"
+    },
+    {
+      "id": "teres-major.L",
+      "structure": "muscle",
+      "atlasRegion": "teres-major",
+      "side": "left",
+      "source": "borrowed"
+    },
+    {
+      "id": "trapezius",
+      "structure": "muscle",
+      "atlasRegion": "trapezius",
+      "side": "midline",
+      "source": "borrowed"
+    },
+    {
+      "id": "erector-spinae",
+      "structure": "muscle",
+      "atlasRegion": "erector-spinae",
+      "side": "midline",
+      "source": "borrowed"
     }
   ],
   "landmarks": [],

@@ -1,6 +1,7 @@
-/* The Male_Body sculpture's authored anatomy: the regions painted on
+/* The Male_Body sculpture's anatomy: the regions painted on
    assets/anatomy/Male_Body.blend (tools/anatomy/authored/male_body_regions.py),
-   as the manifest names them, carried through the GLB into the model the app
+   and, for the muscles not authored yet, regions borrowed from the procedural
+   figure at export (tools/anatomy/authored/male_body.py), as the manifest names them, carried through the GLB into the model the app
    draws behind index.html?anatomy=male-body. The drawing itself is checked in
    a browser. */
 import fs from "node:fs";
@@ -16,7 +17,12 @@ const app = loadApp({ extra: ["js/anatomy-model-male-body.js"],
                       exports: ["ANATOMY_MODEL_MALE_BODY", "validateAnatomyModel"] });
 const MODEL = app.ANATOMY_MODEL_MALE_BODY, REGIONS = app.ANATOMY_REGIONS;
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "assets/anatomy/male-body.manifest.json"), "utf8"));
-const authored = manifest.regions.filter(r => r.structure !== "form");
+const authored = manifest.regions.filter(r => r.structure !== "form");     // muscles, painted or borrowed
+const borrowed = authored.filter(r => r.source === "borrowed");
+const painted = authored.filter(r => r.source !== "borrowed");
+// How far off the midline (cm) a side's region must lie: the adductors, on the
+// inner thigh where the thighs nearly meet, and any borrowed region may hug it.
+const margin = r => r.source === "borrowed" || r.atlasRegion === "adductors" ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
 const bytes = Buffer.from(MODEL.data, "base64");
@@ -69,13 +75,18 @@ describe("the manifest's authored regions", () => {
     }
   });
 
-  test("each side's region has its counterpart on the other side", () => {
-    for (const r of authored.filter(r => r.side !== "midline")) {
+  test("each side's painted region has its counterpart on the other side", () => {
+    for (const r of painted.filter(r => r.side !== "midline")) {
       const other = r.id.replace(/\.(L|R)$/, m => m === ".L" ? ".R" : ".L");
       const twin = manifest.regions.find(x => x.id === other);
       expect(twin, r.id).toBeDefined();
       expect(twin.atlasRegion, r.id).toBe(r.atlasRegion);
     }
+  });
+
+  test("a borrowed region stands in only for a muscle no painted region reaches", () => {
+    const paintedMuscles = new Set(painted.map(r => REGIONS[r.atlasRegion]));
+    for (const r of borrowed) expect(paintedMuscles.has(REGIONS[r.atlasRegion]), r.id).toBe(false);
   });
 
   test("everything not authored is one unselectable body", () => {
@@ -93,8 +104,8 @@ describe("the exported sculpture", () => {
   test("keeps each side's region on that side of the figure (+x is its left)", () => {
     for (const r of authored.filter(r => r.side !== "midline")) {
       const x = PRIMS.find(p => p.material === r.id).centroid[0];
-      if (r.side === "left") expect(x, r.id).toBeGreaterThan(3);
-      else expect(x, r.id).toBeLessThan(-3);
+      if (r.side === "left") expect(x, r.id).toBeGreaterThan(margin(r));
+      else expect(x, r.id).toBeLessThan(-margin(r));
     }
   });
 
@@ -152,15 +163,17 @@ describe("the model the app draws", () => {
     for (const r of authored) {
       const anchors = MODEL.regionAnchors[r.atlasRegion];
       if (r.side === "midline") expect(Math.abs(anchors.centre.centroid[0]), r.id).toBeLessThan(3);
-      else if (r.side === "left") expect(anchors.left.centroid[0], r.id).toBeGreaterThan(3);
-      else expect(anchors.right.centroid[0], r.id).toBeLessThan(-3);
+      else if (r.side === "left") expect(anchors.left.centroid[0], r.id).toBeGreaterThan(margin(r));
+      else expect(anchors.right.centroid[0], r.id).toBeLessThan(-margin(r));
     }
   });
 
-  test("selects the muscles this pass authors, and leaves the rest to the body", () => {
+  test("selects every one of the app's muscles: painted, or borrowed until it is painted", () => {
     const reached = new Set(MODEL.regions.map(n => REGIONS[n]).filter(Boolean));
-    expect([...reached].sort()).toEqual(["abs", "biceps", "calves", "chest", "glutes", "lats", "obliques",
-                                         "quads", "shoulders", "triceps"]);
+    expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
+    const byPaint = new Set(painted.map(r => REGIONS[r.atlasRegion]));
+    expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "glutes", "hamstrings",
+                                         "lats", "obliques", "quads", "shoulders", "triceps"]);
   });
 
   test("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {
@@ -176,6 +189,27 @@ describe("the model the app draws", () => {
       }
       expect(low, side).toBeLessThan(62);      // down to the kneecap
       expect(high, side).toBeGreaterThan(85);  // up to the hip crease
+    }
+  });
+
+  test("the back of each thigh is hamstrings, its inner side adductors, its front quads", () => {
+    // Around each thigh in its upper and lower thirds (ATLAS cm; +x the figure's left, +z its
+    // front), the outermost vertex in each direction: behind → hamstrings, inward → adductors, in
+    // front → quads. (At mid-thigh the sartorius crosses to the inner side, and it is the quads'.)
+    const ham = MODEL.regions.indexOf("hamstrings"), add = MODEL.regions.indexOf("adductors"),
+          quad = MODEL.regions.indexOf("quadriceps-femoris");
+    for (const side of [1, -1]) for (const [low, high] of [[62, 68], [74, 78]]) {
+      const band = [];
+      for (let v = 0; v < MODEL.vertexCount; v++) {
+        const p = position(v);
+        if (p[1] > low && p[1] < high && p[0] * side > 0.5 && p[0] * side < 20) band.push([p, regionOf(v)]);
+      }
+      const cx = band.reduce((s, [p]) => s + p[0], 0) / band.length, cz = band.reduce((s, [p]) => s + p[2], 0) / band.length;
+      const extreme = (dx, dz) => band.reduce((b, e) => ((e[0][0] - cx) * dx + (e[0][2] - cz) * dz >
+                                                          (b[0][0] - cx) * dx + (b[0][2] - cz) * dz ? e : b))[1];
+      expect(extreme(0, -1), "back " + side + " at " + low).toBe(ham);
+      expect(extreme(-side, 0), "inner " + side + " at " + low).toBe(add);
+      expect(extreme(0, 1), "front " + side + " at " + low).toBe(quad);
     }
   });
 

@@ -27,6 +27,11 @@ border settles into the crease the sculptor made instead of cutting across
 it. Where the sculpture shows no groove, the border runs straight on the
 surface between the points, which are then placed closer together.
 
+Where a border between two muscles is anatomical but the sculpture shows no
+groove at all (the back and inner thigh are smooth), its points are placed
+from the sculpture's own proportions, at the border's standard surface
+position; such borders are marked "no sculpted groove" below.
+
 The borders cut the surface into cells; a seed point inside a cell names
 its region. A cell with no seed stays body. A cell reached by two different
 seeds means a border has a gap, and the script stops. So a muscle whose
@@ -100,7 +105,8 @@ AXES = {
 }
 
 # The regions themselves (id, ATLAS region, side) are the manifest's: this
-# file holds only where they are on the surface.
+# file holds only where they are on the surface. Regions the manifest marks
+# "borrowed" are not authored here (male_body.py labels them at export).
 MANIFEST = os.path.join(ROOT, "assets", "anatomy", "male-body.manifest.json")
 
 
@@ -108,7 +114,8 @@ def manifest_regions():
     """id -> (ATLAS region, side) for every authored region of the manifest."""
     with open(MANIFEST, encoding="utf-8") as f:
         regions = json.load(f)["regions"]
-    return {r["id"]: (r["atlasRegion"], r["side"]) for r in regions if r["structure"] != "form"}
+    return {r["id"]: (r["atlasRegion"], r["side"]) for r in regions
+            if r["structure"] != "form" and r.get("source") != "borrowed"}
 
 
 REGIONS = manifest_regions()
@@ -203,6 +210,11 @@ POINTS = {
     "quad.knee.lat.R":   ("limb", "thigh.R", 262, -0.275),
     "quad.top.med.R":    ("limb", "thigh.R", 2, 0.160),
     "quad.top.lat.R":    ("limb", "thigh.R", 255, 0.030),
+    # The hamstrings' lower inner corner, where their medial border (against
+    # the adductor magnus and gracilis) comes down beside the hollow behind the
+    # knee, ~3 cm above its crease.
+    "ham.low.med.L":     ("limb", "thigh.L", 228, -0.320),
+    "ham.low.med.R":     ("limb", "thigh.R", 130, -0.325),
 }
 
 # Borders: name -> points in order. A border is traced between consecutive points.
@@ -355,17 +367,17 @@ BORDERS = {
     # The quadriceps: the sartorius's groove on its inner side, from the knee
     # to the front of the hip; its upper edge across the top of the thigh,
     # below the side of the hip (the tensor fasciae latae stays body); its
-    # back edge, held ~25 degrees behind the thigh's outer midline because the
-    # sculpture does not show where it meets the hamstrings; and the top of
-    # the kneecap.
+    # back edge, where the vastus lateralis meets the biceps femoris under the
+    # iliotibial band, ~13 degrees behind the thigh's outer midline (no
+    # sculpted groove; shared with the hamstrings); and the top of the kneecap.
     "quad.med.L": ["quad.knee.med.L", ("limb", "thigh.L", 310, -0.230), ("limb", "thigh.L", 318, -0.180),
                    ("limb", "thigh.L", 325, -0.120), ("limb", "thigh.L", 330, -0.060),
                    ("limb", "thigh.L", 336, 0.000), ("limb", "thigh.L", 342, 0.050),
                    ("limb", "thigh.L", 348, 0.100), "quad.top.med.L"],
     "quad.top.L": ["quad.top.med.L", ("limb", "thigh.L", 20, 0.150), ("limb", "thigh.L", 45, 0.130),
                    ("limb", "thigh.L", 70, 0.100), ("limb", "thigh.L", 90, 0.075), "quad.top.lat.L"],
-    "quad.back.L": ["quad.top.lat.L", ("limb", "thigh.L", 113, 0.000), ("limb", "thigh.L", 115, -0.080),
-                    ("limb", "thigh.L", 115, -0.160), ("limb", "thigh.L", 110, -0.230), "quad.knee.lat.L"],
+    "quad.back.L": ["quad.top.lat.L", ("limb", "thigh.L", 104, 0.000), ("limb", "thigh.L", 104, -0.080),
+                    ("limb", "thigh.L", 104, -0.160), ("limb", "thigh.L", 102, -0.230), "quad.knee.lat.L"],
     "quad.low.L": ["quad.knee.lat.L", ("limb", "thigh.L", 80, -0.278), ("limb", "thigh.L", 55, -0.268),
                    ("limb", "thigh.L", 30, -0.262), ("limb", "thigh.L", 8, -0.262), ("limb", "thigh.L", 340, -0.275),
                    ("limb", "thigh.L", 320, -0.285), "quad.knee.med.L"],
@@ -374,8 +386,8 @@ BORDERS = {
                    ("limb", "thigh.R", 15, 0.100), ("limb", "thigh.R", 8, 0.140), "quad.top.med.R"],
     "quad.top.R": ["quad.top.med.R", ("limb", "thigh.R", 340, 0.150), ("limb", "thigh.R", 315, 0.130),
                    ("limb", "thigh.R", 290, 0.100), ("limb", "thigh.R", 270, 0.070), "quad.top.lat.R"],
-    "quad.back.R": ["quad.top.lat.R", ("limb", "thigh.R", 248, -0.030), ("limb", "thigh.R", 245, -0.100),
-                    ("limb", "thigh.R", 245, -0.170), ("limb", "thigh.R", 250, -0.230), "quad.knee.lat.R"],
+    "quad.back.R": ["quad.top.lat.R", ("limb", "thigh.R", 256, -0.030), ("limb", "thigh.R", 256, -0.100),
+                    ("limb", "thigh.R", 256, -0.170), ("limb", "thigh.R", 258, -0.230), "quad.knee.lat.R"],
     "quad.low.R": ["quad.knee.lat.R", ("limb", "thigh.R", 285, -0.280), ("limb", "thigh.R", 310, -0.275),
                    ("limb", "thigh.R", 335, -0.270), ("limb", "thigh.R", 357, -0.262), ("limb", "thigh.R", 15, -0.270),
                    ("limb", "thigh.R", 35, -0.268), "quad.knee.med.R"],
@@ -384,6 +396,44 @@ BORDERS = {
                    ("cyl", 285, 0.455), ("cyl", 270, 0.448), ("on", "lat.front.R", ("cyl", 251, 0.445))],
     "serr.low.L": [("on", "ls.L", ("cyl", 31, 0.470)), ("cyl", 45, 0.465), ("cyl", 60, 0.460),
                    ("cyl", 75, 0.455), ("cyl", 92, 0.447), ("on", "lat.front.L", ("cyl", 113, 0.445))],
+    # The hamstrings and the adductors (no sculpted groove: the back and inner
+    # thigh are smooth, so these follow the thigh's proportions). The
+    # hamstrings run from the gluteal fold down the back of the thigh, between
+    # the quadriceps's back edge and their border with the adductors ~35-40
+    # degrees behind the inner midline; at the knee they frame the hollow
+    # behind it (semimembranosus inside, biceps femoris outside) down to ~3 cm
+    # above its crease, and their lower edge rises to the hollow's apex, where
+    # the sculpture shows the tendons parting (its fat and vessels stay body).
+    # A short edge closes them under the lateral end of the fold. The adductors fill the inner
+    # thigh from the groin crease (just below the crotch) down to the inner
+    # knee, in front of the hamstrings and behind the sartorius's groove.
+    "ham.top.L": ["glute.side.low.L", ("limb", "thigh.L", 122, 0.060), "quad.top.lat.L"],
+    "ham.top.R": ["glute.side.low.R", ("limb", "thigh.R", 240, 0.030), "quad.top.lat.R"],
+    "ham.med.L": [("on", "gfold.L", ("limb", "thigh.L", 232, 0.070)), ("limb", "thigh.L", 236, 0.000),
+                  ("limb", "thigh.L", 236, -0.080), ("limb", "thigh.L", 234, -0.160), ("limb", "thigh.L", 230, -0.240),
+                  "ham.low.med.L"],
+    "ham.med.R": [("on", "gfold.R", ("limb", "thigh.R", 130, 0.020)), ("limb", "thigh.R", 130, -0.040),
+                  ("limb", "thigh.R", 128, -0.100), ("limb", "thigh.R", 128, -0.170), ("limb", "thigh.R", 128, -0.250),
+                  "ham.low.med.R"],
+    "ham.low.L": ["ham.low.med.L", ("limb", "thigh.L", 210, -0.290), ("limb", "thigh.L", 190, -0.245),
+                  ("limb", "thigh.L", 170, -0.220), ("limb", "thigh.L", 150, -0.245), ("limb", "thigh.L", 130, -0.290),
+                  ("limb", "thigh.L", 115, -0.310), "quad.knee.lat.L"],
+    "ham.low.R": ["ham.low.med.R", ("limb", "thigh.R", 150, -0.305), ("limb", "thigh.R", 170, -0.268),
+                  ("limb", "thigh.R", 190, -0.252), ("limb", "thigh.R", 215, -0.275), ("limb", "thigh.R", 238, -0.315),
+                  ("limb", "thigh.R", 252, -0.320), "quad.knee.lat.R"],
+    "add.top.L": ["quad.top.med.L", ("limb", "thigh.L", 340, 0.150), ("limb", "thigh.L", 330, 0.085),
+                  ("limb", "thigh.L", 320, 0.060), ("limb", "thigh.L", 313, 0.000), ("limb", "thigh.L", 305, -0.045),
+                  ("limb", "thigh.L", 290, -0.050), ("limb", "thigh.L", 280, -0.040), ("limb", "thigh.L", 270, -0.005),
+                  ("limb", "thigh.L", 260, 0.025), ("on", "gfold.L", ("limb", "thigh.L", 252, 0.060))],
+    "add.top.R": ["quad.top.med.R", ("limb", "thigh.R", 15, 0.150), ("limb", "thigh.R", 30, 0.130),
+                  ("limb", "thigh.R", 40, 0.095), ("limb", "thigh.R", 50, 0.070), ("limb", "thigh.R", 60, 0.050),
+                  ("limb", "thigh.R", 68, -0.035), ("limb", "thigh.R", 80, -0.055), ("limb", "thigh.R", 90, -0.060),
+                  ("limb", "thigh.R", 100, -0.035), ("limb", "thigh.R", 108, 0.015),
+                  ("on", "gfold.R", ("limb", "thigh.R", 112, 0.010))],
+    "add.low.L": ["ham.low.med.L", ("limb", "thigh.L", 245, -0.300), ("limb", "thigh.L", 265, -0.285),
+                  ("limb", "thigh.L", 285, -0.280), "quad.knee.med.L"],
+    "add.low.R": ["ham.low.med.R", ("limb", "thigh.R", 115, -0.300), ("limb", "thigh.R", 95, -0.280),
+                  ("limb", "thigh.R", 70, -0.260), "quad.knee.med.R"],
 }
 
 # Seeds: region id -> points inside it.
@@ -409,6 +459,13 @@ SEEDS = {
     "latissimus-dorsi.L":  [("cyl", 140, 0.490)],
     "quadriceps-femoris.R": [("limb", "thigh.R", 330, -0.100)],
     "quadriceps-femoris.L": [("limb", "thigh.L", 40, -0.100)],
+    "hamstrings.R":        [("limb", "thigh.R", 190, -0.100)],
+    "hamstrings.L":        [("limb", "thigh.L", 180, -0.100)],
+    # The adductors, and on the right their top below the groin crease (the
+    # adductor longus), which the crease's border sets apart. The cells between
+    # the crease and the midline are the pubic mound's flanks: body.
+    "adductors.R":         [("limb", "thigh.R", 85, -0.120), ("limb", "thigh.R", 25, 0.030)],
+    "adductors.L":         [("limb", "thigh.L", 275, -0.120)],
 }
 
 # Leak guard: the most area (source units²) a region may take (one side).
@@ -424,6 +481,8 @@ MAX_AREA = {
     "gastrocnemius": 0.080,
     "latissimus-dorsi": 0.080,
     "quadriceps-femoris": 0.150,
+    "hamstrings": 0.090,
+    "adductors": 0.080,
 }
 
 

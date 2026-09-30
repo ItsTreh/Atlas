@@ -1,7 +1,7 @@
 {
   "note": "Written by tools/anatomy/authored/male_body_regions.py. It may rewrite Male_Body.blend only while the file's SHA-256 matches output_sha256; any hand edit makes the .blend the source of truth.",
   "output": "Male_Body.blend",
-  "output_sha256": "74ea722d863cbe1936f79d6932dee30111659aa8fdf1f7eba7770305a9fc0a97",
+  "output_sha256": "99f0603e733430bc8e71415a87229c95ab40378cba78e9396f2cf8355ff00888",
   "script": "male-body-regions@1",
   "regions": {
     "pectoralis-major.R": {
@@ -57,8 +57,8 @@
       "area": 0.0524
     },
     "gluteus-maximus.R": {
-      "faces": 3488,
-      "area": 0.05898
+      "faces": 3447,
+      "area": 0.05885
     },
     "gluteus-maximus.L": {
       "faces": 5190,
@@ -81,15 +81,31 @@
       "area": 0.02484
     },
     "quadriceps-femoris.R": {
-      "faces": 3239,
-      "area": 0.13256
+      "faces": 3177,
+      "area": 0.12871
     },
     "quadriceps-femoris.L": {
-      "faces": 4991,
-      "area": 0.13471
+      "faces": 4912,
+      "area": 0.12914
+    },
+    "hamstrings.R": {
+      "faces": 2126,
+      "area": 0.05762
+    },
+    "hamstrings.L": {
+      "faces": 2292,
+      "area": 0.06553
+    },
+    "adductors.R": {
+      "faces": 2146,
+      "area": 0.05177
+    },
+    "adductors.L": {
+      "faces": 4086,
+      "area": 0.05224
     },
     "body": {
-      "faces": 211645
+      "faces": 201177
     }
   }
 }
