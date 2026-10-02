@@ -1,0 +1,111 @@
+{
+  "note": "Written by tools/anatomy/authored/male_body_regions.py. It may rewrite Male_Body.blend only while the file's SHA-256 matches output_sha256; any hand edit makes the .blend the source of truth.",
+  "output": "Male_Body.blend",
+  "output_sha256": "99f0603e733430bc8e71415a87229c95ab40378cba78e9396f2cf8355ff00888",
+  "script": "male-body-regions@1",
+  "regions": {
+    "pectoralis-major.R": {
+      "faces": 6649,
+      "area": 0.06713
+    },
+    "pectoralis-major.L": {
+      "faces": 4707,
+      "area": 0.05884
+    },
+    "rectus-abdominis": {
+      "faces": 8131,
+      "area": 0.09697
+    },
+    "external-oblique.R": {
+      "faces": 2707,
+      "area": 0.04715
+    },
+    "external-oblique.L": {
+      "faces": 3352,
+      "area": 0.04055
+    },
+    "serratus-anterior.R": {
+      "faces": 2737,
+      "area": 0.03701
+    },
+    "serratus-anterior.L": {
+      "faces": 2738,
+      "area": 0.03273
+    },
+    "deltoid.R": {
+      "faces": 5084,
+      "area": 0.06591
+    },
+    "deltoid.L": {
+      "faces": 6725,
+      "area": 0.05447
+    },
+    "biceps-brachii.R": {
+      "faces": 3014,
+      "area": 0.02911
+    },
+    "biceps-brachii.L": {
+      "faces": 1484,
+      "area": 0.02327
+    },
+    "triceps-brachii.R": {
+      "faces": 2182,
+      "area": 0.04437
+    },
+    "triceps-brachii.L": {
+      "faces": 2589,
+      "area": 0.0524
+    },
+    "gluteus-maximus.R": {
+      "faces": 3447,
+      "area": 0.05885
+    },
+    "gluteus-maximus.L": {
+      "faces": 5190,
+      "area": 0.06424
+    },
+    "gastrocnemius.R": {
+      "faces": 3243,
+      "area": 0.06742
+    },
+    "gastrocnemius.L": {
+      "faces": 2306,
+      "area": 0.05391
+    },
+    "latissimus-dorsi.R": {
+      "faces": 423,
+      "area": 0.02431
+    },
+    "latissimus-dorsi.L": {
+      "faces": 595,
+      "area": 0.02484
+    },
+    "quadriceps-femoris.R": {
+      "faces": 3177,
+      "area": 0.12871
+    },
+    "quadriceps-femoris.L": {
+      "faces": 4912,
+      "area": 0.12914
+    },
+    "hamstrings.R": {
+      "faces": 2126,
+      "area": 0.05762
+    },
+    "hamstrings.L": {
+      "faces": 2292,
+      "area": 0.06553
+    },
+    "adductors.R": {
+      "faces": 2146,
+      "area": 0.05177
+    },
+    "adductors.L": {
+      "faces": 4086,
+      "area": 0.05224
+    },
+    "body": {
+      "faces": 201177
+    }
+  }
+}
