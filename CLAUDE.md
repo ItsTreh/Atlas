@@ -42,7 +42,7 @@ js/anatomy-model-male-body.js       what the page loads
 
 **Where a face's region comes from**, in priority order. All three are applied by `male_body.py` at export.
 
-1. **Painted (the current method).** The user paints in Blender's Vertex Paint, one colour per region, and `Male_Body.paint.json` maps each hex colour to a region id. At export:
+1. **Painted (the current method).** The user paints in Blender's Vertex Paint, one colour per region, and `Male_Body.paint.json` maps each hex colour to a region id. Several colours may map to one region, e.g. a touch-up in a slightly different shade. At export:
    - each corner snaps to its nearest listed colour (white, or any colour the key doesn't list, counts as unpainted);
    - each colour's coverage is blurred about 1 cm by distance (not along mesh edges, so the reach doesn't change with triangle size);
    - the faces a border crosses are **cut along the smooth contour**, so highlights come out as smooth curves even where the sculpture's faces are large (e.g. the upper chest);

@@ -11,12 +11,12 @@ nothing is saved back. Its regions come from two sources, recorded per
 region in the manifest:
 
   painted   painted by hand in Vertex Paint, one colour per region
-            (Male_Body.paint.json names them): each face corner takes the
-            nearest listed colour, or none if nearest to white or to a colour
-            not listed. Each colour's share is then blurred by distance
-            (about a centimetre, as far where the faces are small as where
-            they are large) and every face takes the colour with the
-            largest share, so a border becomes a smooth curve however ragged
+            (Male_Body.paint.json names them; several colours may name one
+            region): each face corner takes the nearest listed colour, or
+            none if nearest to white or to a colour not listed. Each region's
+            share is then blurred by distance (about a centimetre, as far
+            where the faces are small as where they are large) and every face
+            takes the region with the largest share, so a border becomes a smooth curve however ragged
             the strokes. The faces a border crosses are cut along it (where
             the two shares are equal), so it stays smooth where the faces are
             large; small islands are absorbed. A painted region takes
@@ -168,12 +168,13 @@ def painted(me):
         c = c[vi]
     elif attr.domain != 'CORNER':
         raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
-    ids = list(key.values())
+    ids = list(dict.fromkeys(key.values()))                         # several colours may name one region
     palette = np.array([[1.0, 1.0, 1.0]] + [[int(h[k:k + 2], 16) / 255.0 for k in (1, 3, 5)] for h in key])
-    corner = np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)
+    region = np.array([0] + [ids.index(r) + 1 for r in key.values()])
+    corner = region[np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)]
     if not corner.any():
         return None
-    nv, k = len(me.vertices), len(palette)
+    nv, k = len(me.vertices), len(ids) + 1
     # Each vertex: the share of its corners painted each colour, then blurred
     # by distance (a Gaussian, PAINT_SIGMA), each vertex weighted by the surface
     # it stands for. Blurring by distance rather than along edges reaches as far
