@@ -7,6 +7,9 @@
     "#FF09CB": "external-oblique.R",
     "#FF9903": "external-oblique.L",
     "#D600FF": "serratus-anterior.R",
-    "#FFCB00": "serratus-anterior.L"
+    "#FFCB00": "serratus-anterior.L",
+    "#FF5112": "pectoralis-major.L",
+    "#FCEA02": "deltoid.R",
+    "#6303FC": "deltoid.L"
   }
 }
