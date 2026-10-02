@@ -5,6 +5,8 @@
     "#FF4300": "pectoralis-major.L",
     "#FF025A": "rectus-abdominis",
     "#FF09CB": "external-oblique.R",
-    "#FF9903": "external-oblique.L"
+    "#FF9903": "external-oblique.L",
+    "#D600FF": "serratus-anterior.R",
+    "#FFCB00": "serratus-anterior.L"
   }
 }

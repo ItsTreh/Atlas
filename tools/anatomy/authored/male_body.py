@@ -13,8 +13,9 @@ region in the manifest:
   painted   painted by hand in Vertex Paint, one colour per region
             (Male_Body.paint.json names them): each face corner takes the
             nearest listed colour, or none if nearest to white or to a colour
-            not listed. Each colour's share is then blurred across the surface
-            (about a centimetre) and every face takes the colour with the
+            not listed. Each colour's share is then blurred by distance
+            (about a centimetre, as far where the faces are small as where
+            they are large) and every face takes the colour with the
             largest share, so a border becomes a smooth curve however ragged
             the strokes. The faces a border crosses are cut along it (where
             the two shares are equal), so it stays smooth where the faces are
@@ -59,6 +60,7 @@ import bmesh
 import bpy
 import numpy as np
 from mathutils.bvhtree import BVHTree
+from mathutils.kdtree import KDTree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True
@@ -75,8 +77,8 @@ STONE = "atlas-stone"       # the sculpture's own material: faces no region clai
 BODY = "body"
 MANIFEST = os.path.join(ROOT, "assets", "anatomy", "male-body.manifest.json")
 PAINT = os.path.join(ROOT, "assets", "anatomy", "Male_Body.paint.json")
-PAINT_BLUR, PAINT_ISLAND = 40, 30     # the painted borders' cleanup: blur steps (each reaches about
-                                      # one edge further), an island's faces
+PAINT_SIGMA, PAINT_ISLAND = 0.01, 30  # the painted borders' cleanup: the blur's reach (m, a Gaussian's
+                                      # sigma, measured on the surface, not in edges), an island's faces
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
@@ -172,15 +174,38 @@ def painted(me):
     if not corner.any():
         return None
     nv, k = len(me.vertices), len(palette)
-    # Each vertex: the share of its corners painted each colour, blurred along the mesh's edges.
+    # Each vertex: the share of its corners painted each colour, then blurred
+    # by distance (a Gaussian, PAINT_SIGMA), each vertex weighted by the surface
+    # it stands for. Blurring by distance rather than along edges reaches as far
+    # where the faces are small as where they are large, so a border does not
+    # wobble where the mesh's density changes. Surface facing away (the arm
+    # against the chest) is left out.
     share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
     share /= np.maximum(share.sum(1, keepdims=True), 1)
+    co = np.empty(nv * 3); me.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
+    nor = np.empty(nv * 3); me.vertices.foreach_get("normal", nor); nor = nor.reshape(-1, 3)
+    fa = np.empty(len(me.polygons)); me.polygons.foreach_get("area", fa)
+    ft = np.empty(len(me.polygons), np.int64); me.polygons.foreach_get("loop_total", ft)
+    area = np.bincount(vi, np.repeat(fa / ft, ft), nv)
+    reach = 2.5 * PAINT_SIGMA
+    tree = KDTree(nv)
+    for i, p in enumerate(co):
+        tree.insert(p, i)
+    tree.balance()
     e = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get("vertices", e)
     a, b = e[0::2], e[1::2]
-    deg = np.maximum(np.bincount(e, minlength=nv), 1)[:, None]
-    for _ in range(PAINT_BLUR):
-        around = np.stack([np.bincount(a, share[b, j], nv) + np.bincount(b, share[a, j], nv) for j in range(k)], 1)
-        share = 0.5 * share + 0.5 * around / deg
+    top = share.argmax(1)
+    edge = np.zeros(nv, bool); edge[a[top[a] != top[b]]] = True; edge[share.max(1) < 1] = True
+    near = np.zeros(nv, bool)                                       # only these can change
+    for i in np.flatnonzero(edge):
+        near[[j for _, j, _ in tree.find_range(co[i], reach)]] = True
+    blurred = share.copy()
+    for i in np.flatnonzero(near):
+        j = np.array([j for _, j, _ in tree.find_range(co[i], reach)])
+        d2 = ((co[j] - co[i]) ** 2).sum(1)
+        w = area[j] * np.exp(-d2 / (2 * PAINT_SIGMA ** 2)) * np.clip(nor[j] @ nor[i], 0, 1)
+        blurred[i] = w @ share[j] / max(w.sum(), 1e-12)
+    share = blurred
 
     # Cut the faces a border crosses: each edge between two vertices that lean
     # to different colours is split where their shares are equal, and the
