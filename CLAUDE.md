@@ -48,7 +48,7 @@ js/anatomy-model-male-body.js       what the page loads
    - the faces a border crosses are **cut along the smooth contour**, so highlights come out as smooth curves even where the sculpture's faces are large (e.g. the upper chest);
    - a painted region takes exactly its painted faces and replaces any older material of the same name.
 
-   Painted so far: `pectoralis-major.R` (#FF0001) and `pectoralis-major.L` (#FF4300).
+   The regions painted so far are listed at the start of each session by a SessionStart hook (`tools/claude/session-context.sh`, which reads `Male_Body.paint.json`), so they're never written down here.
 2. **Authored materials.** These are per-face materials named by region id, written earlier by `male_body_regions.py`, a landmark and border script. That script found curved areas unreliable and is now superseded by painting. It refuses to touch the hand-edited .blend (`Male_Body.regions.json` guard). Material names ending in `.001` are read without the suffix.
 3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (forearms, infraspinatus, teres major, trapezius, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
 
@@ -101,4 +101,4 @@ Don't build toward either unprompted, but flag any change that would make them h
 - **Git:**
   - feature branches only, with PRs into `main`;
   - commit or push only when asked;
-  - the current branch is `atlas-male-body-regions`, and the paint work is committed there.
+  - the current branch is reported at the start of each session by the same hook, not written here.
