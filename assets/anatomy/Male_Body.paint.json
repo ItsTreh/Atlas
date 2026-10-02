@@ -1,0 +1,7 @@
+{
+  "note": "Regions painted on Male_Body.blend in Vertex Paint: each colour (sRGB hex, as Blender's colour picker shows it) names one region. Read by tools/anatomy/authored/male_body.py; a region listed here takes exactly the faces painted its colour.",
+  "colors": {
+    "#FF0001": "pectoralis-major.R",
+    "#FF4300": "pectoralis-major.L"
+  }
+}

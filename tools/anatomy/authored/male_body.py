@@ -10,6 +10,16 @@ Male_Body.blend is only read: its mesh is appended into an empty scene and
 nothing is saved back. Its regions come from two sources, recorded per
 region in the manifest:
 
+  painted   painted by hand in Vertex Paint, one colour per region
+            (Male_Body.paint.json names them): each face corner takes the
+            nearest listed colour, or none if nearest to white or to a colour
+            not listed. Each colour's share is then blurred across the surface
+            (about a centimetre) and every face takes the colour with the
+            largest share, so a border becomes a smooth curve however ragged
+            the strokes. The faces a border crosses are cut along it (where
+            the two shares are equal), so it stays smooth where the faces are
+            large; small islands are absorbed. A painted region takes
+            exactly its painted faces, replacing any material of that name
   authored  painted on the sculpture itself (male_body_regions.py): every
             face carries one material, whose name is its region's id
             ("pectoralis-major.L", "rectus-abdominis"...); faces still
@@ -64,6 +74,9 @@ NECK_CUT = 157.5            # the procedural figure's neck cut, cm
 STONE = "atlas-stone"       # the sculpture's own material: faces no region claims
 BODY = "body"
 MANIFEST = os.path.join(ROOT, "assets", "anatomy", "male-body.manifest.json")
+PAINT = os.path.join(ROOT, "assets", "anatomy", "Male_Body.paint.json")
+PAINT_BLUR, PAINT_ISLAND = 40, 30     # the painted borders' cleanup: blur steps (each reaches about
+                                      # one edge further), an island's faces
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
@@ -121,13 +134,8 @@ def islands(labels, nbrs):
         yield comp
 
 
-def borrow(me, nbrs, passes, min_island):
-    """Each face's region on the procedural figure (by nearest surface), cleaned
-    up: a majority vote over neighbouring faces, small islands absorbed."""
-    ppos, pidx, preg, names = procedural_model()
-    ptree = BVHTree.FromPolygons([tuple(p) for p in bl.to_blender(ppos) * 100.0], [tuple(t) for t in pidx])
-    centres = np.empty(len(me.polygons) * 3); me.polygons.foreach_get("center", centres)
-    labels = np.array([preg[pidx[ptree.find_nearest(tuple(c))[2]][0]] for c in centres.reshape(-1, 3) * 100.0])
+def majority(labels, nbrs, passes, min_island):
+    """A majority vote over neighbouring faces, then small islands absorbed."""
     for _ in range(passes):
         new = labels.copy()
         for i, nb in enumerate(nbrs):
@@ -139,7 +147,76 @@ def borrow(me, nbrs, passes, min_island):
             ring = Counter(labels[j] for f in comp for j in nbrs[f] if labels[j] != labels[comp[0]])
             if ring:
                 labels[comp] = ring.most_common(1)[0][0]
-    return [names[k] for k in labels.tolist()]
+    return labels
+
+
+def painted(me):
+    """The regions painted in Vertex Paint (see PAINT), the faces their borders
+    cross cut along them: (region ids, each face's index into them + 1, 0 where
+    unpainted), or None if nothing is painted."""
+    if not os.path.exists(PAINT) or not me.color_attributes:
+        return None
+    with open(PAINT, encoding="utf-8") as f:
+        key = json.load(f)["colors"]
+    attr = me.color_attributes.get(me.color_attributes.active_color_name or "") or me.color_attributes[0]
+    c = np.empty(len(attr.data) * 4, np.float32); attr.data.foreach_get("color_srgb", c)
+    c = c.reshape(-1, 4)[:, :3]
+    vi = np.empty(len(me.loops), np.int64); me.loops.foreach_get("vertex_index", vi)
+    if attr.domain == 'POINT':
+        c = c[vi]
+    elif attr.domain != 'CORNER':
+        raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
+    ids = list(key.values())
+    palette = np.array([[1.0, 1.0, 1.0]] + [[int(h[k:k + 2], 16) / 255.0 for k in (1, 3, 5)] for h in key])
+    corner = np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)
+    if not corner.any():
+        return None
+    nv, k = len(me.vertices), len(palette)
+    # Each vertex: the share of its corners painted each colour, blurred along the mesh's edges.
+    share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
+    share /= np.maximum(share.sum(1, keepdims=True), 1)
+    e = np.empty(len(me.edges) * 2, np.int64); me.edges.foreach_get("vertices", e)
+    a, b = e[0::2], e[1::2]
+    deg = np.maximum(np.bincount(e, minlength=nv), 1)[:, None]
+    for _ in range(PAINT_BLUR):
+        around = np.stack([np.bincount(a, share[b, j], nv) + np.bincount(b, share[a, j], nv) for j in range(k)], 1)
+        share = 0.5 * share + 0.5 * around / deg
+
+    # Cut the faces a border crosses: each edge between two vertices that lean
+    # to different colours is split where their shares are equal, and the
+    # split points are joined across each face.
+    bm = bmesh.new(); bm.from_mesh(me); bm.verts.ensure_lookup_table()
+    at = {v: share[v.index] for v in bm.verts}
+    cuts = []
+    for edge in list(bm.edges):
+        v0, v1 = edge.verts
+        s0, s1 = at[v0], at[v1]
+        la, lb = int(s0.argmax()), int(s1.argmax())
+        if la == lb:
+            continue
+        d0, d1 = s0[la] - s0[lb], s1[la] - s1[lb]
+        if d0 - d1 <= 1e-9:
+            continue
+        t = min(max(d0 / (d0 - d1), 0.05), 0.95)
+        _, nvert = bmesh.utils.edge_split(edge, v0, t)
+        at[nvert] = s0 + (s1 - s0) * t
+        cuts.append(nvert)
+    if cuts:
+        bmesh.ops.connect_verts(bm, verts=cuts)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    labels = np.array([int(np.mean([at[v] for v in f.verts], 0).argmax()) for f in bm.faces])   # a tie stays unpainted
+    bm.to_mesh(me); bm.free(); me.update()
+    return ids, labels
+
+
+def borrow(me, nbrs, passes, min_island):
+    """Each face's region on the procedural figure (by nearest surface), cleaned
+    up: a majority vote over neighbouring faces, small islands absorbed."""
+    ppos, pidx, preg, names = procedural_model()
+    ptree = BVHTree.FromPolygons([tuple(p) for p in bl.to_blender(ppos) * 100.0], [tuple(t) for t in pidx])
+    centres = np.empty(len(me.polygons) * 3); me.polygons.foreach_get("center", centres)
+    labels = np.array([preg[pidx[ptree.find_nearest(tuple(c))[2]][0]] for c in centres.reshape(-1, 3) * 100.0])
+    return [names[k] for k in majority(labels, nbrs, passes, min_island).tolist()]
 
 
 def main(out_glb):
@@ -177,16 +254,24 @@ def main(out_glb):
         m.ratio = TARGET / source_faces; m.use_collapse_triangulate = True
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.modifier_apply(modifier=m.name)
+    paint = painted(me)                                             # cuts the faces its borders cross
     faces = len(me.polygons)
 
     # 2. Regions: authored materials as they are; atlas-stone is unclaimed.
     idx = np.empty(faces, np.int64); me.polygons.foreach_get("material_index", idx)
-    labels = [me.materials[i].name for i in idx]
+    # A region id never ends in Blender's duplicate suffix (".001"): drop it.
+    labels = [re.sub(r"\.\d{3}$", "", me.materials[i].name) for i in idx]
+    nbrs = face_neighbours(me)
+    if paint:                                                       # painted regions: exactly their paint
+        ids, face_paint = paint
+        face_paint = majority(face_paint, nbrs, 0, PAINT_ISLAND)
+        labels = [STONE if l in ids else l for l in labels]
+        for i in np.flatnonzero(face_paint):
+            labels[i] = ids[face_paint[i] - 1]
     unclaimed = np.array([l == STONE for l in labels])
     density = faces / BASE_FACES
     passes = max(1, round(BASE_PASSES * density ** 0.5))          # a pass reaches one face further
     min_island = max(1, round(BASE_ISLAND * density))              # an island's area, in faces
-    nbrs = face_neighbours(me)
     lend = borrowed_regions()
     centres = np.empty(faces * 3); me.polygons.foreach_get("center", centres)
     centres = bl.to_atlas(centres.reshape(-1, 3))
