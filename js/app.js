@@ -161,6 +161,15 @@ $("generate").addEventListener("click", () => {
       setStatus("Nothing could be placed without breaking a recovery window. " +
         "Free up more hours, select more muscles, or shorten the session.", "err");
   }
+
+  // A week that falls short of what the targets usually need says so here
+  // too, not only in the note under Your week.
+  if (r.placed) {
+    const v = routine.weeklyVolume();
+    if (v.untrained.length || v.short.length)
+      setStatus($("status").textContent + " Some muscles get less than they usually need " +
+                "this week — see the note under Your week.", "warn");
+  }
 });
 
 $("reset").addEventListener("click", () => {

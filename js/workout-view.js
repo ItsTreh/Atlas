@@ -82,7 +82,43 @@ function weekSummary(sessions) {
       '</b> g protein a day</span>' : '') +
   '</div>' +
   (missing.length ? '<p class="week-gap">Not trained this week: ' + esc(nameList(missing)) +
-    '. Generate again to fit ' + (missing.length === 1 ? 'it' : 'them') + ' back in.</p>' : '');
+    '. Generate again to fit ' + (missing.length === 1 ? 'it' : 'them') + ' back in.</p>' : '') +
+  volumeNote(sessions);
+}
+
+/* At most this many names in a volume note before "and N more". */
+const VOLUME_NOTE_NAMES = 4;
+const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
+  : names.slice(0, VOLUME_NOTE_NAMES).join(", ") + " and " + (names.length - VOLUME_NOTE_NAMES) + " more";
+
+/**
+ * How the week compares with what the chosen muscles usually need
+ * (WeeklyRoutine.weeklyVolume). Muscles left without direct work, or under
+ * the low end of their weekly sets, are a warning; muscles trained only once
+ * a week are a quieter note. Silent when the week meets the estimate.
+ */
+function volumeNote(sessions) {
+  const v = routine.weeklyVolume();
+  const gap = v.untrained.length || v.short.length;
+  if (!gap && !v.infrequent.length) return "";
+  const parts = [];
+  if (v.untrained.length)
+    parts.push("No time this week for " + nameList(v.untrained.map(m => m.name)) + ".");
+  if (v.short.length)
+    parts.push("Under their usual weekly minimum: " +
+      someNames(v.short.map(r => r.muscle.name + " (" + fmtSets(r.sets) + " of " + r.need + " sets)")) + ".");
+  if (v.infrequent.length)
+    parts.push((v.infrequent.length === v.rows.length ? "Each muscle is trained once a week"
+      : "Trained once a week: " + someNames(v.infrequent.map(m => m.name))) +
+      "; twice usually works better.");
+  const e = v.estimate;
+  if (e && sessions.length < e.sessions.low)
+    parts.push("Your targets usually take " + e.sessions.low + "–" + e.sessions.high + " sessions of " +
+      e.sessionMinutes + " min a week; this plan has " + sessions.length + ".");
+  parts.push(gap ? "To close the gap, add training days, lengthen sessions or pick fewer muscles."
+                 : "A training day more would let them come round twice.");
+  return '<p class="' + (gap ? "week-gap" : "week-note") + '">' +
+    (gap ? "<b>Below what your targets usually need.</b> " : "") + esc(parts.join(" ")) + '</p>';
 }
 
 function renderSession(session) {
@@ -196,7 +232,10 @@ function renderMuscle(session, w, muscle) {
     body = '<p class="wm-empty">No ' + esc(muscle.name.toLowerCase()) + ' exercises in the ' +
            'database yet' + (assisted ? ' — it gets assisting work from the lifts above.' : '.') + '</p>';
   } else {
-    body = '<ul class="wm-list">' + entries.map(e => renderEntry(session, w, e)).join("") + '</ul>' +
+    const noRoom = !entries.length && w.skipped.includes(muscle)
+      ? '<p class="wm-empty">No time left in this session for ' + esc(muscle.name.toLowerCase()) +
+        ' — see the note under Your week, or add an exercise yourself.</p>' : '';
+    body = noRoom + '<ul class="wm-list">' + entries.map(e => renderEntry(session, w, e)).join("") + '</ul>' +
       exerciseSelect(w, muscle.id, null, session.id);
   }
 

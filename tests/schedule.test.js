@@ -115,18 +115,32 @@ describe("the final plan", () => {
     expect(routine.isDayUnavailable("SUN")).toBe(false);
   });
 
+  // Every muscle has exercises now, so the guard below has nothing to bite
+  // on today; it runs again as soon as a muscle without exercises appears.
   test("muscles with no exercises are not scheduled as empty days", () => {
-    const { routine, result } = generatedWeek(app, { program: "core", sessions: 3 });
+    const bare = app.MUSCLES.filter(m => !app.exercisesFor(m.id).length);
+    if (!bare.length) return;
+    const { routine, result } = generatedWeek(app, { muscleIds: bare.map(m => m.id), sessions: 3 });
     expect(routine.sessions.length).toBe(0);
     expect(result.reason).toBe("no-exercises");
     expect(routine.plannedSessions()).toBe(0);
   });
 
+  test("the core program plans real sessions", () => {
+    const { routine, result } = generatedWeek(app, { program: "core", sessions: 3 });
+    expect(result.reason).not.toBe("no-exercises");
+    expect(routine.sessions.length).toBeGreaterThan(0);
+    for (const s of routine.sessions) expect(s.workout.entries.length).toBeGreaterThan(0);
+  });
+
+  // Used to fail the week with the core program (no exercises); a fully
+  // blocked week fails it the same way now that core has exercises.
   test("a week that cannot be planned clears the previous one", () => {
     const { routine } = generatedWeek(app, { program: "upper", sessions: 2 });
     expect(routine.sessions.length).toBe(2);
-    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("core"));
-    expect(routine.generate().reason).toBe("no-exercises");
+    for (const day of DayOfWeek.values)
+      for (let h = app.FIRST_HOUR; h <= app.LAST_HOUR; h++) routine.markBusy(day, h);
+    expect(routine.generate().reason).toBe("no-blocks");
     expect(routine.sessions.length).toBe(0);
     expect(routine.allSlots().some(s => s.state === SlotState.WORKOUT)).toBe(false);
   });
@@ -294,5 +308,46 @@ describe("meals and the week", () => {
     expect(routine.slot("MON", 9).state).toBe(SlotState.FREE);
     expect(routine.selection.source().program.id).toBe("push");
     expect(routine.nutrition.goal).toBe("lose");
+  });
+});
+
+describe("weekly volume against the estimate", () => {
+  test("every chosen muscle gets direct work or is reported as untrained", () => {
+    for (const program of ["full-body", "upper", "lower", "core"])
+      for (const minutes of [45, 60])
+        for (const sessions of [1, 2, 3, 4]) {
+          const { routine } = generatedWeek(app, { program, sessions, minutes });
+          const v = routine.weeklyVolume();
+          const direct = new Set(routine.sessions.flatMap(s =>
+            s.block.muscles.filter(m => s.workout.directSets(m.id) > 0).map(m => m.id)));
+          for (const m of routine.selectedMuscles())
+            expect(direct.has(m.id) || v.untrained.includes(m), program + " " + sessions + "×" + minutes + ": " + m.id)
+              .toBe(true);
+        }
+  });
+
+  test("a session never runs past its length; what does not fit is recorded", () => {
+    const { routine } = generatedWeek(app, { program: "full-body", sessions: 1, minutes: 60 });
+    const w = routine.sessions[0].workout;
+    expect(w.minutes).toBeLessThanOrEqual(60);
+    expect(w.skipped.length).toBeGreaterThan(0);
+    expect(routine.weeklyVolume().untrained.map(m => m.id).sort())
+      .toEqual(w.skipped.map(m => m.id).sort());
+  });
+
+  test("a full-body week in three hours reports the gap", () => {
+    const { routine } = generatedWeek(app, { program: "full-body", sessions: 3, minutes: 60 });
+    const v = routine.weeklyVolume();
+    expect(v.untrained.length + v.short.length).toBeGreaterThan(0);
+    expect(v.infrequent.length).toBeGreaterThan(0);
+    expect(v.estimate.sessions.low).toBeGreaterThan(3);
+  });
+
+  test("a push week that meets its volume reports no gap", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 4, minutes: 60 });
+    const v = routine.weeklyVolume();
+    expect(v.untrained).toEqual([]);
+    expect(v.short).toEqual([]);
+    expect(v.infrequent).toEqual([]);
   });
 });

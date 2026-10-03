@@ -21,6 +21,12 @@
        glutes have their own day) ranks one tier lower, so that muscle is
        not quietly trained on the day before its own session.
 
+   A session never runs past its length. When there is not room left for a
+   muscle's minimum (WORKOUT.minDirectSets), it gets no exercise in that
+   session and is recorded in `workout.skipped`, smallest muscles last in
+   line since the order is big muscles first. WeeklyRoutine.weeklyVolume()
+   reports it, so a muscle is never left out without the user being told.
+
    The result is a Workout per session, which the user can then edit freely.
    Nothing here touches the page.
    ========================================================================= */
@@ -67,6 +73,7 @@ class Workout {
     this.muscles = muscles;                 // the session's target Muscles
     this.entries = entries;
     this.recommended = entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    this.skipped = [];                      // Muscles the session had no time left for
   }
 
   entriesFor(muscleId) { return this.entries.filter(e => e.muscleId === muscleId); }
@@ -152,11 +159,15 @@ class WorkoutBuilder {
     const order = [...block.muscles].sort((a, b) => b.minutes - a.minutes);
     const workout = new Workout(order, []);
     const scale = Math.min(1, this.available / block.minutes);
+    // Working sets that fit in the session after the warm-up.
+    const budget = Math.floor(this.available / ESTIMATE.minutesPerSet);
 
     for (const muscle of order) {
+      const room = budget - workout.sets;
+      if (room < WORKOUT.minDirectSets) { workout.skipped.push(muscle); continue; }
       const target = this.targetSets(muscle, scale);
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
-      const need = Math.max(WORKOUT.minDirectSets, Math.round(target - credit));
+      const need = Math.min(room, Math.max(WORKOUT.minDirectSets, Math.round(target - credit)));
       const wanted = Math.max(1, Math.round(need / WORKOUT.setsPerExercise));
 
       const picks = [];

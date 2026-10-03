@@ -328,6 +328,43 @@ class WeeklyRoutine {
     return { placed, requested, free, meals, reason, limit };
   }
 
+  /**
+   * How the week measures up to what the chosen muscles usually need
+   * (estimate.js). For each chosen muscle with exercises: its weekly sets,
+   * direct plus assisting credit (already halved), against the low end of
+   * its `weeklySets`, and how many sessions give it direct work.
+   *
+   *   untrained   chosen muscles no session gives direct work (no room, or
+   *               the session was removed)
+   *   short       trained, but below the low end of their weekly sets
+   *   infrequent  trained directly fewer than ESTIMATE.timesPerWeek times
+   *   estimate    estimateTraining() for the same muscles and session length
+   *
+   * Read-only: it only counts what generate() and the user's edits built.
+   */
+  weeklyVolume() {
+    const muscles = this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0);
+    const rows = muscles.map(m => {
+      let sets = 0, times = 0;
+      for (const s of this.sessions) {
+        if (!s.workout) continue;
+        const direct = s.workout.directSets(m.id);
+        sets += direct + s.workout.assistedSets(m.id);
+        if (direct > 0) times++;
+      }
+      return { muscle: m, sets, times, need: m.weeklySets[0] };
+    });
+    return {
+      rows,
+      untrained:  rows.filter(r => r.times === 0).map(r => r.muscle),
+      short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
+      infrequent: rows.filter(r => r.times > 0 && r.times < ESTIMATE.timesPerWeek).map(r => r.muscle),
+      sets: rows.reduce((t, r) => t + r.sets, 0),
+      need: rows.reduce((t, r) => t + r.need, 0),
+      estimate: estimateTraining(muscles, this.sessionMinutes)
+    };
+  }
+
   /* --------------------------- editing the plan --------------------------- */
 
   /** Starts on `day` where `session` fits in hours that are free or already its own. */
