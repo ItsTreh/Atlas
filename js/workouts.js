@@ -142,6 +142,7 @@ class WorkoutBuilder {
         this.timesThisWeek.set(m.id, (this.timesThisWeek.get(m.id) || 0) + 1);
 
     this.usedThisWeek = new Map();          // muscle id → Set of exercises
+    this.setsThisWeek = new Map();          // muscle id → sets credited so far (direct + assisting)
     // Every muscle with work of its own somewhere this week.
     this.trainedThisWeek = new Set(this.sessions.flatMap(s =>
       s.block.muscles.filter(m => !s.block.riders.has(m)).map(m => m.id)));
@@ -156,9 +157,19 @@ class WorkoutBuilder {
   buildOne(session) {
     const block = session.block;
     // Big muscles first: their compounds give the small ones secondary credit.
-    const order = [...block.muscles].sort((a, b) => b.minutes - a.minutes);
+    // A split day the user chose repeats in the week, and a long one may not
+    // fit every muscle; there the muscles furthest below their weekly minimum
+    // go first, so a muscle left out on Monday leads on Wednesday instead of
+    // being left out every time.
+    const behind = m => (this.setsThisWeek.get(m.id) || 0) / m.weeklySets[0];
+    const order = [...block.muscles].sort((a, b) =>
+      (block.fill ? behind(a) - behind(b) : 0) || b.minutes - a.minutes);
     const workout = new Workout(order, []);
-    const scale = Math.min(1, this.available / block.minutes);
+    // A split day the user chose fills the session they asked for: its share
+    // of time scales up as well as down, still capped by each muscle's weekly
+    // maximum (targetSets). The automatic plan only ever scales down.
+    const scale = block.fill ? this.available / block.minutes
+                             : Math.min(1, this.available / block.minutes);
     // Working sets that fit in the session after the warm-up.
     const budget = Math.floor(this.available / ESTIMATE.minutesPerSet);
 
@@ -184,7 +195,11 @@ class WorkoutBuilder {
       for (const ex of picks) used.add(ex);
       this.usedThisWeek.set(muscle.id, used);
     }
+    if (block.fill) this.fillSession(workout, order, budget);
     workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    for (const muscle of block.muscles)
+      this.setsThisWeek.set(muscle.id, (this.setsThisWeek.get(muscle.id) || 0) +
+        workout.directSets(muscle.id) + workout.assistedSets(muscle.id));
     return workout;
   }
 
@@ -197,6 +212,29 @@ class WorkoutBuilder {
     const times = this.timesThisWeek.get(muscle.id) || 1;
     const weeklyCap = Math.ceil(muscle.weeklySets[1] / times);
     return Math.max(WORKOUT.minDirectSets, Math.min(fromTime, weeklyCap));
+  }
+
+  /**
+   * Spends the sets a split day still has room for, one at a time, on the
+   * muscle furthest below its weekly minimum that can still take one: an
+   * exercise under WORKOUT.maxSetsPerExercise, and the muscle under its
+   * share of its weekly maximum. Stops when nothing qualifies, so a session
+   * ends short only when every muscle in it has had enough.
+   */
+  fillSession(workout, order, budget) {
+    const week = m => (this.setsThisWeek.get(m.id) || 0) +
+                      workout.directSets(m.id) + workout.assistedSets(m.id);
+    const cap = m => Math.ceil(m.weeklySets[1] / (this.timesThisWeek.get(m.id) || 1));
+    while (workout.sets < budget) {
+      const open = order.filter(m => workout.directSets(m.id) < cap(m) &&
+        workout.entriesFor(m.id).some(e => e.sets < WORKOUT.maxSetsPerExercise));
+      if (!open.length) return;
+      open.sort((a, b) => week(a) / a.weeklySets[0] - week(b) / b.weeklySets[0]);
+      const entry = workout.entriesFor(open[0].id)
+        .filter(e => e.sets < WORKOUT.maxSetsPerExercise)
+        .sort((a, b) => a.sets - b.sets)[0];
+      entry.sets++;
+    }
   }
 
   /** Splits `total` sets over the entries as evenly as the per-exercise cap allows. */

@@ -94,6 +94,8 @@ class TrainingBlock {
     this.family = muscles[0].family;
     this.riders = new Set();   // along for the ride: named, but no session time
     this.limit = Infinity;     // the session length; set when blocks are merged to fit the days
+    this.name = null;          // a split day's name ("Upper", "Push"…), when the user chose a split
+    this.fill = false;         // true: the session takes the whole length the user chose
   }
   /** One block training both, when the week has fewer days than blocks. */
   static merge(host, guest) {
@@ -106,13 +108,13 @@ class TrainingBlock {
   }
   /* A merged block longer than the session keeps the session's length; its
      sets are scaled down to fit (WorkoutBuilder). */
-  get sessionMinutes() { return Math.min(this.minutes, this.limit); }
+  get sessionMinutes() { return this.fill ? this.limit : Math.min(this.minutes, this.limit); }
   get durationHours() { return Math.max(1, Math.ceil(this.sessionMinutes / 60)); }
   /** True when the block trains more than one family (a merged upper-and-legs day). */
   get mixed() {
     return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;
   }
-  get label() { return this.muscles.map(m => m.name).join(" · "); }
+  get label() { return (this.name ? this.name + ": " : "") + this.muscles.map(m => m.name).join(" · "); }
   get css() { return FAMILIES[this.family].css; }
   has(muscle) { return this.muscles.includes(muscle); }
   freeMinutes(limit) { return limit - this.minutes; }

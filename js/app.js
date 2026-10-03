@@ -52,7 +52,7 @@ routine.selection.onChange(() => saveRoutine(routine));
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "window", "showmeals"])
+for (const id of ["len", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
     renderNutritionMini();
@@ -72,7 +72,7 @@ let generatedFor = null, placedCount = 0;
 function planInputs() {
   const n = routine.nutrition;
   return routine.selection.muscles().map(m => m.id).join() + "|" +
-         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" +
+         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" + routine.split + "|" +
          [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
          n.showMeals + "|" + routine.plannedSessions() + "|" +
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");

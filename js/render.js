@@ -22,6 +22,9 @@ function buildControls() {
   $("len").value = routine.sessionMinutes;
   [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
   $("sessions").value = routine.sessionsPerWeek;
+  $("split").innerHTML = Object.entries(SPLITS).map(([id, s]) =>
+    '<option value="' + id + '">' + s.label + '</option>').join("");
+  $("split").value = routine.split;
   $("window").value = routine.preferredWindow;
   $("showmeals").checked = routine.nutrition.showMeals;
 }
@@ -72,6 +75,7 @@ function readControls() {
   routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
   $("sessions").value = routine.sessionsPerWeek;
   routine.preferredWindow = $("window").value;
+  if (SPLITS[$("split").value]) routine.split = $("split").value;
   routine.nutrition.showMeals = $("showmeals").checked;
 }
 
@@ -157,9 +161,9 @@ function renderGrid() {
       const minutes = sessionMinutes(s);
       cell.innerHTML = '<span class="bar"></span>' +
         (first
-          ? '<span class="t1">' + s.block.label + '</span>' +
+          ? '<span class="t1">' + (s.block.name || s.block.label) + '</span>' +
             '<span class="t2">≈ ' + minutes + ' min' +
-              (s.block.mixed ? '' : ' · ' + FAMILIES[s.block.family].name) + '</span>'
+              (s.block.name || s.block.mixed ? '' : ' · ' + FAMILIES[s.block.family].name) + '</span>'
           : '<span class="t2">…continues</span>');
       cell.setAttribute("aria-label",
         where + ", " + s.block.label + " session, about " + minutes + " minutes");

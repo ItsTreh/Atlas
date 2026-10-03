@@ -351,3 +351,74 @@ describe("weekly volume against the estimate", () => {
     expect(v.infrequent).toEqual([]);
   });
 });
+
+describe("splits the user chooses", () => {
+  const week = (program, split, sessions, minutes, off = []) => {
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
+    Object.assign(routine, { split, sessionsPerWeek: sessions, sessionMinutes: minutes });
+    for (const d of off) routine.setDayUnavailable(d, true);
+    const result = routine.generate();
+    const sessions_ = [...routine.sessions].sort((a, b) =>
+      DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day));
+    return { routine, result, sessions: sessions_ };
+  };
+
+  test("Upper · Lower from Monday to Thursday is Upper, Lower, Upper, Lower", () => {
+    const { sessions, routine } = week("full-body", "upper-lower", 4, 60, ["FRI", "SAT", "SUN"]);
+    expect(sessions.map(s => s.day)).toEqual(["MON", "TUE", "WED", "THU"]);
+    const names = sessions.map(s => s.block.name);
+    expect(new Set(names)).toEqual(new Set(["Upper", "Lower"]));
+    for (let i = 1; i < names.length; i++) expect(names[i]).not.toBe(names[i - 1]);
+    const v = routine.weeklyVolume();
+    expect(v.infrequent).toEqual([]);
+    expect(v.short).toEqual([]);
+    expect(v.untrained).toEqual([]);
+    for (const s of sessions) expect(s.workout.minutes).toBeGreaterThanOrEqual(54);
+  });
+
+  test("each split day trains only its own families", () => {
+    const families = { Upper: ["push", "pull"], Lower: ["legs", "core"],
+                       Push: ["push"], Pull: ["pull"], Legs: ["legs", "core"] };
+    for (const split of ["upper-lower", "push-pull-legs"]) {
+      const { sessions } = week("full-body", split, 6, 60);
+      for (const s of sessions)
+        for (const m of s.block.muscles) expect(families[s.block.name]).toContain(m.family);
+    }
+  });
+
+  test("a split day takes the session length the user chose, and no more", () => {
+    for (const split of ["upper-lower", "push-pull-legs", "full-body"])
+      for (const minutes of [45, 60, 90]) {
+        const { sessions } = week("full-body", split, 4, minutes);
+        expect(sessions.length).toBeGreaterThan(0);
+        for (const s of sessions) {
+          expect(s.durationHours).toBe(Math.max(1, Math.ceil(minutes / 60)));
+          expect(s.workout.minutes, split + " " + minutes).toBeLessThanOrEqual(minutes);
+        }
+      }
+  });
+
+  test("Full body repeats on days far enough apart to recover", () => {
+    const { sessions } = week("full-body", "full-body", 3, 60);
+    expect(sessions.length).toBe(3);
+    for (const s of sessions) expect(s.block.name).toBe("Full body");
+    for (let i = 1; i < sessions.length; i++)
+      expect(DayOfWeek.distance(sessions[i].day, sessions[i - 1].day)).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a muscle left out of one full-body day leads on the next", () => {
+    const { sessions } = week("full-body", "full-body", 3, 60);
+    const skipped = sessions.map(s => s.workout.skipped.map(m => m.id).sort().join());
+    expect(new Set(skipped).size).toBeGreaterThan(1);
+  });
+
+  test("the split is kept when the plan is saved and restored", () => {
+    const { routine } = week("upper", "push-pull-legs", 3, 60);
+    const again = new app.WeeklyRoutine();
+    again.restore(JSON.parse(JSON.stringify(routine.snapshot())));
+    expect(again.split).toBe("push-pull-legs");
+    expect(again.sessions.map(s => s.block.name).sort())
+      .toEqual(routine.sessions.map(s => s.block.name).sort());
+  });
+});

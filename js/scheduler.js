@@ -70,10 +70,15 @@ class Scheduler {
   /**
    * @param routine  the WeeklyRoutine, already cleared of generated sessions
    * @param blocks   the TrainingBlocks to rotate through
+   * @param maxUses  the most times one block may go in the week:
+   *                 ESTIMATE.timesPerWeek for the automatic plan; for a split
+   *                 the user chose, enough for its days to fill the week
+   *                 (routine.js, blockUses)
    */
-  constructor(routine, blocks) {
+  constructor(routine, blocks, maxUses = ESTIMATE.timesPerWeek) {
     this.routine = routine;
     this.blocks = blocks;
+    this.maxUses = maxUses;
     this.window = routine.preferredWindow === "any"
       ? null : WINDOWS[routine.preferredWindow];
 
@@ -115,7 +120,7 @@ class Scheduler {
   bestPlacement(placements, taken) {
     const uses = block => placements.filter(p => p.block === block).length;
     const days = new Set(placements.map(p => p.day));
-    const open = this.blocks.filter(b => uses(b) < ESTIMATE.timesPerWeek);
+    const open = this.blocks.filter(b => uses(b) < this.maxUses);
     if (!open.length) return { placement: null, limit: "enough" };
 
     let sawRoom = false;
@@ -164,7 +169,7 @@ class Scheduler {
       if (best >= want || i === days.length || count + days.length - i <= best) return;
       const day = days[i];
       for (const block of this.blocks) {
-        if (uses.get(block) >= ESTIMATE.timesPerWeek || !fits.get(block).has(day)) continue;
+        if (uses.get(block) >= this.maxUses || !fits.get(block).has(day)) continue;
         if (placed.some(p => recoveryClash(block, day, p.block, p.day))) continue;
         uses.set(block, uses.get(block) + 1); placed.push({ day, block });
         search(i + 1, count + 1);
