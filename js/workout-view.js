@@ -136,9 +136,22 @@ function renderSession(session) {
           '" aria-label="Remove ' + DAY_NAME[session.day] + '\'s session">Remove session</button>' +
       '</div>' +
     '</header>' +
-    '<p class="wo-notes">' + recoveryNote(session) + fuelNote(session) + '</p>' +
+    '<p class="wo-notes">' + lengthNote(session) + recoveryNote(session) + fuelNote(session) + '</p>' +
     w.muscles.map(m => renderMuscle(session, w, m)).join("") +
   '</article>';
+}
+
+/**
+ * A split day gets the best dose for its muscles, not the longest workout
+ * the time allows (WorkoutBuilder.doseSets), so it can end well inside the
+ * length the user chose. Saying so is part of the plan: the time left is a
+ * choice, not a gap.
+ */
+function lengthNote(session) {
+  const w = session.workout, limit = session.block.limit;
+  if (!session.block.splitDay || w.skipped.length || w.minutes > limit - 5) return "";
+  return '<span><b>Length:</b> finishes in about ' + w.minutes + ' of your ' + limit +
+    ' min; more sets here would add fatigue, not results.</span>';
 }
 
 /**
@@ -232,9 +245,16 @@ function renderMuscle(session, w, muscle) {
     body = '<p class="wm-empty">No ' + esc(muscle.name.toLowerCase()) + ' exercises in the ' +
            'database yet' + (assisted ? ' — it gets assisting work from the lifts above.' : '.') + '</p>';
   } else {
-    const noRoom = !entries.length && w.skipped.includes(muscle)
+    const noRoom = entries.length ? ''
+      : w.skipped.includes(muscle) && direct + assisted > 0
+      ? '<p class="wm-empty">No time left here for an exercise of its own; it gets ≈' +
+        fmtSets(direct + assisted) + ' sets from the lifts above.</p>'
+      : w.skipped.includes(muscle)
       ? '<p class="wm-empty">No time left in this session for ' + esc(muscle.name.toLowerCase()) +
-        ' — see the note under Your week, or add an exercise yourself.</p>' : '';
+        ' — see the note under Your week, or add an exercise yourself.</p>'
+      : session.block.splitDay && direct + assisted > 0
+      ? '<p class="wm-empty">Covered by the lifts above: an exercise of its own here would ' +
+        'add more than it needs this week.</p>' : '';
     body = noRoom + '<ul class="wm-list">' + entries.map(e => renderEntry(session, w, e)).join("") + '</ul>' +
       exerciseSelect(w, muscle.id, null, session.id);
   }

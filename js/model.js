@@ -94,6 +94,7 @@ class TrainingBlock {
     this.family = muscles[0].family;
     this.riders = new Set();   // along for the ride: named, but no session time
     this.limit = Infinity;     // the session length; set when blocks are merged to fit the days
+    this.name = null;          // a split day's name ("Upper", "Push"…), when the user chose a split
   }
   /** One block training both, when the week has fewer days than blocks. */
   static merge(host, guest) {
@@ -112,7 +113,9 @@ class TrainingBlock {
   get mixed() {
     return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;
   }
-  get label() { return this.muscles.map(m => m.name).join(" · "); }
+  /** A day of a split the user chose (routine.js, SPLITS): dosed by evidence, not by time. */
+  get splitDay() { return this.name !== null; }
+  get label() { return (this.name ? this.name + ": " : "") + this.muscles.map(m => m.name).join(" · "); }
   get css() { return FAMILIES[this.family].css; }
   has(muscle) { return this.muscles.includes(muscle); }
   freeMinutes(limit) { return limit - this.minutes; }

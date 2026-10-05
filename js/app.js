@@ -52,7 +52,7 @@ routine.selection.onChange(() => saveRoutine(routine));
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "window", "showmeals"])
+for (const id of ["len", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
     renderNutritionMini();
@@ -72,7 +72,7 @@ let generatedFor = null, placedCount = 0;
 function planInputs() {
   const n = routine.nutrition;
   return routine.selection.muscles().map(m => m.id).join() + "|" +
-         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" +
+         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" + routine.split + "|" +
          [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
          n.showMeals + "|" + routine.plannedSessions() + "|" +
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
@@ -160,6 +160,19 @@ $("generate").addEventListener("click", () => {
     default:
       setStatus("Nothing could be placed without breaking a recovery window. " +
         "Free up more hours, select more muscles, or shorten the session.", "err");
+  }
+
+  // A split whose days the selection leaves empty repeats the days it has,
+  // and recovery can then hold the week below the days asked for. Say that,
+  // and which split would fit, rather than a bare "partial".
+  const empty = routine.emptySplitDays();
+  if (r.placed && r.placed < Math.min(r.requested, r.free) && empty.length) {
+    const kept = SPLITS[routine.split].days.map(([name]) => name).filter(n => !empty.includes(n));
+    const fits = routine.splitsThatFit().map(id => SPLITS[id].label);
+    setStatus("Nothing you selected goes on " + empty.join(" or ") + " days, so the week repeats " +
+      kept.join(" and ") + ", which needs rest days between: " + r.placed + " of the " +
+      days(r.requested) + " fit." + (fits.length ? " " + fits.join(" or ") + " fits your selection." : ""),
+      "warn");
   }
 
   // A week that falls short of what the targets usually need says so here
