@@ -60,6 +60,7 @@ const MOVEMENTS = Object.freeze({
   "hip-thrust":         "Hip thrust",
   "hinge":              "Hip hinge",
   "glute-kickback":     "Glute kickback",
+  "knee-flexion":       "Knee flexion (leg curl)",
   "shrug":              "Shrug",
   "wrist-curl":         "Wrist curl",
   "wrist-extension":    "Wrist extension",
@@ -193,6 +194,11 @@ const EXERCISE_CATALOGUE = [
   ["Step Ups",                                   "lunge",          ["glutes", "quads"], []],
   ["Smith Machine Lunge",                        "lunge",          ["glutes", "quads"], ["adductors"]],
   ["Romanian Deadlift",                          "hinge",          ["glutes", "hamstrings"], ["lower-back", "forearms"]],
+
+  // hamstrings (the deadlift above also counts): a knee-flexion lift, so the
+  // hamstrings can be trained without loading the glutes again
+  ["Seated Leg Curl",                            "knee-flexion",   ["hamstrings"], []],
+  ["Lying Leg Curl",                             "knee-flexion",   ["hamstrings"], []],
 
   /* The muscles below had no exercises until now. Common, well-known choices,
      added to the catalogue only: they are not in any rating list, so each
