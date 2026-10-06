@@ -110,6 +110,18 @@
       "side": "left"
     },
     {
+      "id": "brachialis.R",
+      "structure": "muscle",
+      "atlasRegion": "brachialis",
+      "side": "right"
+    },
+    {
+      "id": "brachialis.L",
+      "structure": "muscle",
+      "atlasRegion": "brachialis",
+      "side": "left"
+    },
+    {
       "id": "gluteus-maximus.R",
       "structure": "muscle",
       "atlasRegion": "gluteus-maximus",
