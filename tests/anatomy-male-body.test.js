@@ -20,6 +20,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "assets/anatomy/male
 const authored = manifest.regions.filter(r => r.structure !== "form");     // muscles, painted or borrowed
 const borrowed = authored.filter(r => r.source === "borrowed");
 const painted = authored.filter(r => r.source !== "borrowed");
+// Muscles painted on the sculpture but deliberately not selectable yet: they
+// map to no app muscle until a zoomed anatomy view shows them on their own
+// (docs/anatomy-levels.md). Only these may map to nothing.
+const HIDDEN = new Set(["serratus-anterior"]);
 // How far off the midline (cm) a side's region must lie: the adductors, on the
 // inner thigh where the thighs nearly meet, and any borrowed region may hug it.
 const margin = r => r.source === "borrowed" || r.atlasRegion === "adductors" ? 0 : 3;
@@ -71,7 +75,8 @@ describe("the manifest's authored regions", () => {
   test("each names an ATLAS region that reaches one of the app's muscles", () => {
     for (const r of authored) {
       expect(REGIONS, r.id).toHaveProperty(r.atlasRegion);
-      expect(app.MUSCLE_BY_ID.has(REGIONS[r.atlasRegion]), r.id + " → " + REGIONS[r.atlasRegion]).toBe(true);
+      if (HIDDEN.has(r.atlasRegion)) expect(REGIONS[r.atlasRegion], r.id).toBe(null);
+      else expect(app.MUSCLE_BY_ID.has(REGIONS[r.atlasRegion]), r.id + " → " + REGIONS[r.atlasRegion]).toBe(true);
     }
   });
 
@@ -142,7 +147,8 @@ describe("the model the app draws", () => {
     expect(app.errors.slice(before)).toEqual([]);
     MODEL.regions.forEach((name, i) => {
       if (MODEL.kinds[i] !== "muscle") return;
-      expect(app.MUSCLE_BY_ID.has(REGIONS[name]), name).toBe(true);
+      if (HIDDEN.has(name)) expect(REGIONS[name], name).toBe(null);
+      else expect(app.MUSCLE_BY_ID.has(REGIONS[name]), name).toBe(true);
     });
     expect(MODEL.kinds[MODEL.regions.indexOf("body")]).toBe("form");
   });
@@ -171,9 +177,17 @@ describe("the model the app draws", () => {
   test("selects every one of the app's muscles: painted, or borrowed until it is painted", () => {
     const reached = new Set(MODEL.regions.map(n => REGIONS[n]).filter(Boolean));
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
-    const byPaint = new Set(painted.map(r => REGIONS[r.atlasRegion]));
+    const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
     expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "glutes", "hamstrings",
                                          "lats", "obliques", "quads", "shoulders", "traps", "triceps"]);
+  });
+
+  test("keeps the hidden muscles painted, on both sides, and drawn but never selectable", () => {
+    for (const name of HIDDEN) {
+      expect(painted.filter(r => r.atlasRegion === name).map(r => r.side).sort(), name).toEqual(["left", "right"]);
+      expect(MODEL.regions, name).toContain(name);
+      expect(MODEL.kinds[MODEL.regions.indexOf(name)], name).toBe("muscle");
+    }
   });
 
   test("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {
