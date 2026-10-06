@@ -173,7 +173,7 @@ describe("the model the app draws", () => {
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
     const byPaint = new Set(painted.map(r => REGIONS[r.atlasRegion]));
     expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "glutes", "hamstrings",
-                                         "lats", "obliques", "quads", "shoulders", "triceps"]);
+                                         "lats", "obliques", "quads", "shoulders", "traps", "triceps"]);
   });
 
   test("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {

@@ -245,11 +245,16 @@
       "source": "borrowed"
     },
     {
-      "id": "trapezius",
+      "id": "trapezius.R",
       "structure": "muscle",
       "atlasRegion": "trapezius",
-      "side": "midline",
-      "source": "borrowed"
+      "side": "right"
+    },
+    {
+      "id": "trapezius.L",
+      "structure": "muscle",
+      "atlasRegion": "trapezius",
+      "side": "left"
     },
     {
       "id": "erector-spinae",
