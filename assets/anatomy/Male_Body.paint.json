@@ -12,6 +12,8 @@
     "#FCEA02": "deltoid.R",
     "#6303FC": "deltoid.L",
     "#BDFF00": "biceps-brachii.R",
-    "#68FF00": "biceps-brachii.L"
+    "#68FF00": "biceps-brachii.L",
+    "#9FC3FF": "trapezius.R",
+    "#A8FFD5": "trapezius.L"
   }
 }
