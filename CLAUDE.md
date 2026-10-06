@@ -69,6 +69,7 @@ js/anatomy-model-male-body.js       what the page loads
 - **Anatomical accuracy is the basis.** Every clickable area selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap, the point of the elbow), nothing is selectable. Decide borders by anatomy, not by what a user might expect to click. Explain surface anatomy that isn't obvious instead of quietly "fixing" it against the anatomy.
 - **Keep region ids stable**, and keep group regions (`quadriceps-femoris`, `hamstrings`, `adductors`) where the sculpture shows one mass. Finer sub-regions may sit under them later.
 - **The user prefers one muscle, one change.** The agreed order is to fill in the missing muscles first and polish all borders at the end.
+- **The serratus anterior is a deliberate exception to "muscle means selectable".** It stays painted and in the model, but `js/anatomy-regions.js` maps it to `null`, so it's drawn and not clickable. It trains with pushing, so putting it under Obliques was wrong, and it's too minor to be a training muscle of its own. It becomes explorable when the zoomed anatomy view exists. Don't "fix" it by mapping it to a training muscle. The plan is in `docs/anatomy-levels.md`.
 
 ## Where it's heading
 
