@@ -14,6 +14,8 @@
     "#BDFF00": "biceps-brachii.R",
     "#68FF00": "biceps-brachii.L",
     "#9FC3FF": "trapezius.R",
-    "#A8FFD5": "trapezius.L"
+    "#A8FFD5": "trapezius.L",
+    "#FFD9A1": "triceps-brachii.R",
+    "#FF8C82": "triceps-brachii.L"
   }
 }
