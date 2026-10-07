@@ -16,6 +16,8 @@
     "#9FC3FF": "trapezius.R",
     "#A8FFD5": "trapezius.L",
     "#FFD9A1": "triceps-brachii.R",
-    "#FF8C82": "triceps-brachii.L"
+    "#FF8C82": "triceps-brachii.L",
+    "#62FFA7": "brachialis.R",
+    "#68FFDD": "brachialis.L"
   }
 }
