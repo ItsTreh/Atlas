@@ -50,7 +50,7 @@ js/anatomy-model-male-body.js       what the page loads
 
    The regions painted so far are listed at the start of each session by a SessionStart hook (`tools/claude/session-context.sh`, which reads `Male_Body.paint.json`), so they're never written down here.
 2. **Authored materials.** These are per-face materials named by region id, written earlier by `male_body_regions.py`, a landmark and border script. That script found curved areas unreliable and is now superseded by painting. It refuses to touch the hand-edited .blend (`Male_Body.regions.json` guard). Material names ending in `.001` are read without the suffix.
-3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (forearms, infraspinatus, teres major, trapezius, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
+3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (today: infraspinatus, teres major, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
 
 **Adding a painted muscle:**
 1. The user paints and saves the .blend, then gives the colour and the muscle.
@@ -78,10 +78,11 @@ The redesign aims for a calm, monochrome, gallery-like interface with the body a
 Done:
 - the foundation theme
 - a dedicated anatomy stage
+- front/back controls and rotation (PR #33): one body turned by a single camera angle (`yaw` in `js/anatomy-sculpture.js`; front 0°, back 180°), a ±25° drag orbit, and keyboard focus that turns the body to the muscle
 
 Next:
-- the 3D anatomical sculpture replaces the flat figure: the Male_Body work, still behind the URL flag and not on `main`
-- refined hover and selection states, front/back controls, rotation and zoom
+- the 3D anatomical sculpture replaces the flat figure: the Male_Body work, on `main` behind the URL flag, with painting still in progress (back, hips and legs remain)
+- refined hover and selection states, a side view (90°) and zoom, both added to the same camera
 - side rails for programs and training demand
 - redesigned Nutrition and Week plan stages
 
