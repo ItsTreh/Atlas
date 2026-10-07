@@ -682,15 +682,16 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
 
 /* The anatomy stage: the body's room. Centred, frameless, on the page's own
    ground, and most of the first screen. It sets one size, --stage-h: the
-   screen's height less the masthead, or the height two figures side by
-   side reach at the page's width, whichever is smaller, so a phone gets a
-   smaller room rather than empty space around the body. --pair is how
-   many times taller than wide the pair of views is: the headless
-   sculpture is about square, the SVG figure (with a head) 1.14. 86px
-   holds the view captions and the two-line caption below. `isolation` keeps anything
-   layered in it later (a backdrop, a blur, labels) stacking inside it. */
+   screen's height less the masthead, or the height the figure reaches at
+   the page's width, whichever is smaller, so a phone gets a smaller room
+   rather than empty space around the body. --pair is how many times
+   taller than wide the figure is: the sculpture, one body with room to
+   turn, about 2; the SVG figure, a pair of views with a head, 1.14. 86px
+   holds the control or view captions and the two-line caption below.
+   `isolation` keeps anything layered in it later (a backdrop, a blur,
+   labels) stacking inside it. */
 .anatomy-stage {
-  --pair: 1;
+  --pair: 2;
   --stage-h: clamp(260px, min(100svh - 180px, (100vw - 2 * var(--space)) * var(--pair) + 86px), 1200px);
   position: relative; isolation: isolate;
   height: var(--stage-h);
@@ -753,27 +754,52 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
 }
 .anatomy-caption.live { color: var(--ink); }
 
-/* The 3D sculpture: a canvas the renderer sizes to the viewport, with a
-   caption under each view and, for the keyboard, a checkbox on each
-   muscle. The checkboxes are invisible until focused (the canvas draws the
-   focused muscle's outline; the ring marks the point). */
+/* The 3D sculpture: a canvas the renderer sizes to the viewport, the
+   control that turns the body under it and, for the keyboard, a checkbox
+   on each muscle. The checkboxes are invisible until focused (the canvas
+   draws the focused muscle's outline; the ring marks the point). A
+   sideways drag turns the body, so only vertical swipes scroll the page. */
 .anatomy-sculpture { position: relative; }
 .anatomy-sculpture canvas {
-  display: block; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-}
-.anatomy-sculpture .view-cap {
-  position: absolute; margin-top: 10px; transform: translateX(-50%); white-space: nowrap;
-  font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase;
-  color: var(--ink-faint);
+  display: block; touch-action: pan-y pinch-zoom; -webkit-tap-highlight-color: transparent;
+  user-select: none; -webkit-user-select: none;
 }
 /* Clipped: while a resize settles, checkboxes still at their old places
    must not widen the page. */
-.anatomy-sculpture .hits { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.anatomy-sculpture .hits {
+  position: absolute; top: 0; left: 0; right: 0; overflow: hidden; pointer-events: none;
+}
 .anatomy-sculpture .hit {
   position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px;
   border-radius: 50%; outline: none;
 }
 .anatomy-sculpture .hit:focus-visible { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px var(--bg); }
+/* A checkbox marks its muscle as its view shows it: not while turning. */
+.anatomy-sculpture:is(.turning, .off-view) .hit:focus-visible { box-shadow: none; }
+
+/* Turning the body: Front and Back either side of a dial, the body seen
+   from above on its plinth, which turns with it. The view shown is in ink
+   and underlined; once a drag has turned the body off it, the underline
+   fades, as pressing it again returns there. */
+.anatomy-sculpture .turn {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.anatomy-sculpture .turn button {
+  font: var(--t-control); font-size: 13px; color: var(--ink-faint);
+  background: none; border: 0; border-radius: 6px; padding: 10px 8px; cursor: pointer;
+  text-decoration: underline 1px transparent; text-underline-offset: 5px;
+  transition: color .15s ease, text-decoration-color .15s ease;
+}
+.anatomy-sculpture .turn button:hover { color: var(--ink); }
+.anatomy-sculpture .turn button[aria-pressed="true"] { color: var(--ink); text-decoration-color: var(--ink); }
+.anatomy-sculpture.off-view .turn button[aria-pressed="true"] { text-decoration-color: var(--line); }
+.anatomy-sculpture .dial { width: 24px; height: 24px; flex: none; }
+.anatomy-sculpture .dial .plinth { fill: none; stroke: var(--line); stroke-width: 1; }
+.anatomy-sculpture .dial ellipse { fill: var(--muscle); }
+.anatomy-sculpture .dial .chest { fill: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-sculpture .turn button { transition: none; }
+}
 
 /* Everything else on the stage sits below the body, at a readable measure:
    programs and the summary side by side, then the estimate. */
