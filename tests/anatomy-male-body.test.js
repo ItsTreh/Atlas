@@ -184,7 +184,7 @@ describe("the model the app draws", () => {
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
     const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
     expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "forearms", "glutes",
-                                         "hamstrings", "lats", "obliques", "quads", "shoulders", "traps", "triceps"]);
+                                         "hamstrings", "lats", "lower-back", "obliques", "quads", "shoulders", "traps", "triceps"]);
   });
 
   test("keeps the hidden muscles painted (both sides unless one is out of sight), drawn but never selectable", () => {

@@ -404,8 +404,7 @@
       "id": "erector-spinae",
       "structure": "muscle",
       "atlasRegion": "erector-spinae",
-      "side": "midline",
-      "source": "borrowed"
+      "side": "midline"
     }
   ],
   "landmarks": [],
