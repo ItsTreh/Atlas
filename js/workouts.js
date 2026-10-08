@@ -21,6 +21,12 @@
        glutes have their own day) ranks one tier lower, so that muscle is
        not quietly trained on the day before its own session.
 
+   A session never runs past its length. When there is not room left for a
+   muscle's minimum (WORKOUT.minDirectSets), it gets no exercise in that
+   session and is recorded in `workout.skipped`, smallest muscles last in
+   line since the order is big muscles first. WeeklyRoutine.weeklyVolume()
+   reports it, so a muscle is never left out without the user being told.
+
    The result is a Workout per session, which the user can then edit freely.
    Nothing here touches the page.
    ========================================================================= */
@@ -29,6 +35,11 @@ const WORKOUT = Object.freeze({
   setsPerExercise:    3,   // typical working sets for one exercise
   maxSetsPerExercise: 4,   // past this, a second exercise does the job better
   minDirectSets:      2,   // a selected muscle always gets at least one exercise
+  // Direct sets for one muscle in one session, on a split day. Research
+  // generally finds diminishing returns past roughly 6–10 hard sets per
+  // muscle per session; the exact number is debated, so this is a tunable
+  // middle of that range rather than a settled figure.
+  maxSetsPerSession:  8,
   secondaryCredit:  0.5,   // a set where the muscle only assists counts as half
   repeatDemotion:     1,   // tier steps an exercise drops once used this week
   offDayDemotion:     1    // tier steps for one that also works a muscle trained on another day
@@ -67,6 +78,7 @@ class Workout {
     this.muscles = muscles;                 // the session's target Muscles
     this.entries = entries;
     this.recommended = entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    this.skipped = [];                      // Muscles the session had no time left for
   }
 
   entriesFor(muscleId) { return this.entries.filter(e => e.muscleId === muscleId); }
@@ -135,6 +147,7 @@ class WorkoutBuilder {
         this.timesThisWeek.set(m.id, (this.timesThisWeek.get(m.id) || 0) + 1);
 
     this.usedThisWeek = new Map();          // muscle id → Set of exercises
+    this.setsThisWeek = new Map();          // muscle id → sets credited so far (direct + assisting)
     // Every muscle with work of its own somewhere this week.
     this.trainedThisWeek = new Set(this.sessions.flatMap(s =>
       s.block.muscles.filter(m => !s.block.riders.has(m)).map(m => m.id)));
@@ -149,14 +162,31 @@ class WorkoutBuilder {
   buildOne(session) {
     const block = session.block;
     // Big muscles first: their compounds give the small ones secondary credit.
-    const order = [...block.muscles].sort((a, b) => b.minutes - a.minutes);
+    // A split day the user chose repeats in the week, and a long one may not
+    // fit every muscle; there the muscles furthest below their weekly minimum
+    // go first, so a muscle left out on Monday leads on Wednesday instead of
+    // being left out every time. This decides the order, not the sets.
+    const behind = m => (this.setsThisWeek.get(m.id) || 0) / m.weeklySets[0];
+    const order = [...block.muscles].sort((a, b) =>
+      (block.splitDay ? behind(a) - behind(b) : 0) || b.minutes - a.minutes);
     const workout = new Workout(order, []);
     const scale = Math.min(1, this.available / block.minutes);
+    // Working sets that fit in the session after the warm-up.
+    const budget = Math.floor(this.available / ESTIMATE.minutesPerSet);
 
     for (const muscle of order) {
-      const target = this.targetSets(muscle, scale);
+      const room = budget - workout.sets;
+      if (room < WORKOUT.minDirectSets) { workout.skipped.push(muscle); continue; }
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
-      const need = Math.max(WORKOUT.minDirectSets, Math.round(target - credit));
+      let need;
+      if (block.splitDay) {
+        need = this.doseSets(muscle, workout, credit);
+        if (!need) continue;           // dosed by the lifts above, or at its weekly maximum
+        need = Math.min(room, need);
+      } else {
+        const target = this.targetSets(muscle, scale);
+        need = Math.min(room, Math.max(WORKOUT.minDirectSets, Math.round(target - credit)));
+      }
       const wanted = Math.max(1, Math.round(need / WORKOUT.setsPerExercise));
 
       const picks = [];
@@ -168,12 +198,18 @@ class WorkoutBuilder {
       }
       const entries = workout.entriesFor(muscle.id);
       this.shareSets(entries, need);
+      if (block.splitDay) this.keepWithinMaximums(workout, picks);
 
       const used = this.usedThisWeek.get(muscle.id) || new Set();
       for (const ex of picks) used.add(ex);
       this.usedThisWeek.set(muscle.id, used);
     }
     workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    // Every muscle trained this week, not only this session's: a Legs day's
+    // Romanian deadlift credits the forearms trained on Pull days too.
+    for (const id of this.timesThisWeek.keys())
+      this.setsThisWeek.set(id, (this.setsThisWeek.get(id) || 0) +
+        workout.directSets(id) + workout.assistedSets(id));
     return workout;
   }
 
@@ -186,6 +222,68 @@ class WorkoutBuilder {
     const times = this.timesThisWeek.get(muscle.id) || 1;
     const weeklyCap = Math.ceil(muscle.weeklySets[1] / times);
     return Math.max(WORKOUT.minDirectSets, Math.min(fromTime, weeklyCap));
+  }
+
+  /**
+   * Direct sets for `muscle` on a split day: the best dose, not the most the
+   * session could hold. The session length only limits it (the budget in
+   * buildOne); it is never a reason to add sets.
+   *
+   *   • aim at the middle of the muscle's weekly range (weeklySets), spread
+   *     over the sessions that train it this week;
+   *   • less what the lifts already in this session give it (`credit`);
+   *   • no more than WORKOUT.maxSetsPerSession in one session;
+   *   • a hard weekly maximum: its own sets never take what it has been
+   *     credited this week past weeklySets[1]. (Credit a muscle gets from
+   *     lifts done for another muscle is counted where those lifts are
+   *     chosen, not here.)
+   *
+   * A muscle with no direct work in the session still gets its minimum when
+   * its maximum allows. Returns 0 when it needs nothing more here.
+   */
+  doseSets(muscle, workout, credit) {
+    const [low, high] = muscle.weeklySets;
+    const times = this.timesThisWeek.get(muscle.id) || 1;
+    const direct = workout.directSets(muscle.id);
+    const room = Math.min(WORKOUT.maxSetsPerSession - direct,
+                          Math.floor(high - (this.setsThisWeek.get(muscle.id) || 0) - credit));
+    const need = Math.min(room, Math.round((low + high) / 2 / times - credit));
+    if (need >= WORKOUT.minDirectSets) return need;
+    return direct === 0 && room >= WORKOUT.minDirectSets ? WORKOUT.minDirectSets : 0;
+  }
+
+  /**
+   * What `muscleId` can still take this week before its weekly maximum, if
+   * it is trained this week at all (Infinity otherwise): its maximum less
+   * what earlier sessions and this one already credit it.
+   */
+  headroom(muscleId, workout) {
+    if (!this.timesThisWeek.has(muscleId)) return Infinity;
+    const m = MUSCLE_BY_ID.get(muscleId);
+    return m.weeklySets[1] - (this.setsThisWeek.get(muscleId) || 0) -
+           workout.directSets(muscleId) - workout.assistedSets(muscleId);
+  }
+
+  /**
+   * On a split day, the sets just given to `picks` never take any other
+   * muscle they train past its weekly maximum: a full set for another
+   * primary muscle, half a set for a secondary one (WORKOUT.secondaryCredit),
+   * as weeklyVolume() counts them. A pick cut below WORKOUT.minDirectSets is
+   * dropped.
+   */
+  keepWithinMaximums(workout, picks) {
+    for (const ex of picks) {
+      const entry = workout.entries.find(e => e.exercise === ex);
+      const want = entry.sets;
+      entry.sets = 0;
+      let limit = want;
+      for (const id of ex.primary)
+        if (id !== entry.muscleId) limit = Math.min(limit, Math.floor(this.headroom(id, workout)));
+      for (const id of ex.secondary)
+        limit = Math.min(limit, Math.floor(this.headroom(id, workout) / WORKOUT.secondaryCredit));
+      if (limit >= WORKOUT.minDirectSets) entry.sets = limit;
+      else workout.remove(entry);
+    }
   }
 
   /** Splits `total` sets over the entries as evenly as the per-exercise cap allows. */
@@ -215,9 +313,15 @@ class WorkoutBuilder {
       if (workout.has(ex) || workout.clashWith(ex)) return;
       const elsewhere = ex.primary.some(id => id !== muscle.id && !block.muscles.some(m => m.id === id) &&
                                               this.trainedThisWeek.has(id));
+      // On a split day, a lift that would take another muscle it trains past
+      // its weekly maximum goes last: a hack squat before a back squat once
+      // the glutes have had enough.
+      const overloads = block.splitDay &&
+        (ex.primary.some(id => id !== muscle.id && this.headroom(id, workout) < WORKOUT.minDirectSets) ||
+         ex.secondary.some(id => this.headroom(id, workout) < WORKOUT.minDirectSets * WORKOUT.secondaryCredit));
       const key = [
         tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
-          (elsewhere ? WORKOUT.offDayDemotion : 0),
+          (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0),
         -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
         order
       ];

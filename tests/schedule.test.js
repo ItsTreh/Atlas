@@ -115,18 +115,32 @@ describe("the final plan", () => {
     expect(routine.isDayUnavailable("SUN")).toBe(false);
   });
 
+  // Every muscle has exercises now, so the guard below has nothing to bite
+  // on today; it runs again as soon as a muscle without exercises appears.
   test("muscles with no exercises are not scheduled as empty days", () => {
-    const { routine, result } = generatedWeek(app, { program: "core", sessions: 3 });
+    const bare = app.MUSCLES.filter(m => !app.exercisesFor(m.id).length);
+    if (!bare.length) return;
+    const { routine, result } = generatedWeek(app, { muscleIds: bare.map(m => m.id), sessions: 3 });
     expect(routine.sessions.length).toBe(0);
     expect(result.reason).toBe("no-exercises");
     expect(routine.plannedSessions()).toBe(0);
   });
 
+  test("the core program plans real sessions", () => {
+    const { routine, result } = generatedWeek(app, { program: "core", sessions: 3 });
+    expect(result.reason).not.toBe("no-exercises");
+    expect(routine.sessions.length).toBeGreaterThan(0);
+    for (const s of routine.sessions) expect(s.workout.entries.length).toBeGreaterThan(0);
+  });
+
+  // Used to fail the week with the core program (no exercises); a fully
+  // blocked week fails it the same way now that core has exercises.
   test("a week that cannot be planned clears the previous one", () => {
     const { routine } = generatedWeek(app, { program: "upper", sessions: 2 });
     expect(routine.sessions.length).toBe(2);
-    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("core"));
-    expect(routine.generate().reason).toBe("no-exercises");
+    for (const day of DayOfWeek.values)
+      for (let h = app.FIRST_HOUR; h <= app.LAST_HOUR; h++) routine.markBusy(day, h);
+    expect(routine.generate().reason).toBe("no-blocks");
     expect(routine.sessions.length).toBe(0);
     expect(routine.allSlots().some(s => s.state === SlotState.WORKOUT)).toBe(false);
   });
@@ -294,5 +308,150 @@ describe("meals and the week", () => {
     expect(routine.slot("MON", 9).state).toBe(SlotState.FREE);
     expect(routine.selection.source().program.id).toBe("push");
     expect(routine.nutrition.goal).toBe("lose");
+  });
+});
+
+describe("weekly volume against the estimate", () => {
+  test("every chosen muscle is trained, covered by other lifts, or reported as untrained", () => {
+    for (const program of ["full-body", "upper", "lower", "core"])
+      for (const minutes of [45, 60])
+        for (const sessions of [1, 2, 3, 4]) {
+          const { routine } = generatedWeek(app, { program, sessions, minutes });
+          const v = routine.weeklyVolume();
+          for (const r of v.rows)
+            expect(r.times > 0 || Math.round(r.sets) >= r.need || v.untrained.includes(r.muscle),
+                   program + " " + sessions + "×" + minutes + ": " + r.muscle.id).toBe(true);
+        }
+  });
+
+  test("a session never runs past its length; what does not fit is recorded", () => {
+    const { routine } = generatedWeek(app, { program: "full-body", sessions: 1, minutes: 60 });
+    const w = routine.sessions[0].workout;
+    expect(w.minutes).toBeLessThanOrEqual(60);
+    expect(w.skipped.length).toBeGreaterThan(0);
+    // What did not fit is either reported, or already credited by the lifts that did.
+    const v = routine.weeklyVolume();
+    for (const m of v.untrained) expect(w.skipped).toContain(m);
+    for (const m of w.skipped) {
+      const row = v.rows.find(r => r.muscle === m);
+      expect(v.untrained.includes(m) || row.times > 0, m.id).toBe(true);
+    }
+  });
+
+  test("a full-body week in three hours reports the gap", () => {
+    const { routine } = generatedWeek(app, { program: "full-body", sessions: 3, minutes: 60 });
+    const v = routine.weeklyVolume();
+    expect(v.untrained.length + v.short.length).toBeGreaterThan(0);
+    expect(v.infrequent.length).toBeGreaterThan(0);
+    expect(v.estimate.sessions.low).toBeGreaterThan(3);
+  });
+
+  test("a push week that meets its volume reports no gap", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 4, minutes: 60 });
+    const v = routine.weeklyVolume();
+    expect(v.untrained).toEqual([]);
+    expect(v.short).toEqual([]);
+    expect(v.infrequent).toEqual([]);
+  });
+});
+
+describe("splits the user chooses", () => {
+  const week = (program, split, sessions, minutes, off = []) => {
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
+    Object.assign(routine, { split, sessionsPerWeek: sessions, sessionMinutes: minutes });
+    for (const d of off) routine.setDayUnavailable(d, true);
+    const result = routine.generate();
+    const sessions_ = [...routine.sessions].sort((a, b) =>
+      DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day));
+    return { routine, result, sessions: sessions_ };
+  };
+
+  test("Upper · Lower from Monday to Thursday is Upper, Lower, Upper, Lower", () => {
+    const { sessions, routine } = week("full-body", "upper-lower", 4, 60, ["FRI", "SAT", "SUN"]);
+    expect(sessions.map(s => s.day)).toEqual(["MON", "TUE", "WED", "THU"]);
+    const names = sessions.map(s => s.block.name);
+    expect(new Set(names)).toEqual(new Set(["Upper", "Lower"]));
+    for (let i = 1; i < names.length; i++) expect(names[i]).not.toBe(names[i - 1]);
+    const v = routine.weeklyVolume();
+    expect(v.infrequent).toEqual([]);
+    expect(v.short).toEqual([]);
+    expect(v.untrained).toEqual([]);
+  });
+
+  test("each split day trains only its own families", () => {
+    const families = { Upper: ["push", "pull"], Lower: ["legs", "core"],
+                       Push: ["push"], Pull: ["pull"], Legs: ["legs", "core"] };
+    for (const split of ["upper-lower", "push-pull-legs"]) {
+      const { sessions } = week("full-body", split, 6, 60);
+      for (const s of sessions)
+        for (const m of s.block.muscles) expect(families[s.block.name]).toContain(m.family);
+    }
+  });
+
+  // The session length is a limit, not a target: a split day gets the best
+  // dose for its muscles and stops (WorkoutBuilder.doseSets).
+  test("split days stay within the length and never take a muscle past its weekly maximum", () => {
+    for (const program of ["full-body", "upper", "lower", "legs", "push"])
+      for (const split of ["upper-lower", "push-pull-legs", "full-body"])
+        for (const [sessions, minutes] of [[3, 45], [4, 60], [6, 60], [3, 90]]) {
+          const { routine, sessions: placed } = week(program, split, sessions, minutes);
+          const at = program + " " + split + " " + sessions + "×" + minutes;
+          for (const s of placed) {
+            expect(s.workout.minutes, at).toBeLessThanOrEqual(minutes);
+            for (const m of s.block.muscles)
+              expect(s.workout.entriesFor(m.id).reduce((t, e) => t + e.sets, 0), at + " " + m.id)
+                .toBeLessThanOrEqual(app.WORKOUT.maxSetsPerSession);
+          }
+          for (const r of routine.weeklyVolume().rows)
+            expect(r.sets, at + " " + r.muscle.id).toBeLessThanOrEqual(r.muscle.weeklySets[1]);
+        }
+  });
+
+  test("Legs on Push · Pull · Legs, 4 × 60: no muscle over its maximum", () => {
+    const { routine } = week("legs", "push-pull-legs", 4, 60);
+    for (const r of routine.weeklyVolume().rows)
+      expect(r.sets, r.muscle.id).toBeLessThanOrEqual(r.muscle.weeklySets[1]);
+  });
+
+  test("a split day can end well inside its length, and says nothing is missing", () => {
+    const { routine, sessions } = week("upper", "push-pull-legs", 4, 60);
+    expect(sessions.some(s => s.workout.minutes <= 50)).toBe(true);
+    const v = routine.weeklyVolume();
+    expect(v.short).toEqual([]);
+    expect(v.untrained).toEqual([]);
+  });
+
+  test("a split day with nothing selected is named, and a split that fits is found", () => {
+    const { routine, result } = week("upper", "upper-lower", 4, 60);
+    expect(routine.emptySplitDays()).toEqual(["Lower"]);
+    expect(result.placed).toBeLessThan(4);
+    const fits = routine.splitsThatFit();
+    expect(fits).toContain("push-pull-legs");
+    expect(fits).not.toContain("upper-lower");
+    expect(routine.sessions.length).toBe(result.placed);     // trying them left this week alone
+  });
+
+  test("Full body repeats on days far enough apart to recover", () => {
+    const { sessions } = week("full-body", "full-body", 3, 60);
+    expect(sessions.length).toBe(3);
+    for (const s of sessions) expect(s.block.name).toBe("Full body");
+    for (let i = 1; i < sessions.length; i++)
+      expect(DayOfWeek.distance(sessions[i].day, sessions[i - 1].day)).toBeGreaterThanOrEqual(2);
+  });
+
+  test("a muscle left out of one full-body day leads on the next", () => {
+    const { sessions } = week("full-body", "full-body", 3, 60);
+    const skipped = sessions.map(s => s.workout.skipped.map(m => m.id).sort().join());
+    expect(new Set(skipped).size).toBeGreaterThan(1);
+  });
+
+  test("the split is kept when the plan is saved and restored", () => {
+    const { routine } = week("upper", "push-pull-legs", 3, 60);
+    const again = new app.WeeklyRoutine();
+    again.restore(JSON.parse(JSON.stringify(routine.snapshot())));
+    expect(again.split).toBe("push-pull-legs");
+    expect(again.sessions.map(s => s.block.name).sort())
+      .toEqual(routine.sessions.map(s => s.block.name).sort());
   });
 });
