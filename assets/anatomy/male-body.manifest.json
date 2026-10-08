@@ -110,6 +110,36 @@
       "side": "left"
     },
     {
+      "id": "anconeus.R",
+      "structure": "muscle",
+      "atlasRegion": "anconeus",
+      "side": "right"
+    },
+    {
+      "id": "anconeus.L",
+      "structure": "muscle",
+      "atlasRegion": "anconeus",
+      "side": "left"
+    },
+    {
+      "id": "brachialis.R",
+      "structure": "muscle",
+      "atlasRegion": "brachialis",
+      "side": "right"
+    },
+    {
+      "id": "brachialis.L",
+      "structure": "muscle",
+      "atlasRegion": "brachialis",
+      "side": "left"
+    },
+    {
+      "id": "coracobrachialis.L",
+      "structure": "muscle",
+      "atlasRegion": "coracobrachialis",
+      "side": "left"
+    },
+    {
       "id": "gluteus-maximus.R",
       "structure": "muscle",
       "atlasRegion": "gluteus-maximus",
@@ -185,78 +215,211 @@
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
-      "side": "right",
-      "source": "borrowed"
+      "side": "right"
     },
     {
       "id": "brachioradialis.L",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
-      "side": "left",
-      "source": "borrowed"
+      "side": "left"
     },
     {
-      "id": "forearm-flexors.R",
+      "id": "extensor-carpi-radialis-longus.R",
       "structure": "muscle",
-      "atlasRegion": "forearm-flexors",
-      "side": "right",
-      "source": "borrowed"
+      "atlasRegion": "extensor-carpi-radialis-longus",
+      "side": "right"
     },
     {
-      "id": "forearm-flexors.L",
+      "id": "extensor-carpi-radialis-longus.L",
       "structure": "muscle",
-      "atlasRegion": "forearm-flexors",
-      "side": "left",
-      "source": "borrowed"
+      "atlasRegion": "extensor-carpi-radialis-longus",
+      "side": "left"
     },
     {
-      "id": "forearm-extensors.R",
+      "id": "extensor-carpi-radialis-brevis.R",
       "structure": "muscle",
-      "atlasRegion": "forearm-extensors",
-      "side": "right",
-      "source": "borrowed"
+      "atlasRegion": "extensor-carpi-radialis-brevis",
+      "side": "right"
     },
     {
-      "id": "forearm-extensors.L",
+      "id": "extensor-carpi-radialis-brevis.L",
       "structure": "muscle",
-      "atlasRegion": "forearm-extensors",
-      "side": "left",
-      "source": "borrowed"
+      "atlasRegion": "extensor-carpi-radialis-brevis",
+      "side": "left"
+    },
+    {
+      "id": "pronator-teres.R",
+      "structure": "muscle",
+      "atlasRegion": "pronator-teres",
+      "side": "right"
+    },
+    {
+      "id": "pronator-teres.L",
+      "structure": "muscle",
+      "atlasRegion": "pronator-teres",
+      "side": "left"
+    },
+    {
+      "id": "flexor-carpi-radialis.R",
+      "structure": "muscle",
+      "atlasRegion": "flexor-carpi-radialis",
+      "side": "right"
+    },
+    {
+      "id": "flexor-carpi-radialis.L",
+      "structure": "muscle",
+      "atlasRegion": "flexor-carpi-radialis",
+      "side": "left"
+    },
+    {
+      "id": "palmaris-longus.R",
+      "structure": "muscle",
+      "atlasRegion": "palmaris-longus",
+      "side": "right"
+    },
+    {
+      "id": "palmaris-longus.L",
+      "structure": "muscle",
+      "atlasRegion": "palmaris-longus",
+      "side": "left"
+    },
+    {
+      "id": "flexor-digitorum-superficialis.R",
+      "structure": "muscle",
+      "atlasRegion": "flexor-digitorum-superficialis",
+      "side": "right"
+    },
+    {
+      "id": "flexor-digitorum-superficialis.L",
+      "structure": "muscle",
+      "atlasRegion": "flexor-digitorum-superficialis",
+      "side": "left"
+    },
+    {
+      "id": "flexor-carpi-ulnaris.R",
+      "structure": "muscle",
+      "atlasRegion": "flexor-carpi-ulnaris",
+      "side": "right"
+    },
+    {
+      "id": "flexor-carpi-ulnaris.L",
+      "structure": "muscle",
+      "atlasRegion": "flexor-carpi-ulnaris",
+      "side": "left"
+    },
+    {
+      "id": "extensor-carpi-ulnaris.R",
+      "structure": "muscle",
+      "atlasRegion": "extensor-carpi-ulnaris",
+      "side": "right"
+    },
+    {
+      "id": "extensor-carpi-ulnaris.L",
+      "structure": "muscle",
+      "atlasRegion": "extensor-carpi-ulnaris",
+      "side": "left"
+    },
+    {
+      "id": "extensor-digiti-minimi.R",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digiti-minimi",
+      "side": "right"
+    },
+    {
+      "id": "extensor-digiti-minimi.L",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digiti-minimi",
+      "side": "left"
+    },
+    {
+      "id": "extensor-digitorum.R",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digitorum",
+      "side": "right"
+    },
+    {
+      "id": "extensor-digitorum.L",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digitorum",
+      "side": "left"
+    },
+    {
+      "id": "abductor-pollicis-longus.R",
+      "structure": "muscle",
+      "atlasRegion": "abductor-pollicis-longus",
+      "side": "right"
+    },
+    {
+      "id": "abductor-pollicis-longus.L",
+      "structure": "muscle",
+      "atlasRegion": "abductor-pollicis-longus",
+      "side": "left"
+    },
+    {
+      "id": "extensor-pollicis-brevis.R",
+      "structure": "muscle",
+      "atlasRegion": "extensor-pollicis-brevis",
+      "side": "right"
+    },
+    {
+      "id": "extensor-pollicis-brevis.L",
+      "structure": "muscle",
+      "atlasRegion": "extensor-pollicis-brevis",
+      "side": "left"
     },
     {
       "id": "infraspinatus.R",
       "structure": "muscle",
       "atlasRegion": "infraspinatus",
-      "side": "right",
-      "source": "borrowed"
+      "side": "right"
     },
     {
       "id": "infraspinatus.L",
       "structure": "muscle",
       "atlasRegion": "infraspinatus",
-      "side": "left",
-      "source": "borrowed"
+      "side": "left"
+    },
+    {
+      "id": "teres-major.R",
+      "structure": "muscle",
+      "atlasRegion": "teres-major",
+      "side": "right"
     },
     {
       "id": "teres-major.L",
       "structure": "muscle",
       "atlasRegion": "teres-major",
-      "side": "left",
-      "source": "borrowed"
+      "side": "left"
     },
     {
-      "id": "trapezius",
+      "id": "trapezius.R",
       "structure": "muscle",
       "atlasRegion": "trapezius",
-      "side": "midline",
-      "source": "borrowed"
+      "side": "right"
+    },
+    {
+      "id": "trapezius.L",
+      "structure": "muscle",
+      "atlasRegion": "trapezius",
+      "side": "left"
+    },
+    {
+      "id": "rhomboid-major.R",
+      "structure": "muscle",
+      "atlasRegion": "rhomboid-major",
+      "side": "right"
+    },
+    {
+      "id": "rhomboid-major.L",
+      "structure": "muscle",
+      "atlasRegion": "rhomboid-major",
+      "side": "left"
     },
     {
       "id": "erector-spinae",
       "structure": "muscle",
       "atlasRegion": "erector-spinae",
-      "side": "midline",
-      "source": "borrowed"
+      "side": "midline"
     }
   ],
   "landmarks": [],

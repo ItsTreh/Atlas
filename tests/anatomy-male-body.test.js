@@ -20,9 +20,20 @@ const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "assets/anatomy/male
 const authored = manifest.regions.filter(r => r.structure !== "form");     // muscles, painted or borrowed
 const borrowed = authored.filter(r => r.source === "borrowed");
 const painted = authored.filter(r => r.source !== "borrowed");
+// Muscles painted on the sculpture but deliberately not selectable yet: they
+// map to no app muscle until a zoomed anatomy view shows them on their own
+// (docs/anatomy-levels.md). Only these may map to nothing.
+const HIDDEN = new Set(["serratus-anterior", "coracobrachialis"]);
+// Muscles painted on one side only, because the other side's is out of sight
+// on the sculpture (the right coracobrachialis is hidden in its armpit).
+const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // How far off the midline (cm) a side's region must lie: the adductors, on the
 // inner thigh where the thighs nearly meet, and any borrowed region may hug it.
-const margin = r => r.source === "borrowed" || r.atlasRegion === "adductors" ? 0 : 3;
+// So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
+// shoulder-blade height, so the left one, ~5 cm from the spine like the right,
+// lies only ~1 cm left of x = 0.
+const ZERO_MARGIN = new Set(["adductors", "rhomboid-major"]);
+const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
 const bytes = Buffer.from(MODEL.data, "base64");
@@ -71,12 +82,13 @@ describe("the manifest's authored regions", () => {
   test("each names an ATLAS region that reaches one of the app's muscles", () => {
     for (const r of authored) {
       expect(REGIONS, r.id).toHaveProperty(r.atlasRegion);
-      expect(app.MUSCLE_BY_ID.has(REGIONS[r.atlasRegion]), r.id + " → " + REGIONS[r.atlasRegion]).toBe(true);
+      if (HIDDEN.has(r.atlasRegion)) expect(REGIONS[r.atlasRegion], r.id).toBe(null);
+      else expect(app.MUSCLE_BY_ID.has(REGIONS[r.atlasRegion]), r.id + " → " + REGIONS[r.atlasRegion]).toBe(true);
     }
   });
 
   test("each side's painted region has its counterpart on the other side", () => {
-    for (const r of painted.filter(r => r.side !== "midline")) {
+    for (const r of painted.filter(r => r.side !== "midline" && !ONE_SIDED.has(r.atlasRegion))) {
       const other = r.id.replace(/\.(L|R)$/, m => m === ".L" ? ".R" : ".L");
       const twin = manifest.regions.find(x => x.id === other);
       expect(twin, r.id).toBeDefined();
@@ -84,9 +96,11 @@ describe("the manifest's authored regions", () => {
     }
   });
 
-  test("a borrowed region stands in only for a muscle no painted region reaches", () => {
-    const paintedMuscles = new Set(painted.map(r => REGIONS[r.atlasRegion]));
-    for (const r of borrowed) expect(paintedMuscles.has(REGIONS[r.atlasRegion]), r.id).toBe(false);
+  test("a borrowed region stands in only for an anatomical region nobody painted", () => {
+    // Per ATLAS region, not per app muscle: a group such as the forearm is painted one muscle at
+    // a time, its other muscles borrowed until their turn.
+    const paintedRegions = new Set(painted.map(r => r.atlasRegion));
+    for (const r of borrowed) expect(paintedRegions.has(r.atlasRegion), r.id).toBe(false);
   });
 
   test("everything not authored is one unselectable body", () => {
@@ -142,7 +156,8 @@ describe("the model the app draws", () => {
     expect(app.errors.slice(before)).toEqual([]);
     MODEL.regions.forEach((name, i) => {
       if (MODEL.kinds[i] !== "muscle") return;
-      expect(app.MUSCLE_BY_ID.has(REGIONS[name]), name).toBe(true);
+      if (HIDDEN.has(name)) expect(REGIONS[name], name).toBe(null);
+      else expect(app.MUSCLE_BY_ID.has(REGIONS[name]), name).toBe(true);
     });
     expect(MODEL.kinds[MODEL.regions.indexOf("body")]).toBe("form");
   });
@@ -171,9 +186,19 @@ describe("the model the app draws", () => {
   test("selects every one of the app's muscles: painted, or borrowed until it is painted", () => {
     const reached = new Set(MODEL.regions.map(n => REGIONS[n]).filter(Boolean));
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
-    const byPaint = new Set(painted.map(r => REGIONS[r.atlasRegion]));
-    expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "glutes", "hamstrings",
-                                         "lats", "obliques", "quads", "shoulders", "triceps"]);
+    const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
+    expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "forearms", "glutes",
+                                         "hamstrings", "lats", "lower-back", "obliques", "quads", "shoulders", "traps", "triceps",
+                                         "upper-back"]);
+  });
+
+  test("keeps the hidden muscles painted (both sides unless one is out of sight), drawn but never selectable", () => {
+    for (const name of HIDDEN) {
+      expect(painted.filter(r => r.atlasRegion === name).map(r => r.side).sort(), name)
+        .toEqual(ONE_SIDED.has(name) ? [ONE_SIDED.get(name)] : ["left", "right"]);
+      expect(MODEL.regions, name).toContain(name);
+      expect(MODEL.kinds[MODEL.regions.indexOf(name)], name).toBe("muscle");
+    }
   });
 
   test("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {

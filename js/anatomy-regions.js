@@ -13,7 +13,8 @@
      the renderer draws for each region
 
    null marks a region that is drawn but not selectable: the app has no
-   muscle for it (the neck, the hip flexors).
+   muscle for it (the neck, the hip flexors, the serratus anterior, the
+   coracobrachialis).
    The form — the armature under the muscles, hands, feet, bone and tendon — is the region "body" and
    is never selectable.
 
@@ -34,10 +35,27 @@ const ANATOMY_REGIONS = Object.freeze({
   "trapezius":            "traps",
   "infraspinatus":        "upper-back",
   "teres-major":          "upper-back",
+  // Only its lower edge shows, between the trapezius, the lat and the shoulder
+  // blade; the rest lies under the trapezius.
+  "rhomboid-major":       "upper-back",
   "latissimus-dorsi":     "lats",
   "biceps-brachii":       "biceps",
   "brachialis":           "biceps",
   "brachioradialis":      "forearms",
+  "extensor-carpi-radialis-longus": "forearms",
+  "extensor-carpi-radialis-brevis": "forearms",
+  "pronator-teres":       "forearms",
+  "flexor-carpi-radialis": "forearms",
+  "palmaris-longus":      "forearms",
+  "flexor-digitorum-superficialis": "forearms",
+  "flexor-carpi-ulnaris": "forearms",
+  "extensor-carpi-ulnaris": "forearms",
+  "extensor-digiti-minimi": "forearms",
+  "extensor-digitorum":   "forearms",
+  "abductor-pollicis-longus": "forearms",
+  "extensor-pollicis-brevis": "forearms",
+  // An elbow extensor, but it lies on the forearm and reads as part of it.
+  "anconeus":             "forearms",
   "forearm-flexors":      "forearms",
   "forearm-extensors":    "forearms",
   "rectus-femoris":       "quads",
@@ -60,7 +78,13 @@ const ANATOMY_REGIONS = Object.freeze({
   "fibularis":            "calves",
   "rectus-abdominis":     "abs",
   "external-oblique":     "obliques",
-  "serratus-anterior":    "obliques",
+  // Painted, but not a training target: it trains with pushing, not with the
+  // obliques beside it. Not selectable until a zoomed anatomy view can show it
+  // on its own (see docs/anatomy-levels.md).
+  "serratus-anterior":    null,
+  // Anatomy detail only: a small helper of shoulder flexion, tucked in the
+  // armpit, with no training muscle of its own.
+  "coracobrachialis":     null,
   "erector-spinae":       "lower-back",
   "iliopsoas":            null,
   "sternocleidomastoid":  null

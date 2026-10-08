@@ -50,7 +50,7 @@ js/anatomy-model-male-body.js       what the page loads
 
    The regions painted so far are listed at the start of each session by a SessionStart hook (`tools/claude/session-context.sh`, which reads `Male_Body.paint.json`), so they're never written down here.
 2. **Authored materials.** These are per-face materials named by region id, written earlier by `male_body_regions.py`, a landmark and border script. That script found curved areas unreliable and is now superseded by painting. It refuses to touch the hand-edited .blend (`Male_Body.regions.json` guard). Material names ending in `.001` are read without the suffix.
-3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (forearms, infraspinatus, teres major, trapezius, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
+3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (today: infraspinatus, teres major, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
 
 **Adding a painted muscle:**
 1. The user paints and saves the .blend, then gives the colour and the muscle.
@@ -69,6 +69,7 @@ js/anatomy-model-male-body.js       what the page loads
 - **Anatomical accuracy is the basis.** Every clickable area selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap, the point of the elbow), nothing is selectable. Decide borders by anatomy, not by what a user might expect to click. Explain surface anatomy that isn't obvious instead of quietly "fixing" it against the anatomy.
 - **Keep region ids stable**, and keep group regions (`quadriceps-femoris`, `hamstrings`, `adductors`) where the sculpture shows one mass. Finer sub-regions may sit under them later.
 - **The user prefers one muscle, one change.** The agreed order is to fill in the missing muscles first and polish all borders at the end.
+- **The serratus anterior is a deliberate exception to "muscle means selectable".** It stays painted and in the model, but `js/anatomy-regions.js` maps it to `null`, so it's drawn and not clickable. It trains with pushing, so putting it under Obliques was wrong, and it's too minor to be a training muscle of its own. It becomes explorable when the zoomed anatomy view exists. Don't "fix" it by mapping it to a training muscle. The plan is in `docs/anatomy-levels.md`.
 
 ## Where it's heading
 
@@ -77,10 +78,11 @@ The redesign aims for a calm, monochrome, gallery-like interface with the body a
 Done:
 - the foundation theme
 - a dedicated anatomy stage
+- front/back controls and rotation (PR #33): one body turned by a single camera angle (`yaw` in `js/anatomy-sculpture.js`; front 0°, back 180°), a ±25° drag orbit, and keyboard focus that turns the body to the muscle
 
 Next:
-- the 3D anatomical sculpture replaces the flat figure: the Male_Body work, still behind the URL flag and not on `main`
-- refined hover and selection states, front/back controls, rotation and zoom
+- the 3D anatomical sculpture replaces the flat figure: the Male_Body work, on `main` behind the URL flag, with painting still in progress (back, hips and legs remain)
+- refined hover and selection states, a side view (90°) and zoom, both added to the same camera
 - side rails for programs and training demand
 - redesigned Nutrition and Week plan stages
 
