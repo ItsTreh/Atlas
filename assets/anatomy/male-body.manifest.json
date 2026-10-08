@@ -371,22 +371,25 @@
       "id": "infraspinatus.R",
       "structure": "muscle",
       "atlasRegion": "infraspinatus",
-      "side": "right",
-      "source": "borrowed"
+      "side": "right"
     },
     {
       "id": "infraspinatus.L",
       "structure": "muscle",
       "atlasRegion": "infraspinatus",
-      "side": "left",
-      "source": "borrowed"
+      "side": "left"
+    },
+    {
+      "id": "teres-major.R",
+      "structure": "muscle",
+      "atlasRegion": "teres-major",
+      "side": "right"
     },
     {
       "id": "teres-major.L",
       "structure": "muscle",
       "atlasRegion": "teres-major",
-      "side": "left",
-      "source": "borrowed"
+      "side": "left"
     },
     {
       "id": "trapezius.R",
@@ -398,6 +401,18 @@
       "id": "trapezius.L",
       "structure": "muscle",
       "atlasRegion": "trapezius",
+      "side": "left"
+    },
+    {
+      "id": "rhomboid-major.R",
+      "structure": "muscle",
+      "atlasRegion": "rhomboid-major",
+      "side": "right"
+    },
+    {
+      "id": "rhomboid-major.L",
+      "structure": "muscle",
+      "atlasRegion": "rhomboid-major",
       "side": "left"
     },
     {
