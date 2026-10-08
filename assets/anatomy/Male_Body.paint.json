@@ -49,6 +49,7 @@
     "#FF0A00": "extensor-carpi-radialis-brevis.L",
     "#FFC502": "extensor-carpi-radialis-brevis.R",
     "#40FE00": "latissimus-dorsi.L",
-    "#000080": "latissimus-dorsi.R"
+    "#000080": "latissimus-dorsi.R",
+    "#CF90FE": "erector-spinae"
   }
 }
