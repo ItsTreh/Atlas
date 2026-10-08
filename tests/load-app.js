@@ -26,6 +26,7 @@ const VIEW_FILES = new Set([
 
 /* The globals tests can use. Adding a name here is all it takes to expose one. */
 const EXPORTS = [
+  "EVIDENCE", "EVIDENCE_BY_ID", "PLANNER_CONFIG", "PLANNER_TABLES", "CERTAINTY", "ORIGINS", "configValue",
   "DayOfWeek", "SlotState", "FIRST_HOUR", "LAST_HOUR", "FAMILIES",
   "MUSCLES", "MUSCLE_BY_ID", "TrainingBlock",
   "PROGRAMS", "PROGRAM_BY_ID", "PROGRAM_GROUPS", "MuscleSelection",
