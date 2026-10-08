@@ -29,7 +29,11 @@ const HIDDEN = new Set(["serratus-anterior", "coracobrachialis"]);
 const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // How far off the midline (cm) a side's region must lie: the adductors, on the
 // inner thigh where the thighs nearly meet, and any borrowed region may hug it.
-const margin = r => r.source === "borrowed" || r.atlasRegion === "adductors" ? 0 : 3;
+// So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
+// shoulder-blade height, so the left one, ~5 cm from the spine like the right,
+// lies only ~1 cm left of x = 0.
+const ZERO_MARGIN = new Set(["adductors", "rhomboid-major"]);
+const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
 const bytes = Buffer.from(MODEL.data, "base64");
@@ -184,7 +188,8 @@ describe("the model the app draws", () => {
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
     const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
     expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "forearms", "glutes",
-                                         "hamstrings", "lats", "lower-back", "obliques", "quads", "shoulders", "traps", "triceps"]);
+                                         "hamstrings", "lats", "lower-back", "obliques", "quads", "shoulders", "traps", "triceps",
+                                         "upper-back"]);
   });
 
   test("keeps the hidden muscles painted (both sides unless one is out of sight), drawn but never selectable", () => {

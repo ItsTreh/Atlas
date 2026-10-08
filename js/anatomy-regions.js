@@ -35,6 +35,9 @@ const ANATOMY_REGIONS = Object.freeze({
   "trapezius":            "traps",
   "infraspinatus":        "upper-back",
   "teres-major":          "upper-back",
+  // Only its lower edge shows, between the trapezius, the lat and the shoulder
+  // blade; the rest lies under the trapezius.
+  "rhomboid-major":       "upper-back",
   "latissimus-dorsi":     "lats",
   "biceps-brachii":       "biceps",
   "brachialis":           "biceps",

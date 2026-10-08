@@ -50,6 +50,13 @@
     "#FFC502": "extensor-carpi-radialis-brevis.R",
     "#40FE00": "latissimus-dorsi.L",
     "#000080": "latissimus-dorsi.R",
-    "#CF90FE": "erector-spinae"
+    "#CF90FE": "erector-spinae",
+    "#C75BFF": "rhomboid-major.R",
+    "#FF35AF": "rhomboid-major.L",
+    "#C4FFE5": "infraspinatus.R",
+    "#FF6A0D": "infraspinatus.L",
+    "#FF6C00": "infraspinatus.L",
+    "#FF633A": "teres-major.R",
+    "#C77AFF": "teres-major.L"
   }
 }
