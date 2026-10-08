@@ -47,6 +47,8 @@
     "#79FF76": "extensor-pollicis-brevis.L",
     "#EA27FF": "extensor-pollicis-brevis.R",
     "#FF0A00": "extensor-carpi-radialis-brevis.L",
-    "#FFC502": "extensor-carpi-radialis-brevis.R"
+    "#FFC502": "extensor-carpi-radialis-brevis.R",
+    "#40FE00": "latissimus-dorsi.L",
+    "#000080": "latissimus-dorsi.R"
   }
 }
