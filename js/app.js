@@ -55,6 +55,7 @@ routine.selection.onChange(() => saveRoutine(routine));
 for (const id of ["len", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
+    renderSplitNote();
     renderNutritionMini();
     renderNutrition();
     renderWorkouts();
@@ -168,10 +169,18 @@ $("generate").addEventListener("click", () => {
   const empty = routine.emptySplitDays();
   if (r.placed && r.placed < Math.min(r.requested, r.free) && empty.length) {
     const kept = SPLITS[routine.split].days.map(([name]) => name).filter(n => !empty.includes(n));
-    const fits = routine.splitsThatFit().map(id => SPLITS[id].label);
+    // A split with an empty day of its own still fits by repeating the days
+    // it has, so say that rather than let it read as a contradiction.
+    const fits = routine.splitsThatFit().map(id => {
+      const gaps = routine.emptySplitDays(id);
+      if (!gaps.length) return SPLITS[id].label + " fits your selection";
+      const used = SPLITS[id].days.map(([name]) => name).filter(n => !gaps.includes(n));
+      return SPLITS[id].label + " would fit: with nothing for " + gaps.join(" or ") +
+        ", it alternates " + used.join(" and ");
+    });
     setStatus("Nothing you selected goes on " + empty.join(" or ") + " days, so the week repeats " +
       kept.join(" and ") + ", which needs rest days between: " + r.placed + " of the " +
-      days(r.requested) + " fit." + (fits.length ? " " + fits.join(" or ") + " fits your selection." : ""),
+      days(r.requested) + " fit." + (fits.length ? " " + fits.join("; ") + "." : ""),
       "warn");
   }
 

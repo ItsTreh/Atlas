@@ -30,8 +30,20 @@ function buildControls() {
       (empty.length ? ' — no muscles for ' + empty.join(" or ") : '') + '</option>';
   }).join("");
   $("split").value = routine.split;
+  renderSplitNote();
   $("window").value = routine.preferredWindow;
   $("showmeals").checked = routine.nutrition.showMeals;
+}
+
+/**
+ * The option text above is cut off in a narrow select, so the chosen split's
+ * empty days are also said in plain text under it, where a phone shows them.
+ */
+function renderSplitNote() {
+  const empty = routine.emptySplitDays();
+  const el = $("split-note");
+  el.hidden = !empty.length;
+  el.textContent = empty.length ? "Nothing you selected goes on " + empty.join(" or ") + " days." : "";
 }
 
 /** The sidebar's short reminder of what the Targets stage chose. */

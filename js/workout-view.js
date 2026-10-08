@@ -151,7 +151,7 @@ function lengthNote(session) {
   const w = session.workout, limit = session.block.limit;
   if (!session.block.splitDay || w.skipped.length || w.minutes > limit - 5) return "";
   return '<span><b>Length:</b> finishes in about ' + w.minutes + ' of your ' + limit +
-    ' min; more sets here would add fatigue, not results.</span>';
+    ' min; more sets here would likely add more fatigue than results.</span>';
 }
 
 /**
