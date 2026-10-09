@@ -199,6 +199,23 @@ const PLANNER_CONFIG = Object.freeze({
     note: "Tier steps for an exercise that also works a muscle trained on another " +
           "day, so that muscle is not quietly trained the day before its own session."
   },
+  interferenceDemotion: {
+    group: "workout", value: 1, origin: "heuristic", basedOn: [],
+    note: "Tier steps for an exercise that tires a muscle another lift in the session " +
+          "depends on while that lift tires this one's helpers in turn, so neither can be " +
+          "put first without holding the other back. Not taken from a study."
+  },
+  rirCompound: {
+    group: "effort", value: "1–2", origin: "heuristic", basedOn: ["proximity-to-failure"],
+    note: "Reps to leave in reserve on a compound lift. The research above links sets " +
+          "closer to failure with more growth, but also with longer recovery, and heavy " +
+          "multi-joint lifts cost the most. Kept a little short of failure; not a study value."
+  },
+  rirIsolation: {
+    group: "effort", value: "0–1", origin: "heuristic", basedOn: ["proximity-to-failure"],
+    note: "Reps to leave in reserve on an isolation lift: one machine or cable movement " +
+          "is cheap to recover from, so the last set can go to or near failure."
+  },
   workSetMinutes: {
     group: "estimate", value: 0.75, origin: "heuristic", basedOn: [],
     note: "Doing one set: about ten controlled reps plus getting into position under the " +
@@ -329,7 +346,7 @@ function configValue(key) {
   };
   for (const [name, p] of Object.entries(PLANNER_CONFIG)) {
     label(name, p);
-    if (!["workout", "estimate", "target"].includes(p.group)) problem(name + " has unknown group " + p.group);
+    if (!["workout", "estimate", "target", "effort"].includes(p.group)) problem(name + " has unknown group " + p.group);
   }
   for (const [name, p] of Object.entries(PLANNER_TABLES)) label(name, p);
 })();

@@ -373,7 +373,7 @@ class WeeklyRoutine {
     const placed = placements.length;
 
     // What to do in each session; see workouts.js.
-    new WorkoutBuilder(this.sessions, this.sessionMinutes).build();
+    new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id)).build();
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;

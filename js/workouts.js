@@ -42,7 +42,8 @@ const WORKOUT = Object.freeze({
   maxSetsPerSession:  configValue("maxSetsPerSession"),
   secondaryCredit:  configValue("secondaryCredit"),   // a set where the muscle only assists counts as half
   repeatDemotion:     configValue("repeatDemotion"),   // tier steps an exercise drops once used this week
-  offDayDemotion:     configValue("offDayDemotion")    // tier steps for one that also works a muscle trained on another day
+  offDayDemotion:     configValue("offDayDemotion"),   // tier steps for one that also works a muscle trained on another day
+  interferenceDemotion: configValue("interferenceDemotion")   // tier steps for one that cannot share a session cleanly with another
 });
 
 /**
@@ -51,8 +52,10 @@ const WORKOUT = Object.freeze({
  * ranges, not a prescription.
  */
 const LIFT_KINDS = Object.freeze({
-  compound:  { label: "Compound",  reps: "6–10",  rest: configValue("restCompoundMinutes") + " min" },
-  isolation: { label: "Isolation", reps: "10–15", rest: configValue("restIsolationMinutes") + " min" }
+  compound:  { label: "Compound",  reps: "6–10",  rest: configValue("restCompoundMinutes") + " min",
+               reserve: configValue("rirCompound") },
+  isolation: { label: "Isolation", reps: "10–15", rest: configValue("restIsolationMinutes") + " min",
+               reserve: configValue("rirIsolation") }
 });
 
 class WorkoutEntry {
@@ -70,6 +73,46 @@ class WorkoutEntry {
   get kind() { return LIFT_KINDS[this.exercise.compound ? "compound" : "isolation"]; }
   get reps() { return this.kind.reps; }
   get rest() { return this.kind.rest; }
+  /** Reps to leave in reserve on the working sets (see rirCompound in evidence.js). */
+  get reserve() { return this.kind.reserve; }
+}
+
+/**
+ * Order inside a session, and which lifts fatigue which.
+ *
+ * `tires(a, b)`: lift `a` works, as a helper, a muscle that lift `b` trains
+ * directly: a press leaves the triceps tired for a pushdown. Done the other
+ * way round, the pushdown would hold the press back, so the lift whose
+ * helpers are another's target goes first. Two lifts that tire each other
+ * cannot both go first; the planner avoids pairing them (see bestFor).
+ */
+const tires = (a, b) => b.primary.some(id => a.secondary.includes(id));
+const tiresBothWays = (a, b) => tires(a, b) && tires(b, a);
+
+/**
+ * Puts a session's entries in the order they should be done:
+ *   1. a lift goes before any lift that trains one of its helper muscles;
+ *   2. otherwise the user's Focus muscles first, Maintain last;
+ *   3. then compounds before isolation, then the better tier, then the
+ *      order the planner picked them in.
+ * Nothing is scored: each step only breaks the ties the one before left.
+ */
+function orderEntries(entries, priorityOf = () => "normal") {
+  const rank = e => ({ focus: 0, normal: 1, maintain: 2 })[priorityOf(e.muscleId)] ?? 1;
+  const first = (a, b) => tires(a.exercise, b.exercise) && !tires(b.exercise, a.exercise);
+  const rest = entries.map((e, i) => ({ e, i }));
+  const out = [];
+  while (rest.length) {
+    let ready = rest.filter(x => !rest.some(y => y !== x && first(y.e, x.e)));
+    if (!ready.length) ready = rest;                      // lifts that tire each other: plain tie-break
+    ready.sort((a, b) =>
+      rank(a.e) - rank(b.e) ||
+      (a.e.exercise.compound ? 0 : 1) - (b.e.exercise.compound ? 0 : 1) ||
+      tierRank(a.e.tier) - tierRank(b.e.tier) || a.i - b.i);
+    out.push(ready[0].e);
+    rest.splice(rest.indexOf(ready[0]), 1);
+  }
+  return out;
 }
 
 /** The exercises for one session, and the edits the user makes to them. */
@@ -139,7 +182,8 @@ class WorkoutBuilder {
    * @param sessions        the WorkoutSessions placed this week
    * @param sessionMinutes  the planned session length
    */
-  constructor(sessions, sessionMinutes) {
+  constructor(sessions, sessionMinutes, priorityOf = () => "normal") {
+    this.priorityOf = priorityOf;
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
     this.limit = sessionMinutes;
@@ -210,6 +254,7 @@ class WorkoutBuilder {
       this.usedThisWeek.set(muscle.id, used);
     }
     this.fitToSession(workout);
+    workout.entries = orderEntries(workout.entries, this.priorityOf);
     workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
     // Every muscle trained this week, not only this session's: a Legs day's
     // Romanian deadlift credits the forearms trained on Pull days too.
@@ -350,8 +395,11 @@ class WorkoutBuilder {
       const overloads = block.splitDay &&
         (ex.primary.some(id => id !== muscle.id && this.headroom(id, workout) < WORKOUT.minDirectSets) ||
          ex.secondary.some(id => this.headroom(id, workout) < WORKOUT.minDirectSets * WORKOUT.secondaryCredit));
+      // Two lifts that tire each other's helpers: whichever goes second is held back.
+      const interferes = workout.entries.some(e => tiresBothWays(e.exercise, ex));
       const key = [
         tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
+          (interferes ? WORKOUT.interferenceDemotion : 0) +
           (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0),
         -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
         order

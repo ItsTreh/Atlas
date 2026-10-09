@@ -132,6 +132,7 @@ function renderSession(session) {
       '</div>' +
     '</header>' +
     '<p class="wo-notes">' + lengthNote(session) + recoveryNote(session) + fuelNote(session) + '</p>' +
+    orderedList(session, w) +
     w.muscles.map(m => renderMuscle(session, w, m)).join("") +
   '</article>';
 }
@@ -250,8 +251,7 @@ function renderMuscle(session, w, muscle) {
       : session.block.splitDay && direct + assisted > 0
       ? '<p class="wm-empty">Covered by the lifts above: an exercise of its own here would ' +
         'add more than it needs this week.</p>' : '';
-    body = noRoom + '<ul class="wm-list">' + entries.map(e => renderEntry(session, w, e)).join("") + '</ul>' +
-      exerciseSelect(w, muscle.id, null, session.id);
+    body = noRoom + exerciseSelect(w, muscle.id, null, session.id);
   }
 
   return '<section class="wm">' +
@@ -262,17 +262,28 @@ function renderMuscle(session, w, muscle) {
     body + '</section>';
 }
 
+/** The session's exercises in the order to do them (see orderEntries in workouts.js). */
+function orderedList(session, w) {
+  if (!w.entries.length) return "";
+  return '<ol class="wm-list wo-order" title="Done in this order: a lift comes before the ones ' +
+    'that train its helper muscles, so none is held back by fatigue from another.">' +
+    w.entries.map(e => renderEntry(session, w, e)).join("") + '</ol>';
+}
+
 function renderEntry(session, w, entry) {
   const i = w.entries.indexOf(entry);
   const ex = entry.exercise;
   const clash = w.clashWith(ex, entry);
   const also = [...ex.primary, ...ex.secondary].filter(id => id !== entry.muscleId)
     .map(id => MUSCLE_BY_ID.get(id).name);
+  const muscle = MUSCLE_BY_ID.get(entry.muscleId);
   return '<li class="wo-ex' + (entry.manual ? ' manual' : '') + '">' +
+    '<span class="ex-n" aria-hidden="true">' + (i + 1) + '</span>' +
     tierBadge(entry.tier) +
     '<div class="ex-main">' +
       exerciseSelect(w, entry.muscleId, entry, session.id, i) +
-      '<div class="ex-sub">' + entry.kind.label + ' · rest ' + entry.rest + ' · ' + MOVEMENTS[ex.movement] +
+      '<div class="ex-sub">' + esc(muscle.name) + ' · ' + entry.kind.label + ' · rest ' + entry.rest +
+        ' · ' + entry.reserve + ' reps in reserve · ' + MOVEMENTS[ex.movement] +
         (also.length ? ' · also ' + also.join(", ") : '') +
         (entry.manual ? ' · <i>your pick</i>' : '') +
         (clash ? ' · <span class="clash">same movement as ' + esc(clash.exercise.name) + '</span>' : '') +
