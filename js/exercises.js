@@ -78,6 +78,27 @@ const MOVEMENTS = Object.freeze({
 });
 
 /**
+ * What job a movement does, for the three muscles whose exercises are not
+ * interchangeable: glutes, shoulders and upper back. Two exercises with the
+ * same function are redundant for that muscle in one session. This is a
+ * description of the movement, not a rating, and it is as fine as the
+ * catalogue allows: it cannot tell the front, side and rear parts of the
+ * shoulder apart inside one movement, nor lats from upper back inside a
+ * row (those are separate muscles here, but the row lists both). Muscles
+ * not named in FUNCTION_MUSCLES have no function label.
+ */
+const MOVEMENT_FUNCTION = Object.freeze({
+  "squat": "knee-dominant", "lunge": "knee-dominant", "leg-press": "knee-dominant",
+  "hip-thrust": "hip-extension", "hinge": "hip-extension", "glute-kickback": "hip-extension",
+  "hip-abduction": "hip-abduction",
+  "overhead-press": "overhead-press", "lateral-raise": "side-delt", "rear-delt-fly": "rear-delt",
+  "face-pull": "rear-delt-upper-back",
+  "vertical-pull": "vertical-pull", "row": "horizontal-pull", "wide-row": "horizontal-pull",
+  "lat-isolation": "lat-isolation"
+});
+const FUNCTION_MUSCLES = Object.freeze(new Set(["glutes", "shoulders", "upper-back"]));
+
+/**
  * Compound movements: several joints working, heavy loads. They are done
  * for fewer reps with longer rests than isolation work (see LIFT_KINDS in
  * workouts.js). Every other movement counts as isolation.
@@ -332,6 +353,8 @@ class Exercise {
     this.listOrder = {};          // muscle id → position in its tier list
   }
   get compound() { return COMPOUND_MOVEMENTS.has(this.movement); }
+  /** The job this exercise does for `muscleId`, or null where the catalogue has no such label. */
+  functionFor(muscleId) { return FUNCTION_MUSCLES.has(muscleId) ? MOVEMENT_FUNCTION[this.movement] || null : null; }
   /** The tier label for this muscle, or null if it is not rated for it. */
   tierFor(muscleId) { return this.tiers[muscleId] || null; }
   trainsPrimarily(muscleId) { return this.primary.includes(muscleId); }

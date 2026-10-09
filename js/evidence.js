@@ -205,6 +205,13 @@ const PLANNER_CONFIG = Object.freeze({
           "assists it (a row assisting the biceps) instead of training it. The recovery research " +
           "is thin and does not cover assisting work, so this is an adjustable guess."
   },
+  functionRepeatDemotion: {
+    group: "workout", value: 2, origin: "heuristic", basedOn: [],
+    note: "Tier steps for an exercise that does the same job as one the session already has for " +
+          "this muscle (a leg press after a squat, for the glutes), so a Focus muscle gets " +
+          "different jobs before a second copy of one. Only for glutes, shoulders and upper back, " +
+          "where the catalogue labels what each movement does. Not taken from a study."
+  },
   dislikeDemotion: {
     group: "workout", value: 2, origin: "preference", basedOn: [],
     note: "Tier steps an exercise drops once the user says they don't like it. It can still " +

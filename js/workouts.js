@@ -45,6 +45,7 @@ const WORKOUT = Object.freeze({
   offDayDemotion:     configValue("offDayDemotion"),   // tier steps for one that also works a muscle trained on another day
   indirectRecoveryFraction: configValue("indirectRecoveryFraction"),   // share of the recovery days an assisting load needs
   dislikeDemotion:      configValue("dislikeDemotion"),   // tier steps for an exercise the user doesn't like
+  functionRepeatDemotion: configValue("functionRepeatDemotion"), // tier steps for a second lift doing the same job
   interferenceDemotion: configValue("interferenceDemotion")   // tier steps for one that cannot share a session cleanly with another
 });
 
@@ -135,7 +136,7 @@ class Workout {
   constructor(muscles, entries) {
     this.muscles = muscles;                 // the session's target Muscles
     this.entries = entries;
-    this.recommended = entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
+    this.recommended = entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule, penalties: e.penalties }));
     this.skipped = [];                      // Muscles the session had no time left for
   }
 
@@ -188,7 +189,7 @@ class Workout {
       new WorkoutEntry(exercise, muscleId, WORKOUT.setsPerExercise, true));
   }
   restore() {
-    this.entries = this.recommended.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
+    this.entries = this.recommended.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule, penalties: e.penalties }));
   }
 }
 
@@ -289,7 +290,9 @@ class WorkoutBuilder {
         const next = this.bestFor(muscle, block, workout);
         if (!next) break;
         picks.push(next);
-        workout.entries.push(new WorkoutEntry(next, muscle.id, 0));   // sets below
+        const made = new WorkoutEntry(next, muscle.id, 0);            // sets below
+        made.penalties = this.lastPenalties;
+        workout.entries.push(made);
       }
       const entries = workout.entriesFor(muscle.id);
       this.shareSets(entries, need);
@@ -306,7 +309,7 @@ class WorkoutBuilder {
     }
     this.fitToSession(workout);
     workout.entries = orderEntries(workout.entries, this.priorityOf);
-    workout.recommended = workout.entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
+    workout.recommended = workout.entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule, penalties: e.penalties }));
     // Every muscle trained this week, not only this session's: a Legs day's
     // Romanian deadlift credits the forearms trained on Pull days too.
     for (const id of this.timesThisWeek.keys())
@@ -438,7 +441,8 @@ class WorkoutBuilder {
   bestFor(muscle, block, workout) {
     const used = this.usedThisWeek.get(muscle.id) || new Set();
     const others = block.muscles.filter(m => m !== muscle).map(m => m.id);
-    let best = null, bestKey = null;
+    let best = null, bestKey = null, bestPenalties = [];
+    const focus = this.priorityOf(muscle.id) === "focus";
 
     exercisesFor(muscle.id).forEach((ex, order) => {
       if (workout.has(ex) || workout.clashWith(ex)) return;
@@ -454,16 +458,31 @@ class WorkoutBuilder {
          ex.secondary.some(id => this.headroom(id, workout) < WORKOUT.minDirectSets * WORKOUT.secondaryCredit));
       // Two lifts that tire each other's helpers: whichever goes second is held back.
       const interferes = workout.entries.some(e => tiresBothWays(e.exercise, ex));
+      // Same job as a lift this muscle already has in the session.
+      const fn = ex.functionFor(muscle.id);
+      const redundant = fn !== null && workout.entriesFor(muscle.id).some(e => e.exercise.functionFor(muscle.id) === fn);
+      // Each reason is its own number, so a choice can be inspected afterwards.
+      const penalties = [
+        [used.has(ex), "repeat", WORKOUT.repeatDemotion],
+        [interferes, "interference", WORKOUT.interferenceDemotion],
+        [liked === "dislike", "dislike", WORKOUT.dislikeDemotion],
+        [elsewhere, "recovery", WORKOUT.offDayDemotion],
+        [redundant, "same-job", WORKOUT.functionRepeatDemotion],
+        [overloads, "weekly-maximum", TIERS.length + 1]
+      ].filter(p => p[0]).map(p => ({ reason: p[1], steps: p[2] }));
+      // The session-overlap tie-break favours lifts that also train the day's other
+      // muscles. For a Focus muscle it would pick the broader, less specific
+      // movement, so it is left out there.
+      const overlap = focus ? 0 :
+        -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length;
       const key = [
-        tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
-          (interferes ? WORKOUT.interferenceDemotion : 0) +
-          (liked === "dislike" ? WORKOUT.dislikeDemotion : 0) +
-          (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0),
-        -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
+        tierRank(ex.tierFor(muscle.id)) + penalties.reduce((t, p) => t + p.steps, 0),
+        overlap,
         order
       ];
-      if (!bestKey || compareKeys(key, bestKey) < 0) { best = ex; bestKey = key; }
+      if (!bestKey || compareKeys(key, bestKey) < 0) { best = ex; bestKey = key; bestPenalties = penalties; }
     });
+    this.lastPenalties = bestPenalties;
     return best;
   }
 }

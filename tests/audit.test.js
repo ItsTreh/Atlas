@@ -188,3 +188,52 @@ describe("time message", () => {
     expect(routine.sessions.length).toBeGreaterThan(0);
   });
 });
+
+describe("selection by function", () => {
+  const picks = (routine, muscleId) => routine.sessions.flatMap(s => s.workout.entriesFor(muscleId));
+  const jobs = (routine, muscleId) => picks(routine, muscleId).map(e => e.exercise.functionFor(muscleId));
+
+  test("labels exist only for the muscles where the catalogue can tell jobs apart", () => {
+    expect(ex("Machine Hip Thrust").functionFor("glutes")).toBe("hip-extension");
+    expect(ex("Barbell Back Squat").functionFor("glutes")).toBe("knee-dominant");
+    expect(ex("Cable Lateral Raise").functionFor("shoulders")).toBe("side-delt");
+    expect(ex("Reverse Pec Deck").functionFor("shoulders")).toBe("rear-delt");
+    expect(ex("Machine Chest Press").functionFor("chest")).toBeNull();
+  });
+
+  test("a Focus muscle does not get two lifts doing the same job in one session when others exist", () => {
+    for (const id of ["glutes", "shoulders"]) {
+      const { routine } = generatedWeek(app, { muscleIds: [id], sessions: 2, minutes: 75 });
+      routine.experience = "advanced";
+      routine.selection.setPriority(id, "focus");
+      routine.generate();
+      for (const s of routine.sessions) {
+        const fns = s.workout.entriesFor(id).map(e => e.exercise.functionFor(id));
+        expect(new Set(fns).size, id + " " + fns.join(",")).toBe(fns.length);
+      }
+    }
+  });
+
+  test("glutes in Focus get a hip-extension lift, not only knee-dominant ones", () => {
+    const { routine } = generatedWeek(app, { muscleIds: ["glutes"], sessions: 2, minutes: 75 });
+    routine.experience = "advanced";
+    routine.selection.setPriority("glutes", "focus");
+    routine.generate();
+    expect(jobs(routine, "glutes")).toContain("hip-extension");
+  });
+
+  test("each choice keeps its penalties as separate named reasons", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 2, minutes: 75 });
+    const names = ["repeat", "interference", "dislike", "recovery", "same-job", "weekly-maximum"];
+    for (const s of routine.sessions) for (const e of s.workout.entries)
+      for (const p of e.penalties) { expect(names).toContain(p.reason); expect(p.steps).toBeGreaterThan(0); }
+  });
+
+  test("a disliked exercise is demoted by its own reason, a 'cannot' one is never offered", () => {
+    const { routine } = generatedWeek(app, { muscleIds: ["shoulders"], sessions: 2, minutes: 75 });
+    const raise = ex("Cable Lateral Raise");
+    routine.exercisePrefs.discard(raise.id, "cannot");
+    routine.generate();
+    expect(picks(routine, "shoulders").map(e => e.exercise.id)).not.toContain(raise.id);
+  });
+});
