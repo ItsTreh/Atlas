@@ -13,16 +13,16 @@ region in the manifest:
   painted   painted by hand, one colour per region (Male_Body.paint.json
             names them; several colours may name one region): in Texture
             Paint, into Male_Body.paint.png on the UV map "Paint", once
-            paint_setup.py has made them (each face reads the image at points
-            across it), in Vertex Paint before that (each face corner reads
-            its colour). Each colour read snaps to the nearest listed colour,
-            or to none if nearest to white or to a colour not listed. Each region's
-            share is then blurred by distance (about a centimetre, as far
-            where the faces are small as where they are large) and every face
-            takes the region with the largest share, so a border becomes a smooth curve however ragged
-            the strokes. The faces a border crosses are cut along it (where
-            the two shares are equal), so it stays smooth where the faces are
-            large; small islands are absorbed. A painted region takes
+            paint_setup.py has made them, in Vertex Paint before that. Each
+            colour read snaps to the nearest listed colour, or to none if
+            nearest to white or to a colour not listed. From the image, each
+            vertex takes the region under it and each edge between two
+            regions is cut where the image changes along it, so a border runs
+            where the brush went however large or thin the faces (image_cut).
+            From Vertex Paint, each region's share of the corners is blurred
+            by distance (about a centimetre) and the faces a border crosses
+            are cut where two shares are equal. Small islands are absorbed. A
+            painted region takes
             exactly its painted faces, replacing any material of that name
   authored  painted on the sculpture itself (male_body_regions.py): every
             face carries one material, whose name is its region's id
@@ -87,9 +87,10 @@ PAINT_IMAGE = os.path.splitext(SOURCE)[0] + ".paint.png"
 PAINT_UV, PAINT_SAMPLES = "Paint", 6
 PAINT_SIGMA, PAINT_ISLAND = 0.01, 30  # the painted borders' cleanup: the blur's reach (m, a Gaussian's
                                       # sigma, measured on the surface, not in edges), an island's faces
-# The blur for Texture Paint: its strokes are exact, not whole corners, so a
-# smaller blur cleans up slips without eating thin regions.
-PAINT_IMAGE_SIGMA = 0.004
+# Texture Paint is read straight from the image, not blurred: each read takes
+# the commonest region within this distance (m), enough to clean up a stray
+# pixel without moving a border.
+PAINT_CLEAN = 0.001
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
@@ -169,12 +170,15 @@ def snap(c, palette, region):
     return region[np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)]
 
 
-def image_paint(me, palette, region, k):
-    """Each face's share of each region (k columns, 0 unpainted) in the paint
-    image (PAINT_IMAGE, laid on by the PAINT_UV map): the image read at a grid
-    of points across each triangle, nearest pixel, each pixel snapped like a
-    corner. A face reads its own pixels, so a border runs where the paint
-    does, not along the faces' edges."""
+def image_cut(me, palette, region, ids):
+    """painted() for Texture Paint: the regions read straight from the paint
+    image (PAINT_IMAGE, laid on by the PAINT_UV map), each pixel snapped like a
+    corner. Each vertex takes the region under it; each edge whose two ends
+    differ is cut where the image changes along it; each face, cut or not,
+    takes the region at its centre. Every read is the commonest region within
+    PAINT_CLEAN of the point, which cleans up a stray pixel. So a border runs
+    where the brush went, however long or thin the faces it crosses, and the
+    paint of one surface never reaches another across a crease."""
     img = bpy.data.images.load(PAINT_IMAGE)
     w, h = img.size
     px = np.empty(w * h * 4, np.float32); img.pixels.foreach_get(px)
@@ -183,25 +187,69 @@ def image_paint(me, palette, region, k):
     colours, inverse = np.unique((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2], return_inverse=True)
     rgb = np.stack([colours >> 16, (colours >> 8) & 255, colours & 255], 1) / 255.0
     pixel = snap(rgb, palette, region)[inverse.ravel()]             # each pixel's region, bottom row first
-    me.calc_loop_triangles()
-    nt = len(me.loop_triangles)
-    tl = np.empty(nt * 3, np.int64); me.loop_triangles.foreach_get("loops", tl); tl = tl.reshape(-1, 3)
-    tp = np.empty(nt, np.int64); me.loop_triangles.foreach_get("polygon_index", tp)
-    ta = np.empty(nt); me.loop_triangles.foreach_get("area", ta)
-    uv = np.empty(len(me.loops) * 2); me.uv_layers[PAINT_UV].data.foreach_get("uv", uv); uv = uv.reshape(-1, 2)
-    n = PAINT_SAMPLES
-    bary = np.array([(i, j, n - i - j) for i in range(n + 1) for j in range(n + 1 - i)], float) / n
-    frac = np.zeros((len(me.polygons), k))
-    for s in range(0, nt, 50000):
-        t = slice(s, s + 50000)
-        p = np.einsum("sb,tbc->tsc", bary, uv[tl[t]])
-        x = np.clip((p[..., 0] * w).astype(np.int64), 0, w - 1)
-        y = np.clip((p[..., 1] * h).astype(np.int64), 0, h - 1)
-        lab = pixel[y * w + x]
-        rows = np.arange(len(lab))[:, None] * k + lab
-        cnt = np.bincount(rows.ravel(), minlength=len(lab) * k).reshape(-1, k) / lab.shape[1]
-        np.add.at(frac, tp[t], cnt * ta[t, None])
-    return frac / np.maximum(frac.sum(1, keepdims=True), 1e-20)
+    if not pixel.any():
+        return None
+    k = len(ids) + 1
+
+    bm = bmesh.new(); bm.from_mesh(me)
+    uvl = bm.loops.layers.uv[PAINT_UV]
+    # The image's scale on the body (m a pixel), for PAINT_CLEAN in pixels.
+    area = sum(f.calc_area() for f in bm.faces)
+    uv_area = sum(abs(np.cross(np.subtract(f.loops[1][uvl].uv, f.loops[0][uvl].uv),
+                               np.subtract(f.loops[2][uvl].uv, f.loops[0][uvl].uv))) / 2 for f in bm.faces)
+    r = max(1, round(PAINT_CLEAN / (area / (uv_area * w * h)) ** 0.5))
+    oy, ox = np.mgrid[-r:r + 1, -r:r + 1]
+    disk = (ox ** 2 + oy ** 2) <= r * r
+    ox, oy = ox[disk], oy[disk]
+
+    def read(uv):
+        """UV points (n x 2) -> the commonest region within r pixels of each."""
+        uv = np.asarray(uv, float).reshape(-1, 2)
+        out = np.empty(len(uv), np.int64)
+        for s in range(0, len(uv), 20000):
+            q = uv[s:s + 20000]
+            x = np.clip((q[:, 0] * w).astype(np.int64)[:, None] + ox, 0, w - 1)
+            y = np.clip((q[:, 1] * h).astype(np.int64)[:, None] + oy, 0, h - 1)
+            lab = pixel[y * w + x]
+            rows = np.arange(len(lab))[:, None] * k + lab
+            out[s:s + 20000] = np.bincount(rows.ravel(), minlength=len(lab) * k).reshape(-1, k).argmax(1)
+        return out
+
+    bm.verts.ensure_lookup_table()
+    vert = read([v.link_loops[0][uvl].uv[:] if v.link_loops else (0.0, 0.0) for v in bm.verts])
+    at = {v: int(vert[v.index]) for v in bm.verts}
+    # Each edge between two regions: read the image along it (in the UVs of
+    # one face beside it) and cut it halfway between the last point of the
+    # first end's region and the first point of the other's.
+    crossing = [e for e in bm.edges if at[e.verts[0]] != at[e.verts[1]] and e.link_loops]
+    n = 32
+    t = (np.arange(n) + 0.5) / n
+    ends = []
+    for e in crossing:
+        loop = e.link_loops[0]                                      # runs loop.vert -> the next loop's vert
+        a, b = np.array(loop[uvl].uv[:]), np.array(loop.link_loop_next[uvl].uv[:])
+        if loop.vert != e.verts[0]:
+            a, b = b, a
+        ends.append((a, b))
+    ends = np.array(ends).reshape(-1, 2, 2)
+    along = read(ends[:, 0, None, :] + t[None, :, None] * (ends[:, 1, None, :] - ends[:, 0, None, :])).reshape(-1, n)
+    cuts = []
+    for e, lab in zip(crossing, along):
+        v0 = e.verts[0]
+        la, lb = at[v0], at[e.verts[1]]
+        off_a = np.flatnonzero(lab != la)
+        on_b = np.flatnonzero(lab == lb)
+        lo = t[off_a[0]] if len(off_a) else 1.0
+        hi = t[on_b[0]] if len(on_b) else lo
+        f = min(max(0.5 * (lo - 0.5 / n) + 0.5 * (hi - 0.5 / n), 0.05), 0.95)
+        _, nvert = bmesh.utils.edge_split(e, v0, f)
+        cuts.append(nvert)
+    if cuts:
+        bmesh.ops.connect_verts(bm, verts=cuts)
+        bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    labels = read([np.mean([l[uvl].uv[:] for l in f.loops], 0) for f in bm.faces])
+    bm.to_mesh(me); bm.free(); me.update()
+    return ids, labels
 
 
 def painted(me):
@@ -222,40 +270,32 @@ def painted(me):
     region = np.array([0] + [ids.index(r) + 1 for r in key.values()])
     nv, k = len(me.vertices), len(ids) + 1
     vi = np.empty(len(me.loops), np.int64); me.loops.foreach_get("vertex_index", vi)
-    # Each vertex: the share of the paint around it of each colour, then
+    if use_image:
+        return image_cut(me, palette, region, ids)
+    # Each vertex: the share of the paint around it of each colour (its corners' colours), then
     # blurred by distance (a Gaussian, PAINT_SIGMA), each vertex weighted by the
     # surface it stands for. Blurring by distance rather than along edges
     # reaches as far where the faces are small as where they are large, so a
     # border does not wobble where the mesh's density changes. Surface facing
     # away (the arm against the chest) is left out.
-    if use_image:                                                   # its faces' shares, by their area
-        frac = image_paint(me, palette, region, k)
-        if not frac[:, 1:].any():
-            return None
-        fa = np.empty(len(me.polygons)); me.polygons.foreach_get("area", fa)
-        ft = np.empty(len(me.polygons), np.int64); me.polygons.foreach_get("loop_total", ft)
-        lf = np.repeat(np.arange(len(me.polygons)), ft)             # each corner's face
-        share = np.stack([np.bincount(vi, frac[lf, j] * fa[lf], nv) for j in range(k)], 1)
-        share /= np.maximum(share.sum(1, keepdims=True), 1e-20)
-    else:                                                           # its corners' colours
-        attr = me.color_attributes.get(me.color_attributes.active_color_name or "") or me.color_attributes[0]
-        c = np.empty(len(attr.data) * 4, np.float32); attr.data.foreach_get("color_srgb", c)
-        c = c.reshape(-1, 4)[:, :3]
-        if attr.domain == 'POINT':
-            c = c[vi]
-        elif attr.domain != 'CORNER':
-            raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
-        corner = snap(c, palette, region)
-        if not corner.any():
-            return None
-        share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
-        share /= np.maximum(share.sum(1, keepdims=True), 1)
+    attr = me.color_attributes.get(me.color_attributes.active_color_name or "") or me.color_attributes[0]
+    c = np.empty(len(attr.data) * 4, np.float32); attr.data.foreach_get("color_srgb", c)
+    c = c.reshape(-1, 4)[:, :3]
+    if attr.domain == 'POINT':
+        c = c[vi]
+    elif attr.domain != 'CORNER':
+        raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
+    corner = snap(c, palette, region)
+    if not corner.any():
+        return None
+    share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
+    share /= np.maximum(share.sum(1, keepdims=True), 1)
     co = np.empty(nv * 3); me.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
     nor = np.empty(nv * 3); me.vertices.foreach_get("normal", nor); nor = nor.reshape(-1, 3)
     fa = np.empty(len(me.polygons)); me.polygons.foreach_get("area", fa)
     ft = np.empty(len(me.polygons), np.int64); me.polygons.foreach_get("loop_total", ft)
     area = np.bincount(vi, np.repeat(fa / ft, ft), nv)
-    sigma = PAINT_IMAGE_SIGMA if use_image else PAINT_SIGMA
+    sigma = PAINT_SIGMA
     reach = 2.5 * sigma
     tree = KDTree(nv)
     for i, p in enumerate(co):
