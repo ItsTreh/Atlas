@@ -67,6 +67,8 @@
     "#B2DFFF": "sartorius.R",
     "#96FF76": "sartorius.L",
     "#FF3F5F": "iliopsoas.R",
-    "#BB6EFF": "iliopsoas.L"
+    "#BB6EFF": "iliopsoas.L",
+    "#6082FF": "pectineus.R",
+    "#FF703E": "pectineus.L"
   }
 }

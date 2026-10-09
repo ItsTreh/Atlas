@@ -74,6 +74,7 @@ const ANATOMY_REGIONS = Object.freeze({
   "tensor-fasciae-latae": "glutes",
   "adductors":            "adductors",
   "gracilis":             "adductors",
+  "pectineus":            "adductors",
   "gastrocnemius":        "calves",
   "soleus":               "calves",
   "tibialis-anterior":    "calves",
