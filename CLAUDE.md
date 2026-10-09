@@ -32,6 +32,7 @@ To view the Male_Body sculpture, open `index.html?anatomy=male-body`. Without th
 
 ```
 assets/anatomy/Male_Body.blend      the sculpture; hand-edited, the source of truth
+  │  + Male_Body.paint.png          the paint (Texture Paint, on the UV map "Paint")
   │  + Male_Body.paint.json         colour key: painted colour → region id
   ▼  tools/anatomy/authored/male_body.py   (Blender; only READS the .blend)
 assets/anatomy/male-body.glb        one primitive per region
@@ -42,9 +43,9 @@ js/anatomy-model-male-body.js       what the page loads
 
 **Where a face's region comes from**, in priority order. All three are applied by `male_body.py` at export.
 
-1. **Painted (the current method).** The user paints in Blender's Vertex Paint, one colour per region, and `Male_Body.paint.json` maps each hex colour to a region id. Several colours may map to one region, e.g. a touch-up in a slightly different shade. At export:
-   - each corner snaps to its nearest listed colour (white, or any colour the key doesn't list, counts as unpainted);
-   - each colour's coverage is blurred about 1 cm by distance (not along mesh edges, so the reach doesn't change with triangle size);
+1. **Painted (the current method).** The user paints in Blender's Texture Paint into `Male_Body.paint.png`, one colour per region, and `Male_Body.paint.json` maps each hex colour to a region id. Several colours may map to one region, e.g. a touch-up in a slightly different shade. The image lies on the sculpture through its own UV map, `Paint`; the model's original `UVMap` overlaps and is unused. `paint_setup.py` made both once, baking the earlier Vertex Paint result into the image. The Vertex Paint colours are still in the .blend but the exporter ignores them while the image exists. At export:
+   - each face reads the image at a grid of points across it, and each pixel snaps to its nearest listed colour (white, or any colour the key doesn't list, counts as unpainted), so a border runs where the brush went, not along triangle edges;
+   - each colour's coverage is blurred about 4 mm by distance (not along mesh edges, so the reach doesn't change with triangle size). Vertex Paint used 1 cm; on the image, 1 cm shrank thin muscles;
    - the faces a border crosses are **cut along the smooth contour**, so highlights come out as smooth curves even where the sculpture's faces are large (e.g. the upper chest);
    - a painted region takes exactly its painted faces and replaces any older material of the same name.
 
@@ -53,7 +54,7 @@ js/anatomy-model-male-body.js       what the page loads
 3. **Borrowed.** Manifest entries marked `"source": "borrowed"` (today: infraspinatus, teres major, erector spinae) fill faces nobody claimed, from the old procedural figure. This is a stand-in, and the hands always stay `body`.
 
 **Adding a painted muscle:**
-1. The user paints and saves the .blend, then gives the colour and the muscle.
+1. The user paints, saves the image (Image > Save; Ctrl+S saves only the .blend), then gives the colour and the muscle. Check the colour as stored in the image, since Blender's picker can show a different hex.
 2. Add the colour to `Male_Body.paint.json`.
 3. Make sure the region id is in `male-body.manifest.json` (drop `"source": "borrowed"` if it was borrowed) and in `js/anatomy-regions.js`.
 4. Run `male_body.py`, then the authored build, then `npm test`.
