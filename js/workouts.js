@@ -32,17 +32,17 @@
    ========================================================================= */
 
 const WORKOUT = Object.freeze({
-  setsPerExercise:    3,   // typical working sets for one exercise
-  maxSetsPerExercise: 4,   // past this, a second exercise does the job better
-  minDirectSets:      2,   // a selected muscle always gets at least one exercise
+  setsPerExercise:    configValue("setsPerExercise"),   // typical working sets for one exercise
+  maxSetsPerExercise: configValue("maxSetsPerExercise"),   // past this, a second exercise does the job better
+  minDirectSets:      configValue("minDirectSets"),   // a selected muscle always gets at least one exercise
   // Direct sets for one muscle in one session, on a split day. Research
   // generally finds diminishing returns past roughly 6–10 hard sets per
   // muscle per session; the exact number is debated, so this is a tunable
   // middle of that range rather than a settled figure.
-  maxSetsPerSession:  8,
-  secondaryCredit:  0.5,   // a set where the muscle only assists counts as half
-  repeatDemotion:     1,   // tier steps an exercise drops once used this week
-  offDayDemotion:     1    // tier steps for one that also works a muscle trained on another day
+  maxSetsPerSession:  configValue("maxSetsPerSession"),
+  secondaryCredit:  configValue("secondaryCredit"),   // a set where the muscle only assists counts as half
+  repeatDemotion:     configValue("repeatDemotion"),   // tier steps an exercise drops once used this week
+  offDayDemotion:     configValue("offDayDemotion")    // tier steps for one that also works a muscle trained on another day
 });
 
 /**

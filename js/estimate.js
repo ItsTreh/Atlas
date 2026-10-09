@@ -17,9 +17,9 @@
    ========================================================================= */
 
 const ESTIMATE = Object.freeze({
-  minutesPerSet: 2.5,   // one working set plus the rest after it
-  warmupMinutes: 10,    // per session, not available for working sets
-  timesPerWeek:  2      // how often each muscle is best trained
+  minutesPerSet: configValue("minutesPerSet"),   // one working set plus the rest after it
+  warmupMinutes: configValue("warmupMinutes"),    // per session, not available for working sets
+  timesPerWeek:  configValue("timesPerWeek")      // how often each muscle is best trained
 });
 
 /* The phases are typical, not promised, and all assume consistency. */
