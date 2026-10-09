@@ -79,6 +79,15 @@ function sessionReasons(routine, session) {
       out.push(name + " goes first, then the rest in the order picked: none of them tires another's target muscle.");
   }
 
+  // Why these exercises: the tier they hold, or that nothing rates them.
+  const lead = list.find(e => !e.manual) || list[0];
+  const mName = MUSCLE_BY_ID.get(lead.muscleId).name.toLowerCase();
+  out.push(lead.tier
+    ? lead.exercise.name + " is " + lead.tier + " tier for " + mName + " in " + RATING_ORIGIN.label +
+      " (one coach's opinion), and each muscle gets its best-ranked exercises, one per movement."
+    : "No tier list exists for " + mName + ", so " + lead.exercise.name +
+      " is picked from the exercises that train it, without a ranking.");
+
   const kinds = new Set(list.map(e => e.exercise.compound ? "compound" : "isolation"));
   if (kinds.has("compound") && kinds.has("isolation"))
     out.push("Stop compound sets with " + LIFT_KINDS.compound.reserve + " reps in reserve and isolation sets with " +

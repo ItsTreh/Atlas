@@ -243,11 +243,29 @@ const EXERCISE_CATALOGUE = [
 ];
 
 /* --------------------------------------------------------------------------
+   Where the ratings come from (see docs/tier-list-sources.md). They are the
+   tier lists the project owner supplied. They match Jeff Nippard's
+   exercise-tier-list videos, compiled on the page below; each group's
+   `source` is that group's video. A coach's ranking, not a study: it says
+   which exercises one experienced coach prefers, never how much more muscle
+   they build. No such list exists for traps, forearms, hamstrings, adductors,
+   calves, abs, obliques or the lower back, so those exercises stay unrated
+   and are offered after rated ones, in catalogue order. Nothing is invented
+   to fill the gap.
+   -------------------------------------------------------------------------- */
+const RATING_ORIGIN = Object.freeze({
+  kind: "expert-opinion",
+  label: "Jeff Nippard's exercise tier lists",
+  compiledAt: "https://hackmd.io/@dastratman/B1w4jGoDJx",
+  note: "One coach's opinion. It orders exercises; it does not measure how much more muscle they build."
+});
+
+/* --------------------------------------------------------------------------
    Ratings, exactly as supplied. Within a tier, list order is kept and used
    only to break ties.
    -------------------------------------------------------------------------- */
 const EXERCISE_RATINGS = [
-  { group: "Chest", rates: ["chest"], tiers: {
+  { group: "Chest", source: "https://www.youtube.com/watch?v=fGm-ef-4PVk", rates: ["chest"], tiers: {
     "S+": ["Machine Chest Press"],
     "S":  ["Seated Cable Pec Flye"],
     "A":  ["Bench Press", "Incline Bench Press", "Flat Dumbbell Press",
@@ -256,14 +274,14 @@ const EXERCISE_RATINGS = [
            "Incline Smith Machine Press", "Cable Crossovers", "Pec Deck",
            "Dumbbell Flye", "Cable Press-Around"]
   }},
-  { group: "Triceps", rates: ["triceps"], tiers: {
+  { group: "Triceps", source: "https://www.youtube.com/watch?v=OpRMRhr0Ycc", rates: ["triceps"], tiers: {
     "S":  ["Overhead Cable Triceps Extension", "Skullcrushers"],
     "A":  ["Triceps Pressdown (Bar)", "Overhead Cable Triceps Extension (Rope)",
            "Katana Cable Triceps Extension", "One-Arm Dumbbell Overhead Extension",
            "Dumbbell Skullcrushers", "Smith Machine JM Press",
            "Cable Triceps Kickbacks", "Close-Grip Bench Press"]
   }},
-  { group: "Back", rates: ["lats", "upper-back"], tiers: {
+  { group: "Back", source: "https://www.youtube.com/watch?v=jLvqKgW-_G8", rates: ["lats", "upper-back"], tiers: {
     "S+": ["Chest-Supported Row"],
     "S":  ["Wide-Grip Lat Pulldown", "Neutral-Grip Lat Pulldown",
            "Half-Kneeling 1-Arm Lat Pulldown", "Meadows Row", "Cable Row",
@@ -273,27 +291,27 @@ const EXERCISE_RATINGS = [
            "Seated Rope Face-Pull", "Lying Rope Face-Pull", "Cable Lat Pullover",
            "DB Lat Pullover"]
   }},
-  { group: "Shoulders", rates: ["shoulders"], tiers: {
+  { group: "Shoulders", source: "https://www.youtube.com/watch?v=SgyUoY0IZ7A", rates: ["shoulders"], tiers: {
     "S":  ["Cable Lateral Raise", "Cable Y-Raise", "Behind-the-Back Cuffed Lateral Raise",
            "Reverse Pec Deck", "Reverse Cable Crossover"],
     "A+": ["Machine Shoulder Press", "Atlantis Standing Machine Lateral Raise"],
     "A":  ["Lean-In Dumbbell Lateral Raise", "Dumbbell Overhead Press",
            "Arnold Style Side-Lying Dumbbell Raise", "Rope Facepull"]
   }},
-  { group: "Quads", rates: ["quads"], tiers: {
+  { group: "Quads", source: "https://www.youtube.com/watch?v=kIXcoivzGf8", rates: ["quads"], tiers: {
     "S":  ["Barbell Back Squat", "Hack Squat", "Pendulum Squat", "Smith Machine Squat",
            "Bulgarian Split Squat"],
     "A":  ["Barbell Front Squat", "Low-Bar Squat", "45-Degree Leg Press",
            "Leg Extension", "Reverse Nordic"]
   }},
-  { group: "Biceps", rates: ["biceps"], tiers: {
+  { group: "Biceps", source: "https://www.youtube.com/watch?v=GNO4OtYoCYk", rates: ["biceps"], tiers: {
     "S":  ["Face Away Bayesian Cable Curl", "Dumbbell Preacher Curl",
            "Machine Preacher Curl", "Hammer Grip Preacher Curl"],
     "A":  ["EZ Bar Curl", "Standing Dumbbell Curl", "Incline Curl", "Lying Dumbbell Curl",
            "Modified 21s", "Standard Cable Curl", "Bayesian Cable Curl", "Cheat Curl",
            "Strict Curl", "Hammer Curl", "Inverse Zottman Curl"]
   }},
-  { group: "Glutes", rates: ["glutes"], tiers: {
+  { group: "Glutes", source: "https://youtu.be/3ryh7PNhz3E", rates: ["glutes"], tiers: {
     "S+": ["Walking Lunge"],
     "S":  ["Machine Hip Abduction", "Smith Machine Lunge (Front Foot Elevated)",
            "45-Degree Back Extension"],
@@ -363,6 +381,7 @@ const EXERCISE_BY_NAME = new Map();
         order++;
       }
     }
+    if (!/^https:\/\//.test(list.source || "")) problem(list.group + " has no source link");
     for (const label of Object.keys(list.tiers))
       if (!TIERS.includes(label)) problem(list.group + " uses unknown tier \"" + label + "\"");
   }
@@ -386,4 +405,14 @@ function exercisesFor(muscleId) {
     candidateCache.set(muscleId, Object.freeze([...rated, ...unrated]));
   }
   return candidateCache.get(muscleId);
+}
+
+/**
+ * The rating list that rates `muscleId`, or null when no tier list exists for
+ * it (traps, hamstrings, calves, abs...). Exercises for such a muscle are
+ * still offered, unrated.
+ */
+function ratingSourceFor(muscleId) {
+  const list = EXERCISE_RATINGS.find(l => l.rates.includes(muscleId));
+  return list ? { group: list.group, url: list.source, ...RATING_ORIGIN } : null;
 }

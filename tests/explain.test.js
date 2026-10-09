@@ -64,3 +64,22 @@ describe("session reasons", () => {
     expect(app.sessionReasons(routine, s)).toEqual([]);
   });
 });
+
+describe("where the tiers come from", () => {
+  test("every rated muscle has a source link and the unrated ones have none", () => {
+    for (const id of ["chest", "triceps", "lats", "upper-back", "shoulders", "quads", "biceps", "glutes"])
+      expect(app.ratingSourceFor(id).url).toMatch(/^https:\/\//);
+    for (const id of ["traps", "forearms", "hamstrings", "adductors", "calves", "abs", "obliques", "lower-back"])
+      expect(app.ratingSourceFor(id)).toBeNull();
+  });
+
+  test("unrated muscles still get exercises, after any rated ones", () => {
+    for (const id of ["traps", "calves", "abs"]) expect(app.exercisesFor(id).length).toBeGreaterThan(0);
+  });
+
+  test("a session says when its lead exercise has no ranking", () => {
+    const { routine } = generatedWeek(app, { program: "legs", sessions: 3, minutes: 90 });
+    const s = routine.sessions.find(x => x.workout.entries.some(e => !e.tier));
+    if (s) expect(app.sessionReasons(routine, s).join(" ")).toMatch(/tier|ranking/);
+  });
+});

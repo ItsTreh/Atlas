@@ -41,7 +41,9 @@ function renderWorkouts() {
     'higher tiers first, one per movement in a session, rotated across the week. ' +
     'Click an exercise to swap it or × to drop it; move a session with its day and time.</p>' +
     '<div class="tier-key">' + TIERS.map(tierBadge).join('<span class="gt">›</span>') +
-      '<span class="tk-label">recommendation priority</span></div>' +
+      '<span class="tk-label" title="' + esc(RATING_ORIGIN.note) + ' Muscles with no published list, such as ' +
+      'calves or abs, show – and are offered without a ranking.">recommendation priority · ' +
+      '<a href="' + RATING_ORIGIN.compiledAt + '" target="_blank" rel="noopener">source</a></span></div>' +
     DayOfWeek.values.map(day => {
       const session = sessions.find(s => s.day === day);
       return session ? renderSession(session) : renderRestDay(day);
