@@ -16,6 +16,10 @@ const programsEl = $("programs"), summaryEl = $("selection-summary"),
       estimateEl = $("estimate"), captionEl = $("anatomy-caption"),
       toPlanBtn = $("to-plan");
 
+const PRIORITY_LABEL = { maintain: "Maintain (minimum, trimmed first)", normal: "Normal",
+                         focus: "Focus (more sets and days)" };
+const NEXT_PRIORITY = { normal: "focus", focus: "maintain", maintain: "normal" };
+
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 
 /* -------------------------------- figure --------------------------------- */
@@ -136,13 +140,20 @@ function renderSummary() {
     origin = "Nothing selected yet. Click muscles on the figure or pick a program.";
   }
 
-  const chips = muscles.map(m =>
-    '<li class="sel-chip">' +
-      '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
-      esc(m.name) +
+  const chips = muscles.map(m => {
+    const now = selection.priority(m.id);
+    const mark = { focus: "▲", maintain: "▼", normal: "" }[now];
+    return '<li class="sel-chip" data-level="' + now + '">' +
+      '<button type="button" class="chip-main" data-cycle="' + m.id + '" ' +
+        'title="' + PRIORITY_LABEL[now] + ' — click to change" ' +
+        'aria-label="' + esc(m.name) + ', ' + PRIORITY_LABEL[now] + '. Click to change priority.">' +
+        '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
+        esc(m.name) + (mark ? ' <span class="pri-mark" aria-hidden="true">' + mark + '</span>' : '') +
+      '</button>' +
       '<button type="button" class="x" data-remove="' + m.id + '" ' +
         'aria-label="Remove ' + esc(m.name) + '">×</button>' +
-    '</li>').join("");
+    '</li>';
+  }).join("");
 
   summaryEl.innerHTML =
     '<div class="sel-head">' +
@@ -152,11 +163,23 @@ function renderSummary() {
         (muscles.length ? "" : " disabled") + '>Clear</button>' +
     '</div>' +
     '<p class="sel-origin">' + origin + '</p>' +
-    (muscles.length ? '<ul class="sel-list">' + chips + '</ul>' : '') +
+    (muscles.length ? '<ul class="sel-list">' + chips + '</ul>' +
+      '<p class="sel-hint">Click a muscle to set its priority: Normal → <b>▲ Focus</b> → <b>▼ Maintain</b>. ' +
+      'Focus gets more weekly sets and days; Maintain gets the minimum and is trimmed first when your ' +
+      'week is short. Your plan will use this in the next steps.</p>' : '') +
     noExercisesNote(muscles);
 }
 
 summaryEl.addEventListener("click", e => {
+  const cyc = e.target.closest("[data-cycle]");
+  if (cyc) {
+    const id = cyc.dataset.cycle;
+    selection.setPriority(id, NEXT_PRIORITY[selection.priority(id)]);
+    // The list redraws; put keyboard focus back on the chip that was pressed.
+    const again = summaryEl.querySelector('[data-cycle="' + id + '"]');
+    if (again) again.focus();
+    return;
+  }
   const x = e.target.closest("[data-remove]");
   if (x) {
     const next = x.closest("li").nextElementSibling || x.closest("li").previousElementSibling;
