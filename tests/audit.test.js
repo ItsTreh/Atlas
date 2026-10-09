@@ -191,14 +191,16 @@ describe("time message", () => {
 
 describe("selection by function", () => {
   const picks = (routine, muscleId) => routine.sessions.flatMap(s => s.workout.entriesFor(muscleId));
-  const jobs = (routine, muscleId) => picks(routine, muscleId).map(e => e.exercise.functionFor(muscleId));
+  const actions = (routine, muscleId) => picks(routine, muscleId).map(e => e.exercise.action);
 
-  test("labels exist only for the muscles where the catalogue can tell jobs apart", () => {
-    expect(ex("Machine Hip Thrust").functionFor("glutes")).toBe("hip-extension");
-    expect(ex("Barbell Back Squat").functionFor("glutes")).toBe("knee-dominant");
-    expect(ex("Cable Lateral Raise").functionFor("shoulders")).toBe("side-delt");
-    expect(ex("Reverse Pec Deck").functionFor("shoulders")).toBe("rear-delt");
-    expect(ex("Machine Chest Press").functionFor("chest")).toBeNull();
+  test("same job means same action and, when both name a part, the same part", () => {
+    const lat = ex("Cable Lateral Raise"), rear = ex("Reverse Pec Deck"), cross = ex("Reverse Cable Crossover");
+    expect(lat.sameJobAs(ex("Lean-In Dumbbell Lateral Raise"), "shoulders")).toBe(true);
+    expect(lat.sameJobAs(rear, "shoulders")).toBe(false);
+    expect(rear.sameJobAs(cross, "shoulders")).toBe(true);
+    expect(ex("Machine Hip Thrust").sameJobAs(ex("Barbell Back Squat"), "glutes")).toBe(false);
+    expect(ex("Machine Hip Thrust").sameJobAs(ex("Glute Kickback"), "glutes")).toBe(true);
+    expect(ex("Machine Hip Abduction").sameJobAs(ex("Machine Hip Thrust"), "glutes")).toBe(false);
   });
 
   test("a Focus muscle does not get two lifts doing the same job in one session when others exist", () => {
@@ -208,18 +210,19 @@ describe("selection by function", () => {
       routine.selection.setPriority(id, "focus");
       routine.generate();
       for (const s of routine.sessions) {
-        const fns = s.workout.entriesFor(id).map(e => e.exercise.functionFor(id));
-        expect(new Set(fns).size, id + " " + fns.join(",")).toBe(fns.length);
+        const list = s.workout.entriesFor(id);
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++)
+          expect(list[i].exercise.sameJobAs(list[j].exercise, id), list[i].exercise.name + " / " + list[j].exercise.name).toBe(false);
       }
     }
   });
 
-  test("glutes in Focus get a hip-extension lift, not only knee-dominant ones", () => {
+  test("glutes in Focus get more than one job over the week", () => {
     const { routine } = generatedWeek(app, { muscleIds: ["glutes"], sessions: 2, minutes: 75 });
     routine.experience = "advanced";
     routine.selection.setPriority("glutes", "focus");
     routine.generate();
-    expect(jobs(routine, "glutes")).toContain("hip-extension");
+    expect(new Set(actions(routine, "glutes")).size).toBeGreaterThan(1);
   });
 
   test("each choice keeps its penalties as separate named reasons", () => {
@@ -229,11 +232,36 @@ describe("selection by function", () => {
       for (const p of e.penalties) { expect(names).toContain(p.reason); expect(p.steps).toBeGreaterThan(0); }
   });
 
-  test("a disliked exercise is demoted by its own reason, a 'cannot' one is never offered", () => {
+  test("a 'cannot' exercise is never offered", () => {
     const { routine } = generatedWeek(app, { muscleIds: ["shoulders"], sessions: 2, minutes: 75 });
     const raise = ex("Cable Lateral Raise");
     routine.exercisePrefs.discard(raise.id, "cannot");
     routine.generate();
     expect(picks(routine, "shoulders").map(e => e.exercise.id)).not.toContain(raise.id);
+  });
+});
+
+describe("regions in the audit", () => {
+  test("a Focus shoulder week with only lateral work reports the missing parts, not a clean bill", () => {
+    const { routine } = generatedWeek(app, { muscleIds: ["shoulders"], sessions: 2, minutes: 60 });
+    routine.experience = "advanced";
+    routine.selection.setPriority("shoulders", "focus");
+    for (const e of app.EXERCISES.filter(e => e.primary.includes("shoulders") && !e.regionsFor("shoulders").includes("lateral")))
+      routine.exercisePrefs.discard(e.id, "cannot");
+    routine.generate();
+    const row = routine.audit().rows.find(r => r.muscle.id === "shoulders");
+    expect(row.regions.direct).toContain("lateral");
+    expect(row.regions.missing).toEqual(expect.arrayContaining(["posterior"]));
+    expect(app.weekReasons(routine).join(" ")).toMatch(/No exercise this week trains the .*posterior/);
+  });
+
+  test("region lists never overlap and only name known parts", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 3, minutes: 75 });
+    for (const r of routine.audit().rows) {
+      if (!r.regions) continue;
+      const all = [...r.regions.direct, ...r.regions.assistedOnly, ...r.regions.missing];
+      expect(new Set(all).size).toBe(all.length);
+      for (const p of all) expect(app.MUSCLE_REGIONS[r.muscle.id]).toContain(p);
+    }
   });
 });

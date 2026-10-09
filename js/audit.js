@@ -100,6 +100,9 @@ function auditPlan(routine) {
       for (const e of (planned.events || []).filter(e => e.muscleId === m.id && e.reason !== "covered")) add(e.reason, e.sets);
     }
 
+    // Which parts of the muscle the final plan reaches (exercise-meta.js).
+    const regions = regionCoverage(m, routine.sessions.filter(s => s.workout));
+
     const deviation = total - target;
     const status = total + SHORT_TOLERANCE < target ? "short" : total > target + OVER_TOLERANCE ? "over" : "met";
     return {
@@ -107,7 +110,7 @@ function auditPlan(routine) {
       requestedSets: requested, targetSets: target, plannedSets: plannedAll, placedPlannedSets: placedPlanned,
       ownSets: own, coveredByOtherLifts: covered, finalDirectSets: direct, finalIndirectSets: indirect,
       finalIndirectCredit: indirectCredit, finalTotalCredit: total,
-      creditFromOtherLifts: total - own, deviation, status, causes, unexplained, rounding,
+      creditFromOtherLifts: total - own, regions, deviation, status, causes, unexplained, rounding,
       belowMinimum: Math.round(total) < m.weeklySets[0]
     };
   });
@@ -127,6 +130,30 @@ function auditPlan(routine) {
         r.muscle.weeklySets[0] + " sets (" + fmtAuditSets(r.finalTotalCredit) + "): " + auditCauseText(r) + "." });
   }
   return { rows, issues, feasible: !issues.length };
+}
+
+/**
+ * For a muscle with named parts: which parts have a lift that trains them
+ * directly, which are only assisted, and which got nothing. A part is
+ * "unreachable" when no catalogue exercise trains it directly, so a missing
+ * part is not blamed on the plan. Returns null for muscles without parts.
+ */
+function regionCoverage(muscle, sessions) {
+  const parts = MUSCLE_REGIONS[muscle.id];
+  if (!parts) return null;
+  const direct = new Set(), assisted = new Set();
+  for (const s of sessions) for (const e of s.workout.entries) {
+    const list = e.exercise.regionsFor(muscle.id);
+    if (e.exercise.primary.includes(muscle.id)) list.forEach(r => direct.add(r));
+    else if (e.exercise.secondary.includes(muscle.id)) list.forEach(r => assisted.add(r));
+  }
+  const reachable = r => EXERCISES.some(x => x.primary.includes(muscle.id) && x.regionsFor(muscle.id).includes(r));
+  return {
+    direct: parts.filter(r => direct.has(r)),
+    assistedOnly: parts.filter(r => !direct.has(r) && assisted.has(r)),
+    missing: parts.filter(r => !direct.has(r) && !assisted.has(r) && reachable(r)),
+    unreachable: parts.filter(r => !reachable(r))
+  };
 }
 
 const fmtAuditSets = n => String(Math.round(n * 10) / 10);

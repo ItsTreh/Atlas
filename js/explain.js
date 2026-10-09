@@ -39,6 +39,15 @@ function weekReasons(routine) {
     out.push(r.muscle.name + ": " + parts + " a week, aimed near the top of its " + low + " to " + high +
       " range because it is your Focus" + (n > 1 ? ", spread over " + n + " sessions so each one stays shorter." : "."));
   }
+  // A Focus muscle's parts: say which ones the exercises reach, and which they do not.
+  for (const r of audit.rows.filter(r => r.priority === "focus" && r.regions && r.finalTotalCredit > 0).slice(0, 3)) {
+    const g = r.regions, name = r.muscle.name.toLowerCase();
+    if (g.missing.length)
+      out.push("No exercise this week trains the " + listText(g.missing) + " part of your " + name +
+        (g.assistedOnly.length ? " directly (the " + listText(g.assistedOnly) + " part only gets help from other lifts)" : "") + ".");
+    else if (g.assistedOnly.length)
+      out.push("The " + listText(g.assistedOnly) + " part of your " + name + " only gets help from other lifts.");
+  }
   const keep = audit.rows.filter(r => r.priority === "maintain").map(r => r.muscle.name);
   if (keep.length)
     out.push(listText(keep) + (keep.length === 1 ? " stays" : " stay") +

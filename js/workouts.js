@@ -459,8 +459,7 @@ class WorkoutBuilder {
       // Two lifts that tire each other's helpers: whichever goes second is held back.
       const interferes = workout.entries.some(e => tiresBothWays(e.exercise, ex));
       // Same job as a lift this muscle already has in the session.
-      const fn = ex.functionFor(muscle.id);
-      const redundant = fn !== null && workout.entriesFor(muscle.id).some(e => e.exercise.functionFor(muscle.id) === fn);
+      const redundant = workout.entriesFor(muscle.id).some(e => ex.sameJobAs(e.exercise, muscle.id));
       // Each reason is its own number, so a choice can be inspected afterwards.
       const penalties = [
         [used.has(ex), "repeat", WORKOUT.repeatDemotion],
