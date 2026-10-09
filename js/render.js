@@ -115,11 +115,13 @@ function renderWeekFit() {
   if (fit.fixes.extraDay) fixes.push("one more training day (" + fit.fixes.extraDay + ")");
   if (fit.fixes.sessionMinutes) fixes.push("sessions of " + fit.fixes.sessionMinutes + " min");
   const fix = fixes.length ? " With " + fixes.join(" or ") + " everything fits." : "";
-  if (!fit.fits) {
+  if (!fit.fits || !fit.meetsMinimums) {
     el.classList.add("warn");
-    el.textContent = "Even the minimum for every muscle needs about " + h(fit.neededMinutes) +
-      " a week and your sessions hold about " + h(fit.capacityMinutes) +
-      ". Add a training day, make sessions longer, or drop a muscle.";
+    const low = fit.belowMinimum.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
+    el.textContent = "Even the usual minimum for every muscle needs more than your sessions hold (about " +
+      h(fit.capacityMinutes) + " a week). " + (low ? "So that every muscle is still trained, " + low +
+      " get less than their usual minimum. " : "") +
+      "Add a training day, make sessions longer, or drop a muscle." + fix;
   } else if (fit.trimmed.length) {
     el.classList.add("warn");
     el.textContent = "Your targets need about " + h(fit.requestedMinutes) + " a week and your sessions hold about " +

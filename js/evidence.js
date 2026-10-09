@@ -199,10 +199,36 @@ const PLANNER_CONFIG = Object.freeze({
     note: "Tier steps for an exercise that also works a muscle trained on another " +
           "day, so that muscle is not quietly trained the day before its own session."
   },
-  minutesPerSet: {
+  workSetMinutes: {
+    group: "estimate", value: 0.75, origin: "heuristic", basedOn: [],
+    note: "Doing one set: about ten controlled reps plus getting into position under the " +
+          "weight. Not taken from a study."
+  },
+  restCompoundMinutes: {
+    group: "estimate", value: 3, origin: "heuristic", basedOn: ["rest-interval"],
+    note: "Rest after a set of a compound lift. Chosen by the project owner from gym " +
+          "practice (2.5 to 3 minutes). The research above found no clear hypertrophy " +
+          "benefit past about 60 to 90 seconds, so this is about performance and " +
+          "realistic session length, not a requirement."
+  },
+  restIsolationMinutes: {
     group: "estimate", value: 2.5, origin: "heuristic", basedOn: ["rest-interval"],
-    note: "One working set plus the rest after it: the average of the two rest " +
-          "ranges in LIFT_KINDS."
+    note: "Rest after a set of an isolation lift, at the low end of the owner's 2.5 to 3 " +
+          "minute range. Same caveat as the compound rest."
+  },
+  setupMinutes: {
+    group: "estimate", value: 2, origin: "heuristic", basedOn: [],
+    note: "Per exercise, not per set: fetching the weights or setting the machine, finding " +
+          "the spot, a first light set. Not taken from a study."
+  },
+  minutesPerSet: {
+    group: "estimate", origin: "heuristic", basedOn: ["rest-interval"],
+    // The average cost of a set when the exercise is not known yet: doing it,
+    // the mean of the two rests, and the setup shared over a typical exercise.
+    value: Math.round((0.75 + (3 + 2.5) / 2 + 2 / 3) * 10) / 10,
+    note: "Planning average for one working set before the exercises are chosen: the set " +
+          "itself, the mean of the two rests, and one exercise's setup shared over " +
+          "setsPerExercise sets. Finished sessions are timed exercise by exercise."
   },
   warmupMinutes: {
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
