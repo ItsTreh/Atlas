@@ -96,17 +96,19 @@ const FULL_BODY_SETS = MUSCLES.reduce((t, m) => t + m.weeklySets[1], 0);
  * `muscles` must be the ones the training system can fill with exercises;
  * no muscles means nothing is trained, whatever the session count says.
  *
- * Session length is a ceiling, not a promise: the workouts give each muscle
- * no more than its weekly maximum (workouts.js), so the hours are the
- * lesser of the sessions booked and the sets those muscles take, warm-ups
+ * Session length is a ceiling, not a promise: the hours are the lesser of
+ * the sessions booked and the sets the plan aims for (`weeklySets`, from the
+ * weekly targets; the most each muscle takes when it gives none), warm-ups
  * included — the same per-set and warm-up times as the training estimate.
  */
-function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes }, weightKg) {
+function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = null }, weightKg) {
   if (!muscles.length || !sessionsPerWeek)
     return { muscles, sessionsPerWeek: 0, sessionMinutes, hours: 0, bigShare: 0,
              kcalPerDay: 0, coverage: 0, load: 0 };
-  const sets = muscles.reduce((t, m) => t + m.weeklySets[1], 0);
-  const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? m.weeklySets[1] : 0), 0);
+  // The sets the plan aims for, when it says; otherwise the most each muscle takes.
+  const setsOf = m => weeklySets && weeklySets.has(m.id) ? weeklySets.get(m.id) : m.weeklySets[1];
+  const sets = muscles.reduce((t, m) => t + setsOf(m), 0);
+  const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? setsOf(m) : 0), 0);
   const minutes = Math.min(sessionsPerWeek * sessionMinutes,
     sets * ESTIMATE.minutesPerSet + sessionsPerWeek * ESTIMATE.warmupMinutes);
   const hours = minutes / 60;

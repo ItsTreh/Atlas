@@ -180,7 +180,7 @@ class WorkoutBuilder {
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
       let need;
       if (block.splitDay) {
-        need = this.doseSets(muscle, workout, credit);
+        need = this.doseSets(muscle, workout, credit, block);
         if (!need) continue;           // dosed by the lifts above, or at its weekly maximum
         need = Math.min(room, need);
       } else {
@@ -241,13 +241,17 @@ class WorkoutBuilder {
    * A muscle with no direct work in the session still gets its minimum when
    * its maximum allows. Returns 0 when it needs nothing more here.
    */
-  doseSets(muscle, workout, credit) {
+  doseSets(muscle, workout, credit, block) {
     const [low, high] = muscle.weeklySets;
     const times = this.timesThisWeek.get(muscle.id) || 1;
     const direct = workout.directSets(muscle.id);
     const room = Math.min(WORKOUT.maxSetsPerSession - direct,
                           Math.floor(high - (this.setsThisWeek.get(muscle.id) || 0) - credit));
-    const need = Math.min(room, Math.round((low + high) / 2 / times - credit));
+    // A day planned by distribution.js says how many sets each muscle gets;
+    // a split the user chose aims at the middle of the weekly range.
+    const aim = block.plannedSets ? block.plannedSets.get(muscle.id) || 0
+                                  : (low + high) / 2 / times;
+    const need = Math.min(room, Math.round(aim - credit));
     if (need >= WORKOUT.minDirectSets) return need;
     return direct === 0 && room >= WORKOUT.minDirectSets ? WORKOUT.minDirectSets : 0;
   }

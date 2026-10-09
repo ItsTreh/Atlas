@@ -18,8 +18,7 @@
 
 const ESTIMATE = Object.freeze({
   minutesPerSet: configValue("minutesPerSet"),   // one working set plus the rest after it
-  warmupMinutes: configValue("warmupMinutes"),    // per session, not available for working sets
-  timesPerWeek:  configValue("timesPerWeek")      // how often each muscle is best trained
+  warmupMinutes: configValue("warmupMinutes")     // per session, not available for working sets
 });
 
 /* Experience, asked once. The weekly target for each muscle starts from it. */
@@ -40,6 +39,9 @@ function weeklyTarget(muscle, experience, priority = "normal") {
   const [low, high] = muscle.weeklySets;
   return Math.max(low, Math.min(high, Math.round(low + table[priority] * (high - low))));
 }
+
+/** What the plan assumes while the user has not said how long they have trained. */
+const DEFAULT_EXPERIENCE = "beginner";
 
 /** Session lengths the page offers, used when suggesting a longer one. */
 const SESSION_LENGTH_OPTIONS = Object.freeze([45, 60, 75, 90]);
@@ -135,7 +137,6 @@ function estimateTraining(muscles, sessionMinutes) {
   return {
     muscleCount: muscles.length,
     sets, minutes, sessions, sessionMinutes,
-    timesPerWeek: ESTIMATE.timesPerWeek,
     phases: PROGRESS_PHASES
   };
 }
