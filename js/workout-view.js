@@ -36,7 +36,7 @@ function renderWorkouts() {
     ? document.activeElement.dataset.key : null;
 
   workoutsEl.innerHTML =
-    '<h3>Your week</h3>' + weekSummary(sessions) +
+    '<h3>Your week</h3>' + weekSummary(sessions) + whyBox(weekReasons(routine), "Why this week") +
     '<p class="note">Exercises are picked from the tiers for the muscles you chose — ' +
     'higher tiers first, one per movement in a session, rotated across the week. ' +
     'Click an exercise to swap it or × to drop it; move a session with its day and time.</p>' +
@@ -116,12 +116,20 @@ function volumeNote(sessions) {
     "<b>Below what your targets usually need.</b> " + esc(parts.join(" ")) + '</p>';
 }
 
+/** Folded "Why" sentences (explain.js). */
+function whyBox(sentences, label = "Why this plan") {
+  if (!sentences.length) return "";
+  return '<details class="why"><summary>' + esc(label) + '</summary><ul>' +
+    sentences.map(t => '<li>' + esc(t) + '</li>').join("") + '</ul></details>';
+}
+
 function renderSession(session) {
   const w = session.workout;
   return '<article class="wo" data-session="' + session.id + '">' +
     '<header class="wo-head">' +
       '<div><div class="wo-when">' + moveControls(session) + '</div>' +
-        '<div class="wo-title">' + esc(session.block.label) + '</div></div>' +
+        '<div class="wo-title">' + esc(session.block.label) + '</div>' +
+        whyBox(sessionReasons(routine, session), "Why this session") + '</div>' +
       '<div class="wo-meta">' + w.entries.length + ' exercises · ' + w.sets + ' sets · ≈ ' +
         w.minutes + ' min' +
         (w.edited ? ' · <button type="button" class="link-btn" data-act="restore" ' +

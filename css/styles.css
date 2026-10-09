@@ -919,3 +919,9 @@ table.meals .food { color: var(--ink-soft); font-variant-numeric: normal; }
   .ex-add { margin-left: 0; }
   .stage-actions { flex-direction: column-reverse; align-items: stretch; }
 }
+
+/* Folded one-sentence reasons (explain.js). */
+.why { margin: 4px 0 0; font-size: 12.5px; color: var(--ink-soft); }
+.why summary { cursor: pointer; color: var(--ink-faint); width: fit-content; }
+.why summary:hover { color: var(--ink); }
+.why ul { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 3px; }
