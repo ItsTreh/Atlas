@@ -13,8 +13,7 @@
      the renderer draws for each region
 
    null marks a region that is drawn but not selectable: the app has no
-   muscle for it (the neck, the hip flexors, the serratus anterior, the
-   coracobrachialis).
+   muscle for it (the neck, the hip flexors, the serratus anterior).
    The form — the armature under the muscles, hands, feet, bone and tendon — is the region "body" and
    is never selectable.
 
@@ -41,6 +40,9 @@ const ANATOMY_REGIONS = Object.freeze({
   "latissimus-dorsi":     "lats",
   "biceps-brachii":       "biceps",
   "brachialis":           "biceps",
+  // Beside the biceps' short head, from the same point on the shoulder blade,
+  // in the same front compartment of the arm.
+  "coracobrachialis":     "biceps",
   "brachioradialis":      "forearms",
   "extensor-carpi-radialis-longus": "forearms",
   "extensor-carpi-radialis-brevis": "forearms",
@@ -82,9 +84,6 @@ const ANATOMY_REGIONS = Object.freeze({
   // obliques beside it. Not selectable until a zoomed anatomy view can show it
   // on its own (see docs/anatomy-levels.md).
   "serratus-anterior":    null,
-  // Anatomy detail only: a small helper of shoulder flexion, tucked in the
-  // armpit, with no training muscle of its own.
-  "coracobrachialis":     null,
   "erector-spinae":       "lower-back",
   "iliopsoas":            null,
   "sternocleidomastoid":  null
