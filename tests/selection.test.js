@@ -73,10 +73,66 @@ describe("hand-off", () => {
     sel.toggle("abs");
     const snap = sel.snapshot();
     expect(snap).toEqual({ muscleIds: ["chest", "shoulders", "triceps", "abs"],
-                           programId: "push", modified: true });
+                           programId: "push", modified: true, priorities: {} });
 
     const other = new app.MuscleSelection(app.MUSCLES);
     other.restore({ ...snap, muscleIds: [...snap.muscleIds, "wings"] });
     expect(other.snapshot()).toEqual(snap);
+  });
+});
+
+describe("muscle priority", () => {
+  test("a selected muscle is normal until told otherwise", () => {
+    sel.toggle("chest");
+    expect(sel.priority("chest")).toBe("normal");
+    sel.setPriority("chest", "focus");
+    expect(sel.priority("chest")).toBe("focus");
+    sel.setPriority("chest", "maintain");
+    expect(sel.priority("chest")).toBe("maintain");
+  });
+
+  test("only chosen muscles and known levels are accepted", () => {
+    expect(() => sel.setPriority("chest", "focus")).toThrow();
+    sel.toggle("chest");
+    expect(() => sel.setPriority("chest", "huge")).toThrow();
+  });
+
+  test("changing a priority tells subscribers; repeating it does not", () => {
+    sel.toggle("chest");
+    let calls = 0;
+    sel.onChange(() => calls++);
+    sel.setPriority("chest", "focus");
+    sel.setPriority("chest", "focus");
+    expect(calls).toBe(1);
+  });
+
+  test("deselecting, clearing or applying a program forgets priorities", () => {
+    sel.toggle("chest"); sel.setPriority("chest", "focus");
+    sel.toggle("chest"); sel.toggle("chest");
+    expect(sel.priority("chest")).toBe("normal");
+    sel.setPriority("chest", "focus");
+    sel.clear();
+    sel.toggle("chest");
+    expect(sel.priority("chest")).toBe("normal");
+    sel.setPriority("chest", "maintain");
+    sel.applyProgram(program("push"));
+    expect(sel.priority("chest")).toBe("normal");
+  });
+
+  test("priorities survive a snapshot and restore; bad entries are dropped", () => {
+    sel.toggle("chest"); sel.toggle("quads");
+    sel.setPriority("chest", "focus"); sel.setPriority("quads", "maintain");
+    const snap = sel.snapshot();
+    expect(snap.priorities).toEqual({ chest: "focus", quads: "maintain" });
+    const other = new app.MuscleSelection(app.MUSCLES);
+    other.restore({ ...snap, priorities: { ...snap.priorities, biceps: "focus", chest: "bogus" } });
+    expect(other.priority("quads")).toBe("maintain");
+    expect(other.priority("chest")).toBe("normal");
+    expect(other.priority("biceps")).toBe("normal");
+  });
+
+  test("an old snapshot without priorities restores as all normal", () => {
+    sel.restore({ muscleIds: ["chest"] });
+    expect(sel.priority("chest")).toBe("normal");
   });
 });
