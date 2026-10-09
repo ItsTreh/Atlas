@@ -33,7 +33,8 @@ describe.each(PROGRAMS)("%s", program => {
 describe("priorities", () => {
   test("the best tier comes first", () => {
     const { routine } = generatedWeek(app, { program: "push", sessions: 2 });
-    const chest = routine.sessions[0].workout.entriesFor("chest");
+    const chestDay = routine.sessions.find(s => s.block.muscles.some(m => m.id === "chest"));
+    const chest = chestDay.workout.entriesFor("chest");
     expect(chest[0].exercise.name).toBe("Machine Chest Press");   // the only S+
   });
 
@@ -50,9 +51,9 @@ describe("priorities", () => {
   });
 
   test("assisting work lowers what small muscles need directly", () => {
-    const { routine } = generatedWeek(app, { program: "push", sessions: 2 });
-    const w = routine.sessions[0].workout;
-    expect(w.assistedSets("triceps")).toBeGreaterThan(0);
+    // Chest and triceps share a day here, so the presses count toward triceps.
+    const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2 });
+    expect(routine.sessions.some(s => s.workout.assistedSets("triceps") > 0)).toBe(true);
   });
 });
 
@@ -75,7 +76,7 @@ describe("muscles with no exercises", () => {
 describe("user control", () => {
   test("replace, remove, add and restore", () => {
     const { routine } = generatedWeek(app, { program: "push", sessions: 2 });
-    const w = routine.sessions[0].workout;
+    const w = routine.sessions.find(s => s.block.muscles.some(m => m.id === "chest")).workout;
     const original = w.entries.map(e => e.exercise.name);
 
     // Adding a second flat press is allowed, but flagged against the first.
@@ -162,7 +163,8 @@ describe("fitting the weekly targets to the time", () => {
   });
 
   test("a short week lowers sets but never below a muscle's minimum", () => {
-    const fit = app.fitToTime(raw("focus"), muscles, pri("focus"), 1, 45);
+    const fit = app.fitToTime(raw("focus"), muscles, pri("focus"), 2, 60);
+    expect(fit.meetsMinimums).toBe(true);
     for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(m.weeklySets[0]);
     expect(sets(fit.targets)).toBeLessThan(sets(raw("focus")));
     expect(fit.trimmed.length).toBeGreaterThan(0);
@@ -172,7 +174,7 @@ describe("fitting the weekly targets to the time", () => {
     const targets = new Map([["chest", 16], ["quads", 16], ["triceps", 12]]);
     const priorities = new Map([["chest", "focus"], ["quads", "normal"], ["triceps", "normal"]]);
     // Room for about 35 sets: 44 requested, so 9 must go, all of it from the normal muscles.
-    const room = 35 * 2.5, sessions = 1, len = Math.ceil(room) + 10;
+    const room = 35 * app.ESTIMATE.minutesPerSet, sessions = 1, len = Math.ceil(room) + app.ESTIMATE.warmupMinutes;
     const fit = app.fitToTime(targets, muscles, priorities, sessions, len);
     expect(fit.targets.get("chest")).toBe(16);
     expect(fit.fits).toBe(true);
@@ -181,9 +183,11 @@ describe("fitting the weekly targets to the time", () => {
 
   test("with an impossible week it says so and stops at the minimums", () => {
     const fit = app.fitToTime(raw("normal"), muscles, pri("normal"), 1, 45);
-    const floorSets = muscles.reduce((t, m) => t + m.weeklySets[0], 0);
-    if (!fit.fits) expect(sets(fit.targets)).toBe(floorSets);
-    expect(fit.neededMinutes).toBe(sets(fit.targets) * 2.5);
+    // Too short even for the usual minimums: sets go below them (never below
+    // the direct-set floor) so every muscle is still trained, and it says so.
+    expect(fit.meetsMinimums).toBe(false);
+    for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.WORKOUT.minDirectSets);
+    expect(fit.neededMinutes).toBeCloseTo(sets(fit.targets) * app.ESTIMATE.minutesPerSet, 5);
   });
 
   test("it names a fix that makes the requested targets fit", () => {

@@ -46,13 +46,13 @@ const WORKOUT = Object.freeze({
 });
 
 /**
- * How each kind of lift is done: reps per set and rest between sets. The
- * estimate's 2.5 min a set (estimate.js) is the average of the two, rest
- * included. These are common starting ranges, not a prescription.
+ * How each kind of lift is done: reps per set and rest between sets (the
+ * rests are the timing values in evidence.js). These are common starting
+ * ranges, not a prescription.
  */
 const LIFT_KINDS = Object.freeze({
-  compound:  { label: "Compound",  reps: "6–10",  rest: "2–3 min" },
-  isolation: { label: "Isolation", reps: "10–15", rest: "60–90 s" }
+  compound:  { label: "Compound",  reps: "6–10",  rest: configValue("restCompoundMinutes") + " min" },
+  isolation: { label: "Isolation", reps: "10–15", rest: configValue("restIsolationMinutes") + " min" }
 });
 
 class WorkoutEntry {
@@ -85,9 +85,13 @@ class Workout {
   get edited() { return this.entries.some(e => e.manual) ||
                         this.entries.length !== this.recommended.length; }
   get sets() { return this.entries.reduce((t, e) => t + e.sets, 0); }
+  /** The session's time: each exercise's setup, then every set and the rest after it, plus the warm-up. */
   get minutes() {
-    return this.entries.length
-      ? Math.round(this.sets * ESTIMATE.minutesPerSet + ESTIMATE.warmupMinutes) : 0;
+    if (!this.entries.length) return 0;
+    const work = this.entries.reduce((t, e) =>
+      t + ESTIMATE.setupMinutes + e.sets * (ESTIMATE.workSetMinutes +
+        (e.exercise.compound ? ESTIMATE.restCompoundMinutes : ESTIMATE.restIsolationMinutes)), 0);
+    return Math.round(work + ESTIMATE.warmupMinutes);
   }
 
   /** Sets that train the muscle directly: its own entries, plus any other
@@ -138,6 +142,7 @@ class WorkoutBuilder {
   constructor(sessions, sessionMinutes) {
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
+    this.limit = sessionMinutes;
     this.available = Math.max(15, sessionMinutes - ESTIMATE.warmupMinutes);
 
     // How many sessions this week train each muscle — spreads its weekly volume.
@@ -204,6 +209,7 @@ class WorkoutBuilder {
       for (const ex of picks) used.add(ex);
       this.usedThisWeek.set(muscle.id, used);
     }
+    this.fitToSession(workout);
     workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
     // Every muscle trained this week, not only this session's: a Legs day's
     // Romanian deadlift credits the forearms trained on Pull days too.
@@ -211,6 +217,27 @@ class WorkoutBuilder {
       this.setsThisWeek.set(id, (this.setsThisWeek.get(id) || 0) +
         workout.directSets(id) + workout.assistedSets(id));
     return workout;
+  }
+
+  /**
+   * The budget in buildOne counts every set at the planning average
+   * (ESTIMATE.minutesPerSet); the finished session is timed exercise by
+   * exercise and may run over. Take sets off the biggest entries, last
+   * muscles first, down to WORKOUT.minDirectSets each, and only then drop an
+   * exercise, so a session never runs past the length the user chose.
+   */
+  fitToSession(workout) {
+    while (workout.minutes > this.limit) {
+      const room = workout.entries.filter(e => e.sets > WORKOUT.minDirectSets);
+      if (room.length) {
+        const most = Math.max(...room.map(e => e.sets));
+        room.reverse().find(e => e.sets === most).sets--;
+        continue;
+      }
+      const last = workout.entries[workout.entries.length - 1];
+      workout.remove(last);
+      if (!workout.entriesFor(last.muscleId).length) workout.skipped.push(MUSCLE_BY_ID.get(last.muscleId));
+    }
   }
 
   /** Sets this muscle should get in one session: its share of the session

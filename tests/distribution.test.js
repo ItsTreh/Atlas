@@ -44,7 +44,7 @@ describe("frequency", () => {
 
 describe("spare days", () => {
   test("an empty day gets another session for a Focus muscle before a Normal one", () => {
-    const week = plan(["chest", "quads"], { chest: 16, quads: 16 }, { quads: "focus" }, 3);
+    const week = plan(["chest", "quads"], { chest: 16, quads: 16 }, { quads: "focus" }, 3, 90);
     expect(week.frequency.get("quads")).toBeGreaterThan(week.frequency.get("chest"));
   });
 
@@ -64,7 +64,7 @@ describe("spare days", () => {
 
 describe("days", () => {
   test("a muscle's sets add up to its target and each session stays within the maximum", () => {
-    const week = plan(["chest", "lats", "quads"], { chest: 16, lats: 12, quads: 14 }, {}, 4);
+    const week = plan(["chest", "lats", "quads"], { chest: 16, lats: 12, quads: 14 }, {}, 4, 90);
     for (const [id, target] of [["chest", 16], ["lats", 12], ["quads", 14]]) {
       const sets = week.days.map(d => d.sets.get(id) || 0);
       expect(sets.reduce((t, n) => t + n, 0)).toBe(target);
@@ -80,7 +80,7 @@ describe("days", () => {
 
   test("muscles of one family end up together when nothing else decides", () => {
     const week = plan(["chest", "shoulders", "triceps", "lats", "biceps"],
-      { chest: 8, shoulders: 6, triceps: 4, lats: 8, biceps: 4 }, {}, 2);
+      { chest: 6, shoulders: 4, triceps: 4, lats: 6, biceps: 4 }, {}, 2, 120);
     const dayOf = id => week.days.findIndex(d => d.muscles.some(m => m.id === id));
     expect(dayOf("chest")).toBe(dayOf("triceps"));
     expect(dayOf("lats")).toBe(dayOf("biceps"));

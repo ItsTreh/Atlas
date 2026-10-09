@@ -17,7 +17,11 @@
    ========================================================================= */
 
 const ESTIMATE = Object.freeze({
-  minutesPerSet: configValue("minutesPerSet"),   // one working set plus the rest after it
+  workSetMinutes:       configValue("workSetMinutes"),        // doing one set
+  restCompoundMinutes:  configValue("restCompoundMinutes"),   // rest after a compound set
+  restIsolationMinutes: configValue("restIsolationMinutes"),  // rest after an isolation set
+  setupMinutes:         configValue("setupMinutes"),          // per exercise: weights, machine, position
+  minutesPerSet: configValue("minutesPerSet"),   // planning average for one set, all of the above shared
   warmupMinutes: configValue("warmupMinutes")     // per session, not available for working sets
 });
 
@@ -57,9 +61,14 @@ const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.w
  *
  * Over budget, sets come off one at a time: Normal muscles first, then Focus,
  * each from whichever is furthest above its floor, never below the floor.
- * Maintain is already at its floor. Returns
- *   { targets, fits, neededMinutes, requestedMinutes, capacityMinutes,
- *     trimmed: [muscle ids lowered], fixes: { extraDay, sessionMinutes } }
+ * Maintain is already at its floor. If even the floors do not fit, every
+ * muscle still gets trained: Maintain, then Normal, then Focus muscles are
+ * lowered below their usual minimum, one set at a time from whichever has the
+ * most, down to WORKOUT.minDirectSets, and listed in `belowMinimum` so the
+ * page can say so. Returns
+ *   { targets, fits, meetsMinimums, neededMinutes, requestedMinutes, capacityMinutes,
+ *     trimmed: [muscle ids lowered], belowMinimum: [muscle ids under their
+ *     usual minimum], fixes: { extraDay, sessionMinutes } }
  * where a fix is the change that would let the requested targets fit
  * (null when it would not, or is unavailable).
  */
@@ -85,6 +94,20 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
     }
   }
 
+  // Not even the minimums fit: lower them too, least important first.
+  const belowMinimum = new Set();
+  for (const group of ["maintain", "normal", "focus"]) {
+    for (;;) {
+      if (total(out) <= capacity) break;
+      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > WORKOUT.minDirectSets);
+      if (!candidates.length) break;
+      const id = candidates.reduce((a, b) => out.get(b) > out.get(a) ? b : a);
+      out.set(id, out.get(id) - 1);
+      trimmed.add(id);
+      if (out.get(id) < floor.get(id)) belowMinimum.add(id);
+    }
+  }
+
   const fixes = { extraDay: null, sessionMinutes: null };
   if (total(targets) > capacity) {
     if (sessionsPerWeek < TRAINING_DAYS_RANGE[1] && minutesFor(targets, sessionsPerWeek + 1, sessionMinutes))
@@ -95,7 +118,8 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
   return {
     targets: out, fits: total(out) <= capacity, neededMinutes: total(out),
     requestedMinutes: total(targets), capacityMinutes: capacity,
-    trimmed: [...trimmed], fixes
+    trimmed: [...trimmed], belowMinimum: [...belowMinimum],
+    meetsMinimums: belowMinimum.size === 0, fixes
   };
 }
 

@@ -25,7 +25,9 @@ describe("a block with no day (Push · Pull · Legs over 2 days)", () => {
   test("its muscles are 'unplanned', not 'no time': generating again cannot change it", () => {
     const v = r.weeklyVolume();
     expect(v.unplanned.map(m => m.id).sort()).toEqual(["chest", "triceps"]);
-    expect(v.noTime).toEqual([]);
+    // Not "no time": the other muscles may still run out of time on their own
+    // day (Calves, after a full 60-min Legs day), but Push's never had one.
+    for (const id of ["chest", "triceps"]) expect(v.noTime.map(m => m.id)).not.toContain(id);
     const again = r.generate();
     expect(again.leftOut.map(b => b.name)).toEqual(["Push"]);
   });

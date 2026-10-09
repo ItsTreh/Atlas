@@ -246,7 +246,7 @@ describe("the final plan", () => {
   });
 
   test("a moved session keeps its exercises and its recovery rules", () => {
-    const { routine } = generatedWeek(app, { program: "push", sessions: 2 });
+    const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2 });
     const [a, b] = [...routine.sessions].sort((x, y) =>
       DayOfWeek.indexOf(x.day) - DayOfWeek.indexOf(y.day));
     const entries = a.workout.entries;
@@ -348,8 +348,7 @@ describe("weekly volume against the estimate", () => {
     // credit compound lifts give other muscles, so weeklyVolume need not.
     const { routine } = generatedWeek(app, { program: "full-body", sessions: 3, minutes: 60 });
     const fit = routine.weekFit("beginner");
-    expect(fit.fits).toBe(false);
-    expect(fit.neededMinutes).toBeGreaterThan(fit.capacityMinutes);
+    expect(fit.meetsMinimums).toBe(false);
     expect(routine.weeklyVolume().estimate.sessions.low).toBeGreaterThan(3);
   });
 
@@ -374,7 +373,7 @@ describe("splits the user chooses", () => {
   };
 
   test("Upper · Lower from Monday to Thursday is Upper, Lower, Upper, Lower", () => {
-    const { sessions, routine } = week("full-body", "upper-lower", 4, 60, ["FRI", "SAT", "SUN"]);
+    const { sessions, routine } = week("full-body", "upper-lower", 4, 90, ["FRI", "SAT", "SUN"]);
     expect(sessions.map(s => s.day)).toEqual(["MON", "TUE", "WED", "THU"]);
     const names = sessions.map(s => s.block.name);
     expect(new Set(names)).toEqual(new Set(["Upper", "Lower"]));
