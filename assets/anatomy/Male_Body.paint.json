@@ -19,6 +19,7 @@
     "#FF8C82": "triceps-brachii.L",
     "#62FFA7": "brachialis.R",
     "#68FFDD": "brachialis.L",
+    "#86FFE3": "brachialis.L",
     "#FFB12D": "coracobrachialis.L",
     "#01A7FF": "brachioradialis.L",
     "#AEFFC5": "brachioradialis.R",
@@ -57,6 +58,8 @@
     "#FF6A0D": "infraspinatus.L",
     "#FF6C00": "infraspinatus.L",
     "#FF633A": "teres-major.R",
-    "#C77AFF": "teres-major.L"
+    "#C77AFF": "teres-major.L",
+    "#FFF643": "gluteus-maximus.R",
+    "#FF352B": "gluteus-maximus.L"
   }
 }
