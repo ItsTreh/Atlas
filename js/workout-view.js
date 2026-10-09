@@ -155,9 +155,14 @@ function renderSession(session) {
  */
 function lengthNote(session) {
   const w = session.workout, limit = session.block.limit;
-  if (!session.block.splitDay || w.skipped.length || w.minutes > limit - 5) return "";
-  return '<span><b>Length:</b> finishes in about ' + w.minutes + ' of your ' + limit +
-    ' min; more sets here would likely add more fatigue than results.</span>';
+  if (!w.entries.length) return "";
+  // Estimated time and available time are facts; whether more work would
+  // help is not something the plan can know, so it is never claimed.
+  let text = '<span><b>Length:</b> estimated ' + w.minutes + ' min of the ' + limit + ' min available';
+  if (w.skipped.length) text += '; some work was cut to fit';
+  else if (session.block.splitDay) text += '; the planned sets for this day fit, so none were added or cut';
+  else text += '; everything planned fits';
+  return text + '.</span>';
 }
 
 /**

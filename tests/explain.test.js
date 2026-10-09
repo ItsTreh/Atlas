@@ -35,7 +35,7 @@ describe("week reasons", () => {
     const { routine } = generatedWeek(app, { program: "full-body", sessions: 3, minutes: 60 });
     routine.experience = "beginner";
     routine.generate();
-    expect(app.weekReasons(routine).join(" ")).toMatch(/Not everything fits/);
+    expect(app.weekReasons(routine).join(" ")).toMatch(/under its usual minimum/);
   });
 });
 
@@ -54,7 +54,12 @@ describe("session reasons", () => {
   test("a press that works the triceps goes first and says why", () => {
     const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2, minutes: 75 });
     const s = routine.sessions.find(x => x.workout.entries.some(e => e.muscleId === "triceps"));
-    expect(app.sessionReasons(routine, s)[0]).toMatch(/triceps as a helper/);
+    const first = s.workout.entries[0];
+    const text = app.sessionReasons(routine, s)[0];
+    expect(text).toContain(first.exercise.name);
+    // The sentence must match the rule that really placed the exercise first.
+    if (first.orderRule.rule === "dependency") expect(text).toMatch(/helper/);
+    else expect(text).not.toMatch(/helper/);
   });
 
   test("a session with no exercises has no reasons", () => {

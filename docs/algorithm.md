@@ -171,3 +171,15 @@ Sin pantalla todavía, `js/log.js` define lo que se guardará: por serie la carg
 | Frases de explicación | `js/explain.js` |
 | Registro y descartes | `js/log.js` |
 | Pruebas | `tests/` |
+
+## Audit and recovery (added after the V1 audit)
+
+**Volume ledger (`js/audit.js`, `routine.audit()`).** For every muscle the plan reports `targetSets`, `plannedSets`, `finalDirectSets`, `finalIndirectSets`, `finalIndirectCredit` and `finalTotalCredit`. Direct sets and indirect credit are never merged into one unlabelled number. Any gap to the target carries a cause (`time-fit`, `fewer-sessions`, `session-capacity`, `session-time`, `weekly-maximum`, `session-set-limit`, `minimum-exercise`, `no-eligible-exercise`, `user-restriction`, `not-placed`); a gap nobody explains is reported as `unexplained` and a test fails on it. Focus muscles under target and muscles under their minimum are listed in `audit.issues`, which the week explanation prints. `WORKOUT.secondaryCredit` is a heuristic, not a finding.
+
+**Recovery (`js/recovery.js`).** Two sessions that both load a muscle directly need its full `recoveryDays`. If either only assists the muscle (secondary), the gap is `ceil(recoveryDays × indirectRecoveryFraction)` (0.5, a heuristic). Exercise choice avoids breaking this (`recoveryConflict`) and `recoveryCheck` reports any exposure that still does. Tests: Mon shoulders / Tue row / Wed shoulders; Tue back extension / Wed Romanian deadlift.
+
+**Order.** Each exercise records the rule that placed it (`orderRule`: dependency, priority, compound, tier, pick-order, only-option); the session explanation names it, including when a helper lift goes before a Focus muscle's exercise.
+
+**Time message.** The session note states estimated minutes against available minutes and whether anything was cut. It makes no claim about fatigue versus results.
+
+**Known limits.** `session-capacity` trimming can leave a Focus muscle short when many Focus muscles share few consecutive days; the scheduler's predicted exposure (`loadedMuscles`) can make some 5-session weeks infeasible. Both are reported, not hidden. The catalogue has no region/portion metadata, so it cannot tell lateral from rear delts or lats from upper back; this is not yet modelled.

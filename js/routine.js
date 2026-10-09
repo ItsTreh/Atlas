@@ -166,6 +166,9 @@ class WeeklyRoutine {
     return true;
   }
 
+  /** The week's volume ledger: target → planned → final per muscle, with the reasons for any shortfall (audit.js). */
+  audit() { return auditPlan(this); }
+
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
   allSlots() { return [...this.slots.values()]; }
   /** What the user chose on the Targets stage; see selection.js. */
@@ -228,7 +231,7 @@ class WeeklyRoutine {
   clearGenerated() {
     for (const s of this.allSlots())
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
-    this.sessions = []; this.plannedMeals = [];
+    this.sessions = []; this.plannedMeals = []; this.planned = null;
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
@@ -257,9 +260,9 @@ class WeeklyRoutine {
    * (splitBlocks), otherwise the planner's own distribution of the weekly
    * targets over the training days (distributedBlocks).
    */
-  planBlocks() {
+  planBlocks(days) {
     if (this.split !== "auto") return this.splitBlocks();
-    return this.distributedBlocks();
+    return this.distributedBlocks(days);
   }
 
   /**
@@ -269,11 +272,11 @@ class WeeklyRoutine {
    * riding along as a rider. Until the user says how long they have trained, the
    * plan assumes DEFAULT_EXPERIENCE.
    */
-  distributedBlocks() {
+  distributedBlocks(limit = Infinity) {
     const picked = this.selectedMuscles();
     const trainable = picked.filter(m => exercisesFor(m.id).length > 0);
     if (!trainable.length) return [];
-    const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
+    const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length, limit));
     const fit = this.weekFit(this.experience || DEFAULT_EXPERIENCE);
     const priorities = new Map(trainable.map(m => [m.id, this.selection.priority(m.id)]));
     const free = this.availableDays();
@@ -372,7 +375,7 @@ class WeeklyRoutine {
     // the previous one on screen under a message saying nothing was planned.
     this.clearGenerated();
     const requested = this.sessionsPerWeek;
-    const blocks = this.planBlocks();
+    let blocks = this.planBlocks();
     if (blocks.length === 0) return { placed: 0, requested, meals: 0,
       reason: this.selectedMuscles().length ? "no-exercises" : "no-muscles" };
     if (requested < 1)       return { placed: 0, requested, meals: 0, reason: "no-sessions" };
@@ -381,7 +384,37 @@ class WeeklyRoutine {
       return { placed: 0, requested, meals: 0, reason: "no-blocks" };
 
     // Where each session goes is the Scheduler's call; see scheduler.js.
-    const { placements, limit } = new Scheduler(this, blocks, this.blockUses(blocks.length)).plan(requested);
+    // The distribution assumes every planned day can be used. If recovery or
+    // the free hours leave a block without a day, its sets would vanish. So
+    // when not every block finds a day, plan again for fewer days and keep
+    // the attempt that loses the fewest Focus sets, then the fewest sets, then
+    // keeps the most sessions.
+    const askedDays = blocks.length;
+    const targets = this.weekFit(this.experience || DEFAULT_EXPERIENCE).targets;
+    const placedFor = (attempt, id) => attempt.placements.reduce((t, p) =>
+      t + ((p.block.plannedSets && p.block.plannedSets.get(id)) || 0), 0);
+    const lossOf = attempt => {
+      let focus = 0, all = 0;
+      for (const [id, target] of targets) {
+        const lost = Math.max(0, target - placedFor(attempt, id));
+        all += lost;
+        if (this.selection.priority(id) === "focus") focus += lost;
+      }
+      return [focus, all, -attempt.placements.length];
+    };
+    const attempt = bs => ({ blocks: bs, ...new Scheduler(this, bs, this.blockUses(bs.length)).plan(requested) });
+    let best = attempt(blocks);
+    if (this.split === "auto" && best.placements.length < blocks.length) {
+      for (let n = blocks.length - 1; n >= 1; n--) {
+        const bs = this.planBlocks(n);
+        if (bs.length >= blocks.length) continue;
+        const next = attempt(bs);
+        if (compareKeys(lossOf(next), lossOf(best)) < 0) best = next;
+      }
+    }
+    blocks = best.blocks;
+    const placements = best.placements, limit = best.limit;
+    this.planned = { blocks, askedDays, limit };
     for (const p of placements) {
       const session = new WorkoutSession(this.nextId++, p.day, p.start, p.block);
       for (let h = session.startHour; h < session.endHour(); h++)
@@ -391,7 +424,9 @@ class WeeklyRoutine {
     const placed = placements.length;
 
     // What to do in each session; see workouts.js.
-    new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs).build();
+    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs);
+    builder.build();
+    this.planned.events = builder.events;
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;

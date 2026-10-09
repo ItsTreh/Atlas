@@ -43,6 +43,7 @@ const WORKOUT = Object.freeze({
   secondaryCredit:  configValue("secondaryCredit"),   // a set where the muscle only assists counts as half
   repeatDemotion:     configValue("repeatDemotion"),   // tier steps an exercise drops once used this week
   offDayDemotion:     configValue("offDayDemotion"),   // tier steps for one that also works a muscle trained on another day
+  indirectRecoveryFraction: configValue("indirectRecoveryFraction"),   // share of the recovery days an assisting load needs
   dislikeDemotion:      configValue("dislikeDemotion"),   // tier steps for an exercise the user doesn't like
   interferenceDemotion: configValue("interferenceDemotion")   // tier steps for one that cannot share a session cleanly with another
 });
@@ -101,17 +102,30 @@ const tiresBothWays = (a, b) => tires(a, b) && tires(b, a);
 function orderEntries(entries, priorityOf = () => "normal") {
   const rank = e => ({ focus: 0, normal: 1, maintain: 2 })[priorityOf(e.muscleId)] ?? 1;
   const first = (a, b) => tires(a.exercise, b.exercise) && !tires(b.exercise, a.exercise);
+  const keyOf = x => [rank(x.e), x.e.exercise.compound ? 0 : 1, tierRank(x.e.tier), x.i];
   const rest = entries.map((e, i) => ({ e, i }));
   const out = [];
   while (rest.length) {
-    let ready = rest.filter(x => !rest.some(y => y !== x && first(y.e, x.e)));
+    const blocked = rest.filter(x => rest.some(y => y !== x && first(y.e, x.e)));
+    let ready = rest.filter(x => !blocked.includes(x));
     if (!ready.length) ready = rest;                      // lifts that tire each other: plain tie-break
-    ready.sort((a, b) =>
-      rank(a.e) - rank(b.e) ||
-      (a.e.exercise.compound ? 0 : 1) - (b.e.exercise.compound ? 0 : 1) ||
-      tierRank(a.e.tier) - tierRank(b.e.tier) || a.i - b.i);
-    out.push(ready[0].e);
-    rest.splice(rest.indexOf(ready[0]), 1);
+    ready.sort((a, b) => compareKeys(keyOf(a), keyOf(b)));
+    const chosen = ready[0];
+
+    // Which rule put it here, so the page can say so and exceptions are visible.
+    const held = blocked.filter(x => x !== chosen && first(chosen.e, x.e) && compareKeys(keyOf(x), keyOf(chosen)) < 0);
+    let rule, over;
+    if (held.length) { rule = "dependency"; over = held; }
+    else if (ready.length > 1) {
+      const next = ready[1];
+      const differs = [0, 1, 2].find(k => keyOf(chosen)[k] !== keyOf(next)[k]);
+      rule = differs === 0 ? "priority" : differs === 1 ? "compound" : differs === 2 ? "tier" : "pick-order";
+      over = ready.slice(1);
+    } else { rule = "only-option"; over = []; }
+    chosen.e.orderRule = { rule, over: over.map(x => x.e.exercise.name) };
+
+    out.push(chosen.e);
+    rest.splice(rest.indexOf(chosen), 1);
   }
   return out;
 }
@@ -121,7 +135,7 @@ class Workout {
   constructor(muscles, entries) {
     this.muscles = muscles;                 // the session's target Muscles
     this.entries = entries;
-    this.recommended = entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    this.recommended = entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
     this.skipped = [];                      // Muscles the session had no time left for
   }
 
@@ -174,7 +188,7 @@ class Workout {
       new WorkoutEntry(exercise, muscleId, WORKOUT.setsPerExercise, true));
   }
   restore() {
-    this.entries = this.recommended.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    this.entries = this.recommended.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
   }
 }
 
@@ -186,6 +200,8 @@ class WorkoutBuilder {
   constructor(sessions, sessionMinutes, priorityOf = () => "normal", preferences = new ExercisePreferences()) {
     this.priorityOf = priorityOf;
     this.preferences = preferences;
+    this.events = [];                       // sets the plan wanted and could not give (see lose)
+    this.current = null;                    // the session being built
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
     this.limit = sessionMinutes;
@@ -206,12 +222,23 @@ class WorkoutBuilder {
 
   /** Gives every session its Workout, in week order. */
   build() {
+    this.events = [];
     for (const session of this.sessions) session.workout = this.buildOne(session);
     return this.sessions;
   }
 
+  /**
+   * Records sets the plan wanted for a muscle and the session could not
+   * give, with the rule that stopped them. routine.audit() turns these into
+   * the reasons a muscle finished under its target.
+   */
+  lose(muscleId, sets, reason) {
+    if (sets > 0) this.events.push({ sessionId: this.current ? this.current.id : null, muscleId, sets, reason });
+  }
+
   buildOne(session) {
     const block = session.block;
+    this.current = session;
     // Big muscles first: their compounds give the small ones secondary credit.
     // A split day the user chose repeats in the week, and a long one may not
     // fit every muscle; there the muscles furthest below their weekly minimum
@@ -227,12 +254,29 @@ class WorkoutBuilder {
 
     for (const muscle of order) {
       const room = budget - workout.sets;
-      if (room < WORKOUT.minDirectSets) { workout.skipped.push(muscle); continue; }
+      const aim = block.plannedSets ? block.plannedSets.get(muscle.id) || 0 : 0;
+      if (room < WORKOUT.minDirectSets) {
+        workout.skipped.push(muscle);
+        this.lose(muscle.id, aim, "session-time");
+        continue;
+      }
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
       let need;
       if (block.splitDay) {
         need = this.doseSets(muscle, workout, credit, block);
+        if (block.plannedSets) {
+          // What the distribution asked for, less what the lifts above already give it.
+          if (credit > 0) this.lose(muscle.id, Math.min(aim, credit), "covered");
+          const wanted = Math.max(0, aim - credit);
+          const hard = Math.floor(muscle.weeklySets[1] - (this.setsThisWeek.get(muscle.id) || 0) - credit);
+          if (need < wanted)
+            this.lose(muscle.id, wanted - need,
+              hard < wanted ? "weekly-maximum"
+              : workout.directSets(muscle.id) + wanted > WORKOUT.maxSetsPerSession ? "session-set-limit"
+              : "minimum-exercise");
+        }
         if (!need) continue;           // dosed by the lifts above, or at its weekly maximum
+        if (need > room) this.lose(muscle.id, need - room, "session-time");
         need = Math.min(room, need);
       } else {
         const target = this.targetSets(muscle, scale);
@@ -249,6 +293,11 @@ class WorkoutBuilder {
       }
       const entries = workout.entriesFor(muscle.id);
       this.shareSets(entries, need);
+      const given = entries.reduce((t, e) => t + e.sets, 0);
+      if (given < need) {
+        const barred = exercisesFor(muscle.id).some(ex => this.preferences.reasonFor(ex.id) === "cannot");
+        this.lose(muscle.id, need - given, barred ? "user-restriction" : "no-eligible-exercise");
+      }
       if (block.splitDay) this.keepWithinMaximums(workout, picks);
 
       const used = this.usedThisWeek.get(muscle.id) || new Set();
@@ -257,7 +306,7 @@ class WorkoutBuilder {
     }
     this.fitToSession(workout);
     workout.entries = orderEntries(workout.entries, this.priorityOf);
-    workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    workout.recommended = workout.entries.map(e => Object.assign(new WorkoutEntry(e.exercise, e.muscleId, e.sets), { orderRule: e.orderRule }));
     // Every muscle trained this week, not only this session's: a Legs day's
     // Romanian deadlift credits the forearms trained on Pull days too.
     for (const id of this.timesThisWeek.keys())
@@ -278,10 +327,13 @@ class WorkoutBuilder {
       const room = workout.entries.filter(e => e.sets > WORKOUT.minDirectSets);
       if (room.length) {
         const most = Math.max(...room.map(e => e.sets));
-        room.reverse().find(e => e.sets === most).sets--;
+        const cut = room.reverse().find(e => e.sets === most);
+        cut.sets--;
+        this.lose(cut.muscleId, 1, "session-time");
         continue;
       }
       const last = workout.entries[workout.entries.length - 1];
+      this.lose(last.muscleId, last.sets, "session-time");
       workout.remove(last);
       if (!workout.entriesFor(last.muscleId).length) workout.skipped.push(MUSCLE_BY_ID.get(last.muscleId));
     }
@@ -361,6 +413,7 @@ class WorkoutBuilder {
         limit = Math.min(limit, Math.floor(this.headroom(id, workout) / WORKOUT.secondaryCredit));
       if (limit >= WORKOUT.minDirectSets) entry.sets = limit;
       else workout.remove(entry);
+      this.lose(entry.muscleId, want - (limit >= WORKOUT.minDirectSets ? limit : 0), "weekly-maximum");
     }
   }
 
@@ -391,8 +444,8 @@ class WorkoutBuilder {
       if (workout.has(ex) || workout.clashWith(ex)) return;
       const liked = this.preferences.reasonFor(ex.id);
       if (liked === "cannot") return;                    // the user can't do it: never picked
-      const elsewhere = ex.primary.some(id => id !== muscle.id && !block.muscles.some(m => m.id === id) &&
-                                              this.trainedThisWeek.has(id));
+      // Loads a muscle that another session loads too soon (recovery.js).
+      const elsewhere = this.current ? recoveryConflict(ex, this.current, this.sessions) !== null : false;
       // On a split day, a lift that would take another muscle it trains past
       // its weekly maximum goes last: a hack squat before a back squat once
       // the glutes have had enough.

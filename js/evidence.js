@@ -199,6 +199,12 @@ const PLANNER_CONFIG = Object.freeze({
     note: "Tier steps for an exercise that also works a muscle trained on another " +
           "day, so that muscle is not quietly trained the day before its own session."
   },
+  indirectRecoveryFraction: {
+    group: "workout", value: 0.5, origin: "heuristic", basedOn: ["recovery-between-sessions"],
+    note: "Share of a muscle's recovery days needed between two sessions when one of them only " +
+          "assists it (a row assisting the biceps) instead of training it. The recovery research " +
+          "is thin and does not cover assisting work, so this is an adjustable guess."
+  },
   dislikeDemotion: {
     group: "workout", value: 2, origin: "preference", basedOn: [],
     note: "Tier steps an exercise drops once the user says they don't like it. It can still " +
