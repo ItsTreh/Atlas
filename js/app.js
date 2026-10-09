@@ -84,7 +84,6 @@ function planInputs() {
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
 }
 const days = n => n + (n === 1 ? " day" : " days");
-const timesText = n => ({ 1: "once", 2: "twice", 3: "three times" })[n] || n + " times";
 
 /**
  * After a session leaves the week by the user's hand — removed, painted
@@ -134,9 +133,8 @@ $("generate").addEventListener("click", () => {
     case "rest": {
       const spare = Math.min(r.requested, r.free) - r.placed;
       setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
-        " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
-        " a week each" + (spare > 0 ? ", so the other " + days(spare) + " you offered " +
-        (spare === 1 ? "is a rest day." : "are rest days.") : "."));
+        (spare > 0 ? " Your targets are covered without the other " + days(spare) + " you offered, " +
+        (spare === 1 ? "so it is a rest day." : "so they are rest days.") : ""));
       break;
     }
     case "days":

@@ -95,6 +95,7 @@ class TrainingBlock {
     this.riders = new Set();   // along for the ride: named, but no session time
     this.limit = Infinity;     // the session length; set when blocks are merged to fit the days
     this.name = null;          // a split day's name ("Upper", "Push"…), when the user chose a split
+    this.plannedSets = null;   // Map muscle id -> sets, when distribution.js planned this day
   }
   /** One block training both, when the week has fewer days than blocks. */
   static merge(host, guest) {
@@ -103,6 +104,10 @@ class TrainingBlock {
     return block;
   }
   get minutes() {
+    if (this.plannedSets) {
+      const sets = this.muscles.reduce((t, m) => t + (this.plannedSets.get(m.id) || 0), 0);
+      return Math.round(sets * ESTIMATE.minutesPerSet + ESTIMATE.warmupMinutes);
+    }
     return this.muscles.reduce((t, m) => t + (this.riders.has(m) ? 0 : m.minutes), 0);
   }
   /* A merged block longer than the session keeps the session's length; its
@@ -114,7 +119,7 @@ class TrainingBlock {
     return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;
   }
   /** A day of a split the user chose (routine.js, SPLITS): dosed by evidence, not by time. */
-  get splitDay() { return this.name !== null; }
+  get splitDay() { return this.name !== null || this.plannedSets !== null; }
   get label() { return (this.name ? this.name + ": " : "") + this.muscles.map(m => m.name).join(" · "); }
   get css() { return FAMILIES[this.family].css; }
   has(muscle) { return this.muscles.includes(muscle); }

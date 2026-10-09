@@ -251,8 +251,9 @@ function renderEstimate() {
         '<div class="s">≈ ' + sessions + ' ' + (e.sessions.high === 1 ? "session" : "sessions") +
           ' of ' + e.sessionMinutes + ' min, warm-up included.</div></div>' +
       '<div class="stat"><div class="k">Frequency</div>' +
-        '<div class="v">' + e.timesPerWeek + '× <span class="u">per muscle a week</span></div>' +
-        '<div class="s">Splitting a muscle\'s sets over two days beats one long session.</div></div>' +
+        '<div class="v">Set by volume</div>' +
+        '<div class="s">A muscle trains as often as it takes to keep each session to ' +
+          WORKOUT.maxSetsPerSession + ' sets or fewer. The research does not show a best number.</div></div>' +
     '</div>' +
     '<h4>If you train consistently</h4>' +
     '<ol class="phases">' + phases + '</ol>' +

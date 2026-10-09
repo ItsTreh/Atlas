@@ -33,16 +33,12 @@ function recoveryClash(a, dayA, b, dayB) {
   return loadedMuscles(a).find(m => theirs.includes(m) && gap < m.recoveryDays) || null;
 }
 
-/* How far over the session length a family may run and still be one session,
-   its sets scaled down to fit, rather than splitting off a small extra day. */
-const SESSION_STRETCH = 1.25;
-
 /* ------------------------------- splits ---------------------------------- */
 
 /**
  * How the user wants the week's sessions divided. "auto" is the planner's
- * own packing (buildBlocks/planBlocks): muscles grouped by family into
- * blocks sized to the session. The others are the splits people already
+ * own distribution (distribution.js): each muscle's weekly target spread
+ * over the training days. The others are the splits people already
  * train by: each day trains the chosen muscles of the families listed for
  * it, the days repeat in order until the training days run out, and each
  * session gets the best dose for its muscles within the length the user
@@ -82,7 +78,8 @@ class WeeklyRoutine {
     this.nutrition = new NutritionPlan(() => ({
       muscles: this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0),
       sessionsPerWeek: this.plannedSessions(),
-      sessionMinutes: this.sessionMinutes
+      sessionMinutes: this.sessionMinutes,
+      weeklySets: this.plannedWeeklySets()
     }));
     this.sessions = [];
     this.plannedMeals = [];
@@ -96,11 +93,12 @@ class WeeklyRoutine {
    * experience is known. See fitToTime(). Days count as the training days
    * asked for that the week can hold.
    */
-  weekFit() {
-    if (!this.experience) return null;
-    const muscles = this.selection.muscles();
+  weekFit(experience = this.experience) {
+    if (!experience) return null;
+    // Only muscles the exercise database can fill take time (see distributedBlocks).
+    const muscles = this.selection.muscles().filter(m => exercisesFor(m.id).length > 0);
     const raw = new Map(muscles.map(m =>
-      [m.id, weeklyTarget(m, this.experience, this.selection.priority(m.id))]));
+      [m.id, weeklyTarget(m, experience, this.selection.priority(m.id))]));
     const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
     return fitToTime(raw, muscles, new Map(muscles.map(m => [m.id, this.selection.priority(m.id)])),
                      days, this.sessionMinutes);
@@ -227,92 +225,54 @@ class WeeklyRoutine {
   /* ----------------------------- block building --------------------------- */
 
   /**
-   * Packs the selected muscles into blocks that fit `sessionMinutes`.
-   * Muscles are grouped by family first — training Chest with Triceps is a
-   * routine, training Chest with Hamstrings is a coincidence. Core is treated
-   * as a filler: it rides along in a block with room to spare, and only forms
-   * its own block when nothing else will take it.
-   *
-   * A muscle the exercise database has nothing for yet (exercises.js) never
-   * anchors a session — it would be a session with nothing in it. It joins
-   * one as a rider instead: named in it, credited with the secondary work
-   * the session gives it, but taking none of its time, since there is no
-   * exercise to spend the time on. Only when nothing else is selected do
-   * such muscles form blocks of their own.
+   * The weekly sets the plan aims for, per muscle id, for the diet: the fitted
+   * targets (assuming DEFAULT_EXPERIENCE until the user says), or null when
+   * there is nothing to train.
    */
-  buildBlocks() {
-    const limit = this.sessionMinutes;
-    const picked = this.selectedMuscles();
-    const blocks = [];
-    const hasExercises = m => exercisesFor(m.id).length > 0;
-    const riders = picked.filter(m => !hasExercises(m));
-    const fillers = picked.filter(m => m.family === "core" && hasExercises(m));
-
-    for (const key of ["push", "pull", "legs"]) {
-      const pool = picked.filter(m => m.family === key && hasExercises(m))
-                         .sort((a, b) => b.minutes - a.minutes);
-      let current = [];
-      let used = 0;
-      for (const muscle of pool) {
-        if (used + muscle.minutes > limit && current.length) {
-          blocks.push(new TrainingBlock(current)); current = []; used = 0;
-        }
-        if (muscle.minutes > limit) {           // a single muscle longer than the
-          blocks.push(new TrainingBlock([muscle])); continue;   // whole session
-        }
-        current.push(muscle); used += muscle.minutes;
-      }
-      if (current.length) blocks.push(new TrainingBlock(current));
-    }
-
-    // Riders join a block of their own family if there is one (Traps goes
-    // with Back rather than Chest), otherwise the first block.
-    if (blocks.length) {
-      for (const muscle of riders) {
-        const host = blocks.find(b => b.family === muscle.family) || blocks[0];
-        host.muscles.push(muscle);
-        host.riders.add(muscle);
-      }
-    } else {
-      fillers.push(...riders);           // nothing to ride on: plan them as fillers
-    }
-
-    // Core muscles ride along where there is room, once each.
-    for (const muscle of fillers) {
-      const host = blocks.find(b => b.freeMinutes(limit) >= muscle.minutes);
-      if (host) host.muscles.push(muscle);
-      else blocks.push(new TrainingBlock([muscle]));
-    }
-    return blocks;
+  plannedWeeklySets() {
+    const fit = this.weekFit(this.experience || DEFAULT_EXPERIENCE);
+    return fit && fit.targets.size ? fit.targets : null;
   }
 
   /**
-   * The blocks for the week, from buildBlocks() and then joined up:
-   *
-   *   • a family split only because it ran a little over the session (legs
-   *     at 65 min in a 60-min session) is put back together, with its sets
-   *     scaled to fit, rather than leaving a lone 20-minute Glutes day;
-   *   • with fewer training days than blocks, the smallest block joins one
-   *     of its own family, or the next smallest, until every block has a
-   *     day — so every chosen muscle is trained. No muscle is dropped.
+   * The blocks for the week: the user's split when they chose one
+   * (splitBlocks), otherwise the planner's own distribution of the weekly
+   * targets over the training days (distributedBlocks).
    */
   planBlocks() {
     if (this.split !== "auto") return this.splitBlocks();
-    // A block with no exercises at all (only Core chosen, say) is not a
-    // training day: there is nothing to do in it.
-    let blocks = this.buildBlocks().filter(b => b.muscles.some(m => exercisesFor(m.id).length));
-    const join = (host, guest) => {
-      blocks = blocks.filter(b => b !== host && b !== guest);
-      blocks.push(TrainingBlock.merge(host, guest));
-    };
-    for (let pair; (pair = this.nearlyFits(blocks)); ) join(...pair);
+    return this.distributedBlocks();
+  }
 
-    const days = Math.min(this.sessionsPerWeek, this.availableDays().length);
-    while (blocks.length > Math.max(1, days)) {
-      const [guest, ...rest] = [...blocks].sort((a, b) => a.minutes - b.minutes);
-      join(rest.find(b => b.family === guest.family) || rest[0], guest);
+  /**
+   * The automatic plan: one block per training day, from the weekly targets
+   * (fitted to the time) and the rules in distribution.js. A muscle the
+   * exercise database has nothing for rides along in a block of its family,
+   * riding along as a rider. Until the user says how long they have trained, the
+   * plan assumes DEFAULT_EXPERIENCE.
+   */
+  distributedBlocks() {
+    const picked = this.selectedMuscles();
+    const trainable = picked.filter(m => exercisesFor(m.id).length > 0);
+    if (!trainable.length) return [];
+    const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
+    const fit = this.weekFit(this.experience || DEFAULT_EXPERIENCE);
+    const priorities = new Map(trainable.map(m => [m.id, this.selection.priority(m.id)]));
+    const free = this.availableDays();
+    const timesCap = m => maxSpread(free, m.recoveryDays);
+    const plan = planDistribution(trainable, fit.targets, priorities, days, this.sessionMinutes, timesCap);
+
+    const blocks = plan.days.map(d => {
+      const block = new TrainingBlock(d.muscles);
+      block.plannedSets = d.sets;
+      block.limit = this.sessionMinutes;
+      return block;
+    });
+    for (const muscle of picked.filter(m => !trainable.includes(m))) {
+      const host = blocks.find(b => b.family === muscle.family) || blocks[0];
+      host.muscles.push(muscle);
+      host.riders.add(muscle);
     }
-    for (const b of blocks) b.limit = this.sessionMinutes;
     return blocks;
   }
 
@@ -362,33 +322,21 @@ class WeeklyRoutine {
   }
 
   /**
-   * The most times one block may go in the week. The automatic plan keeps
-   * ESTIMATE.timesPerWeek (past that a day adds repetition, not training).
-   * A chosen split repeats its days to fill the training days asked for:
-   * Upper · Lower over 4 days is each day twice, Full body over 3 is three
-   * times. Recovery (recoveryClash) still decides which days can take them.
+   * The most times one block may go in the week. In the automatic plan every
+   * training day is its own block, so once. A chosen split repeats its days
+   * to fill the training days asked for: Upper · Lower over 4 days is each
+   * day twice, Full body over 3 is three times. Recovery (recoveryClash)
+   * still decides which days can take them.
    */
   blockUses(blockCount) {
-    if (this.split === "auto" || !blockCount) return ESTIMATE.timesPerWeek;
+    if (this.split === "auto" || !blockCount) return 1;
     return Math.ceil(Math.min(this.sessionsPerWeek, this.availableDays().length) / blockCount);
-  }
-
-  /** Two blocks of one family that together run at most SESSION_STRETCH over the session. */
-  nearlyFits(blocks) {
-    let best = null;
-    for (const a of blocks) for (const b of blocks) {
-      if (a === b || a.family !== b.family || a.minutes < b.minutes) continue;
-      const total = a.minutes + b.minutes;
-      if (total <= this.sessionMinutes * SESSION_STRETCH && (!best || total < best.total))
-        best = { pair: [a, b], total };
-    }
-    return best && best.pair;
   }
 
   /**
    * Training days the diet counts. Before a week is generated: the days
-   * asked for and free, but no more than each block can use
-   * (ESTIMATE.timesPerWeek each — past that a day is a rest day). Once a
+   * asked for and free, but no more than the plan has sessions for (a day
+   * nothing is planned on is a rest day). Once a
    * week exists, no more than the sessions actually in it, so a session
    * that did not fit, or that the user removed, is not fuelled.
    */
@@ -433,8 +381,8 @@ class WeeklyRoutine {
     const free = this.availableDays().length;
     const reason = placed === 0 ? (limit === "space" ? "no-room" : "no-valid-combination")
                  : placed >= requested ? "ok"
-                 : limit === "enough" ? "rest"
-                 : placed >= free ? "days" : "partial";
+                 : placed >= free ? "days"
+                 : limit === "enough" ? "rest" : "partial";
     return { placed, requested, free, meals, reason, limit };
   }
 
@@ -450,7 +398,6 @@ class WeeklyRoutine {
    *               room, or the session was removed). A muscle the lifts above
    *               already cover — forearms from rows and deadlifts — is not one.
    *   short       trained, but below the low end of their weekly sets
-   *   infrequent  trained fewer than ESTIMATE.timesPerWeek times
    *   estimate    estimateTraining() for the same muscles and session length
    *
    * Read-only: it only counts what generate() and the user's edits built.
@@ -471,7 +418,6 @@ class WeeklyRoutine {
       rows,
       untrained:  rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle),
       short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
-      infrequent: rows.filter(r => r.times > 0 && r.times < ESTIMATE.timesPerWeek).map(r => r.muscle),
       sets: rows.reduce((t, r) => t + r.sets, 0),
       need: rows.reduce((t, r) => t + r.need, 0),
       estimate: estimateTraining(muscles, this.sessionMinutes)

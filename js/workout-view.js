@@ -94,31 +94,26 @@ const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
 /**
  * How the week compares with what the chosen muscles usually need
  * (WeeklyRoutine.weeklyVolume). Muscles left without direct work, or under
- * the low end of their weekly sets, are a warning; muscles trained only once
- * a week are a quieter note. Silent when the week meets the estimate.
+ * the low end of their weekly sets, are a warning. Silent when the week meets
+ * the estimate.
  */
 function volumeNote(sessions) {
   const v = routine.weeklyVolume();
   const gap = v.untrained.length || v.short.length;
-  if (!gap && !v.infrequent.length) return "";
+  if (!gap) return "";
   const parts = [];
   if (v.untrained.length)
     parts.push("No time this week for " + nameList(v.untrained.map(m => m.name)) + ".");
   if (v.short.length)
     parts.push("Under their usual weekly minimum: " +
       someNames(v.short.map(r => r.muscle.name + " (" + fmtSets(r.sets) + " of " + r.need + " sets)")) + ".");
-  if (v.infrequent.length)
-    parts.push((v.infrequent.length === v.rows.length ? "Each muscle is trained once a week"
-      : "Trained once a week: " + someNames(v.infrequent.map(m => m.name))) +
-      "; twice usually works better.");
   const e = v.estimate;
   if (e && sessions.length < e.sessions.low)
     parts.push("Your targets usually take " + e.sessions.low + "–" + e.sessions.high + " sessions of " +
       e.sessionMinutes + " min a week; this plan has " + sessions.length + ".");
-  parts.push(gap ? "To close the gap, add training days, lengthen sessions or pick fewer muscles."
-                 : "A training day more would let them come round twice.");
-  return '<p class="' + (gap ? "week-gap" : "week-note") + '">' +
-    (gap ? "<b>Below what your targets usually need.</b> " : "") + esc(parts.join(" ")) + '</p>';
+  parts.push("To close the gap, add training days, lengthen sessions or pick fewer muscles.");
+  return '<p class="week-gap">' +
+    "<b>Below what your targets usually need.</b> " + esc(parts.join(" ")) + '</p>';
 }
 
 function renderSession(session) {

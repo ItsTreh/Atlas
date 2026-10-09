@@ -221,12 +221,6 @@ const PLANNER_CONFIG = Object.freeze({
           "supports in direction (more sets help with diminishing returns) but not in " +
           "these exact numbers. Maintain is the bottom of the range by definition. The " +
           "fractions are a starting point to adjust, not findings."
-  },
-  timesPerWeek: {
-    group: "estimate", value: 2, origin: "heuristic", basedOn: ["frequency"],
-    note: "How often a block may repeat in the automatic plan, and the figure the " +
-          "estimate reports. The research does not show that two is optimal; it is a " +
-          "way to spread volume across sessions."
   }
 });
 
@@ -258,9 +252,13 @@ const PLANNER_TABLES = Object.freeze({
     note: "Repetition and rest ranges for compound and isolation lifts. Compatible " +
           "with the rest evidence, which only asks for more than 60 seconds."
   },
-  sessionStretch: {
-    at: "routine.js, SESSION_STRETCH", origin: "optimization", basedOn: [],
-    note: "How far over the session length a family may run and still be one session."
+  distributionRules: {
+    at: "distribution.js", origin: "heuristic", basedOn: ["frequency", "weekly-volume"],
+    note: "How often a muscle trains and on which days: frequency from the sets a session " +
+          "can hold, extra sessions for Focus then Normal muscles only while each session " +
+          "keeps four sets or more, and a fixed order of tie-breaks for the days. The " +
+          "research does not show a best frequency at equal volume; this spreads the " +
+          "volume, it is not a finding."
   },
   schedulerScore: {
     at: "scheduler.js, SCORE", origin: "optimization", basedOn: ["recovery-between-sessions"],

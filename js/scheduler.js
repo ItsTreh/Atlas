@@ -22,9 +22,8 @@
    every muscle's recovery window, on a day with no session yet: the user
    asks for training DAYS, so a day holds one session. Every block is placed
    once before any is placed again, so no chosen muscle is left out while
-   another is repeated, and no block goes in more than ESTIMATE.timesPerWeek
-   times: past that a day adds repetition, not useful training, and is
-   better left as a rest day.
+   another is repeated, and no block goes in more times than `maxUses` says
+   (once in the automatic plan, where every day is its own block).
 
    Choosing the best spot one session at a time can paint the week into a
    corner — two push days that leave no legal day for pull. So before a
@@ -71,11 +70,11 @@ class Scheduler {
    * @param routine  the WeeklyRoutine, already cleared of generated sessions
    * @param blocks   the TrainingBlocks to rotate through
    * @param maxUses  the most times one block may go in the week:
-   *                 ESTIMATE.timesPerWeek for the automatic plan; for a split
+   *                 once in the automatic plan; for a split
    *                 the user chose, enough for its days to fill the week
    *                 (routine.js, blockUses)
    */
-  constructor(routine, blocks, maxUses = ESTIMATE.timesPerWeek) {
+  constructor(routine, blocks, maxUses = 1) {
     this.routine = routine;
     this.blocks = blocks;
     this.maxUses = maxUses;

@@ -95,7 +95,7 @@ function renderNutritionMini() {
 function renderWeekTargets() {
   const t = routine.weeklyTargets(), el = $("week-targets");
   if (!t || !t.size) {
-    el.textContent = t ? "" : "Tell us this once so each muscle starts from a sensible weekly volume.";
+    el.textContent = t ? "" : "Tell us this once so each muscle starts from a sensible weekly volume. Until then the plan assumes under 6 months.";
     return;
   }
   const mark = { focus: " ▲", maintain: " ▼", normal: "" };
