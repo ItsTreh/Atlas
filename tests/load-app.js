@@ -29,7 +29,7 @@ const EXPORTS = [
   "EVIDENCE", "EVIDENCE_BY_ID", "PLANNER_CONFIG", "PLANNER_TABLES", "CERTAINTY", "ORIGINS", "configValue",
   "DayOfWeek", "SlotState", "FIRST_HOUR", "LAST_HOUR", "FAMILIES",
   "MUSCLES", "MUSCLE_BY_ID", "TrainingBlock",
-  "PROGRAMS", "PROGRAM_BY_ID", "PROGRAM_GROUPS", "MuscleSelection", "PRIORITY_LEVELS",
+  "PROGRAMS", "PROGRAM_BY_ID", "PROGRAM_GROUPS", "MuscleSelection", "PRIORITY_LEVELS", "EXPERIENCE_LEVELS", "weeklyTarget",
   "ESTIMATE", "estimateTraining",
   "GOALS", "ACTIVITY_LEVELS", "MEAL_PATTERNS", "MEAL_COUNTS", "KCAL_FLOOR", "NutritionPlan",
   "WEIGHT_KG_RANGE", "BURN_RANGE", "weightRangeText",

@@ -64,6 +64,7 @@ class WeeklyRoutine {
   constructor() {
     this.sessionsPerWeek = 4;
     this.sessionMinutes = 60;
+    this.experience = null;         // an EXPERIENCE_LEVELS id once the user says
     this.preferredWindow = "evening";
     this.firstHour = FIRST_HOUR;
     this.lastHour = LAST_HOUR;
@@ -90,6 +91,13 @@ class WeeklyRoutine {
     this.split = "auto";            // how the sessions are divided; see SPLITS
   }
 
+  /** Weekly hard-set target per selected muscle id, or null until experience is known. */
+  weeklyTargets() {
+    if (!this.experience) return null;
+    return new Map(this.selection.muscles().map(m =>
+      [m.id, weeklyTarget(m, this.experience, this.selection.priority(m.id))]));
+  }
+
   /**
    * A plain object describing every setting the user chose, safe to store:
    * the muscle selection, the nutrition inputs, the schedule preferences,
@@ -104,6 +112,7 @@ class WeeklyRoutine {
       nutrition: this.nutrition.snapshot(),
       sessionsPerWeek: this.sessionsPerWeek,
       sessionMinutes: this.sessionMinutes,
+      experience: this.experience,
       preferredWindow: this.preferredWindow,
       split: this.split,
       offDays: [...this.offDays],
@@ -115,6 +124,7 @@ class WeeklyRoutine {
   /** Restores a snapshot(): every input, then the week it had, regenerated. */
   restore(snap) {
     if (!snap) return;
+    this.experience = EXPERIENCE_LEVELS.some(e => e.id === snap.experience) ? snap.experience : null;
     this.selection.restore(snap.selection || {});
     this.nutrition.restore(snap.nutrition || {});
     if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;

@@ -46,15 +46,18 @@ function paintSteps() {
 }
 routine.selection.onChange(paintSteps);
 routine.selection.onChange(() => saveRoutine(routine));
+routine.selection.onChange(renderWeekTargets);
 
 /* -------------------------------- actions -------------------------------- */
 
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "split", "window", "showmeals"])
+for (const id of ["len", "experience", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
+    renderWeekTargets();
+    renderTargets();
     renderSplitNote();
     renderNutritionMini();
     renderNutrition();

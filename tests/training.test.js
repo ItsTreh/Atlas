@@ -97,3 +97,52 @@ describe("user control", () => {
     expect(w.edited).toBe(false);
   });
 });
+
+describe("weekly target", () => {
+  const muscle = id => app.MUSCLE_BY_ID.get(id);
+  const levels = app.EXPERIENCE_LEVELS.map(e => e.id);
+
+  test("is unknown until experience is known", () => {
+    expect(app.weeklyTarget(muscle("chest"), null)).toBeNull();
+    expect(app.weeklyTarget(muscle("chest"), "expert")).toBeNull();
+  });
+
+  test("always a whole number inside the muscle's range", () => {
+    for (const m of app.MUSCLES) for (const e of levels) for (const p of app.PRIORITY_LEVELS) {
+      const t = app.weeklyTarget(m, e, p);
+      expect(Number.isInteger(t), m.id).toBe(true);
+      expect(t).toBeGreaterThanOrEqual(m.weeklySets[0]);
+      expect(t).toBeLessThanOrEqual(m.weeklySets[1]);
+    }
+  });
+
+  test("focus is never below normal, and normal never below maintain", () => {
+    for (const m of app.MUSCLES) for (const e of levels) {
+      const t = p => app.weeklyTarget(m, e, p);
+      expect(t("focus")).toBeGreaterThanOrEqual(t("normal"));
+      expect(t("normal")).toBeGreaterThanOrEqual(t("maintain"));
+    }
+  });
+
+  test("maintain is the bottom of the range; experience only raises the target", () => {
+    const chest = muscle("chest");
+    for (const e of levels) expect(app.weeklyTarget(chest, e, "maintain")).toBe(chest.weeklySets[0]);
+    const n = e => app.weeklyTarget(chest, e, "normal");
+    expect(n("beginner")).toBeLessThanOrEqual(n("intermediate"));
+    expect(n("intermediate")).toBeLessThanOrEqual(n("advanced"));
+  });
+
+  test("the routine keeps experience, restores it, and drops an unknown one", () => {
+    const r = new app.WeeklyRoutine();
+    expect(r.weeklyTargets()).toBeNull();
+    r.selection.toggle("chest");
+    r.experience = "intermediate";
+    r.selection.setPriority("chest", "focus");
+    expect(r.weeklyTargets().get("chest")).toBe(app.weeklyTarget(muscle("chest"), "intermediate", "focus"));
+    const other = new app.WeeklyRoutine();
+    other.restore(r.snapshot());
+    expect(other.experience).toBe("intermediate");
+    other.restore({ ...r.snapshot(), experience: "guru" });
+    expect(other.experience).toBeNull();
+  });
+});

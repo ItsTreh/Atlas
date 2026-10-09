@@ -208,6 +208,20 @@ const PLANNER_CONFIG = Object.freeze({
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
     note: "Per session, not available for working sets."
   },
+  weeklyTargetFraction: {
+    group: "target", origin: "heuristic", basedOn: ["weekly-volume"],
+    // Where in a muscle's weekly range [low, high] the target lands:
+    // low + fraction * (high - low), by experience and priority.
+    value: Object.freeze({
+      beginner:     Object.freeze({ maintain: 0, normal: 0,   focus: 0.5 }),
+      intermediate: Object.freeze({ maintain: 0, normal: 0.5, focus: 0.8 }),
+      advanced:     Object.freeze({ maintain: 0, normal: 0.5, focus: 1.0 })
+    }),
+    note: "Newer lifters start at the low end of each range, which the volume research " +
+          "supports in direction (more sets help with diminishing returns) but not in " +
+          "these exact numbers. Maintain is the bottom of the range by definition. The " +
+          "fractions are a starting point to adjust, not findings."
+  },
   timesPerWeek: {
     group: "estimate", value: 2, origin: "heuristic", basedOn: ["frequency"],
     note: "How often a block may repeat in the automatic plan, and the figure the " +
@@ -291,7 +305,7 @@ function configValue(key) {
   };
   for (const [name, p] of Object.entries(PLANNER_CONFIG)) {
     label(name, p);
-    if (!["workout", "estimate"].includes(p.group)) problem(name + " has unknown group " + p.group);
+    if (!["workout", "estimate", "target"].includes(p.group)) problem(name + " has unknown group " + p.group);
   }
   for (const [name, p] of Object.entries(PLANNER_TABLES)) label(name, p);
 })();
