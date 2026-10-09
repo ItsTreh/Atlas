@@ -20,6 +20,10 @@ function hourLabel(h) {
 
 function buildControls() {
   $("len").value = routine.sessionMinutes;
+  $("experience").innerHTML = '<option value="">Choose…</option>' +
+    EXPERIENCE_LEVELS.map(e => '<option value="' + e.id + '">' + e.label + '</option>').join("");
+  $("experience").value = routine.experience || "";
+  renderWeekTargets();
   [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
   $("sessions").value = routine.sessionsPerWeek;
   // A split day with nothing chosen for it says so here, before Generate, so
@@ -86,8 +90,22 @@ function renderNutritionMini() {
     : "Add your body weight to get a plan.";
 }
 
+/** The weekly sets each chosen muscle starts from, once experience is known. */
+function renderWeekTargets() {
+  const t = routine.weeklyTargets(), el = $("week-targets");
+  if (!t || !t.size) {
+    el.textContent = t ? "" : "Tell us this once so each muscle starts from a sensible weekly volume.";
+    return;
+  }
+  const mark = { focus: " ▲", maintain: " ▼", normal: "" };
+  el.textContent = "Weekly hard sets to start from (estimate): " +
+    routine.selection.muscles().map(m =>
+      m.name + " " + t.get(m.id) + mark[routine.selection.priority(m.id)]).join(" · ") + ".";
+}
+
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
+  routine.experience = $("experience").value || null;
   const [lo, hi] = TRAINING_DAYS_RANGE;
   routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
   $("sessions").value = routine.sessionsPerWeek;

@@ -22,6 +22,25 @@ const ESTIMATE = Object.freeze({
   timesPerWeek:  configValue("timesPerWeek")      // how often each muscle is best trained
 });
 
+/* Experience, asked once. The weekly target for each muscle starts from it. */
+const EXPERIENCE_LEVELS = Object.freeze([
+  { id: "beginner",     label: "Under 6 months" },
+  { id: "intermediate", label: "6 months to 2 years" },
+  { id: "advanced",     label: "More than 2 years" }
+]);
+
+/**
+ * Hard sets a week to aim for on one muscle: its range [low, high], then a
+ * fraction of the way up it by experience and priority. A whole number that
+ * always lies inside the range. Returns null until experience is known.
+ */
+function weeklyTarget(muscle, experience, priority = "normal") {
+  const table = configValue("weeklyTargetFraction")[experience];
+  if (!table || table[priority] === undefined) return null;
+  const [low, high] = muscle.weeklySets;
+  return Math.max(low, Math.min(high, Math.round(low + table[priority] * (high - low))));
+}
+
 /* The phases are typical, not promised, and all assume consistency. */
 const PROGRESS_PHASES = Object.freeze([
   { when: "Weeks 1–4",

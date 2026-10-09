@@ -140,15 +140,18 @@ function renderSummary() {
     origin = "Nothing selected yet. Click muscles on the figure or pick a program.";
   }
 
+  const targets = routine.weeklyTargets();
   const chips = muscles.map(m => {
     const now = selection.priority(m.id);
     const mark = { focus: "▲", maintain: "▼", normal: "" }[now];
+    const target = targets && targets.get(m.id);
     return '<li class="sel-chip" data-level="' + now + '">' +
       '<button type="button" class="chip-main" data-cycle="' + m.id + '" ' +
         'title="' + PRIORITY_LABEL[now] + ' — click to change" ' +
         'aria-label="' + esc(m.name) + ', ' + PRIORITY_LABEL[now] + '. Click to change priority.">' +
         '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
         esc(m.name) + (mark ? ' <span class="pri-mark" aria-hidden="true">' + mark + '</span>' : '') +
+        (target ? ' <span class="pri-sets">≈' + target + '</span>' : '') +
       '</button>' +
       '<button type="button" class="x" data-remove="' + m.id + '" ' +
         'aria-label="Remove ' + esc(m.name) + '">×</button>' +
