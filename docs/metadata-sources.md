@@ -60,3 +60,60 @@ Face pull (primary EMG), cable crossover angle, dips and push-ups by pec region,
 ## Could not open
 
 PubMed and PMC pages that returned a robot check: Ekstrom 2003 was read from a mirror abstract; Contreras 2015 was read from a repository record; the 2019 gluteus medius segment study (PubMed 30747561) and PMC10593473 could not be read.
+
+---
+
+# Second round: the uncertain items
+
+Same rules as above: sources were opened unless marked **not read**. Still research only.
+
+## Chest: incline press does not raise the upper chest
+
+| Source | What it found | Effect |
+|---|---|---|
+| López-Vivancos et al. 2023, *Applied Sciences* 13:5203 (systematic review + meta-analysis) | Incline vs flat bench: **no significant difference in clavicular activity**; sternal activity significantly **lower** with incline. Decline: pooled results not significant (text and table disagree). Push-ups and other variants: bench produced more sternal activation. Dumbbell flye: clavicular similar to bench; sternal lower. Machine and standing cable presses: lower than bench. **Dips not analysed.** | **changes**: "incline → clavicular" is not supported as a higher upper-chest stimulus. What the data supports is "incline takes load off the sternal part". Downgrade the three incline entries from `convention` to `uncertain` and say so in the note, or describe them as "less sternal". Flyes and dips: still no source for region. |
+
+## Shoulders: lateral raise variants and rear delts
+
+| Source | What it found | Effect |
+|---|---|---|
+| Coratella et al. 2020, *IJERPH* 17(17):6015 (competitive bodybuilders) | Medial deltoid highest in the neutral-rotation lateral raise. Anterior highest in the frontal raise. **Posterior deltoid and upper trapezius highest in the internally rotated lateral raise** (thumbs down / "pour the jug"). The study measured the medial deltoid; this project's "lateral" is the same head. | supports lateral raise → lateral (neutral rotation). **changes**: internal rotation shifts work to the posterior deltoid and upper trapezius, so the variants are not one job. The catalogue does not say which rotation each lateral raise uses. |
+| Sweeney 2014, UW-La Crosse MS thesis (16 male lifters, not peer-reviewed) | Middle deltoid highest in the bent-arm lateral raise and the 45° incline row. Posterior deltoid highest in the seated rear lateral raise and the 45° incline row. Cable lateral raise, face pull and reverse fly were **not tested**. | supports rear-delt raise → posterior; shows a row can load the posterior deltoid as much as a raise. Does not cover cable lateral raise or the machine variants in the catalogue. |
+| Frontiers in Physiology 2025, "Dumbbell versus cable lateral raises for lateral deltoid hypertrophy" (doi 10.3389/fphys.2025.1611468) | **Not read** (the full text would not load). Exists and is the direct evidence for cable lateral raises. | Still to read before touching the lateral-raise entries. |
+| Tsuruike et al. 2023, *Int J Sports Phys Ther* (side-lying abduction) | With scapular retraction, lower trapezius reached 55% MVIC (vs 21% with protraction) and infraspinatus 41%; middle deltoid fell. Middle trapezius and rhomboids not measured. | Not a face-pull study. It shows that a retraction cue moves a shoulder exercise away from the middle deltoid and toward the lower trapezius/infraspinatus. |
+
+## Traps: Y-raise
+
+| Source | What it found | Effect |
+|---|---|---|
+| Hwang & Jeon 2024, *Isokinetics and Exercise Science* 32(3):281–9 (21 healthy men, band Y-raise) | Adding an isometric adduction cue **raised** lower trapezius and **lowered** upper trapezius and serratus anterior; the plain Y-raise therefore leaned more on the upper trapezius. Absolute values not in the abstract. | The current note ("lower traps may help") is not wrong but is incomplete: the lower-trap share depends on the cue, not the exercise. Keeps `uncertain`. Prone versions (Ekstrom 2003, Edelburg 2017) are better supported than the standing cable Y-raise. |
+
+## Lats: no regional data, pullover doubtful
+
+| Source | What it found | Effect |
+|---|---|---|
+| Di Fonza et al. 2026, *J Funct Morphol Kinesiol* 11(3):315 (narrative review; last ~11k characters not read) | Grip width gives inconsistent lat results; pull-up grips similar. **No upper vs lower lat data.** The review says the **pullover appeared to preferentially activate the pectoralis major** and is not a first choice for isolating the lats; shoulder angle matters more. Inverted-row lat result rests on seven people and is preliminary. Cross-exercise rankings are explicitly not justified. | confirms: lats get no regions. **changes**: `lat-isolation` for the two pullovers is questionable. This is a review's reading of other studies, not a measurement; check the primary pullover studies before relabelling. |
+
+## Glutes and legs
+
+| Source | What it found | Effect |
+|---|---|---|
+| Contreras 2015, AUT PhD thesis | Parallel, full and front squats did not differ in EMG; barbell, American and band hip thrusts did not differ; barbell hip thrust gave much more hip-extensor and glute-max EMG than the parallel squat. A one-person twin study showed both lifts thickening the glutes. | supports putting squat variants in one job and hip-thrust variants in another. Squat depth did not change EMG in this thesis, which is at odds with the note "glute involvement grows with depth" on the back squat (that note currently has no source). |
+| Leg press, hack squat, pendulum squat | **Still no primary source.** Searches returned equipment-blog pages only. One PMC page (PMC10349977) was blocked. | stays `convention`; consider recording "unsourced" rather than a region. |
+
+## Face pull
+
+Still no primary EMG study. Closest evidence is indirect: Schoenfeld 2013 (horizontal abduction, neutral grip raises posterior deltoid and infraspinatus), Tsuruike 2023 (retraction cue raises lower trapezius and infraspinatus), Ekstrom 2003 (horizontal extension with external rotation tops the middle trapezius). Together they make "posterior deltoid + external rotators + retractors" a reasonable inference, not a finding. Keep `uncertain`; say "inferred from three related studies".
+
+## What the second round would change in the metadata
+
+1. Incline press entries: lose the clavicular claim or say "less sternal, upper-chest effect not shown".
+2. Lateral raise: add `posterior` (Campos 2020), and split by rotation (Coratella 2020); the catalogue needs a field for it.
+3. Pullovers: stop labelling them lat isolation until a primary source is checked.
+4. Back squat note on depth: remove or find a source.
+5. Y-raise: record that the lower-trap share depends on a cue.
+6. Face pull: keep, labelled "inferred".
+
+## Still not found
+
+Dips and push-up region data; cable-crossover angle; hack squat, pendulum squat and leg press glute data; the Frontiers 2025 cable vs dumbbell lateral raise result; a primary face-pull EMG study.
