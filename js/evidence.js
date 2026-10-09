@@ -199,6 +199,11 @@ const PLANNER_CONFIG = Object.freeze({
     note: "Tier steps for an exercise that also works a muscle trained on another " +
           "day, so that muscle is not quietly trained the day before its own session."
   },
+  dislikeDemotion: {
+    group: "workout", value: 2, origin: "preference", basedOn: [],
+    note: "Tier steps an exercise drops once the user says they don't like it. It can still " +
+          "appear when nothing better is left; only an exercise the user can't do is kept out."
+  },
   interferenceDemotion: {
     group: "workout", value: 1, origin: "heuristic", basedOn: [],
     note: "Tier steps for an exercise that tires a muscle another lift in the session " +

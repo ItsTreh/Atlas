@@ -43,6 +43,7 @@ const WORKOUT = Object.freeze({
   secondaryCredit:  configValue("secondaryCredit"),   // a set where the muscle only assists counts as half
   repeatDemotion:     configValue("repeatDemotion"),   // tier steps an exercise drops once used this week
   offDayDemotion:     configValue("offDayDemotion"),   // tier steps for one that also works a muscle trained on another day
+  dislikeDemotion:      configValue("dislikeDemotion"),   // tier steps for an exercise the user doesn't like
   interferenceDemotion: configValue("interferenceDemotion")   // tier steps for one that cannot share a session cleanly with another
 });
 
@@ -182,8 +183,9 @@ class WorkoutBuilder {
    * @param sessions        the WorkoutSessions placed this week
    * @param sessionMinutes  the planned session length
    */
-  constructor(sessions, sessionMinutes, priorityOf = () => "normal") {
+  constructor(sessions, sessionMinutes, priorityOf = () => "normal", preferences = new ExercisePreferences()) {
     this.priorityOf = priorityOf;
+    this.preferences = preferences;
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
     this.limit = sessionMinutes;
@@ -387,6 +389,8 @@ class WorkoutBuilder {
 
     exercisesFor(muscle.id).forEach((ex, order) => {
       if (workout.has(ex) || workout.clashWith(ex)) return;
+      const liked = this.preferences.reasonFor(ex.id);
+      if (liked === "cannot") return;                    // the user can't do it: never picked
       const elsewhere = ex.primary.some(id => id !== muscle.id && !block.muscles.some(m => m.id === id) &&
                                               this.trainedThisWeek.has(id));
       // On a split day, a lift that would take another muscle it trains past
@@ -400,6 +404,7 @@ class WorkoutBuilder {
       const key = [
         tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
           (interferes ? WORKOUT.interferenceDemotion : 0) +
+          (liked === "dislike" ? WORKOUT.dislikeDemotion : 0) +
           (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0),
         -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
         order

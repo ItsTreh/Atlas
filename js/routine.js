@@ -81,6 +81,8 @@ class WeeklyRoutine {
       sessionMinutes: this.sessionMinutes,
       weeklySets: this.plannedWeeklySets()
     }));
+    this.log = new TrainingLog();                   // what was actually done (log.js)
+    this.exercisePrefs = new ExercisePreferences();  // exercises dropped, and why
     this.sessions = [];
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
@@ -129,7 +131,9 @@ class WeeklyRoutine {
       split: this.split,
       offDays: [...this.offDays],
       busy: this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => [s.day, s.hour]),
-      hadPlan: this.sessions.length > 0
+      hadPlan: this.sessions.length > 0,
+      log: this.log.snapshot(),
+      exercisePrefs: this.exercisePrefs.snapshot()
     };
   }
 
@@ -143,9 +147,23 @@ class WeeklyRoutine {
     if (snap.sessionMinutes) this.sessionMinutes = snap.sessionMinutes;
     if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
     if (SPLITS[snap.split]) this.split = snap.split;
+    this.log.restore(snap.log);
+    this.exercisePrefs.restore(snap.exercisePrefs);
     this.offDays = new Set(snap.offDays || []);
     for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
     if (snap.hadPlan) this.generate();
+  }
+
+  /**
+   * Drops an exercise from a session and remembers why, so later weeks do not
+   * offer it again (cannot) or rank it lower (dislike). Returns false for an
+   * entry that is not in the session or a reason we do not know.
+   */
+  discardExercise(session, entry, reason) {
+    if (!session.workout.entries.includes(entry)) return false;
+    if (!this.exercisePrefs.discard(entry.exercise.id, reason)) return false;
+    session.workout.remove(entry);
+    return true;
   }
 
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
@@ -373,7 +391,7 @@ class WeeklyRoutine {
     const placed = placements.length;
 
     // What to do in each session; see workouts.js.
-    new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id)).build();
+    new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs).build();
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;
