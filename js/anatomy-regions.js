@@ -75,6 +75,7 @@ const ANATOMY_REGIONS = Object.freeze({
   "adductors":            "adductors",
   "gracilis":             "adductors",
   "pectineus":            "adductors",
+  "adductor-longus":      "adductors",
   "gastrocnemius":        "calves",
   "soleus":               "calves",
   "tibialis-anterior":    "calves",
