@@ -60,6 +60,8 @@
     "#FF633A": "teres-major.R",
     "#C77AFF": "teres-major.L",
     "#FFF643": "gluteus-maximus.R",
-    "#FF352B": "gluteus-maximus.L"
+    "#FF352B": "gluteus-maximus.L",
+    "#B7FF84": "tensor-fasciae-latae.R",
+    "#FF5BCA": "tensor-fasciae-latae.L"
   }
 }
