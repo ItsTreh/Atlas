@@ -26,12 +26,15 @@
           c. goes with muscles of the same family already on those days,
           d. leaves the busiest day lightest,
           e. comes first in week order.
-     4. Balance. While the heaviest day is heavier than the lightest, a muscle
-        trained once a week moves from the one to the other if that lowers the
+     4. Balance. While the heaviest day is more than BALANCE_SLACK sets
+        heavier than the lightest, a muscle trained once a week moves (or
+        swaps with a smaller one) from the one to the other if that lowers the
         heaviest day.
-     5. A day still over what a session holds loses sets, from the muscle with
+     5. A day under MIN_SESSION_SETS is folded into the others when every
+        muscle on it fits elsewhere.
+     6. A day still over what a session holds loses sets, from the muscle with
         the most on it, never below that muscle's usual weekly minimum.
-     6. A day nothing landed on is a rest day.
+     7. A day nothing landed on is a rest day.
 
    The days here are positions in the week (0 = the first training day), not
    weekdays. The scheduler (scheduler.js) puts them on real days and keeps
