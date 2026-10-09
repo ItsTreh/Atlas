@@ -152,6 +152,18 @@
       "side": "left"
     },
     {
+      "id": "tensor-fasciae-latae.R",
+      "structure": "muscle",
+      "atlasRegion": "tensor-fasciae-latae",
+      "side": "right"
+    },
+    {
+      "id": "tensor-fasciae-latae.L",
+      "structure": "muscle",
+      "atlasRegion": "tensor-fasciae-latae",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
