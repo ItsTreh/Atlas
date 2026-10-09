@@ -41,6 +41,62 @@ function weeklyTarget(muscle, experience, priority = "normal") {
   return Math.max(low, Math.min(high, Math.round(low + table[priority] * (high - low))));
 }
 
+/** Session lengths the page offers, used when suggesting a longer one. */
+const SESSION_LENGTH_OPTIONS = Object.freeze([45, 60, 75, 90]);
+
+/** Minutes of working sets one session can hold, after the warm-up. */
+const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.warmupMinutes);
+
+/**
+ * Whether the weekly targets fit the time the user has, and what to do if
+ * not. `targets` is a Map of muscle id -> sets; `muscles` are the Muscle
+ * objects (for each one's floor, the low end of its range); `priorities`
+ * maps id -> "maintain" | "normal" | "focus".
+ *
+ * Over budget, sets come off one at a time: Normal muscles first, then Focus,
+ * each from whichever is furthest above its floor, never below the floor.
+ * Maintain is already at its floor. Returns
+ *   { targets, fits, neededMinutes, requestedMinutes, capacityMinutes,
+ *     trimmed: [muscle ids lowered], fixes: { extraDay, sessionMinutes } }
+ * where a fix is the change that would let the requested targets fit
+ * (null when it would not, or is unavailable).
+ */
+function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes) {
+  const minutesFor = (map, perWeek, len) => [...map.values()].reduce((t, n) => t + n, 0) *
+    ESTIMATE.minutesPerSet <= perWeek * usableMinutes(len);
+  const total = map => [...map.values()].reduce((t, n) => t + n, 0) * ESTIMATE.minutesPerSet;
+  const floor = new Map(muscles.map(m => [m.id, m.weeklySets[0]]));
+  const level = id => priorities.get(id) || "normal";
+  const capacity = sessionsPerWeek * usableMinutes(sessionMinutes);
+
+  const out = new Map(targets);
+  const trimmed = new Set();
+  for (const group of ["normal", "focus"]) {
+    for (;;) {
+      if (total(out) <= capacity) break;
+      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > floor.get(id));
+      if (!candidates.length) break;
+      const id = candidates.reduce((a, b) =>
+        out.get(b) - floor.get(b) > out.get(a) - floor.get(a) ? b : a);
+      out.set(id, out.get(id) - 1);
+      trimmed.add(id);
+    }
+  }
+
+  const fixes = { extraDay: null, sessionMinutes: null };
+  if (total(targets) > capacity) {
+    if (sessionsPerWeek < TRAINING_DAYS_RANGE[1] && minutesFor(targets, sessionsPerWeek + 1, sessionMinutes))
+      fixes.extraDay = sessionsPerWeek + 1;
+    fixes.sessionMinutes = SESSION_LENGTH_OPTIONS.find(len =>
+      len > sessionMinutes && minutesFor(targets, sessionsPerWeek, len)) || null;
+  }
+  return {
+    targets: out, fits: total(out) <= capacity, neededMinutes: total(out),
+    requestedMinutes: total(targets), capacityMinutes: capacity,
+    trimmed: [...trimmed], fixes
+  };
+}
+
 /* The phases are typical, not promised, and all assume consistency. */
 const PROGRESS_PHASES = Object.freeze([
   { when: "Weeks 1–4",
