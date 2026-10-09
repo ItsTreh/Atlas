@@ -164,6 +164,18 @@
       "side": "left"
     },
     {
+      "id": "sartorius.R",
+      "structure": "muscle",
+      "atlasRegion": "sartorius",
+      "side": "right"
+    },
+    {
+      "id": "sartorius.L",
+      "structure": "muscle",
+      "atlasRegion": "sartorius",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",

@@ -62,6 +62,9 @@
     "#FFF643": "gluteus-maximus.R",
     "#FF352B": "gluteus-maximus.L",
     "#B7FF84": "tensor-fasciae-latae.R",
-    "#FF5BCA": "tensor-fasciae-latae.L"
+    "#FF5BCA": "tensor-fasciae-latae.L",
+    "#AEDDFF": "sartorius.R",
+    "#B2DFFF": "sartorius.R",
+    "#96FF76": "sartorius.L"
   }
 }
