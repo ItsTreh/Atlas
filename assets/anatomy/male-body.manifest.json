@@ -176,6 +176,18 @@
       "side": "left"
     },
     {
+      "id": "iliopsoas.R",
+      "structure": "muscle",
+      "atlasRegion": "iliopsoas",
+      "side": "right"
+    },
+    {
+      "id": "iliopsoas.L",
+      "structure": "muscle",
+      "atlasRegion": "iliopsoas",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",

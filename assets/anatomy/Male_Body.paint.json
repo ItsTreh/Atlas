@@ -65,6 +65,8 @@
     "#FF5BCA": "tensor-fasciae-latae.L",
     "#AEDDFF": "sartorius.R",
     "#B2DFFF": "sartorius.R",
-    "#96FF76": "sartorius.L"
+    "#96FF76": "sartorius.L",
+    "#FF3F5F": "iliopsoas.R",
+    "#BB6EFF": "iliopsoas.L"
   }
 }
