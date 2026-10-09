@@ -10,10 +10,13 @@ Male_Body.blend is only read: its mesh is appended into an empty scene and
 nothing is saved back. Its regions come from two sources, recorded per
 region in the manifest:
 
-  painted   painted by hand in Vertex Paint, one colour per region
-            (Male_Body.paint.json names them; several colours may name one
-            region): each face corner takes the nearest listed colour, or
-            none if nearest to white or to a colour not listed. Each region's
+  painted   painted by hand, one colour per region (Male_Body.paint.json
+            names them; several colours may name one region): in Texture
+            Paint, into Male_Body.paint.png on the UV map "Paint", once
+            paint_setup.py has made them (each face reads the image at points
+            across it), in Vertex Paint before that (each face corner reads
+            its colour). Each colour read snaps to the nearest listed colour,
+            or to none if nearest to white or to a colour not listed. Each region's
             share is then blurred by distance (about a centimetre, as far
             where the faces are small as where they are large) and every face
             takes the region with the largest share, so a border becomes a smooth curve however ragged
@@ -77,8 +80,16 @@ STONE = "atlas-stone"       # the sculpture's own material: faces no region clai
 BODY = "body"
 MANIFEST = os.path.join(ROOT, "assets", "anatomy", "male-body.manifest.json")
 PAINT = os.path.join(ROOT, "assets", "anatomy", "Male_Body.paint.json")
+# Texture Paint: the image beside the .blend, laid on the sculpture by the UV
+# map "Paint" (paint_setup.py made both). It replaces the Vertex Paint colours
+# once it exists. PAINT_SAMPLES: the points read across each triangle, per side.
+PAINT_IMAGE = os.path.splitext(SOURCE)[0] + ".paint.png"
+PAINT_UV, PAINT_SAMPLES = "Paint", 6
 PAINT_SIGMA, PAINT_ISLAND = 0.01, 30  # the painted borders' cleanup: the blur's reach (m, a Gaussian's
                                       # sigma, measured on the surface, not in edges), an island's faces
+# The blur for Texture Paint: its strokes are exact, not whole corners, so a
+# smaller blur cleans up slips without eating thin regions.
+PAINT_IMAGE_SIGMA = 0.004
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
@@ -152,43 +163,100 @@ def majority(labels, nbrs, passes, min_island):
     return labels
 
 
+def snap(c, palette, region):
+    """Colours (n x 3, 0-1) -> region indices: the nearest listed colour's
+    region, 0 when nearest to white."""
+    return region[np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)]
+
+
+def image_paint(me, palette, region, k):
+    """Each face's share of each region (k columns, 0 unpainted) in the paint
+    image (PAINT_IMAGE, laid on by the PAINT_UV map): the image read at a grid
+    of points across each triangle, nearest pixel, each pixel snapped like a
+    corner. A face reads its own pixels, so a border runs where the paint
+    does, not along the faces' edges."""
+    img = bpy.data.images.load(PAINT_IMAGE)
+    w, h = img.size
+    px = np.empty(w * h * 4, np.float32); img.pixels.foreach_get(px)
+    bpy.data.images.remove(img)
+    rgb = np.round(px.reshape(-1, 4)[:, :3] * 255).astype(np.int64)
+    colours, inverse = np.unique((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2], return_inverse=True)
+    rgb = np.stack([colours >> 16, (colours >> 8) & 255, colours & 255], 1) / 255.0
+    pixel = snap(rgb, palette, region)[inverse.ravel()]             # each pixel's region, bottom row first
+    me.calc_loop_triangles()
+    nt = len(me.loop_triangles)
+    tl = np.empty(nt * 3, np.int64); me.loop_triangles.foreach_get("loops", tl); tl = tl.reshape(-1, 3)
+    tp = np.empty(nt, np.int64); me.loop_triangles.foreach_get("polygon_index", tp)
+    ta = np.empty(nt); me.loop_triangles.foreach_get("area", ta)
+    uv = np.empty(len(me.loops) * 2); me.uv_layers[PAINT_UV].data.foreach_get("uv", uv); uv = uv.reshape(-1, 2)
+    n = PAINT_SAMPLES
+    bary = np.array([(i, j, n - i - j) for i in range(n + 1) for j in range(n + 1 - i)], float) / n
+    frac = np.zeros((len(me.polygons), k))
+    for s in range(0, nt, 50000):
+        t = slice(s, s + 50000)
+        p = np.einsum("sb,tbc->tsc", bary, uv[tl[t]])
+        x = np.clip((p[..., 0] * w).astype(np.int64), 0, w - 1)
+        y = np.clip((p[..., 1] * h).astype(np.int64), 0, h - 1)
+        lab = pixel[y * w + x]
+        rows = np.arange(len(lab))[:, None] * k + lab
+        cnt = np.bincount(rows.ravel(), minlength=len(lab) * k).reshape(-1, k) / lab.shape[1]
+        np.add.at(frac, tp[t], cnt * ta[t, None])
+    return frac / np.maximum(frac.sum(1, keepdims=True), 1e-20)
+
+
 def painted(me):
-    """The regions painted in Vertex Paint (see PAINT), the faces their borders
-    cross cut along them: (region ids, each face's index into them + 1, 0 where
-    unpainted), or None if nothing is painted."""
-    if not os.path.exists(PAINT) or not me.color_attributes:
+    """The painted regions (see PAINT), the faces their borders cross cut
+    along them: (region ids, each face's index into them + 1, 0 where
+    unpainted), or None if nothing is painted. Read from the paint image
+    (Texture Paint) once there is one, from the Vertex Paint colours until
+    then."""
+    if not os.path.exists(PAINT):
+        return None
+    use_image = os.path.exists(PAINT_IMAGE) and PAINT_UV in me.uv_layers
+    if not use_image and not me.color_attributes:
         return None
     with open(PAINT, encoding="utf-8") as f:
         key = json.load(f)["colors"]
-    attr = me.color_attributes.get(me.color_attributes.active_color_name or "") or me.color_attributes[0]
-    c = np.empty(len(attr.data) * 4, np.float32); attr.data.foreach_get("color_srgb", c)
-    c = c.reshape(-1, 4)[:, :3]
-    vi = np.empty(len(me.loops), np.int64); me.loops.foreach_get("vertex_index", vi)
-    if attr.domain == 'POINT':
-        c = c[vi]
-    elif attr.domain != 'CORNER':
-        raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
     ids = list(dict.fromkeys(key.values()))                         # several colours may name one region
     palette = np.array([[1.0, 1.0, 1.0]] + [[int(h[k:k + 2], 16) / 255.0 for k in (1, 3, 5)] for h in key])
     region = np.array([0] + [ids.index(r) + 1 for r in key.values()])
-    corner = region[np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)]
-    if not corner.any():
-        return None
     nv, k = len(me.vertices), len(ids) + 1
-    # Each vertex: the share of its corners painted each colour, then blurred
-    # by distance (a Gaussian, PAINT_SIGMA), each vertex weighted by the surface
-    # it stands for. Blurring by distance rather than along edges reaches as far
-    # where the faces are small as where they are large, so a border does not
-    # wobble where the mesh's density changes. Surface facing away (the arm
-    # against the chest) is left out.
-    share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
-    share /= np.maximum(share.sum(1, keepdims=True), 1)
+    vi = np.empty(len(me.loops), np.int64); me.loops.foreach_get("vertex_index", vi)
+    # Each vertex: the share of the paint around it of each colour, then
+    # blurred by distance (a Gaussian, PAINT_SIGMA), each vertex weighted by the
+    # surface it stands for. Blurring by distance rather than along edges
+    # reaches as far where the faces are small as where they are large, so a
+    # border does not wobble where the mesh's density changes. Surface facing
+    # away (the arm against the chest) is left out.
+    if use_image:                                                   # its faces' shares, by their area
+        frac = image_paint(me, palette, region, k)
+        if not frac[:, 1:].any():
+            return None
+        fa = np.empty(len(me.polygons)); me.polygons.foreach_get("area", fa)
+        ft = np.empty(len(me.polygons), np.int64); me.polygons.foreach_get("loop_total", ft)
+        lf = np.repeat(np.arange(len(me.polygons)), ft)             # each corner's face
+        share = np.stack([np.bincount(vi, frac[lf, j] * fa[lf], nv) for j in range(k)], 1)
+        share /= np.maximum(share.sum(1, keepdims=True), 1e-20)
+    else:                                                           # its corners' colours
+        attr = me.color_attributes.get(me.color_attributes.active_color_name or "") or me.color_attributes[0]
+        c = np.empty(len(attr.data) * 4, np.float32); attr.data.foreach_get("color_srgb", c)
+        c = c.reshape(-1, 4)[:, :3]
+        if attr.domain == 'POINT':
+            c = c[vi]
+        elif attr.domain != 'CORNER':
+            raise SystemExit("male_body: paint on %s is neither per vertex nor per corner" % attr.domain)
+        corner = snap(c, palette, region)
+        if not corner.any():
+            return None
+        share = np.stack([np.bincount(vi, corner == j, nv) for j in range(k)], 1)
+        share /= np.maximum(share.sum(1, keepdims=True), 1)
     co = np.empty(nv * 3); me.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
     nor = np.empty(nv * 3); me.vertices.foreach_get("normal", nor); nor = nor.reshape(-1, 3)
     fa = np.empty(len(me.polygons)); me.polygons.foreach_get("area", fa)
     ft = np.empty(len(me.polygons), np.int64); me.polygons.foreach_get("loop_total", ft)
     area = np.bincount(vi, np.repeat(fa / ft, ft), nv)
-    reach = 2.5 * PAINT_SIGMA
+    sigma = PAINT_IMAGE_SIGMA if use_image else PAINT_SIGMA
+    reach = 2.5 * sigma
     tree = KDTree(nv)
     for i, p in enumerate(co):
         tree.insert(p, i)
@@ -204,7 +272,7 @@ def painted(me):
     for i in np.flatnonzero(near):
         j = np.array([j for _, j, _ in tree.find_range(co[i], reach)])
         d2 = ((co[j] - co[i]) ** 2).sum(1)
-        w = area[j] * np.exp(-d2 / (2 * PAINT_SIGMA ** 2)) * np.clip(nor[j] @ nor[i], 0, 1)
+        w = area[j] * np.exp(-d2 / (2 * sigma ** 2)) * np.clip(nor[j] @ nor[i], 0, 1)
         blurred[i] = w @ share[j] / max(w.sum(), 1e-12)
     share = blurred
 
@@ -245,18 +313,9 @@ def borrow(me, nbrs, passes, min_island):
     return [names[k] for k in majority(labels, nbrs, passes, min_island).tolist()]
 
 
-def main(out_glb):
-    bl.reset_scene()
-    with bpy.data.libraries.load(SOURCE, link=False) as (src, dst):
-        dst.meshes = ["Mesh_0"] if "Mesh_0" in src.meshes else src.meshes[:1]
-    me = dst.meshes[0]
-    names = [m.name if m else None for m in me.materials]
-    if not names or None in names:
-        raise SystemExit("male_body: every material slot of Mesh_0 must hold a material (%r)" % names)
-    obj = bpy.data.objects.new(OBJECT, me)
-    bpy.context.scene.collection.objects.link(obj)
-
-    # 1. Align (Blender coordinates throughout; ATLAS = (x, z, -y) * 100).
+def align(me):
+    """Step 1, in place: the figure scaled to the procedural one and centred.
+    Returns the scale."""
     co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get("co", co); co = co.reshape(-1, 3)
     z0 = co[:, 2].min()
     # Floor to the neck cut, as measured on the original generated figure; the
@@ -273,6 +332,22 @@ def main(out_glb):
     chest = chest[np.abs(chest[:, 0]) < 0.1]
     co[:, 1] -= 0.5 * (chest[:, 1].min() + chest[:, 1].max())
     me.vertices.foreach_set("co", co.ravel()); me.update()
+    return s
+
+
+def main(out_glb):
+    bl.reset_scene()
+    with bpy.data.libraries.load(SOURCE, link=False) as (src, dst):
+        dst.meshes = ["Mesh_0"] if "Mesh_0" in src.meshes else src.meshes[:1]
+    me = dst.meshes[0]
+    names = [m.name if m else None for m in me.materials]
+    if not names or None in names:
+        raise SystemExit("male_body: every material slot of Mesh_0 must hold a material (%r)" % names)
+    obj = bpy.data.objects.new(OBJECT, me)
+    bpy.context.scene.collection.objects.link(obj)
+
+    # 1. Align (Blender coordinates throughout; ATLAS = (x, z, -y) * 100).
+    s = align(me)
 
     source_faces = len(me.polygons)
     if TARGET and TARGET < source_faces:
