@@ -47,6 +47,7 @@ function paintSteps() {
 routine.selection.onChange(paintSteps);
 routine.selection.onChange(() => saveRoutine(routine));
 routine.selection.onChange(renderWeekTargets);
+routine.selection.onChange(renderWeekFit);
 
 /* -------------------------------- actions -------------------------------- */
 
@@ -57,6 +58,7 @@ for (const id of ["len", "experience", "sessions", "split", "window", "showmeals
   $(id).addEventListener("change", () => {
     readControls();
     renderWeekTargets();
+    renderWeekFit();
     renderTargets();
     renderSplitNote();
     renderNutritionMini();

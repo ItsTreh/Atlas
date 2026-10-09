@@ -91,11 +91,25 @@ class WeeklyRoutine {
     this.split = "auto";            // how the sessions are divided; see SPLITS
   }
 
-  /** Weekly hard-set target per selected muscle id, or null until experience is known. */
-  weeklyTargets() {
+  /**
+   * How the weekly targets fit the time the user has, or null until
+   * experience is known. See fitToTime(). Days count as the training days
+   * asked for that the week can hold.
+   */
+  weekFit() {
     if (!this.experience) return null;
-    return new Map(this.selection.muscles().map(m =>
+    const muscles = this.selection.muscles();
+    const raw = new Map(muscles.map(m =>
       [m.id, weeklyTarget(m, this.experience, this.selection.priority(m.id))]));
+    const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
+    return fitToTime(raw, muscles, new Map(muscles.map(m => [m.id, this.selection.priority(m.id)])),
+                     days, this.sessionMinutes);
+  }
+
+  /** Weekly hard-set target per selected muscle id, after fitting the time, or null until experience is known. */
+  weeklyTargets() {
+    const fit = this.weekFit();
+    return fit && fit.targets;
   }
 
   /**
