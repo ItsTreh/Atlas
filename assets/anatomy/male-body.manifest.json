@@ -188,6 +188,18 @@
       "side": "left"
     },
     {
+      "id": "pectineus.R",
+      "structure": "muscle",
+      "atlasRegion": "pectineus",
+      "side": "right"
+    },
+    {
+      "id": "pectineus.L",
+      "structure": "muscle",
+      "atlasRegion": "pectineus",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
