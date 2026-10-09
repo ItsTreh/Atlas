@@ -200,6 +200,18 @@
       "side": "left"
     },
     {
+      "id": "adductor-longus.R",
+      "structure": "muscle",
+      "atlasRegion": "adductor-longus",
+      "side": "right"
+    },
+    {
+      "id": "adductor-longus.L",
+      "structure": "muscle",
+      "atlasRegion": "adductor-longus",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
