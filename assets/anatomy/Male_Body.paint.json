@@ -74,6 +74,8 @@
     "#01FF72": "adductor-longus.R",
     "#03F8FF": "adductor-longus.L",
     "#9CFFC7": "gracilis.L",
-    "#A63DFF": "gracilis.R"
+    "#A63DFF": "gracilis.R",
+    "#FF664D": "adductor-magnus.R",
+    "#1FDDFF": "adductor-magnus.L"
   }
 }

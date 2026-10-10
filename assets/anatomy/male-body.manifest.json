@@ -224,6 +224,18 @@
       "side": "left"
     },
     {
+      "id": "adductor-magnus.R",
+      "structure": "muscle",
+      "atlasRegion": "adductor-magnus",
+      "side": "right"
+    },
+    {
+      "id": "adductor-magnus.L",
+      "structure": "muscle",
+      "atlasRegion": "adductor-magnus",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
