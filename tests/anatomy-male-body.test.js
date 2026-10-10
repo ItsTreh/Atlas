@@ -27,15 +27,15 @@ const HIDDEN = new Set(["serratus-anterior", "iliopsoas"]);
 // Muscles painted on one side only, because the other side's is out of sight
 // on the sculpture (the right coracobrachialis is hidden in its armpit).
 const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
-// How far off the midline (cm) a side's region must lie: the adductor longus
-// and the gracilis, on the inner thigh where the thighs nearly
-// meet (about 1 cm left of x = 0, so the right adductor longus centres near
-// x = -1 and the gracilis, the innermost, at x = -2 and +1), and any borrowed
-// region may hug it.
+// How far off the midline (cm) a side's region must lie: the adductor longus,
+// the adductor magnus and the gracilis, on the inner thigh where the thighs
+// nearly meet (about 1 cm left of x = 0, so the right adductor longus and
+// adductor magnus centre near x = -1 and the gracilis, the innermost, at x = -2
+// and +1), and any borrowed region may hug it.
 // So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
 // shoulder-blade height, so the left one, ~5 cm from the spine like the right,
 // lies only ~1 cm left of x = 0.
-const ZERO_MARGIN = new Set(["adductor-longus", "gracilis", "rhomboid-major"]);
+const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major"]);
 const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
