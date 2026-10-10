@@ -212,6 +212,18 @@
       "side": "left"
     },
     {
+      "id": "gracilis.R",
+      "structure": "muscle",
+      "atlasRegion": "gracilis",
+      "side": "right"
+    },
+    {
+      "id": "gracilis.L",
+      "structure": "muscle",
+      "atlasRegion": "gracilis",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
@@ -257,18 +269,6 @@
       "id": "hamstrings.L",
       "structure": "muscle",
       "atlasRegion": "hamstrings",
-      "side": "left"
-    },
-    {
-      "id": "adductors.R",
-      "structure": "muscle",
-      "atlasRegion": "adductors",
-      "side": "right"
-    },
-    {
-      "id": "adductors.L",
-      "structure": "muscle",
-      "atlasRegion": "adductors",
       "side": "left"
     },
     {

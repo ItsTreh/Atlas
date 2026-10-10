@@ -27,14 +27,15 @@ const HIDDEN = new Set(["serratus-anterior", "iliopsoas"]);
 // Muscles painted on one side only, because the other side's is out of sight
 // on the sculpture (the right coracobrachialis is hidden in its armpit).
 const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
-// How far off the midline (cm) a side's region must lie: the adductors and the
-// adductor longus, on the inner thigh where the thighs nearly meet (about 1 cm
-// left of x = 0, so the right adductor longus centres near x = -1), and any
-// borrowed region may hug it.
+// How far off the midline (cm) a side's region must lie: the adductor longus
+// and the gracilis, on the inner thigh where the thighs nearly
+// meet (about 1 cm left of x = 0, so the right adductor longus centres near
+// x = -1 and the gracilis, the innermost, at x = -2 and +1), and any borrowed
+// region may hug it.
 // So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
 // shoulder-blade height, so the left one, ~5 cm from the spine like the right,
 // lies only ~1 cm left of x = 0.
-const ZERO_MARGIN = new Set(["adductors", "adductor-longus", "rhomboid-major"]);
+const ZERO_MARGIN = new Set(["adductor-longus", "gracilis", "rhomboid-major"]);
 const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
@@ -221,10 +222,12 @@ describe("the model the app draws", () => {
 
   test("the back of each thigh is hamstrings, its inner side adductors, its front quads", () => {
     // Around each thigh in its upper and lower thirds (ATLAS cm; +x the figure's left, +z its
-    // front), the outermost vertex in each direction: behind → hamstrings, inward → adductors, in
-    // front → quads. (At mid-thigh the sartorius crosses to the inner side, and it is the quads'.)
-    const ham = MODEL.regions.indexOf("hamstrings"), add = MODEL.regions.indexOf("adductors"),
-          quad = MODEL.regions.indexOf("quadriceps-femoris");
+    // front), the outermost vertices in each direction: behind → hamstrings, inward → a muscle of
+    // the adductor group (the adductor longus where the thighs meet, or the gracilis, the
+    // innermost, running down to the knee), in front → quads. (At mid-thigh the
+    // sartorius crosses to the inner side, and it is the quads'.)
+    const ham = MODEL.regions.indexOf("hamstrings"), quad = MODEL.regions.indexOf("quadriceps-femoris"),
+          inner = MODEL.regions.flatMap((r, i) => (REGIONS[r] === "adductors" ? [i] : []));
     for (const side of [1, -1]) for (const [low, high] of [[62, 68], [74, 78]]) {
       const band = [];
       for (let v = 0; v < MODEL.vertexCount; v++) {
@@ -232,10 +235,16 @@ describe("the model the app draws", () => {
         if (p[1] > low && p[1] < high && p[0] * side > 0.5 && p[0] * side < 20) band.push([p, regionOf(v)]);
       }
       const cx = band.reduce((s, [p]) => s + p[0], 0) / band.length, cz = band.reduce((s, [p]) => s + p[2], 0) / band.length;
-      const extreme = (dx, dz) => band.reduce((b, e) => ((e[0][0] - cx) * dx + (e[0][2] - cz) * dz >
-                                                          (b[0][0] - cx) * dx + (b[0][2] - cz) * dz ? e : b))[1];
+      // The commonest region among the vertices within 2 mm of the outermost: a border vertex is
+      // split once per region, so the outermost is often a tie between copies of one point.
+      const extreme = (dx, dz) => {
+        const reach = ([p]) => (p[0] - cx) * dx + (p[2] - cz) * dz, max = Math.max(...band.map(reach));
+        const count = new Map();
+        for (const e of band) if (reach(e) > max - 0.2) count.set(e[1], (count.get(e[1]) || 0) + 1);
+        return [...count].reduce((b, e) => (e[1] > b[1] ? e : b))[0];
+      };
       expect(extreme(0, -1), "back " + side + " at " + low).toBe(ham);
-      expect(extreme(-side, 0), "inner " + side + " at " + low).toBe(add);
+      expect(inner, "inner " + side + " at " + low).toContain(extreme(-side, 0));
       expect(extreme(0, 1), "front " + side + " at " + low).toBe(quad);
     }
   });
