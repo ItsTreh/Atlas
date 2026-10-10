@@ -236,6 +236,18 @@
       "side": "left"
     },
     {
+      "id": "semimembranosus.R",
+      "structure": "muscle",
+      "atlasRegion": "semimembranosus",
+      "side": "right"
+    },
+    {
+      "id": "semimembranosus.L",
+      "structure": "muscle",
+      "atlasRegion": "semimembranosus",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",
@@ -269,18 +281,6 @@
       "id": "quadriceps-femoris.L",
       "structure": "muscle",
       "atlasRegion": "quadriceps-femoris",
-      "side": "left"
-    },
-    {
-      "id": "hamstrings.R",
-      "structure": "muscle",
-      "atlasRegion": "hamstrings",
-      "side": "right"
-    },
-    {
-      "id": "hamstrings.L",
-      "structure": "muscle",
-      "atlasRegion": "hamstrings",
       "side": "left"
     },
     {

@@ -76,6 +76,8 @@
     "#9CFFC7": "gracilis.L",
     "#A63DFF": "gracilis.R",
     "#FF664D": "adductor-magnus.R",
-    "#1FDDFF": "adductor-magnus.L"
+    "#1FDDFF": "adductor-magnus.L",
+    "#ABF66A": "semimembranosus.R",
+    "#E269FF": "semimembranosus.L"
   }
 }
