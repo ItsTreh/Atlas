@@ -248,6 +248,18 @@
       "side": "left"
     },
     {
+      "id": "semitendinosus.R",
+      "structure": "muscle",
+      "atlasRegion": "semitendinosus",
+      "side": "right"
+    },
+    {
+      "id": "semitendinosus.L",
+      "structure": "muscle",
+      "atlasRegion": "semitendinosus",
+      "side": "left"
+    },
+    {
       "id": "gastrocnemius.R",
       "structure": "muscle",
       "atlasRegion": "gastrocnemius",

@@ -78,6 +78,8 @@
     "#FF664D": "adductor-magnus.R",
     "#1FDDFF": "adductor-magnus.L",
     "#ABF66A": "semimembranosus.R",
-    "#E269FF": "semimembranosus.L"
+    "#E269FF": "semimembranosus.L",
+    "#3B80FF": "semitendinosus.R",
+    "#FFA63E": "semitendinosus.L"
   }
 }
