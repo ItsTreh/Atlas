@@ -15,7 +15,11 @@ region in the manifest:
             Paint, into Male_Body.paint.png on the UV map "Paint", once
             paint_setup.py has made them, in Vertex Paint before that. Each
             colour read snaps to the nearest listed colour, or to none if
-            nearest to white or to a colour not listed. From the image, each
+            nearest to white. In the image, a pixel matching no listed colour
+            nor white (the soft edge of a brush stroke, a blend of two colours)
+            takes the region of the nearest pixel that does, so it stays with
+            the area beside it rather than naming some third region whose
+            colour the blend happens to resemble. From the image, each
             vertex takes the region under it and each edge between two
             regions is cut where the image changes along it, so a border runs
             where the brush went however large or thin the faces (image_cut).
@@ -27,7 +31,8 @@ region in the manifest:
   authored  painted on the sculpture itself (male_body_regions.py): every
             face carries one material, whose name is its region's id
             ("pectoralis-major.L", "rectus-abdominis"...); faces still
-            wearing the sculpture's own material, atlas-stone, are unclaimed
+            wearing the sculpture's own material, atlas-stone, are unclaimed,
+            and so are those of a RETIRED region, whose muscles are painted
   borrowed  a stand-in for a muscle not authored yet: an unclaimed face takes
             the region of the nearest surface of the procedural figure
             (js/anatomy-model.js), cleaned up by a majority vote over
@@ -91,6 +96,16 @@ PAINT_SIGMA, PAINT_ISLAND = 0.01, 30  # the painted borders' cleanup: the blur's
 # the commonest region within this distance (m), enough to clean up a stray
 # pixel without moving a border.
 PAINT_CLEAN = 0.001
+# A pixel within PAINT_MATCH (0-255 RGB, Euclidean) of a listed colour or white
+# is that colour; one further from all of them is a blend (a soft brush edge)
+# and takes the region of the nearest pixel that is not, within PAINT_FILL
+# pixels (unpainted beyond). Shades of one region's colour, a touch-up, must
+# then be keyed, which the key allows.
+PAINT_MATCH, PAINT_FILL = 6.0, 32
+# Authored regions the painting has replaced: their faces are unclaimed, so a
+# face no paint names there is body. The adductors were one authored mass over
+# the inner thigh; the adductor longus, pectineus and gracilis are painted.
+RETIRED = {"adductors.L", "adductors.R"}
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
@@ -170,6 +185,27 @@ def snap(c, palette, region):
     return region[np.argmin(((c[:, None, :] - palette[None]) ** 2).sum(-1), axis=1)]
 
 
+def fill_blends(lab, w, h):
+    """Pixel regions (bottom row first, -1 for a blend) -> each blend given the
+    region of the nearest pixel that is not one, grown a pixel at a time
+    (PAINT_FILL at most; 0, unpainted, beyond)."""
+    lab = lab.reshape(h, w).copy()
+    for _ in range(PAINT_FILL):
+        blend = lab < 0
+        if not blend.any():
+            break
+        grown = lab.copy()
+        for src, dst in (((slice(1, None), slice(None)), (slice(None, -1), slice(None))),
+                         ((slice(None, -1), slice(None)), (slice(1, None), slice(None))),
+                         ((slice(None), slice(1, None)), (slice(None), slice(None, -1))),
+                         ((slice(None), slice(None, -1)), (slice(None), slice(1, None)))):
+            take = blend[dst] & (lab[src] >= 0) & (grown[dst] < 0)
+            grown[dst][take] = lab[src][take]
+        lab = grown
+    lab[lab < 0] = 0
+    return lab.ravel()
+
+
 def image_cut(me, palette, region, ids):
     """painted() for Texture Paint: the regions read straight from the paint
     image (PAINT_IMAGE, laid on by the PAINT_UV map), each pixel snapped like a
@@ -186,7 +222,9 @@ def image_cut(me, palette, region, ids):
     rgb = np.round(px.reshape(-1, 4)[:, :3] * 255).astype(np.int64)
     colours, inverse = np.unique((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | rgb[:, 2], return_inverse=True)
     rgb = np.stack([colours >> 16, (colours >> 8) & 255, colours & 255], 1) / 255.0
-    pixel = snap(rgb, palette, region)[inverse.ravel()]             # each pixel's region, bottom row first
+    near = ((rgb[:, None, :] - palette[None]) ** 2).sum(-1)
+    colour_region = np.where(near.min(1) <= (PAINT_MATCH / 255.0) ** 2, region[near.argmin(1)], -1)
+    pixel = fill_blends(colour_region[inverse.ravel()], w, h)       # each pixel's region, bottom row first
     if not pixel.any():
         return None
     k = len(ids) + 1
@@ -402,6 +440,7 @@ def main(out_glb):
     idx = np.empty(faces, np.int64); me.polygons.foreach_get("material_index", idx)
     # A region id never ends in Blender's duplicate suffix (".001"): drop it.
     labels = [re.sub(r"\.\d{3}$", "", me.materials[i].name) for i in idx]
+    labels = [STONE if l in RETIRED else l for l in labels]
     nbrs = face_neighbours(me)
     if paint:                                                       # painted regions: exactly their paint
         ids, face_paint = paint
