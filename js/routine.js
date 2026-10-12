@@ -424,7 +424,7 @@ class WeeklyRoutine {
     const placed = placements.length;
 
     // What to do in each session; see workouts.js.
-    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs);
+    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs, this.experience);
     builder.build();
     this.planned.events = builder.events;
 

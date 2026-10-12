@@ -198,8 +198,9 @@ class WorkoutBuilder {
    * @param sessions        the WorkoutSessions placed this week
    * @param sessionMinutes  the planned session length
    */
-  constructor(sessions, sessionMinutes, priorityOf = () => "normal", preferences = new ExercisePreferences()) {
+  constructor(sessions, sessionMinutes, priorityOf = () => "normal", preferences = new ExercisePreferences(), experience = null) {
     this.priorityOf = priorityOf;
+    this.experience = experience;
     this.preferences = preferences;
     this.events = [];                       // sets the plan wanted and could not give (see lose)
     this.current = null;                    // the session being built
@@ -246,8 +247,11 @@ class WorkoutBuilder {
     // go first, so a muscle left out on Monday leads on Wednesday instead of
     // being left out every time. This decides the order, not the sets.
     const behind = m => (this.setsThisWeek.get(m.id) || 0) / m.weeklySets[0];
+    // Focus muscles lead on a split day, so when the session runs out of time
+    // it is a muscle without Focus that is left out (a heuristic, not a finding).
+    const rank = m => ({ focus: 0, normal: 1, maintain: 2 })[this.priorityOf(m.id)] ?? 1;
     const order = [...block.muscles].sort((a, b) =>
-      (block.splitDay ? behind(a) - behind(b) : 0) || b.minutes - a.minutes);
+      (block.splitDay ? rank(a) - rank(b) || behind(a) - behind(b) : 0) || b.minutes - a.minutes);
     const workout = new Workout(order, []);
     const scale = Math.min(1, this.available / block.minutes);
     // Working sets that fit in the session after the warm-up.
@@ -358,8 +362,9 @@ class WorkoutBuilder {
    * session could hold. The session length only limits it (the budget in
    * buildOne); it is never a reason to add sets.
    *
-   *   • aim at the middle of the muscle's weekly range (weeklySets), spread
-   *     over the sessions that train it this week;
+   *   • aim at the middle of the muscle's weekly range (weeklySets), or at
+   *     its Focus / Maintain target (weeklyTarget), spread over the sessions
+   *     that train it this week;
    *   • less what the lifts already in this session give it (`credit`);
    *   • no more than WORKOUT.maxSetsPerSession in one session;
    *   • a hard weekly maximum: its own sets never take what it has been
@@ -378,8 +383,13 @@ class WorkoutBuilder {
                           Math.floor(high - (this.setsThisWeek.get(muscle.id) || 0) - credit));
     // A day planned by distribution.js says how many sets each muscle gets;
     // a split the user chose aims at the middle of the weekly range.
+    // A Focus or Maintain muscle follows its priority target (weeklyTarget); a
+    // normal one still aims at the middle. Heuristic, see weeklyTargetFraction.
+    const level = this.priorityOf(muscle.id);
+    const byLevel = this.experience && level !== "normal"
+      ? weeklyTarget(muscle, this.experience, level) : null;
     const aim = block.plannedSets ? block.plannedSets.get(muscle.id) || 0
-                                  : (low + high) / 2 / times;
+                                  : (byLevel ?? (low + high) / 2) / times;
     const need = Math.min(room, Math.round(aim - credit));
     if (need >= WORKOUT.minDirectSets) return need;
     return direct === 0 && room >= WORKOUT.minDirectSets ? WORKOUT.minDirectSets : 0;

@@ -22,6 +22,12 @@
    muscle under target never goes unexplained. Sets the stages cannot account
    for are reported as "unexplained" instead of hidden (a test keeps that at zero).
 
+   `basis` says what the builder aimed at: "fitted-target" (the automatic split
+   follows targetSets) or "split-priority" (a split you chose aims at the Focus
+   or Maintain target, or the middle of the range for the rest, and does not read
+   the time-fitted targetSets). With the second, targetSets is only a reference,
+   so "over" is not a failure.
+
    Read-only: it never changes the plan.
    ========================================================================= */
 
@@ -107,6 +113,7 @@ function auditPlan(routine) {
     const status = total + SHORT_TOLERANCE < target ? "short" : total > target + OVER_TOLERANCE ? "over" : "met";
     return {
       muscle: m, priority,
+      basis: auto ? "fitted-target" : "split-priority",
       requestedSets: requested, targetSets: target, plannedSets: plannedAll, placedPlannedSets: placedPlanned,
       ownSets: own, coveredByOtherLifts: covered, finalDirectSets: direct, finalIndirectSets: indirect,
       finalIndirectCredit: indirectCredit, finalTotalCredit: total,

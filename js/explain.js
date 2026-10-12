@@ -36,8 +36,13 @@ function weekReasons(routine) {
     const parts = setsText(r.finalDirectSets) + " of direct work" +
       (r.finalIndirectCredit ? " plus " + setsText(r.finalIndirectCredit) + " of credit for assisting work" : "");
     if (r.status === "short") continue;                         // said below, with its cause
-    out.push(r.muscle.name + ": " + parts + " a week, aimed near the top of its " + low + " to " + high +
-      " range because it is your Focus" + (n > 1 ? ", spread over " + n + " sessions so each one stays shorter." : "."));
+    if (r.basis === "split-priority")
+      out.push(r.muscle.name + ": " + parts + " a week, aimed at the top of its " + low + " to " + high +
+        " range because it is your Focus. The split you chose does not shorten it to fit your time" +
+        (r.status === "over" ? ", so it passes the " + r.targetSets + "-set target fitted to the week" : "") + ".");
+    else
+      out.push(r.muscle.name + ": " + parts + " a week, aimed near the top of its " + low + " to " + high +
+        " range because it is your Focus" + (n > 1 ? ", spread over " + n + " sessions so each one stays shorter." : "."));
   }
   // A Focus muscle's parts: say which ones the exercises reach, and which they do not.
   for (const r of audit.rows.filter(r => r.priority === "focus" && r.regions && r.finalTotalCredit > 0).slice(0, 3)) {
@@ -53,7 +58,7 @@ function weekReasons(routine) {
     out.push(listText(keep) + (keep.length === 1 ? " stays" : " stay") +
       " at the low end of the range: enough to keep what you have while the time goes to your Focus muscles.");
 
-  if (fit.trimmed.length && fit.meetsMinimums)
+  if (fit.trimmed.length && fit.meetsMinimums && routine.split === "auto")
     out.push("Your targets needed more time than the week holds, so " +
       listText(fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name)) + " were lowered, never below their minimum.");
   for (const issue of audit.issues.slice(0, 4)) out.push(issue.text);
