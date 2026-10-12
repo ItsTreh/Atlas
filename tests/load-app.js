@@ -38,6 +38,7 @@ const EXPORTS = [
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
   "exercisesFor", "tierRank", "EXERCISE_META", "MUSCLE_REGIONS", "META_CONFIDENCE",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
+  "creditWeight", "countedSets", "plannedWork", "ownSets", "axialLoad", "axialCount", "AXIAL_HIGH", "VOLUME_TOLERANCE",
   "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
   "ANATOMY_MODEL", "ANATOMY_REGIONS"
 ];

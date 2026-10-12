@@ -187,7 +187,8 @@ describe("fitting the weekly targets to the time", () => {
     // the direct-set floor) so every muscle is still trained, and it says so.
     expect(fit.meetsMinimums).toBe(false);
     for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.WORKOUT.minDirectSets);
-    expect(fit.neededMinutes).toBeCloseTo(sets(fit.targets) * app.ESTIMATE.minutesPerSet, 5);
+    // Minutes are performed sets (the credit between these muscles taken off), as volume.js plans them.
+    expect(fit.neededMinutes).toBeCloseTo(app.plannedWork(fit.targets).minutes, 5);
   });
 
   test("it names a fix that makes the requested targets fit", () => {

@@ -97,6 +97,17 @@ class WeeklyRoutine {
    */
   weekFit(experience = this.experience) {
     if (!experience) return null;
+    // Asked many times per generate (nutrition, blocks, audit); the answer only
+    // depends on these inputs, so the last one is kept.
+    const key = [experience, this.sessionsPerWeek, this.sessionMinutes, this.availableDays().length,
+      ...this.selection.muscles().map(m => m.id + ":" + this.selection.priority(m.id))].join("|");
+    if (this.fitCache && this.fitCache.key === key) return this.fitCache.fit;
+    const fit = this.computeWeekFit(experience);
+    this.fitCache = { key, fit };
+    return fit;
+  }
+
+  computeWeekFit(experience) {
     // Only muscles the exercise database can fill take time (see distributedBlocks).
     const muscles = this.selection.muscles().filter(m => exercisesFor(m.id).length > 0);
     const raw = new Map(muscles.map(m =>
@@ -104,6 +115,18 @@ class WeeklyRoutine {
     const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
     return fitToTime(raw, muscles, new Map(muscles.map(m => [m.id, this.selection.priority(m.id)])),
                      days, this.sessionMinutes);
+  }
+
+  /**
+   * What the user's experience and priority ask for, per trainable muscle, in
+   * counted sets (volume.js), before fitting the time: the goal the finished
+   * week fills toward (WorkoutBuilder.fillToGoals). Assumes DEFAULT_EXPERIENCE
+   * until the user says.
+   */
+  weeklyGoals() {
+    const experience = this.experience || DEFAULT_EXPERIENCE;
+    const muscles = this.selection.muscles().filter(m => exercisesFor(m.id).length > 0);
+    return new Map(muscles.map(m => [m.id, weeklyTarget(m, experience, this.selection.priority(m.id))]));
   }
 
   /** Weekly hard-set target per selected muscle id, after fitting the time, or null until experience is known. */
@@ -281,11 +304,25 @@ class WeeklyRoutine {
     const priorities = new Map(trainable.map(m => [m.id, this.selection.priority(m.id)]));
     const free = this.availableDays();
     const timesCap = m => maxSpread(free, m.recoveryDays);
-    const plan = planDistribution(trainable, fit.targets, priorities, days, this.sessionMinutes, timesCap);
+    // A tiny day is only folded into the others when the week has time to
+    // spare: when the targets had to be lowered to fit, every day is needed.
+    // The distribution only depends on these inputs and is asked for several
+    // times per generate (nutrition, the scheduler's retries), so the last
+    // few answers are kept. Blocks get their own copies: the builder may add
+    // a muscle to a block (ensureDirectWork).
+    const key = [this.fitCache && this.fitCache.key, days, free.join(","), this.sessionMinutes].join("#");
+    this.planCache = this.planCache || new Map();
+    if (!this.planCache.has(key)) {
+      if (this.planCache.size > 8) this.planCache.clear();
+      this.planCache.set(key, planDistribution(trainable, fit.targets, priorities, days, this.sessionMinutes, timesCap,
+                                               { fold: fit.trimmed.length === 0 }));
+    }
+    const plan = this.planCache.get(key);
 
+    this.plannedOwn = plan.own;           // each muscle's own sets for the week (volume.js, ownSets)
     const blocks = plan.days.map(d => {
-      const block = new TrainingBlock(d.muscles);
-      block.plannedSets = d.sets;
+      const block = new TrainingBlock([...d.muscles]);
+      block.plannedSets = new Map(d.sets);
       block.limit = this.sessionMinutes;
       return block;
     });
@@ -390,7 +427,9 @@ class WeeklyRoutine {
     // the attempt that loses the fewest Focus sets, then the fewest sets, then
     // keeps the most sessions.
     const askedDays = blocks.length;
-    const targets = this.weekFit(this.experience || DEFAULT_EXPERIENCE).targets;
+    // Days carry each muscle's own sets (the expected credit already off), so
+    // a dropped day is measured in the same unit.
+    const targets = ownSets(this.weekFit(this.experience || DEFAULT_EXPERIENCE).targets);
     const placedFor = (attempt, id) => attempt.placements.reduce((t, p) =>
       t + ((p.block.plannedSets && p.block.plannedSets.get(id)) || 0), 0);
     const lossOf = attempt => {
@@ -414,7 +453,7 @@ class WeeklyRoutine {
     }
     blocks = best.blocks;
     const placements = best.placements, limit = best.limit;
-    this.planned = { blocks, askedDays, limit };
+    this.planned = { blocks, askedDays, limit, own: this.split === "auto" ? this.plannedOwn : null };
     for (const p of placements) {
       const session = new WorkoutSession(this.nextId++, p.day, p.start, p.block);
       for (let h = session.startHour; h < session.endHour(); h++)
@@ -424,9 +463,12 @@ class WeeklyRoutine {
     const placed = placements.length;
 
     // What to do in each session; see workouts.js.
-    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id), this.exercisePrefs);
+    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id),
+                                       this.exercisePrefs, this.weeklyGoals());
     builder.build();
     this.planned.events = builder.events;
+    this.planned.gains = builder.gains;            // sets the fill pass added (workouts.js)
+    this.planned.shortfalls = builder.shortfalls;  // muscles left under their goal, and why
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;
@@ -461,7 +503,7 @@ class WeeklyRoutine {
       let sets = 0, times = 0;
       for (const s of this.sessions) {
         if (!s.workout) continue;
-        const here = s.workout.directSets(m.id) + s.workout.assistedSets(m.id);
+        const here = s.workout.countedSets(m.id);          // counted sets (volume.js)
         sets += here;
         if (here >= 1) times++;          // at least a set's worth, direct or assisting
       }

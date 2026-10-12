@@ -189,6 +189,50 @@ const EVIDENCE = Object.freeze([
     lastReviewed: "2026-10-11"
   },
   {
+    id: "axial-load",
+    topic: "Recovery after heavy squats, deadlifts and presses",
+    finding: "After 4 sets to failure at 80% of 1RM, recovery markers (bar velocity, soreness, " +
+             "muscle damage markers) followed a similar course for the back squat, the bench press " +
+             "and the deadlift over 96 hours; the deadlift did not cause more damage or a longer " +
+             "recovery than the squat.",
+    certainty: "low",
+    studyType: "Randomised crossover trial (abstract read)",
+    population: "12 well-trained men",
+    limits: "One protocol, one session per lift, a small sample, and no measure of fatigue that " +
+            "accumulates when several spine-loading lifts share a session or a week. It argues " +
+            "against treating the deadlift as special; it does not say how many heavy squats, " +
+            "hinges and bent rows a session should hold. The planner's axial-load category and " +
+            "its limits are heuristics, not taken from this study.",
+    ifWrong: "If heavy spinal loading does accumulate faster than the planner assumes, sessions with " +
+             "two such lifts would leave the lower back more tired than intended.",
+    sources: [
+      { label: "Belcher et al. 2019, Applied Physiology, Nutrition, and Metabolism 44(10):1033-1042",
+        url: "https://pubmed.ncbi.nlm.nih.gov/30779596/" },
+      { label: "Record with the abstract (lida.sport-iat.de)",
+        url: "https://lida.sport-iat.de/ta/Record/4056507?lng=en" }
+    ],
+    lastReviewed: "2026-10-11"
+  },
+  {
+    id: "squat-glute-hypertrophy",
+    topic: "Which muscles a squat grows",
+    finding: "With volume equal, 9 weeks of back squats grew the gluteus maximus about as much as " +
+             "hip thrusts, and grew the quadriceps and adductors more; neither grew the hamstrings " +
+             "much.",
+    certainty: "low",
+    studyType: "Randomised trial, MRI (abstract and summary read)",
+    population: "34 untrained college-aged adults, 2 sessions a week",
+    limits: "One trial of untrained people. It supports counting a squat as a full set for the glutes " +
+            "(both are primaries in the catalogue) and gives the hamstrings little from squats, as the " +
+            "catalogue does; it does not measure how much a squat set is worth for the adductors.",
+    ifWrong: "Glutes would be over-counted from squats and get too little work of their own.",
+    sources: [
+      { label: "Plotkin et al. 2023, Frontiers in Physiology 14:1279170",
+        url: "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1279170/full" }
+    ],
+    lastReviewed: "2026-10-11"
+  },
+  {
     id: "per-session-volume",
     topic: "Sets per session for one muscle",
     finding: "Per-session volume improves growth with diminishing returns. The point where " +
@@ -240,8 +284,8 @@ const PLANNER_CONFIG = Object.freeze({
   },
   maxSetsPerSession: {
     group: "workout", value: 8, origin: "heuristic", basedOn: ["weekly-volume", "per-session-volume"],
-    note: "Most sets one muscle gets in a session on a split day, counted as direct sets plus " +
-          "half a set for each assisting set (fractional sets). The 8 is a design decision: it " +
+    note: "Most sets one muscle gets in a session, counted as direct sets plus half a set for " +
+          "each assisting set (counted sets, volume.js), in every stage that applies it. The 8 is a design decision: it " +
           "sits inside the 6 to 11 range the per-session finding mentions and on the " +
           "conservative side, but that finding is a preprint and describes where an " +
           "advantage can no longer be detected, so the value stays a heuristic. Tested at " +
@@ -252,8 +296,9 @@ const PLANNER_CONFIG = Object.freeze({
   },
   secondaryCredit: {
     group: "workout", value: 0.5, origin: "heuristic", basedOn: ["indirect-set-counting"],
-    note: "A set where the muscle only assists counts as half. The sources disagree " +
-          "(see the finding), and the published support for 0.5 has not been opened yet " +
+    note: "A set where the muscle only assists counts as half, in every stage of the planner " +
+          "(volume.js, counted sets). The published meta-regression's abstract says the 0.5 " +
+          "convention predicted best of 1, 0.5 and 0; its full text has not been opened " +
           "(PENDIENTE-VERIFICAR (V1)), so it stays a heuristic and easy to change. It becomes " +
           "evidence only after V1 is closed (V4 is closed: the 2019 review does not contradict 0.5)."
   },
@@ -293,6 +338,19 @@ const PLANNER_CONFIG = Object.freeze({
           "depends on while that lift tires this one's helpers in turn, so neither can be " +
           "put first without holding the other back. Not taken from a study."
   },
+  maxAxialPerSession: {
+    group: "workout", value: 2, origin: "heuristic", basedOn: ["axial-load"],
+    note: "Most exercises that load the spine heavily (volume.js, AXIAL_HIGH: free-weight squats, " +
+          "the Romanian deadlift, the Pendlay row) one session holds; a third is never added. A " +
+          "practical limit on lower-back work piling up, not a study value: the one trial comparing " +
+          "lifts found the deadlift no harder to recover from than the squat or bench press."
+  },
+  axialDemotion: {
+    group: "workout", value: 2, origin: "heuristic", basedOn: ["axial-load"],
+    note: "Tier steps for a heavy spinal-loading lift that would be the session's third, or that " +
+          "sits the day before or after another session with one. Between two good lifts the one " +
+          "that leaves the lower back fresher wins; the later passes refuse such a lift outright."
+  },
   rirCompound: {
     group: "effort", value: "1–2", origin: "heuristic", basedOn: ["proximity-to-failure"],
     note: "Reps to leave in reserve on a compound lift. The research above links sets " +
@@ -331,9 +389,11 @@ const PLANNER_CONFIG = Object.freeze({
     // The average cost of a set when the exercise is not known yet: doing it,
     // the mean of the two rests, and the setup shared over a typical exercise.
     value: Math.round((0.75 + (3 + 2.5) / 2 + 2 / 3) * 10) / 10,
-    note: "Planning average for one working set before the exercises are chosen: the set " +
-          "itself, the mean of the two rests, and one exercise's setup shared over " +
-          "setsPerExercise sets. Finished sessions are timed exercise by exercise."
+    note: "Average for one working set, used only by the rough Targets-stage estimate and the " +
+          "nutrition load, where the exercises are not known. The week plan does not use it: " +
+          "it budgets each muscle's own sets at its lead lift's pace (compound or isolation " +
+          "rest plus a share of the setup, volume.js) and times finished sessions exercise by " +
+          "exercise with the same parts, so budget and timing agree."
   },
   warmupMinutes: {
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
@@ -389,11 +449,52 @@ const PLANNER_TABLES = Object.freeze({
   },
   distributionRules: {
     at: "distribution.js", origin: "heuristic", basedOn: ["frequency", "weekly-volume"],
-    note: "How often a muscle trains and on which days: frequency from the sets a session " +
-          "can hold, extra sessions for Focus then Normal muscles only while each session " +
-          "keeps four sets or more, and a fixed order of tie-breaks for the days. The " +
+    note: "How often a muscle trains and on which days: frequency from the counted sets a " +
+          "session can hold (and never so often that a session holds less than one exercise " +
+          "of its own), extra sessions for Focus then Normal muscles only while each session " +
+          "keeps four of its own sets or more, and a fixed order of tie-breaks for the days. The " +
           "research does not show a best frequency at equal volume; this spreads the " +
-          "volume, it is not a finding."
+          "volume and the fatigue, it is not a finding."
+  },
+  countedSets: {
+    at: "volume.js, creditWeight / countedSets", origin: "heuristic", basedOn: ["indirect-set-counting", "squat-glute-hypertrophy"],
+    note: "The one unit of volume: a set counts 1 for each primary muscle of the exercise and " +
+          "secondaryCredit for each assisting one. Targets, ranges, maxima, the per-session cap, " +
+          "weeklyVolume and the audit all use it. Time is counted separately, in performed sets."
+  },
+  ownSetsPlan: {
+    at: "volume.js, plannedWork / ownSets", origin: "optimization", basedOn: [],
+    note: "Before exercises are chosen, each muscle's own sets are its counted target less the " +
+          "credit the selected muscles' lead lifts are expected to give it, never under " +
+          "minDirectSets. The expected credit is taken off once, here; the builder does not " +
+          "take it off again. A rule for fitting plans, not a finding."
+  },
+  fillToGoals: {
+    at: "workouts.js, WorkoutBuilder.fillToGoals", origin: "preference", basedOn: ["weekly-volume"],
+    note: "Time a session has left goes to muscles still under the target their experience and " +
+          "priority ask for, and no further: the project owner chose volume that is useful over " +
+          "minutes that are filled. Focus first, then Normal, then Maintain. A session whose " +
+          "muscles have reached their target ends early and says so."
+  },
+  directWorkFloor: {
+    at: "workouts.js, WorkoutBuilder.ensureDirectWork", origin: "preference", basedOn: [],
+    note: "Every chosen muscle gets at least one exercise of its own a week (minDirectSets " +
+          "sets), even when other lifts already credit it, because the user chose it. When its " +
+          "maximum leaves no room, a lift that assists it is swapped for one that does not; when " +
+          "no session has time, the audit says so."
+  },
+  axialLoad: {
+    at: "volume.js, AXIAL_HIGH", origin: "heuristic", basedOn: ["axial-load"],
+    note: "Exercises that load the spine heavily with a free weight (free-weight squats, the " +
+          "Romanian deadlift, the Pendlay row), as a category, not a score. Used to cap them per " +
+          "session (maxAxialPerSession), keep them off back-to-back days and do them first among " +
+          "compounds. Machine and supported variants are left out on purpose."
+  },
+  coLoadGrouping: {
+    at: "distribution.js, regroup / place (loadDays)", origin: "optimization", basedOn: ["recovery-between-sessions", "squat-glute-hypertrophy"],
+    note: "Muscles one lead lift trains together (the quads' squat also trains the glutes) are put " +
+          "on the same days where the time allows, so a muscle is not loaded on more days than " +
+          "recovery can space out. A rule for placing days, not a finding."
   },
   schedulerScore: {
     at: "scheduler.js, SCORE", origin: "optimization", basedOn: ["recovery-between-sessions"],

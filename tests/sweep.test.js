@@ -28,9 +28,11 @@ describe.each(PROGRAMS)("%s", program => {
       const v = routine.weeklyVolume();
       if (fit && fit.meetsMinimums && placed.length === sessions) expect(v.untrained).toEqual([]);
 
-      // no muscle goes over its weekly maximum
+      // no muscle goes over its weekly maximum, counting the credit of assisting
+      // sets (volume.js). This used to allow 4 sets over; the planner now keeps
+      // the maximum exactly in every pass, so the margin is gone.
       for (const row of v.rows) if (row.muscle.weeklySets) {
-        expect(row.sets, row.muscle.id).toBeLessThanOrEqual(row.muscle.weeklySets[1] + 4);
+        expect(row.sets, row.muscle.id).toBeLessThanOrEqual(row.muscle.weeklySets[1] + 1e-9);
       }
     });
   }

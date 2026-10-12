@@ -139,8 +139,11 @@ describe("dropping an exercise", () => {
   });
 
   test("an entry that is not in the session is refused", () => {
+    // Intermediate, so the week has two sessions (a beginner's push day fits one).
     const { routine } = generatedWeek(app, { program: "push", sessions: 2, minutes: 75 });
+    routine.experience = "intermediate"; routine.generate();
     const [a, b] = routine.sessions;
+    expect(b).toBeTruthy();
     expect(routine.discardExercise(a, b.workout.entries[0], "dislike")).toBe(false);
   });
 });

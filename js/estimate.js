@@ -73,40 +73,58 @@ const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.w
  * (null when it would not, or is unavailable).
  */
 function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes) {
-  const minutesFor = (map, perWeek, len) => [...map.values()].reduce((t, n) => t + n, 0) *
-    ESTIMATE.minutesPerSet <= perWeek * usableMinutes(len);
-  const total = map => [...map.values()].reduce((t, n) => t + n, 0) * ESTIMATE.minutesPerSet;
+  // Targets are counted sets; time is performed sets, estimated by plannedWork
+  // (volume.js) with the credit the selected muscles give each other.
+  const total = map => plannedWork(map).minutes;
+  const minutesFor = (map, perWeek, len) => total(map) <= perWeek * usableMinutes(len);
   const floor = new Map(muscles.map(m => [m.id, m.weeklySets[0]]));
   const level = id => priorities.get(id) || "normal";
   const capacity = sessionsPerWeek * usableMinutes(sessionMinutes);
-
+  const rankOf = id => ({ focus: 0, normal: 1, maintain: 2 })[level(id)] ?? 1;
   const out = new Map(targets);
   const trimmed = new Set();
-  for (const group of ["normal", "focus"]) {
-    for (;;) {
-      if (total(out) <= capacity) break;
-      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > floor.get(id));
-      if (!candidates.length) break;
-      const id = candidates.reduce((a, b) =>
-        out.get(b) - floor.get(b) > out.get(a) - floor.get(a) ? b : a);
-      out.set(id, out.get(id) - 1);
-      trimmed.add(id);
-    }
-  }
-
-  // Not even the minimums fit: lower them too, least important first.
   const belowMinimum = new Set();
-  for (const group of ["maintain", "normal", "focus"]) {
-    for (;;) {
-      if (total(out) <= capacity) break;
-      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > WORKOUT.minDirectSets);
-      if (!candidates.length) break;
-      const id = candidates.reduce((a, b) => out.get(b) > out.get(a) ? b : a);
-      out.set(id, out.get(id) - 1);
-      trimmed.add(id);
-      if (out.get(id) < floor.get(id)) belowMinimum.add(id);
+
+  // One step: a set off `id`. Lowering a muscle also takes away the credit its
+  // lead lift gave others (fewer rows, less upper-back credit), so a muscle
+  // that lift covered, of the same or lower priority, comes down with it by
+  // as much as it would otherwise have to do itself. A step that saves no
+  // time (a muscle already at its minimum exercise, or covered by others'
+  // credit) is not taken.
+  const step = (id, floorOf) => {
+    const less = new Map(out); less.set(id, out.get(id) - 1);
+    const before = plannedWork(out).performed, after = plannedWork(less).performed;
+    for (const [k, p] of after) {
+      const rise = p - before.get(k);
+      if (k === id || rise <= 1e-9 || rankOf(k) < rankOf(id)) continue;
+      less.set(k, Math.max(floorOf(k), less.get(k) - Math.ceil(rise - 1e-9)));
     }
-  }
+    return total(less) < total(out) - 1e-9 ? less : null;
+  };
+  // Least important group first, the muscle with the most room first; each
+  // step starts again from the least important group, since lowering one
+  // muscle can make another's sets cost time again.
+  const trim = (groups, floorOf, room) => {
+    for (;;) {
+      if (total(out) <= capacity) return;
+      let next = null;
+      for (const group of groups) {
+        const ids = [...out.keys()].filter(id => level(id) === group && out.get(id) > floorOf(id))
+          .sort((a, b) => room(b) - room(a) || a.localeCompare(b));
+        for (const id of ids) if ((next = step(id, floorOf))) break;
+        if (next) break;
+      }
+      if (!next) return;
+      for (const [k, n] of next) if (n < out.get(k)) {
+        trimmed.add(k);
+        if (n < floor.get(k)) belowMinimum.add(k);
+        out.set(k, n);
+      }
+    }
+  };
+  trim(["normal", "focus"], id => floor.get(id), id => out.get(id) - floor.get(id));
+  // Not even the minimums fit: lower them too, least important first.
+  trim(["maintain", "normal", "focus"], () => WORKOUT.minDirectSets, id => out.get(id));
 
   const fixes = { extraDay: null, sessionMinutes: null };
   if (total(targets) > capacity) {

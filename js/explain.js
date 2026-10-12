@@ -15,6 +15,7 @@ const EXPERIENCE_REASON = Object.freeze({
   advanced:     "With a lot of experience, each muscle can go toward the upper part of its weekly range."
 });
 
+const fmtMin = n => String(Math.round(n * 10) / 10);
 const setsText = n => (Math.round(n * 10) / 10) + (n === 1 ? " set" : " sets");
 const listText = names => names.length < 2 ? names.join("")
   : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
@@ -53,17 +54,28 @@ function weekReasons(routine) {
     out.push(listText(keep) + (keep.length === 1 ? " stays" : " stay") +
       " at the low end of the range: enough to keep what you have while the time goes to your Focus muscles.");
 
-  if (fit.trimmed.length && fit.meetsMinimums)
+  // Said from the finished week, not from the estimate made before the
+  // exercises were chosen: a muscle the fill pass brought back is not "lowered".
+  const timeCauses = ["time-fit", "session-time", "session-capacity", "fewer-sessions"];
+  const mainCause = r => [...r.causes].sort((a, b) => b.sets - a.sets)[0];
+  const lowered = audit.rows.filter(r => r.status === "short" && r.causes.length && timeCauses.includes(mainCause(r).reason));
+  if (lowered.length && !audit.rows.some(r => r.belowMinimum))
     out.push("Your targets needed more time than the week holds, so " +
-      listText(fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name)) + " were lowered, never below their minimum.");
+      listText(lowered.map(r => r.muscle.name)) + (lowered.length === 1 ? " gets" : " get") +
+      " less than asked, never below the usual minimum.");
+  const filled = audit.rows.filter(r => r.filledSets > 0).map(r => r.muscle.name);
+  if (filled.length)
+    out.push("Time left in the sessions went to " + listText(filled.length > 4 ? [...filled.slice(0, 4), "others"] : filled) +
+      ", up to what your experience and priority ask for and no further.");
   for (const issue of audit.issues.slice(0, 4)) out.push(issue.text);
   if (!fit.meetsMinimums && !audit.issues.some(i => i.kind === "below-minimum"))
     out.push("Not everything fits in " + routine.sessionsPerWeek + " sessions of " + routine.sessionMinutes +
       " min, so some muscles get less than their usual minimum" +
       (fit.fixes.extraDay ? "; one more training day would fix it." : "; longer sessions or fewer muscles would fix it."));
 
-  out.push("Times are estimates: each set counts about " + ESTIMATE.minutesPerSet +
-    " min including rest and setting up, plus " + ESTIMATE.warmupMinutes + " min of warm-up per session.");
+  out.push("Times are estimates: a set counts about " + fmtMin(setMinutes(true)) + " min on a compound lift and " +
+    fmtMin(setMinutes(false)) + " on an isolation one, rest included, plus " + ESTIMATE.setupMinutes +
+    " min to set up each exercise and " + ESTIMATE.warmupMinutes + " min of warm-up per session.");
   return out;
 }
 
@@ -130,6 +142,21 @@ function sessionReasons(routine, session) {
   }).filter(Boolean);
   if (parts.length) out.push("Sets today out of the week's: " + parts.slice(0, 4).join("; ") +
     (parts.length > 4 ? "; and more." : "."));
+
+  // A session that ends well before its length: say why, from the audit.
+  const spare = routine.sessionMinutes - w.minutes;
+  if (spare >= 10) {
+    const rowsAudit = routine.audit().rows;
+    const here = session.block.muscles.filter(m => !session.block.riders.has(m))
+      .map(m => rowsAudit.find(r => r.muscle === m)).filter(Boolean);
+    const short = here.filter(r => r.status === "short");
+    if (!short.length && here.length)
+      out.push("This session ends about " + spare + " min early: its muscles already have the weekly volume your " +
+        "experience and priority ask for, and sets past that tend to add fatigue faster than growth.");
+    else if (short.length)
+      out.push("This session ends about " + spare + " min early: " + short[0].muscle.name.toLowerCase() +
+        " could not take more here because " + auditCauseText(short[0]) + ".");
+  }
 
   const split = session.block.muscles.filter(m => !session.block.riders.has(m) &&
     routine.sessions.filter(s => s.block.muscles.includes(m)).length > 1 && w.directSets(m.id));

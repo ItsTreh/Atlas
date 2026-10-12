@@ -7,7 +7,9 @@
 
      requestedSets     what the experience and priority ask for (weeklyTarget)
      targetSets        that, after fitting the time you have (fitToTime)
-     plannedSets       what the distribution gave the days (all planned days)
+     plannedSets       what the distribution gave the days (all planned days):
+                       the muscle's own sets, the credit its lead lifts were
+                       expected to give it already taken off (volume.js)
      placedPlannedSets the part of it on days that found a place in the week
      ownSets           sets of exercises chosen for this muscle
      finalDirectSets   every set that trains it as a primary, including sets
@@ -16,7 +18,9 @@
      finalIndirectCredit  those, at WORKOUT.secondaryCredit (a heuristic)
      finalTotalCredit  direct + indirect credit, the convention weeklyVolume()
                        and the dose use. Never shown as one undifferentiated number.
-     deviation         finalTotalCredit − targetSets
+     filledSets        own sets the later passes added (fillToGoals, ensureDirectWork)
+     deviation         finalTotalCredit − requestedSets; `status` is measured
+                       against requestedSets, the goal the week fills toward
 
    `causes` lists, in sets, which rule took sets away on the way, so that a
    muscle under target never goes unexplained. Sets the stages cannot account
@@ -31,15 +35,19 @@ const AUDIT_REASONS = Object.freeze({
   "session-capacity":    "a training day could not hold more of it",
   "not-placed":          "its session found no day in your week",
   "session-time":        "the session ran out of time",
-  "weekly-maximum":      "it would pass the muscle's weekly maximum",
+  "weekly-maximum":      "more would take it, or a muscle its lifts also train, past the weekly maximum",
   "session-set-limit":   "a session holds only a few sets of one muscle",
   "minimum-exercise":    "one leftover set is not worth an exercise",
   "no-eligible-exercise": "there is no other exercise for it that does not repeat a movement",
   "user-restriction":    "an exercise you can't do is excluded",
+  "direct-work-floor":   "a set went to give another chosen muscle an exercise of its own",
+  "recovery":            "another session loads it too soon for its recovery",
+  "axial-load":          "the session already has its heavy spine-loading lifts",
+  "goal-met":            "it already has what your experience and priority ask for",
   "unexplained":         "not explained by any rule"
 });
 
-const SHORT_TOLERANCE = 0.25, OVER_TOLERANCE = 0.75;     // sets
+const SHORT_TOLERANCE = VOLUME_TOLERANCE, OVER_TOLERANCE = 0.75;     // counted sets (volume.js)
 
 /**
  * @returns { rows, issues, feasible } — see the header. `issues` are the
@@ -82,35 +90,46 @@ function auditPlan(routine) {
       if (found) found.sets += sets; else causes.push({ reason, sets });
     };
     let unexplained = 0, rounding = 0, covered = 0;
+    // What the later passes added (WorkoutBuilder.fillToGoals, ensureDirectWork).
+    const gain = (planned.gains && planned.gains.get(m.id)) || { own: 0, counted: 0 };
+    // The time fit lowered the target; whatever the fill pass gave back is not lost.
+    add("time-fit", requested - target - gain.counted);
     if (auto) {
-      add("time-fit", requested - target);
-      add(planned.blocks.length < planned.askedDays ? "fewer-sessions" : "session-capacity", target - plannedAll);
+      // The days hold the muscle's own sets: its target less the credit the
+      // week's lead lifts were expected to give it (volume.js, ownSets). That
+      // credit is not a loss; only own sets the days could not hold are.
+      const ownTarget = planned.own && planned.own.has(m.id) ? planned.own.get(m.id) : target;
+      covered = Math.max(0, target - ownTarget);
+      add(planned.blocks.length < planned.askedDays ? "fewer-sessions" : "session-capacity", ownTarget - plannedAll);
       add("not-placed", plannedAll - placedPlanned);
-      const events = (planned.events || []).filter(e => e.muscleId === m.id);
-      const lost = events.filter(e => e.reason !== "covered");
+      const lost = (planned.events || []).filter(e => e.muscleId === m.id && e.reason !== "covered");
       for (const e of lost) add(e.reason, e.sets);
-      // Sets the lifts chosen for other muscles already gave it count as done, not lost.
-      covered = sum(events.filter(e => e.reason === "covered"), e => e.sets);
-      const accounted = sum(lost, e => e.sets) + covered;
-      const gap = placedPlanned - accounted - own;     // positive: sets nobody accounts for
+      const accounted = sum(lost, e => e.sets);
+      const gap = placedPlanned - accounted - (own - gain.own);   // positive: sets nobody accounts for
       if (gap > 0.0001) { add("unexplained", gap); unexplained = gap; }
       else rounding = -gap;                             // negative: the builder gave a little more
     } else {
-      add("time-fit", requested - target);
       for (const e of (planned.events || []).filter(e => e.muscleId === m.id && e.reason !== "covered")) add(e.reason, e.sets);
     }
+    // Why the finished week stayed under the goal, when the fill pass could not close it.
+    for (const f of (planned.shortfalls || []).filter(f => f.muscleId === m.id))
+      if (!causes.some(c => c.reason === f.reason)) add(f.reason, f.sets);
 
     // Which parts of the muscle the final plan reaches (exercise-meta.js).
     const regions = regionCoverage(m, routine.sessions.filter(s => s.workout));
 
-    const deviation = total - target;
-    const status = total + SHORT_TOLERANCE < target ? "short" : total > target + OVER_TOLERANCE ? "over" : "met";
+    // Measured against what experience and priority ask for (the goal the
+    // week fills toward), not against the time-fitted estimate.
+    const deviation = total - requested;
+    const status = total + SHORT_TOLERANCE < requested ? "short" : total > requested + OVER_TOLERANCE ? "over" : "met";
+    const directWork = all.some(s => s.workout.entries.some(e => e.exercise.trainsPrimarily(m.id)));
     return {
       muscle: m, priority,
       requestedSets: requested, targetSets: target, plannedSets: plannedAll, placedPlannedSets: placedPlanned,
       ownSets: own, coveredByOtherLifts: covered, finalDirectSets: direct, finalIndirectSets: indirect,
       finalIndirectCredit: indirectCredit, finalTotalCredit: total,
       creditFromOtherLifts: total - own, regions, deviation, status, causes, unexplained, rounding,
+      filledSets: gain.own, filledCredit: gain.counted, directWork,
       belowMinimum: Math.round(total) < m.weeklySets[0]
     };
   });
@@ -128,6 +147,10 @@ function auditPlan(routine) {
     else if (r.belowMinimum)
       issues.push({ kind: "below-minimum", muscleId: r.muscle.id, text: r.muscle.name + " is under its usual minimum of " +
         r.muscle.weeklySets[0] + " sets (" + fmtAuditSets(r.finalTotalCredit) + "): " + auditCauseText(r) + "." });
+    else if (!r.directWork)
+      issues.push({ kind: "no-direct-work", muscleId: r.muscle.id, text: r.muscle.name +
+        " has no exercise of its own this week, only credit from other lifts (" + fmtAuditSets(r.finalTotalCredit) +
+        " sets): " + auditCauseText(r) + "." });
   }
   return { rows, issues, feasible: !issues.length };
 }

@@ -246,7 +246,11 @@ describe("the final plan", () => {
   });
 
   test("a moved session keeps its exercises and its recovery rules", () => {
+    // Intermediate, so the week needs both days: a beginner's chest and triceps
+    // now fit one session once the presses' credit to the triceps is counted.
     const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2 });
+    routine.experience = "intermediate"; routine.generate();
+    expect(routine.sessions.length).toBe(2);
     const [a, b] = [...routine.sessions].sort((x, y) =>
       DayOfWeek.indexOf(x.day) - DayOfWeek.indexOf(y.day));
     const entries = a.workout.entries;

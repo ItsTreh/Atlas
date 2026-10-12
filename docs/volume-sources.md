@@ -1,6 +1,6 @@
 # Fuentes del volumen de entrenamiento
 
-Estado a 2026-10-10. Regla del proyecto: ninguna cita entra al código como `evidence` hasta que se abrió la fuente y se comprobó que dice lo que se afirma. Lo no verificado lleva la marca `PENDIENTE-VERIFICAR (Vn)` en `js/evidence.js` (`grep PENDIENTE-VERIFICAR js/evidence.js`).
+Estado a 2026-10-11. Regla del proyecto: ninguna cita entra al código como `evidence` hasta que se abrió la fuente y se comprobó que dice lo que se afirma. Lo no verificado lleva la marca `PENDIENTE-VERIFICAR (Vn)` en `js/evidence.js` (`grep PENDIENTE-VERIFICAR js/evidence.js`).
 
 | Fuente | Estado | Qué se abrió | Para qué se usa | Verificación pendiente |
 |---|---|---|---|---|
@@ -10,6 +10,9 @@ Estado a 2026-10-10. Regla del proyecto: ninguna cita entra al código como `evi
 | Remmert, Pelland, Robinson, Hinson y Zourdos 2025, preprint SportRxiv, DOI `10.51224/SRXIV.537` | Preprint; la página no enlaza versión revisada | Resumen y ficha leídos el 2026-10-10 y 2026-10-11 | ≈11 series fraccionales por sesión sin ventaja detectable para hipertrofia; ≈2 directas para fuerza (ambas confirmadas en el resumen); advertencia de pocos datos con volúmenes altos | **V3**: si ya se publicó en una revista (la página solo muestra la versión 1, 2025-04-02; no probado que no exista) |
 | Krieger 2017, *Set Volume for Muscle Size* | Guía de pago en Weightology.net, no revisada por pares; citada en el preprint | No abierta | Referencia previa de ≈6 a 8 series por sesión | **V2**: la cifra no se comprobó |
 | Schoenfeld, Grgic, Haun, Itagaki y Helms 2019, *Sports* 7(7):177, DOI `10.3390/sports7070177` (perspectiva) | Publicado, acceso abierto | Texto leído (parte principal), 2026-10-11 | Pregunta distinta: cómo contar series multiarticulares frente a monoarticulares para los músculos que son motores principales. Aconseja 1:1 para ellos hasta tener más datos y sugiere contar una fracción de serie para los sinergistas (p. ej. tríceps en el press de banca). No contradice el 0.5. | **V4 cerrada (2026-10-11)**. Se corrigió la lectura anterior, que la daba «en contra de 0.5» |
+
+| Plotkin y otros 2023, *Frontiers in Physiology* 14:1279170 (ensayo aleatorizado, RM) | Publicado, acceso abierto | Resumen y página del artículo, 2026-10-11 | Contar la sentadilla como serie completa para glúteos; poco crédito para isquios (ficha `squat-glute-hypertrophy`) | ninguna (34 personas sin experiencia: certeza baja) |
+| Belcher y otros 2019, *Applied Physiology, Nutrition, and Metabolism* 44(10):1033–1042 | Publicado | Resumen (registro de lida.sport-iat.de), 2026-10-11 | El peso muerto no mostró recuperación más lenta que la sentadilla o el press de banca; contexto de la categoría de carga axial (ficha `axial-load`) | ninguna (12 hombres entrenados, una sola sesión por ejercicio) |
 
 ## Cómo cerrar una verificación
 
