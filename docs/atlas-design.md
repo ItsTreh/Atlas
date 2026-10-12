@@ -75,9 +75,9 @@ El planificador fija primero un objetivo de series semanales por músculo, compr
 | 6 meses a 2 años | 0.5 | 0.8 |
 | Más de 2 años | 0.5 | 1.0 |
 
-**2. Comprobar el tiempo.** Se suman las series de todos los músculos × 2.5 min, más 10 min de calentamiento por sesión, y se compara con las sesiones y minutos disponibles. Si no cabe, primero baja lo que no está en foco, sin pasar de su mínimo; después baja el foco. Si aún no cabe, la app lo dice y ofrece las dos salidas: un día más o sesiones más largas.
+**2. Comprobar el tiempo.** Se suman las series de todos los músculos × 4.2 min (el valor de planificación del código: la serie, el descanso y la preparación repartida; la primera versión de este diseño usaba 2.5 min), más 10 min de calentamiento por sesión, y se compara con las sesiones y minutos disponibles. Si no cabe, primero baja lo que no está en foco, sin pasar de su mínimo; después baja el foco. Si aún no cabe, la app lo dice y ofrece las dos salidas: un día más o sesiones más largas.
 
-**3. Frecuencia.** Un músculo se entrena las veces necesarias para no pasar de 8 series por sesión (valor provisional). La frecuencia sale de dividir el volumen entre ese tope, de la recuperación, de los días disponibles y del foco; no es una cifra fija. Un músculo en foco con mucho volumen suele acabar en 2 o más sesiones, pero porque así se reparten sus series, no porque 2 sea óptimo.
+**3. Frecuencia.** Un músculo se entrena las veces necesarias para no pasar de 8 series por sesión (series fraccionales: directas más la mitad de las indirectas; es una decisión de diseño con evidencia parcial, ver docs/algorithm.md y docs/sensitivity/per-session-cap.md). La frecuencia sale de dividir el volumen entre ese tope, de la recuperación, de los días disponibles y del foco; no es una cifra fija. Un músculo en foco con mucho volumen suele acabar en 2 o más sesiones, pero porque así se reparten sus series, no porque 2 sea óptimo.
 
 **4. Reparto de días.** Se arman las sesiones para cumplir esas frecuencias con los días elegidos, equilibrando la duración (ninguna sesión se aleja más de 15 % de la duración media). Cada día sobrante va al músculo en foco con más frecuencia pendiente, y si no hay foco, al que lleve menos sesiones. Los splits que el usuario elige a mano (Upper · Lower, Push · Pull · Legs, Full body) siguen funcionando como hoy.
 

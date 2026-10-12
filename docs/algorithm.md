@@ -193,3 +193,21 @@ Two exercises are the **same job** for a muscle when they share the action and, 
 The audit adds `regions` to each row: parts trained directly, parts only assisted, parts missing, and parts no catalogue exercise trains directly (`unreachable`, never blamed on the plan). For a Focus muscle the week explanation says which part no exercise reached.
 
 Limits: the lats have no regions; "upper back" is two functional groups, not anatomical heads; the catalogue has no direct front-delt or lower-trap exercise, so those parts show as assisted-only or unreachable. Whether hip thrust appears for Focus glutes is still decided by tier, since the tiers are the only quality signal.
+
+## Volumen: fuentes, unidades y tope por sesión
+
+**Unidades.** Todo el volumen se cuenta en *series fraccionales*: cada serie directa vale 1 para sus músculos primarios y cada serie donde el músculo solo ayuda vale `WORKOUT.secondaryCredit` (0.5). Esto se calcula en `workouts.js` (`directSets`, `assistedSets`, `headroom`, `keepWithinMaximums`, `doseSets`); `distribution.js` no cuenta indirectas, solo trabaja con las series planeadas por músculo. Un ejercicio con varios músculos primarios (la sentadilla para cuádriceps y glúteos) cuenta una serie completa para cada uno.
+
+**Qué respalda cada parámetro** (detalle y estado de verificación en `docs/volume-sources.md`):
+
+| Parámetro | Origen | Estado |
+|---|---|---|
+| Forma de la curva semanal (más series ayudan, con rendimientos decrecientes) | evidencia | respaldada; las cifras de la versión publicada de Pelland están pendientes de verificar (V1) |
+| `secondaryCredit` = 0.5 | heurística | la fuente publicada que lo respalda aún no se abrió (V1) y una revisión de 2019 aconseja 1 a 1 (V4); pasará a evidencia solo al cerrar ambas |
+| `maxSetsPerSession` = 8 | heurística | la ficha `per-session-volume` es un preprint (≈11 series fraccionales sin ventaja detectable); 8 queda dentro del rango 6 a 11, del lado conservador |
+| Rangos semanales por músculo y factores `f` por experiencia | heurística | la forma está respaldada, los números son extrapolaciones; músculos poco estudiados (trapecios, antebrazos, aductores, lumbar) son los menos fiables |
+| `indirectRecoveryFraction` = 0.5 | heurística | es una fracción de recuperación entre sesiones, no de conteo de series; la evidencia de volumen no la respalda |
+
+**Prueba de sensibilidad del tope por sesión** (`tools/sensitivity/per-session-cap.mjs`, resultados en `docs/sensitivity/`). Se corrió la lógica real con tope 8, 10 y 11 en 11 perfiles sintéticos. Sin efecto en 6; en 3 mejora el Foco entre 1 y 3 series a cambio de 4 a 16 minutos más por sesión (dos veces llega al límite de 90 min); en uno quita volumen a otros músculos. Se conserva 8. Con 11 perfiles no se demuestra que 8 sea el valor correcto, solo que 10 u 11 no es claramente mejor. Un tope variable para el Foco no se implementa.
+
+**Sensibilidad del plan al tiempo.** En 4 días de 60 min, intermedio y avanzado dan el mismo plan: cuando el tiempo manda, el ajuste de tiempo domina y los factores `f` no alcanzan a diferenciar. El parámetro que más decide en esos perfiles es `minutesPerSet` (4.2), no los factores por experiencia.
