@@ -26,6 +26,43 @@ describe("evidence findings", () => {
   });
 });
 
+describe("pending verification", () => {
+  const marks = text => [...text.matchAll(/PENDIENTE-VERIFICAR \((V\d+)\)/g)].map(m => m[1]);
+  const textOf = e => [e.finding, e.limits, e.population || "", e.studyType || "",
+    ...e.sources.map(s => s.label)].join(" ");
+
+  test("every open check is marked in the text and every mark is a listed check", () => {
+    for (const e of app.EVIDENCE) {
+      const listed = new Set(e.pending || []);
+      const marked = new Set(marks(textOf(e)));
+      for (const id of listed) expect(marked.has(id), e.id + " " + id).toBe(true);
+      for (const id of marked) expect(listed.has(id), e.id + " marks " + id + " without listing it").toBe(true);
+    }
+  });
+  test("the volume findings carry the checks still open", () => {
+    expect(app.EVIDENCE_BY_ID.get("weekly-volume").pending).toContain("V1");
+    expect(app.EVIDENCE_BY_ID.get("indirect-set-counting").pending).toEqual(expect.arrayContaining(["V1", "V4"]));
+    expect(app.EVIDENCE_BY_ID.get("per-session-volume").pending).toEqual(expect.arrayContaining(["V2", "V3"]));
+  });
+  test("the published meta-regression is the main source, the preprint a secondary one", () => {
+    for (const id of ["weekly-volume", "indirect-set-counting"]) {
+      const urls = app.EVIDENCE_BY_ID.get(id).sources.map(s => s.url);
+      expect(urls).toContain("https://doi.org/10.1007/s40279-025-02344-w");
+      expect(urls.indexOf("https://doi.org/10.1007/s40279-025-02344-w"))
+        .toBeLessThan(urls.indexOf("https://sportrxiv.org/index.php/server/preprint/view/460"));
+    }
+  });
+  test("what is unverified is not presented as evidence", () => {
+    for (const key of ["secondaryCredit", "maxSetsPerSession", "indirectRecoveryFraction"])
+      expect(app.PLANNER_CONFIG[key].origin, key).toBe("heuristic");
+    expect(app.PLANNER_CONFIG.maxSetsPerSession.basedOn).toContain("per-session-volume");
+    expect(app.PLANNER_CONFIG.secondaryCredit.note).toMatch(/PENDIENTE-VERIFICAR \(V1\)/);
+  });
+  test("the recovery fraction says it is not backed by the volume evidence", () => {
+    expect(app.PLANNER_CONFIG.indirectRecoveryFraction.note).toMatch(/not set-counting|not a set-counting/);
+  });
+});
+
 describe("planner configuration", () => {
   test("every entry has an origin, a note and existing evidence ids", () => {
     for (const [key, c] of [...cfg, ...tables]) {
