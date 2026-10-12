@@ -4,7 +4,7 @@ Estado a 2026-10-10. Lo que sigue no es un error escondido: es lo que el plan o 
 
 ## Del volumen
 
-- **El 0.5 de las series indirectas es plano** para cualquier ejercicio y músculo. Graduarlo queda pendiente por falta de datos que lo respalden, y su respaldo publicado aún no está verificado (V1, V4 en `docs/volume-sources.md`).
+- **El 0.5 de las series indirectas es plano** para cualquier ejercicio y músculo. Graduarlo queda pendiente por falta de datos que lo respalden, y su respaldo publicado solo se leyó en el resumen (V1 parcial en `docs/volume-sources.md`; V4 cerrada).
 - **Un ejercicio con varios músculos primarios cuenta serie completa para cada uno** (la sentadilla para cuádriceps y glúteos). Puede inflar el volumen total. Prioridad baja.
 - **La evidencia de volumen viene sobre todo de músculos grandes** y de poblaciones específicas (hombres jóvenes en su mayoría). Los rangos de trapecios, antebrazos, aductores y lumbar son extrapolaciones.
 - **El tope de 8 series fraccionales por sesión** es una decisión con evidencia parcial (preprint). La prueba con 11 perfiles no demuestra que 8 sea el valor correcto; ver `docs/sensitivity/per-session-cap.md`.

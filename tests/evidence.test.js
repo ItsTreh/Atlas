@@ -41,7 +41,7 @@ describe("pending verification", () => {
   });
   test("the volume findings carry the checks still open", () => {
     expect(app.EVIDENCE_BY_ID.get("weekly-volume").pending).toContain("V1");
-    expect(app.EVIDENCE_BY_ID.get("indirect-set-counting").pending).toEqual(expect.arrayContaining(["V1", "V4"]));
+    expect(app.EVIDENCE_BY_ID.get("indirect-set-counting").pending).toEqual(["V1"]);   // V4 closed 2026-10-11
     expect(app.EVIDENCE_BY_ID.get("per-session-volume").pending).toEqual(expect.arrayContaining(["V2", "V3"]));
   });
   test("the published meta-regression is the main source, the preprint a secondary one", () => {

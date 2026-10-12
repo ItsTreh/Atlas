@@ -107,7 +107,7 @@ El planificador del calendario (`scheduler.js`) coloca las sesiones en días y h
 
 - no más de 8 series de un músculo en una sesión;
 - no pasar su máximo semanal contando también lo que otros ejercicios le dan;
-- las series donde el músculo solo ayuda cuentan la mitad (heurística; los estudios dicen que contarlas 1 a 1 distorsiona el volumen);
+- las series donde el músculo solo ayuda cuentan la mitad (heurística; el metaanálisis de Pelland ajustó mejor con un conteo fraccional que con 1 a 1, según su resumen);
 - al menos 2 series directas si el músculo entra en la sesión.
 
 **Cuántos ejercicios.** Unas 3 series por ejercicio, hasta 4 como máximo; con más series se añade otro ejercicio.
@@ -203,7 +203,7 @@ Limits: the lats have no regions; "upper back" is two functional groups, not ana
 | Parámetro | Origen | Estado |
 |---|---|---|
 | Forma de la curva semanal (más series ayudan, con rendimientos decrecientes) | evidencia | respaldada; las cifras de la versión publicada de Pelland están pendientes de verificar (V1) |
-| `secondaryCredit` = 0.5 | heurística | la fuente publicada que lo respalda aún no se abrió (V1) y una revisión de 2019 aconseja 1 a 1 (V4); pasará a evidencia solo al cerrar ambas |
+| `secondaryCredit` = 0.5 | heurística | la fuente publicada que lo respalda solo se leyó en su resumen (V1 parcial); la revisión de 2019 trata otra pregunta y no lo contradice (V4 cerrada); pasará a evidencia al cerrar V1 |
 | `maxSetsPerSession` = 8 | heurística | la ficha `per-session-volume` es un preprint (≈11 series fraccionales sin ventaja detectable); 8 queda dentro del rango 6 a 11, del lado conservador |
 | Rangos semanales por músculo y factores `f` por experiencia | heurística | la forma está respaldada, los números son extrapolaciones; músculos poco estudiados (trapecios, antebrazos, aductores, lumbar) son los menos fiables |
 | `indirectRecoveryFraction` = 0.5 | heurística | es una fracción de recuperación entre sesiones, no de conteo de series; la evidencia de volumen no la respalda |

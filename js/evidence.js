@@ -163,38 +163,40 @@ const EVIDENCE = Object.freeze([
     finding: "A squat or a press does not work every assisting muscle as much as the " +
              "main one, so counting its sets 1 to 1 for each muscle overstates the work. " +
              "In the published meta-regression, counting indirect sets as half a set fitted " +
-             "better than counting them as 1 or as 0 (PENDIENTE-VERIFICAR (V1)).",
+             "better than counting them as 1 or as 0 (abstract of the published version).",
     certainty: "low",
-    studyType: "Bayesian multilevel meta-regression, about 67 studies (PENDIENTE-VERIFICAR (V1))",
-    population: "PENDIENTE-VERIFICAR (V1)",
-    limits: "The sources disagree on the remedy: a 2019 review advises counting 1 to 1 " +
-            "until there is more data, while the best-fitting model in the Pelland work " +
-            "counts indirect sets fractionally. Whether the 2019 review asked the same " +
-            "question is not checked (PENDIENTE-VERIFICAR (V4)). Only the conventions 1, 0.5 " +
-            "and 0 were compared, so 0.5 is the best fit among three, not a measured constant, " +
-            "and it is one flat value for every exercise and muscle.",
+    studyType: "Bayesian multilevel meta-regression, 67 studies (abstract of the published version; full text not opened: PENDIENTE-VERIFICAR (V1))",
+    population: "2,058 participants, 79.1% male, mean age about 25 (abstract of the published version)",
+    limits: "Only the conventions 1, 0.5 and 0 were compared, so 0.5 is the best fit among " +
+            "three, not a measured constant, and it is one flat value for every exercise " +
+            "and muscle. The 2019 review by Schoenfeld et al. (read in full) does not " +
+            "contradict this: it asks how to count multi-joint against single-joint sets for " +
+            "the muscles that are prime movers (hamstrings in a squat, for example) and advises " +
+            "1 to 1 for those until there is more data. It also suggests that a bench press " +
+            "could count as a fraction of a set for the triceps and front deltoids.",
     ifWrong: "Assisted muscles (triceps, biceps, shoulders) would get too many or too few " +
              "direct sets, because their credit from presses and rows would be over- or " +
              "under-counted.",
-    pending: ["V1", "V4"],
+    pending: ["V1"],
     sources: [
-      { label: "Schoenfeld et al. 2019, Sports",
-        url: "https://doaj.org/article/784eec50dc3d43a4b8b0d235d4c5845c" },
+      { label: "Schoenfeld, Grgic, Haun, Itagaki and Helms 2019, Sports 7(7):177",
+        url: "https://doi.org/10.3390/sports7070177" },
       { label: "Pelland et al. 2026, Sports Medicine 56 (published version; not opened yet: PENDIENTE-VERIFICAR (V1))",
         url: "https://doi.org/10.1007/s40279-025-02344-w" },
       { label: "Pelland et al. 2024, preprint (earlier version of the same work, probably; secondary reference)",
         url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
     ],
-    lastReviewed: "2026-10-08"
+    lastReviewed: "2026-10-11"
   },
   {
     id: "per-session-volume",
     topic: "Sets per session for one muscle",
     finding: "Per-session volume improves growth with diminishing returns. The point where " +
              "no further advantage can be detected is about 11 fractional sets per session " +
-             "for hypertrophy. For strength it is about 2 direct sets " +
-             "(PENDIENTE-VERIFICAR (V2)). An earlier unpublished analysis put the threshold " +
-             "at about 6 to 8 sets per session (Krieger, 2017; PENDIENTE-VERIFICAR (V2)).",
+             "for hypertrophy. For strength it is about 2 direct sets (both read in the " +
+             "abstract). An earlier analysis, a members' guide on Weightology.net that is " +
+             "not peer reviewed, is reported to put the threshold at about 6 to 8 sets per " +
+             "session (Krieger, 2017; the figure itself is not checked: PENDIENTE-VERIFICAR (V2)).",
     certainty: "low",
     studyType: "Preprint of a meta-regression (not peer reviewed as far as the page shows)",
     population: "PENDIENTE-VERIFICAR (V2)",
@@ -253,7 +255,7 @@ const PLANNER_CONFIG = Object.freeze({
     note: "A set where the muscle only assists counts as half. The sources disagree " +
           "(see the finding), and the published support for 0.5 has not been opened yet " +
           "(PENDIENTE-VERIFICAR (V1)), so it stays a heuristic and easy to change. It becomes " +
-          "evidence only after V1 and V4 are closed."
+          "evidence only after V1 is closed (V4 is closed: the 2019 review does not contradict 0.5)."
   },
   repeatDemotion: {
     group: "workout", value: 1, origin: "optimization", basedOn: [],
