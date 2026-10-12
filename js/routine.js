@@ -305,6 +305,9 @@ class WeeklyRoutine {
    * muscles picked is a Lower day, repeated as recovery allows.
    */
   splitBlocks() {
+    if (!SPLITS[this.split] || !SPLITS[this.split].days)
+      throw new Error("Unknown split \"" + this.split + "\". Valid: " +
+        Object.keys(SPLITS).filter(id => SPLITS[id].days).join(", ") + " (or \"auto\").");
     const picked = this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0);
     const blocks = [];
     for (const [name, families] of SPLITS[this.split].days) {
