@@ -1,0 +1,167 @@
+[
+ {
+  "name": "beginner-3d-60-fullbody",
+  "experience": "beginner",
+  "sessions": 3,
+  "minutes": 60,
+  "split": "auto",
+  "program": "full-body",
+  "focus": []
+ },
+ {
+  "name": "beginner-4d-45-push",
+  "experience": "beginner",
+  "sessions": 4,
+  "minutes": 45,
+  "split": "auto",
+  "program": "push",
+  "focus": []
+ },
+ {
+  "name": "inter-4d-75-all-chest",
+  "experience": "intermediate",
+  "sessions": 4,
+  "minutes": 75,
+  "split": "auto",
+  "muscles": "all",
+  "focus": [
+   "chest"
+  ]
+ },
+ {
+  "name": "inter-4d-60-3focus-consec",
+  "experience": "intermediate",
+  "sessions": 4,
+  "minutes": 60,
+  "split": "auto",
+  "muscles": [
+   "chest",
+   "shoulders",
+   "glutes",
+   "lats",
+   "quads",
+   "biceps",
+   "triceps"
+  ],
+  "focus": [
+   "chest",
+   "shoulders",
+   "glutes"
+  ],
+  "offDays": [
+   "FRI",
+   "SAT",
+   "SUN"
+  ]
+ },
+ {
+  "name": "adv-4d-60-3focus-consec",
+  "experience": "advanced",
+  "sessions": 4,
+  "minutes": 60,
+  "split": "auto",
+  "muscles": [
+   "chest",
+   "shoulders",
+   "glutes",
+   "lats",
+   "quads",
+   "biceps",
+   "triceps"
+  ],
+  "focus": [
+   "chest",
+   "shoulders",
+   "glutes"
+  ],
+  "offDays": [
+   "FRI",
+   "SAT",
+   "SUN"
+  ]
+ },
+ {
+  "name": "inter-3d-60-fullbody-legs",
+  "experience": "intermediate",
+  "sessions": 3,
+  "minutes": 60,
+  "split": "full-body",
+  "muscles": "all",
+  "focus": [
+   "quads",
+   "glutes"
+  ]
+ },
+ {
+  "name": "adv-4d-75-3focus-upperlower",
+  "experience": "advanced",
+  "sessions": 4,
+  "minutes": 75,
+  "split": "upper-lower",
+  "muscles": "all",
+  "focus": [
+   "chest",
+   "lats",
+   "quads"
+  ]
+ },
+ {
+  "name": "adv-5d-90-5focus",
+  "experience": "advanced",
+  "sessions": 5,
+  "minutes": 90,
+  "split": "auto",
+  "muscles": "all",
+  "focus": [
+   "chest",
+   "shoulders",
+   "lats",
+   "quads",
+   "glutes"
+  ]
+ },
+ {
+  "name": "adv-3d-90-ppl-3focus",
+  "experience": "advanced",
+  "sessions": 3,
+  "minutes": 90,
+  "split": "push-pull-legs",
+  "muscles": "all",
+  "focus": [
+   "chest",
+   "lats",
+   "quads"
+  ]
+ },
+ {
+  "name": "adv-6d-60-3focus",
+  "experience": "advanced",
+  "sessions": 6,
+  "minutes": 60,
+  "split": "auto",
+  "muscles": "all",
+  "focus": [
+   "chest",
+   "shoulders",
+   "glutes"
+  ]
+ },
+ {
+  "name": "adv-2d-90-few",
+  "experience": "advanced",
+  "sessions": 2,
+  "minutes": 90,
+  "split": "auto",
+  "muscles": [
+   "chest",
+   "lats",
+   "quads",
+   "glutes",
+   "shoulders"
+  ],
+  "focus": [
+   "chest",
+   "glutes"
+  ]
+ }
+]
