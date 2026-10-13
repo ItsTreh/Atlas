@@ -37,7 +37,7 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // lies only ~1 cm left of x = 0.
 const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major"]);
 // The quadriceps on Male_Body, as painted so far (add the vasti as they are).
-const QUADRICEPS = ["rectus-femoris"];
+const QUADRICEPS = ["rectus-femoris", "vastus-medialis"];
 // App muscles Male_Body cannot select while their muscles are unpainted: the
 // authored gastrocnemius mass is retired. Empty this once the calf is painted.
 const UNPAINTED = new Set(["calves"]);

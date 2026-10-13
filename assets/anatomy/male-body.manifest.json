@@ -284,6 +284,18 @@
       "side": "left"
     },
     {
+      "id": "vastus-medialis.R",
+      "structure": "muscle",
+      "atlasRegion": "vastus-medialis",
+      "side": "right"
+    },
+    {
+      "id": "vastus-medialis.L",
+      "structure": "muscle",
+      "atlasRegion": "vastus-medialis",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
