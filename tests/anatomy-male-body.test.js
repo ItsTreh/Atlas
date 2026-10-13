@@ -36,8 +36,8 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // shoulder-blade height, so the left one, ~5 cm from the spine like the right,
 // lies only ~1 cm left of x = 0.
 const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major"]);
-// The quadriceps on Male_Body, as painted so far (add the vasti as they are).
-const QUADRICEPS = ["rectus-femoris", "vastus-medialis"];
+// The quadriceps on Male_Body: its surface muscles (the vastus intermedius lies underneath).
+const QUADRICEPS = ["rectus-femoris", "vastus-medialis", "vastus-lateralis"];
 // App muscles Male_Body cannot select while their muscles are unpainted: the
 // authored gastrocnemius mass is retired. Empty this once the calf is painted.
 const UNPAINTED = new Set(["calves"]);
@@ -209,13 +209,14 @@ describe("the model the app draws", () => {
     }
   });
 
-  // Skipped while the vasti are unpainted (the authored quadriceps mass is retired): the rectus
-  // femoris alone is the front strip, not the whole thigh. Re-enable once they are painted.
-  test.skip("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {
+  test("the quadriceps covers each thigh from the knee to the hip, not a patch above the knee", () => {
     const quads = QUADRICEPS.map(r => MODEL.regions.indexOf(r));
     for (const side of ["left", "right"]) {
       const area = QUADRICEPS.reduce((s, r) => s + MODEL.regionAnchors[r][side].area, 0);
-      expect(area, side).toBeGreaterThan(700);   // cm²
+      // cm². Was 700 for the retired authored mass, which wrapped the whole front and side of
+      // the thigh; the painted muscles rightly leave the iliotibial band, the quadriceps tendon
+      // and the biceps femoris out (~570–630 painted). A patch above the knee is still < 500.
+      expect(area, side).toBeGreaterThan(500);
       let low = Infinity, high = -Infinity;
       for (let v = 0; v < MODEL.vertexCount; v++) {
         if (!quads.includes(regionOf(v))) continue;

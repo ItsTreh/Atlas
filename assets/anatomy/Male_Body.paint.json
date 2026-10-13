@@ -84,6 +84,9 @@
     "#DB8FFF": "rectus-femoris.L",
     "#FFB665": "rectus-femoris.R",
     "#FF6073": "vastus-medialis.L",
-    "#6EFF79": "vastus-medialis.R"
+    "#6EFF79": "vastus-medialis.R",
+    "#7EFF88": "vastus-medialis.R",
+    "#4DB2FF": "vastus-lateralis.L",
+    "#FF52E6": "vastus-lateralis.R"
   }
 }
