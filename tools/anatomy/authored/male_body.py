@@ -103,10 +103,13 @@ PAINT_CLEAN = 0.001
 # then be keyed, which the key allows.
 PAINT_MATCH, PAINT_FILL = 6.0, 32
 # Authored regions the painting has replaced: their faces are unclaimed, so a
-# face no paint names there is body. The adductors and the hamstrings were one
-# authored mass each over the inner and the back of the thigh; their muscles
-# are painted one by one.
-RETIRED = {"adductors.L", "adductors.R", "hamstrings.L", "hamstrings.R"}
+# face no paint names there is body. The adductors, the hamstrings and the
+# quadriceps were one authored mass each over the inner, the back and the front
+# of the thigh, and the gastrocnemius one over the calf; their muscles are
+# painted one by one.
+RETIRED = {"adductors.L", "adductors.R", "hamstrings.L", "hamstrings.R",
+           "quadriceps-femoris.L", "quadriceps-femoris.R",
+           "gastrocnemius.L", "gastrocnemius.R"}
 # The borrowed regions' cleanup, as the borrowing-only importer had it at 70k
 # faces, kept at the same physical reach.
 BASE_FACES, BASE_PASSES, BASE_ISLAND = 70000, 4, 40
