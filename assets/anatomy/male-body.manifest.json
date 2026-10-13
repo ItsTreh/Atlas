@@ -260,18 +260,6 @@
       "side": "left"
     },
     {
-      "id": "gastrocnemius.R",
-      "structure": "muscle",
-      "atlasRegion": "gastrocnemius",
-      "side": "right"
-    },
-    {
-      "id": "gastrocnemius.L",
-      "structure": "muscle",
-      "atlasRegion": "gastrocnemius",
-      "side": "left"
-    },
-    {
       "id": "latissimus-dorsi.R",
       "structure": "muscle",
       "atlasRegion": "latissimus-dorsi",
@@ -284,15 +272,15 @@
       "side": "left"
     },
     {
-      "id": "quadriceps-femoris.R",
+      "id": "rectus-femoris.R",
       "structure": "muscle",
-      "atlasRegion": "quadriceps-femoris",
+      "atlasRegion": "rectus-femoris",
       "side": "right"
     },
     {
-      "id": "quadriceps-femoris.L",
+      "id": "rectus-femoris.L",
       "structure": "muscle",
-      "atlasRegion": "quadriceps-femoris",
+      "atlasRegion": "rectus-femoris",
       "side": "left"
     },
     {
