@@ -87,6 +87,8 @@
     "#6EFF79": "vastus-medialis.R",
     "#7EFF88": "vastus-medialis.R",
     "#4DB2FF": "vastus-lateralis.L",
-    "#FF52E6": "vastus-lateralis.R"
+    "#FF52E6": "vastus-lateralis.R",
+    "#FFD000": "biceps-femoris.R",
+    "#60FF5F": "biceps-femoris.L"
   }
 }

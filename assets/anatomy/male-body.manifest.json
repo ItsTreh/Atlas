@@ -308,6 +308,18 @@
       "side": "left"
     },
     {
+      "id": "biceps-femoris.R",
+      "structure": "muscle",
+      "atlasRegion": "biceps-femoris",
+      "side": "right"
+    },
+    {
+      "id": "biceps-femoris.L",
+      "structure": "muscle",
+      "atlasRegion": "biceps-femoris",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
