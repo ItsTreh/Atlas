@@ -38,9 +38,6 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major"]);
 // The quadriceps on Male_Body: its surface muscles (the vastus intermedius lies underneath).
 const QUADRICEPS = ["rectus-femoris", "vastus-medialis", "vastus-lateralis"];
-// App muscles Male_Body cannot select while their muscles are unpainted: the
-// authored gastrocnemius mass is retired. Empty this once the calf is painted.
-const UNPAINTED = new Set(["calves"]);
 const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
@@ -193,9 +190,9 @@ describe("the model the app draws", () => {
 
   test("selects every one of the app's muscles: painted, or borrowed until it is painted", () => {
     const reached = new Set(MODEL.regions.map(n => REGIONS[n]).filter(Boolean));
-    expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).filter(id => !UNPAINTED.has(id)).sort());
+    expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
     const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
-    expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "chest", "forearms", "glutes",
+    expect([...byPaint].sort()).toEqual(["abs", "adductors", "biceps", "calves", "chest", "forearms", "glutes",
                                          "hamstrings", "lats", "lower-back", "obliques", "quads", "shoulders", "traps", "triceps",
                                          "upper-back"]);
   });
