@@ -344,6 +344,18 @@
       "side": "left"
     },
     {
+      "id": "flexor-digitorum-longus.R",
+      "structure": "muscle",
+      "atlasRegion": "flexor-digitorum-longus",
+      "side": "right"
+    },
+    {
+      "id": "flexor-digitorum-longus.L",
+      "structure": "muscle",
+      "atlasRegion": "flexor-digitorum-longus",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
