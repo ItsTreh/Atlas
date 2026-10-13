@@ -35,7 +35,10 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
 // shoulder-blade height, so the left one, ~5 cm from the spine like the right,
 // lies only ~1 cm left of x = 0.
-const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major"]);
+// So may the soleus: the sculpture stands on its left leg with the right one
+// raised, and the left lower leg angles in under the body (a median 3.6 cm off
+// x = 0 at mid-calf), so the left soleus centres ~2 cm left of it.
+const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major", "soleus"]);
 // The quadriceps on Male_Body: its surface muscles (the vastus intermedius lies underneath).
 const QUADRICEPS = ["rectus-femoris", "vastus-medialis", "vastus-lateralis"];
 const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;

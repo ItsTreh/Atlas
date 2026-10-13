@@ -91,6 +91,8 @@
     "#FFD000": "biceps-femoris.R",
     "#60FF5F": "biceps-femoris.L",
     "#9A5AF6": "gastrocnemius.R",
-    "#F63D04": "gastrocnemius.L"
+    "#F63D04": "gastrocnemius.L",
+    "#DBF637": "soleus.R",
+    "#6780F6": "soleus.L"
   }
 }
