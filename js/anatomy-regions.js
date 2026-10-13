@@ -79,6 +79,9 @@ const ANATOMY_REGIONS = Object.freeze({
   "adductor-longus":      "adductors",
   "gastrocnemius":        "calves",
   "soleus":               "calves",
+  // A deep calf muscle (it bends the toes and points the foot), showing as a strip
+  // on the inner lower leg between the soleus and the shinbone.
+  "flexor-digitorum-longus": "calves",
   "tibialis-anterior":    "calves",
   "fibularis":            "calves",
   "rectus-abdominis":     "abs",
