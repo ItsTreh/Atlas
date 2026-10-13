@@ -332,6 +332,18 @@
       "side": "left"
     },
     {
+      "id": "soleus.R",
+      "structure": "muscle",
+      "atlasRegion": "soleus",
+      "side": "right"
+    },
+    {
+      "id": "soleus.L",
+      "structure": "muscle",
+      "atlasRegion": "soleus",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
