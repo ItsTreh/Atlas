@@ -320,6 +320,18 @@
       "side": "left"
     },
     {
+      "id": "gastrocnemius.R",
+      "structure": "muscle",
+      "atlasRegion": "gastrocnemius",
+      "side": "right"
+    },
+    {
+      "id": "gastrocnemius.L",
+      "structure": "muscle",
+      "atlasRegion": "gastrocnemius",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
