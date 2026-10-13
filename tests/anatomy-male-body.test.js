@@ -229,15 +229,13 @@ describe("the model the app draws", () => {
     }
   });
 
-  test("the back of each thigh is hamstrings or unpainted, its inner side adductors, its front quads", () => {
+  test("the back of each thigh is hamstrings, its inner side adductors, its front quads", () => {
     // Around each thigh in its upper and lower thirds (ATLAS cm; +x the figure's left, +z its
-    // front), the outermost vertices in each direction: behind → a hamstring, or body while the
-    // biceps femoris and semitendinosus are unpainted (tighten to hamstrings once they are),
-    // never another group; inward → a muscle of
+    // front), the outermost vertices in each direction: behind → a hamstring; inward → a muscle of
     // the adductor group (the adductor longus where the thighs meet, or the gracilis, the
     // innermost, running down to the knee), in front → quads. (At mid-thigh the
     // sartorius crosses to the inner side, and it is the quads'.)
-    const back = MODEL.regions.flatMap((r, i) => (REGIONS[r] === "hamstrings" || r === "body" ? [i] : [])),
+    const back = MODEL.regions.flatMap((r, i) => (REGIONS[r] === "hamstrings" ? [i] : [])),
           quad = QUADRICEPS.map(r => MODEL.regions.indexOf(r)),
           inner = MODEL.regions.flatMap((r, i) => (REGIONS[r] === "adductors" ? [i] : []));
     for (const side of [1, -1]) for (const [low, high] of [[62, 68], [74, 78]]) {
