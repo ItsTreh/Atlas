@@ -82,7 +82,11 @@ const ANATOMY_REGIONS = Object.freeze({
   // A deep calf muscle (it bends the toes and points the foot), showing as a strip
   // on the inner lower leg between the soleus and the shinbone.
   "flexor-digitorum-longus": "calves",
-  "tibialis-anterior":    "calves",
+  // The front of the shin: they lift the foot and toes, which no program
+  // trains, and they are not calf muscles. Painted and drawn, not selectable
+  // (like the serratus below).
+  "tibialis-anterior":    null,
+  "extensor-digitorum-longus": null,
   "fibularis":            "calves",
   "rectus-abdominis":     "abs",
   "external-oblique":     "obliques",

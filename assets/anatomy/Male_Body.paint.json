@@ -95,6 +95,10 @@
     "#DBF637": "soleus.R",
     "#6780F6": "soleus.L",
     "#F674E5": "flexor-digitorum-longus.R",
-    "#B5F683": "flexor-digitorum-longus.L"
+    "#B5F683": "flexor-digitorum-longus.L",
+    "#F6378E": "tibialis-anterior.R",
+    "#F6A362": "tibialis-anterior.L",
+    "#C6F63F": "extensor-digitorum-longus.R",
+    "#F65671": "extensor-digitorum-longus.L"
   }
 }
