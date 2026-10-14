@@ -2,7 +2,7 @@
    assets/anatomy/Male_Body.blend (tools/anatomy/authored/male_body_regions.py),
    and, for the muscles not authored yet, regions borrowed from the procedural
    figure at export (tools/anatomy/authored/male_body.py), as the manifest names them, carried through the GLB into the model the app
-   draws behind index.html?anatomy=male-body. The drawing itself is checked in
+   draws by default. The drawing itself is checked in
    a browser. */
 import fs from "node:fs";
 import path from "node:path";
