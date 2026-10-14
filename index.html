@@ -248,11 +248,12 @@
 <script src="js/routine.js"></script>
 <script src="js/scheduler.js"></script>
 <script src="js/anatomy-model.js"></script>
-<!-- Evaluation: index.html?anatomy=male-body puts the Male_Body sculpture on
-     the anatomy stage (js/anatomy-model-male-body.js, 7.5 MB, loaded only then). -->
+<!-- The Male_Body sculpture is the anatomy stage's figure
+     (js/anatomy-model-male-body.js, 8 MB). index.html?anatomy=procedural
+     leaves it out, showing the procedural figure it replaced. -->
 <script>
   var MALE_BODY_SRC = "js/anatomy-model-male-body.js";
-  if (new URLSearchParams(location.search).get("anatomy") === "male-body")
+  if (new URLSearchParams(location.search).get("anatomy") !== "procedural")
     document.write('<script src="' + MALE_BODY_SRC + '"><\/script>');
 </script>
 <script src="js/anatomy-regions.js"></script>

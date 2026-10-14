@@ -80,7 +80,7 @@ Data lives apart from the UI and is validated when it loads. Views read from and
 
 ## Where we are
 
-The current work is the anatomy: replacing the procedural figure with **Male_Body**, a sculpted 3D body whose muscles are painted by hand in Blender, one region per colour, then exported to the page. It's on `main` behind a flag; open `index.html?anatomy=male-body` to see it. Without the flag the page shows the procedural figure.
+The current work is the anatomy: replacing the procedural figure with **Male_Body**, a sculpted 3D body whose muscles are painted by hand in Blender, one region per colour, then exported to the page. It's the figure the page shows; `index.html?anatomy=procedural` shows the procedural figure it replaced.
 
 - **Painted so far:** the chest, abs, obliques, serratus, deltoids, trapezius and the whole arm (biceps, triceps, brachialis, coracobrachialis and the forearm muscles one by one).
 - **Still to paint:** the rest of the back, the hips and the legs. Until they're painted, those areas use stand-in regions. The order is one muscle at a time, then a single pass to polish all the borders.

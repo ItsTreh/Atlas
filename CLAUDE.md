@@ -26,7 +26,7 @@ npm run build:anatomy-authored assets/anatomy/male-body.manifest.json
 
 Blender 5.2.2 is **not on PATH**, so use `/Applications/Blender.app/Contents/MacOS/Blender`. Run it headless with `-b --factory-startup --python <script>`, and set `PYTHONDONTWRITEBYTECODE=1` so no `__pycache__` lands in the repo.
 
-To view the Male_Body sculpture, open `index.html?anatomy=male-body`. Without the flag, the page shows the procedural figure.
+The page shows the Male_Body sculpture. To see the procedural figure it replaced, open `index.html?anatomy=procedural`.
 
 ## Anatomy pipeline (Male_Body)
 
@@ -79,14 +79,14 @@ Done:
 - the foundation theme
 - a dedicated anatomy stage
 - front/back controls and rotation (PR #33): one body turned by a single camera angle (`yaw` in `js/anatomy-sculpture.js`; front 0°, back 180°), a ±25° drag orbit, and keyboard focus that turns the body to the muscle
+- the Male_Body sculpture painted muscle by muscle and shown by default (2026-10-13); borders are left as painted
 
 Next:
-- the 3D anatomical sculpture replaces the flat figure: the Male_Body work, on `main` behind the URL flag, with painting still in progress (back, hips and legs remain)
 - refined hover and selection states, a side view (90°) and zoom, both added to the same camera
 - side rails for programs and training demand
 - redesigned Nutrition and Week plan stages
 
-**The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback until the authored one is proven.
+**The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback (if the sculpture's file fails to load, or with `?anatomy=procedural`).
 
 **Future plans, not to build yet:**
 - zooming into a muscle group reveals finer selectable parts (e.g. the heads of the chest);
