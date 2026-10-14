@@ -58,7 +58,9 @@ This works without zoom, so it can come before Level 2.
 - **Painted muscles stay painted and stored independently**, even when
   they aren't selectable training targets. At normal view they can be
   non-interactive (mapped to `null` in `js/anatomy-regions.js`); when zoomed
-  in they become explorable. The serratus anterior is the first case.
+  in they become explorable. The shin muscles and the lower soleus are
+  such cases. (The serratus was the first; since 2026-10-13 it selects
+  Shoulders, and the iliopsoas Abs.)
 - **One anatomy knowledge dataset, apart from the UI.** For each Level 2
   muscle it holds the name, Level 1 parent, function, what it contributes to,
   and per-exercise contribution scores. The muscle cards, the exercise view

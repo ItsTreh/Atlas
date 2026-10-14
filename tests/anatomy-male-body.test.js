@@ -23,7 +23,7 @@ const painted = authored.filter(r => r.source !== "borrowed");
 // Muscles painted on the sculpture but deliberately not selectable yet: they
 // map to no app muscle until a zoomed anatomy view shows them on their own
 // (docs/anatomy-levels.md). Only these may map to nothing.
-const HIDDEN = new Set(["serratus-anterior", "iliopsoas", "tibialis-anterior", "extensor-digitorum-longus",
+const HIDDEN = new Set(["tibialis-anterior", "extensor-digitorum-longus",
                         "soleus-lower", "flexor-digitorum-longus"]);
 // Muscles painted on one side only, because the other side's is out of sight
 // on the sculpture (the right coracobrachialis is hidden in its armpit).

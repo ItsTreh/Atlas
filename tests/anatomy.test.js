@@ -30,8 +30,8 @@ describe("regions → muscles", () => {
       expect(muscleRegions.includes(r) || authored.has(r), r + " is drawn by no model").toBe(true);
   });
 
-  test("the serratus is drawn but not selectable, and the obliques no longer take it", () => {
-    expect(REGIONS["serratus-anterior"]).toBe(null);
+  test("the serratus selects Shoulders, not the obliques beside it", () => {
+    expect(REGIONS["serratus-anterior"]).toBe("shoulders");
     expect(REGIONS["external-oblique"]).toBe("obliques");
     expect(MODEL.kinds[MODEL.regions.indexOf("serratus-anterior")]).toBe("muscle");
   });
