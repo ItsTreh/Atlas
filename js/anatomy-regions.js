@@ -13,7 +13,7 @@
      the renderer draws for each region
 
    null marks a region that is drawn but not selectable: the app has no
-   muscle for it (the neck, the hip flexors, the serratus anterior).
+   training muscle for it (the neck, the shin, the lower soleus).
    The form — the armature under the muscles, hands, feet, bone and tendon — is the region "body" and
    is never selectable.
 
@@ -93,12 +93,12 @@ const ANATOMY_REGIONS = Object.freeze({
   "fibularis":            "calves",
   "rectus-abdominis":     "abs",
   "external-oblique":     "obliques",
-  // Painted, but not a training target: it trains with pushing, not with the
-  // obliques beside it. Not selectable until a zoomed anatomy view can show it
-  // on its own (see docs/anatomy-levels.md).
-  "serratus-anterior":    null,
+  // It moves the shoulder blade forward and turns it up, so overhead presses
+  // and push-ups train it: Shoulders, not the obliques beside it.
+  "serratus-anterior":    "shoulders",
   "erector-spinae":       "lower-back",
-  "iliopsoas":            null,
+  // The main hip flexor, trained by leg raises, which the app counts as Abs.
+  "iliopsoas":            "abs",
   "sternocleidomastoid":  null
 });
 

@@ -86,7 +86,7 @@ The current work is the anatomy: replacing the procedural figure with **Male_Bod
 - **Still to paint:** the rest of the back, the hips and the legs. Until they're painted, those areas use stand-in regions. The order is one muscle at a time, then a single pass to polish all the borders.
 - **Just added:** one body that turns between front and back, with a small drag to look around it. It came early because it makes the painted borders easier to inspect; painting continues next.
 
-Every painted muscle selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap) nothing is selectable. A few painted muscles, such as the serratus anterior, are drawn but not selectable yet; they'll become explorable with zoom.
+Every painted muscle selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap) nothing is selectable. A few painted muscles, such as the shin muscles, are drawn but not selectable yet; they'll become explorable with zoom.
 
 ---
 
