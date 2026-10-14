@@ -356,6 +356,30 @@
       "side": "left"
     },
     {
+      "id": "tibialis-anterior.R",
+      "structure": "muscle",
+      "atlasRegion": "tibialis-anterior",
+      "side": "right"
+    },
+    {
+      "id": "tibialis-anterior.L",
+      "structure": "muscle",
+      "atlasRegion": "tibialis-anterior",
+      "side": "left"
+    },
+    {
+      "id": "extensor-digitorum-longus.R",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digitorum-longus",
+      "side": "right"
+    },
+    {
+      "id": "extensor-digitorum-longus.L",
+      "structure": "muscle",
+      "atlasRegion": "extensor-digitorum-longus",
+      "side": "left"
+    },
+    {
       "id": "brachioradialis.R",
       "structure": "muscle",
       "atlasRegion": "brachioradialis",
