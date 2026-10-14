@@ -79,9 +79,12 @@ const ANATOMY_REGIONS = Object.freeze({
   "adductor-longus":      "adductors",
   "gastrocnemius":        "calves",
   "soleus":               "calves",
-  // A deep calf muscle (it bends the toes and points the foot), showing as a strip
-  // on the inner lower leg between the soleus and the shinbone.
-  "flexor-digitorum-longus": "calves",
+  // Not selectable, at the user's request: Calves is the gastrocnemius and the
+  // upper soleus. The soleus's lower part runs down toward the ankle, where a
+  // Calves highlight looked wrong; the flexor digitorum longus is a deep toe
+  // flexor showing as a strip on the inner lower leg.
+  "soleus-lower":         null,
+  "flexor-digitorum-longus": null,
   // The front of the shin: they lift the foot and toes, which no program
   // trains, and they are not calf muscles. Painted and drawn, not selectable
   // (like the serratus below).

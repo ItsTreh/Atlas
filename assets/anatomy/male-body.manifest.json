@@ -344,6 +344,18 @@
       "side": "left"
     },
     {
+      "id": "soleus-lower.R",
+      "structure": "muscle",
+      "atlasRegion": "soleus-lower",
+      "side": "right"
+    },
+    {
+      "id": "soleus-lower.L",
+      "structure": "muscle",
+      "atlasRegion": "soleus-lower",
+      "side": "left"
+    },
+    {
       "id": "flexor-digitorum-longus.R",
       "structure": "muscle",
       "atlasRegion": "flexor-digitorum-longus",

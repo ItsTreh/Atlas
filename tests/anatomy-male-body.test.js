@@ -23,7 +23,8 @@ const painted = authored.filter(r => r.source !== "borrowed");
 // Muscles painted on the sculpture but deliberately not selectable yet: they
 // map to no app muscle until a zoomed anatomy view shows them on their own
 // (docs/anatomy-levels.md). Only these may map to nothing.
-const HIDDEN = new Set(["serratus-anterior", "iliopsoas", "tibialis-anterior", "extensor-digitorum-longus"]);
+const HIDDEN = new Set(["serratus-anterior", "iliopsoas", "tibialis-anterior", "extensor-digitorum-longus",
+                        "soleus-lower", "flexor-digitorum-longus"]);
 // Muscles painted on one side only, because the other side's is out of sight
 // on the sculpture (the right coracobrachialis is hidden in its armpit).
 const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
@@ -37,8 +38,8 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // lies only ~1 cm left of x = 0.
 // So may the soleus: the sculpture stands on its left leg with the right one
 // raised, and the left lower leg angles in under the body (a median 3.6 cm off
-// x = 0 at mid-calf), so the left soleus centres ~2 cm left of it.
-const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major", "soleus"]);
+// x = 0 at mid-calf), so the left soleus (both parts) centres ~2 cm left of it.
+const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major", "soleus", "soleus-lower"]);
 // The quadriceps on Male_Body: its surface muscles (the vastus intermedius lies underneath).
 const QUADRICEPS = ["rectus-femoris", "vastus-medialis", "vastus-lateralis"];
 const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
