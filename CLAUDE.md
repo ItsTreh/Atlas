@@ -63,6 +63,7 @@ js/anatomy-model-male-body.js       what the page loads
 - `Male_Body.blend1` is Blender's backup and is git-ignored.
 - `refine_male_body.py` and `refine_guard.py` produced the refined sculpture and also refuse to overwrite hand edits.
 - `torso-study.*` is retired and kept as reference only.
+- `Male_Body_rigged.blend` is the experimental posing baseline: both armpits ripped and pocketed, `ATLAS_Rig` (59 bones) and weights. The app doesn't use it. Rig work happens on scratch copies of it, never on the production files. How it was made, and its studies' scripts, are in `tools/anatomy/rig/` (README). Commit it only at milestones: each version adds about 16 MB to the history.
 
 ## Anatomy rules (from the user)
 
