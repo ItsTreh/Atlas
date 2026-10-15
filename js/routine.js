@@ -391,17 +391,22 @@ class WeeklyRoutine {
       return { placed: 0, requested, meals: 0, reason: "no-blocks" };
 
     // Where each session goes is the Scheduler's call; see scheduler.js.
-    const { placements, limit } = new Scheduler(this, blocks, this.blockUses(blocks.length)).plan(requested);
+    const plan = new Scheduler(this, blocks, this.blockUses(blocks.length)).plan(requested);
+    const { placements } = plan;
+    let { limit } = plan;
     for (const p of placements) {
       const session = new WorkoutSession(this.nextId++, p.day, p.start, p.block);
       for (let h = session.startHour; h < session.endHour(); h++)
         this.slot(p.day, h).assignTo(session);
       this.sessions.push(session);
     }
-    const placed = placements.length;
 
-    // What to do in each session; see workouts.js.
-    new WorkoutBuilder(this.sessions, this.sessionMinutes).build();
+    // What to do in each session; see workouts.js. A repeat that comes out
+    // empty or bare is taken out of the week (buildWorkouts), so the count
+    // below, the status and the meals all describe the sessions that remain.
+    const dropped = this.buildWorkouts();
+    const placed = this.sessions.length;
+    if (dropped && placed + dropped >= Math.min(requested, this.availableDays().length)) limit = "enough";
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
       ? this.placeMeals() : 0;
@@ -412,6 +417,34 @@ class WeeklyRoutine {
                  : limit === "enough" ? "rest"
                  : placed >= free ? "days" : "partial";
     return { placed, requested, free, meals, reason, limit };
+  }
+
+  /**
+   * Gives every session its workout, and takes out a repeat that is not worth
+   * a day: the second or third time a block comes round, its muscles may
+   * already be at their weekly maximum (the session comes out empty) or
+   * have room for only their bare minimum (less than one typical exercise).
+   * The first session of a block always stays, so no muscle loses its day.
+   * Taking one out raises the share of the muscles left on the others, so the
+   * workouts are built again until every repeat that remains is worth it.
+   * Returns how many sessions were taken out.
+   */
+  buildWorkouts() {
+    const inWeek = (a, b) => DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour;
+    let dropped = 0;
+    for (;;) {
+      new WorkoutBuilder(this.sessions, this.sessionMinutes).build();
+      const seen = new Set(), weak = [];
+      for (const s of [...this.sessions].sort(inWeek)) {
+        if (seen.has(s.block) && s.workout.sets < WORKOUT.setsPerExercise) weak.push(s);
+        seen.add(s.block);
+      }
+      if (!weak.length) return dropped;
+      // The barest first, the later day on a tie.
+      weak.sort((a, b) => a.workout.sets - b.workout.sets || inWeek(b, a));
+      this.removeSession(weak[0]);
+      dropped++;
+    }
   }
 
   /**
