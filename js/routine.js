@@ -422,7 +422,9 @@ class WeeklyRoutine {
                  : placed >= requested ? "ok"
                  : limit === "enough" ? "rest"
                  : placed >= free ? "days" : "partial";
-    return { placed, requested, free, meals, reason, limit, leftOut: this.leftOut };
+    // `dropped`: repeats taken out for having too little to do, so the status
+    // can give that as the reason for a shorter week, not rest days between.
+    return { placed, requested, free, meals, reason, limit, dropped, leftOut: this.leftOut };
   }
 
   /**

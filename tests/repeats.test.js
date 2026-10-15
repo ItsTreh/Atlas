@@ -53,4 +53,25 @@ describe("repeats that would come out empty or bare", () => {
     expect(result.placed).toBeLessThan(result.requested);
     expect(result.reason).toBe("rest");
   });
+
+  // The status gives dropped repeats as the reason for a shorter week, not
+  // rest days between or twice a week (app.js reads `dropped`).
+  test("a week shortened by dropped repeats reports them", () => {
+    for (const [muscles, program, split] of [[["abs", "calves"], null, "upper-lower"],
+                                             [["abs", "calves"], null, "full-body"],
+                                             [["biceps", "triceps", "forearms"], null, "upper-lower"],
+                                             [null, "upper", "push-pull-legs"]]) {
+      const { r, result } = week({ muscles, program, days: 6, split });
+      const name = (program || muscles.join("+")) + " " + split;
+      expect(result.reason, name).toBe("rest");
+      expect(result.dropped, name).toBeGreaterThan(0);
+      expect(result.placed + result.dropped, name).toBe(6);
+      expect(result.placed, name).toBe(r.sessions.length);
+    }
+  });
+
+  test("a week that drops nothing reports no dropped repeats", () => {
+    const { result } = week({ program: "legs", days: 3, split: "auto" });
+    expect(result.dropped).toBe(0);
+  });
 });

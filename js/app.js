@@ -128,10 +128,17 @@ $("generate").addEventListener("click", () => {
       break;
     case "rest": {
       const spare = Math.min(r.requested, r.free) - r.placed;
+      const restDays = spare > 0 ? ", so the other " + days(spare) + " you offered " +
+        (spare === 1 ? "is a rest day." : "are rest days.") : ".";
+      // A repeat taken out for having too little to do (buildWorkouts): the
+      // weekly sets already fit, which is the reason, not how often to train.
       setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
-        " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
-        " a week each" + (spare > 0 ? ", so the other " + days(spare) + " you offered " +
-        (spare === 1 ? "is a rest day." : "are rest days.") : "."));
+        (r.dropped
+          ? " The weekly sets for the muscles you selected already fit in " + r.placed +
+            (r.placed === 1 ? " session" : " sessions") + " — another would have been " +
+            "nearly empty" + restDays
+          : " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
+            " a week each" + restDays));
       break;
     }
     case "days":
@@ -165,9 +172,11 @@ $("generate").addEventListener("click", () => {
 
   // A split whose days the selection leaves empty repeats the days it has,
   // and recovery can then hold the week below the days asked for. Say that,
-  // and which split would fit, rather than a bare "partial".
+  // and which split would fit, rather than a bare "partial". Not when dropped
+  // repeats are the reason the week is shorter: the status above says that.
   const empty = routine.emptySplitDays();
-  if (r.placed && r.placed < Math.min(r.requested, r.free) && empty.length) {
+  if (r.placed && r.placed < Math.min(r.requested, r.free) && empty.length &&
+      !(r.dropped && r.reason === "rest")) {
     const kept = SPLITS[routine.split].days.map(([name]) => name).filter(n => !empty.includes(n));
     // A split with an empty day of its own still fits by repeating the days
     // it has, so say that rather than let it read as a contradiction.
