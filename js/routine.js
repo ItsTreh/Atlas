@@ -64,6 +64,7 @@ class WeeklyRoutine {
   constructor() {
     this.sessionsPerWeek = 4;
     this.sessionMinutes = 60;
+    this.experience = null;         // an EXPERIENCE_LEVELS id once the user says
     this.preferredWindow = "evening";
     this.firstHour = FIRST_HOUR;
     this.lastHour = LAST_HOUR;
@@ -92,6 +93,27 @@ class WeeklyRoutine {
   }
 
   /**
+   * How the weekly targets fit the time the user has, or null until
+   * experience is known. See fitToTime(). Days count as the training days
+   * asked for that the week can hold.
+   */
+  weekFit() {
+    if (!this.experience) return null;
+    const muscles = this.selection.muscles();
+    const raw = new Map(muscles.map(m =>
+      [m.id, weeklyTarget(m, this.experience, this.selection.priority(m.id))]));
+    const days = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
+    return fitToTime(raw, muscles, new Map(muscles.map(m => [m.id, this.selection.priority(m.id)])),
+                     days, this.sessionMinutes);
+  }
+
+  /** Weekly hard-set target per selected muscle id, after fitting the time, or null until experience is known. */
+  weeklyTargets() {
+    const fit = this.weekFit();
+    return fit && fit.targets;
+  }
+
+  /**
    * A plain object describing every setting the user chose, safe to store:
    * the muscle selection, the nutrition inputs, the schedule preferences,
    * and the availability grid the user painted. Sessions and workouts are derived and are not
@@ -105,6 +127,7 @@ class WeeklyRoutine {
       nutrition: this.nutrition.snapshot(),
       sessionsPerWeek: this.sessionsPerWeek,
       sessionMinutes: this.sessionMinutes,
+      experience: this.experience,
       preferredWindow: this.preferredWindow,
       split: this.split,
       offDays: [...this.offDays],
@@ -116,6 +139,7 @@ class WeeklyRoutine {
   /** Restores a snapshot(): every input, then the week it had, regenerated. */
   restore(snap) {
     if (!snap) return;
+    this.experience = EXPERIENCE_LEVELS.some(e => e.id === snap.experience) ? snap.experience : null;
     this.selection.restore(snap.selection || {});
     this.nutrition.restore(snap.nutrition || {});
     if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;

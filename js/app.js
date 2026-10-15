@@ -46,15 +46,20 @@ function paintSteps() {
 }
 routine.selection.onChange(paintSteps);
 routine.selection.onChange(() => saveRoutine(routine));
+routine.selection.onChange(renderWeekTargets);
+routine.selection.onChange(renderWeekFit);
 
 /* -------------------------------- actions -------------------------------- */
 
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "split", "window", "showmeals"])
+for (const id of ["len", "experience", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
+    renderWeekTargets();
+    renderWeekFit();
+    renderTargets();
     renderSplitNote();
     renderNutritionMini();
     renderNutrition();
@@ -62,6 +67,16 @@ for (const id of ["len", "sessions", "split", "window", "showmeals"])
     warnIfStale();
     saveRoutine(routine);
   });
+
+/* The fit note above the training days follows the days as they are typed.
+   Left to "change", it would grow or shrink on the tap that blurs the field,
+   moving Generate out from under that tap on a phone. */
+$("sessions").addEventListener("input", () => {
+  const n = Number($("sessions").value), [lo, hi] = TRAINING_DAYS_RANGE;
+  if (!Number.isInteger(n) || n < lo || n > hi) return;
+  routine.sessionsPerWeek = n;
+  renderWeekFit();
+});
 
 /* What the grid on screen was generated from, to spot a stale week: the
    muscles, how many days of what length were asked for, the days off, the

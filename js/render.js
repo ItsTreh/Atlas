@@ -20,6 +20,11 @@ function hourLabel(h) {
 
 function buildControls() {
   $("len").value = routine.sessionMinutes;
+  $("experience").innerHTML = '<option value="">Choose…</option>' +
+    EXPERIENCE_LEVELS.map(e => '<option value="' + e.id + '">' + e.label + '</option>').join("");
+  $("experience").value = routine.experience || "";
+  renderWeekTargets();
+  renderWeekFit();
   [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
   $("sessions").value = routine.sessionsPerWeek;
   // A split day with nothing chosen for it says so here, before Generate, so
@@ -86,8 +91,48 @@ function renderNutritionMini() {
     : "Add your body weight to get a plan.";
 }
 
+/** The weekly sets each chosen muscle starts from, once experience is known. */
+function renderWeekTargets() {
+  const t = routine.weeklyTargets(), el = $("week-targets");
+  if (!t || !t.size) {
+    el.textContent = t ? "" : "Tell us this once so each muscle starts from a sensible weekly volume.";
+    return;
+  }
+  const mark = { focus: " ▲", maintain: " ▼", normal: "" };
+  el.textContent = "Weekly hard sets to start from (estimate): " +
+    routine.selection.muscles().map(m =>
+      m.name + " " + t.get(m.id) + mark[routine.selection.priority(m.id)]).join(" · ") + ".";
+}
+
+/** Says whether the weekly targets fit the week, and what would help if not. */
+function renderWeekFit() {
+  const fit = routine.weekFit(), el = $("week-fit");
+  el.classList.remove("warn");
+  if (!fit || !routine.selection.size) { el.textContent = ""; return; }
+  const h = min => (Math.round(min / 6) / 10) + " h";
+  const names = fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
+  const fixes = [];
+  if (fit.fixes.extraDay) fixes.push("one more training day (" + fit.fixes.extraDay + ")");
+  if (fit.fixes.sessionMinutes) fixes.push("sessions of " + fit.fixes.sessionMinutes + " min");
+  const fix = fixes.length ? " With " + fixes.join(" or ") + " everything fits." : "";
+  if (!fit.fits) {
+    el.classList.add("warn");
+    el.textContent = "Even the minimum for every muscle needs about " + h(fit.neededMinutes) +
+      " a week and your sessions hold about " + h(fit.capacityMinutes) +
+      ". Add a training day, make sessions longer, or drop a muscle.";
+  } else if (fit.trimmed.length) {
+    el.classList.add("warn");
+    el.textContent = "Your targets need about " + h(fit.requestedMinutes) + " a week and your sessions hold about " +
+      h(fit.capacityMinutes) + ", so we lowered " + names + " (never below their minimum)." + fix;
+  } else {
+    el.textContent = "Fits your week: about " + h(fit.neededMinutes) + " of working sets in about " +
+      h(fit.capacityMinutes) + " of session time (estimate).";
+  }
+}
+
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
+  routine.experience = $("experience").value || null;
   const [lo, hi] = TRAINING_DAYS_RANGE;
   routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
   $("sessions").value = routine.sessionsPerWeek;

@@ -55,6 +55,7 @@ function endStroke() {
   paintOffDays();              // a painted column is a day off
   renderNutrition();           // the meal count only needs refreshing once
   renderNutritionMini();       // days free to train change what training counts
+  renderWeekFit();             // and how much time the week has
   weekEdited() || warnIfStale();
   saveRoutine(routine);
 }
