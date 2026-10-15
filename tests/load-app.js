@@ -37,7 +37,7 @@ const EXPORTS = [
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
   "exercisesFor", "tierRank",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
-  "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE",
+  "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
   "ANATOMY_MODEL", "ANATOMY_REGIONS"
 ];
 

@@ -59,7 +59,22 @@ const MOVEMENTS = Object.freeze({
   "hip-abduction":      "Hip abduction",
   "hip-thrust":         "Hip thrust",
   "hinge":              "Hip hinge",
-  "glute-kickback":     "Glute kickback"
+  "glute-kickback":     "Glute kickback",
+  "knee-flexion":       "Knee flexion (leg curl)",
+  "shrug":              "Shrug",
+  "wrist-curl":         "Wrist curl",
+  "wrist-extension":    "Wrist extension",
+  "reverse-curl":       "Reverse-grip curl",
+  "hip-adduction":      "Hip adduction",
+  "calf-raise":         "Calf raise, knee straight",
+  "seated-calf-raise":  "Calf raise, knee bent",
+  "crunch":             "Crunch",
+  "leg-raise":          "Leg raise",
+  "rollout":            "Rollout",
+  "trunk-rotation":     "Trunk rotation",
+  "anti-rotation":      "Anti-rotation press",
+  "side-bend":          "Side bend",
+  "back-extension":     "Back extension"
 });
 
 /**
@@ -178,7 +193,53 @@ const EXERCISE_CATALOGUE = [
   ["Glute Kickback",                             "glute-kickback", ["glutes"], ["hamstrings"]],
   ["Step Ups",                                   "lunge",          ["glutes", "quads"], []],
   ["Smith Machine Lunge",                        "lunge",          ["glutes", "quads"], ["adductors"]],
-  ["Romanian Deadlift",                          "hinge",          ["glutes", "hamstrings"], ["lower-back", "forearms"]]
+  ["Romanian Deadlift",                          "hinge",          ["glutes", "hamstrings"], ["lower-back", "forearms"]],
+
+  // hamstrings (the deadlift above also counts): a knee-flexion lift, so the
+  // hamstrings can be trained without loading the glutes again
+  ["Seated Leg Curl",                            "knee-flexion",   ["hamstrings"], []],
+  ["Lying Leg Curl",                             "knee-flexion",   ["hamstrings"], []],
+
+  /* The muscles below had no exercises until now. Common, well-known choices,
+     added to the catalogue only: they are not in any rating list, so each
+     muscle's options are unrated and rank in catalogue order. A rating list
+     for them can be added later without touching these lines. */
+
+  // traps
+  ["Dumbbell Shrug",                       "shrug",             ["traps"], ["forearms"]],
+  ["Cable Shrug",                          "shrug",             ["traps"], []],
+  ["Barbell Shrug",                        "shrug",             ["traps"], ["forearms"]],
+
+  // forearms
+  ["Dumbbell Wrist Curl",                  "wrist-curl",        ["forearms"], []],
+  ["Reverse Curl",                         "reverse-curl",      ["forearms"], ["biceps"]],
+  ["Dumbbell Wrist Extension",             "wrist-extension",   ["forearms"], []],
+  ["Cable Wrist Curl",                     "wrist-curl",        ["forearms"], []],
+
+  // adductors
+  ["Machine Hip Adduction",                "hip-adduction",     ["adductors"], []],
+  ["Cable Hip Adduction",                  "hip-adduction",     ["adductors"], []],
+
+  // calves
+  ["Standing Calf Raise",                  "calf-raise",        ["calves"], []],
+  ["Seated Calf Raise",                    "seated-calf-raise", ["calves"], []],
+  ["Leg Press Calf Raise",                 "calf-raise",        ["calves"], []],
+  ["Smith Machine Calf Raise",             "calf-raise",        ["calves"], []],
+
+  // abs
+  ["Cable Crunch",                         "crunch",            ["abs"], []],
+  ["Hanging Leg Raise",                    "leg-raise",         ["abs"], ["obliques", "forearms"]],
+  ["Ab Wheel Rollout",                     "rollout",           ["abs"], ["obliques"]],
+  ["Machine Crunch",                       "crunch",            ["abs"], []],
+
+  // obliques
+  ["Cable Woodchop",                       "trunk-rotation",    ["obliques"], ["abs"]],
+  ["Pallof Press",                         "anti-rotation",     ["obliques"], ["abs"]],
+  ["Dumbbell Side Bend",                   "side-bend",         ["obliques"], []],
+
+  // lower back
+  ["Back Extension (Lower-Back Focus)",    "back-extension",    ["lower-back"], ["glutes", "hamstrings"]],
+  ["Machine Back Extension",               "back-extension",    ["lower-back"], []]
 ];
 
 /* --------------------------------------------------------------------------

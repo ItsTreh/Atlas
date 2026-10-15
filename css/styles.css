@@ -381,6 +381,7 @@ main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
 .rd-meals { margin-left: auto; font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .rest-day.off .rd-what { font-style: italic; color: var(--ink-faint); }
 .week-gap { margin: 0 0 10px; font-size: 12.5px; color: var(--warn); }
+.week-note { margin: 0 0 10px; font-size: 12.5px; color: var(--ink-soft); }
 
 .wm { margin-top: 10px; }
 .wm-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }

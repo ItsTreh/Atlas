@@ -52,9 +52,10 @@ routine.selection.onChange(() => saveRoutine(routine));
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "window", "showmeals"])
+for (const id of ["len", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
+    renderSplitNote();
     renderNutritionMini();
     renderNutrition();
     renderWorkouts();
@@ -72,7 +73,7 @@ let generatedFor = null, placedCount = 0;
 function planInputs() {
   const n = routine.nutrition;
   return routine.selection.muscles().map(m => m.id).join() + "|" +
-         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" +
+         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" + routine.split + "|" +
          [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
          n.showMeals + "|" + routine.plannedSessions() + "|" +
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
@@ -127,10 +128,17 @@ $("generate").addEventListener("click", () => {
       break;
     case "rest": {
       const spare = Math.min(r.requested, r.free) - r.placed;
+      const restDays = spare > 0 ? ", so the other " + days(spare) + " you offered " +
+        (spare === 1 ? "is a rest day." : "are rest days.") : ".";
+      // A repeat taken out for having too little to do (buildWorkouts): the
+      // weekly sets already fit, which is the reason, not how often to train.
       setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
-        " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
-        " a week each" + (spare > 0 ? ", so the other " + days(spare) + " you offered " +
-        (spare === 1 ? "is a rest day." : "are rest days.") : "."));
+        (r.dropped
+          ? " The weekly sets for the muscles you selected already fit in " + r.placed +
+            (r.placed === 1 ? " session" : " sessions") + " — another would have been " +
+            "nearly empty" + restDays
+          : " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
+            " a week each" + restDays));
       break;
     }
     case "days":
@@ -160,6 +168,43 @@ $("generate").addEventListener("click", () => {
     default:
       setStatus("Nothing could be placed without breaking a recovery window. " +
         "Free up more hours, select more muscles, or shorten the session.", "err");
+  }
+
+  // A split whose days the selection leaves empty repeats the days it has,
+  // and recovery can then hold the week below the days asked for. Say that,
+  // and which split would fit, rather than a bare "partial". Not when dropped
+  // repeats are the reason the week is shorter: the status above says that.
+  const empty = routine.emptySplitDays();
+  if (r.placed && r.placed < Math.min(r.requested, r.free) && empty.length &&
+      !(r.dropped && r.reason === "rest")) {
+    const kept = SPLITS[routine.split].days.map(([name]) => name).filter(n => !empty.includes(n));
+    // A split with an empty day of its own still fits by repeating the days
+    // it has, so say that rather than let it read as a contradiction.
+    const fits = routine.splitsThatFit().map(id => {
+      const gaps = routine.emptySplitDays(id);
+      if (!gaps.length) return SPLITS[id].label + " fits your selection";
+      const used = SPLITS[id].days.map(([name]) => name).filter(n => !gaps.includes(n));
+      return SPLITS[id].label + " would fit: with nothing for " + gaps.join(" or ") +
+        ", it alternates " + used.join(" and ");
+    });
+    setStatus("Nothing you selected goes on " + empty.join(" or ") + " days, so the week repeats " +
+      kept.join(" and ") + ", which needs rest days between: " + r.placed + " of the " +
+      days(r.requested) + " fit." + (fits.length ? " " + fits.join("; ") + "." : ""),
+      "warn");
+  }
+
+  // Blocks the plan could not give a day (Push · Pull · Legs over 2 days):
+  // named here, with what would change it, rather than left out silently.
+  const left = leftOutText();
+  if (left) setStatus($("status").textContent + " " + left, "warn");
+
+  // A week that falls short of what the targets usually need says so here
+  // too, not only in the note under Your week.
+  if (r.placed) {
+    const v = routine.weeklyVolume();
+    if (v.untrained.length || v.short.length)
+      setStatus($("status").textContent + " Some muscles get less than they usually need " +
+                "this week — see the note under Your week.", "warn");
   }
 });
 
