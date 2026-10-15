@@ -84,6 +84,7 @@ class WeeklyRoutine {
       sessionMinutes: this.sessionMinutes
     }));
     this.sessions = [];
+    this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
@@ -188,7 +189,7 @@ class WeeklyRoutine {
   clearGenerated() {
     for (const s of this.allSlots())
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
-    this.sessions = []; this.plannedMeals = [];
+    this.sessions = []; this.plannedMeals = []; this.leftOut = [];
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
@@ -406,6 +407,11 @@ class WeeklyRoutine {
     // below, the status and the meals all describe the sessions that remain.
     const dropped = this.buildWorkouts();
     const placed = this.sessions.length;
+    // A block none of the sessions carries got no day: more blocks than training
+    // days (Push · Pull · Legs over 2 days), or no gap that fit. Said where the
+    // week is described, rather than leaving its muscles out without a word.
+    const withDay = new Set(this.sessions.map(s => s.block));
+    this.leftOut = blocks.filter(b => !withDay.has(b));
     if (dropped && placed + dropped >= Math.min(requested, this.availableDays().length)) limit = "enough";
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
@@ -416,7 +422,7 @@ class WeeklyRoutine {
                  : placed >= requested ? "ok"
                  : limit === "enough" ? "rest"
                  : placed >= free ? "days" : "partial";
-    return { placed, requested, free, meals, reason, limit };
+    return { placed, requested, free, meals, reason, limit, leftOut: this.leftOut };
   }
 
   /**
@@ -448,16 +454,36 @@ class WeeklyRoutine {
   }
 
   /**
+   * Whether one more training day would be placed, with everything else as
+   * it is now — tried on a copy, like splitsThatFit(). Lets a note offer
+   * "a training day more" only when that would add a session.
+   */
+  extraDayFits() {
+    const days = Math.max(this.sessionsPerWeek, this.sessions.length) + 1;
+    if (days > TRAINING_DAYS_RANGE[1] || this.sessions.length >= this.availableDays().length) return false;
+    const trial = new WeeklyRoutine();
+    trial.restore({ ...this.snapshot(), sessionsPerWeek: days, hadPlan: false });
+    return trial.generate().placed > this.sessions.length;
+  }
+
+  /**
    * How the week measures up to what the chosen muscles usually need
    * (estimate.js). For each chosen muscle with exercises: its weekly sets,
    * direct plus assisting credit (already halved), against the low end of
    * its `weeklySets`, and how many sessions train it: give it at least a
    * set's worth, direct or assisting (a press trains the triceps too).
    *
+   * A muscle is "trained" in a session when that session gives it at least a
+   * set's worth, direct or assisting: the one definition the summary, the
+   * notes and the per-muscle messages all use (`times`).
+   *
    *   untrained   chosen muscles no session trains, and that other lifts do
-   *               not credit with their weekly minimum either (no
-   *               room, or the session was removed). A muscle the lifts above
-   *               already cover — forearms from rows and deadlifts — is not one.
+   *               not credit with their weekly minimum either. A muscle the
+   *               lifts above already cover — forearms from rows and
+   *               deadlifts — is not one. Two kinds:
+   *     unplanned   no session carries the muscle at all: its block got no
+   *                 day (leftOut), or the user removed its session
+   *     noTime      a session carries it, but had no time left for it
    *   short       trained, but below the low end of their weekly sets
    *   infrequent  trained fewer than ESTIMATE.timesPerWeek times
    *   estimate    estimateTraining() for the same muscles and session length
@@ -476,9 +502,12 @@ class WeeklyRoutine {
       }
       return { muscle: m, sets, times, need: m.weeklySets[0] };
     });
+    const untrained = rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle);
     return {
       rows,
-      untrained:  rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle),
+      untrained,
+      unplanned:  untrained.filter(m => !this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
+      noTime:     untrained.filter(m => this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
       short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
       infrequent: rows.filter(r => r.times > 0 && r.times < ESTIMATE.timesPerWeek).map(r => r.muscle),
       sets: rows.reduce((t, r) => t + r.sets, 0),

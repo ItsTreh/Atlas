@@ -184,6 +184,11 @@ $("generate").addEventListener("click", () => {
       "warn");
   }
 
+  // Blocks the plan could not give a day (Push · Pull · Legs over 2 days):
+  // named here, with what would change it, rather than left out silently.
+  const left = leftOutText();
+  if (left) setStatus($("status").textContent + " " + left, "warn");
+
   // A week that falls short of what the targets usually need says so here
   // too, not only in the note under Your week.
   if (r.placed) {
