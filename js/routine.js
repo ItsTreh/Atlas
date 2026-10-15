@@ -460,12 +460,13 @@ class WeeklyRoutine {
         this.slot(p.day, h).assignTo(session);
       this.sessions.push(session);
     }
-    const placed = placements.length;
 
-    // What to do in each session; see workouts.js.
-    const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id),
-                                       this.exercisePrefs, this.weeklyGoals());
-    builder.build();
+    // What to do in each session; see workouts.js. A repeat that comes out
+    // empty or bare is taken out of the week (buildWorkouts) so that a slot
+    // on the calendar always holds a session worth doing, and the count, the
+    // status, the audit and the meals describe the sessions that remain.
+    const { builder, dropped } = this.buildWorkouts();
+    const placed = this.sessions.length;
     this.planned.events = builder.events;
     this.planned.gains = builder.gains;            // sets the fill pass added (workouts.js)
     this.planned.shortfalls = builder.shortfalls;  // muscles left under their goal, and why
@@ -474,11 +475,46 @@ class WeeklyRoutine {
       ? this.placeMeals() : 0;
 
     const free = this.availableDays().length;
+    // Repeats taken out were not needed: the days asked for were all placed
+    // and the muscles reached what they can use, so the rest is rest days.
+    const enough = limit === "enough" || (dropped > 0 && placed + dropped >= Math.min(requested, free));
     const reason = placed === 0 ? (limit === "space" ? "no-room" : "no-valid-combination")
                  : placed >= requested ? "ok"
                  : placed >= free ? "days"
-                 : limit === "enough" ? "rest" : "partial";
-    return { placed, requested, free, meals, reason, limit };
+                 : enough ? "rest" : "partial";
+    return { placed, requested, free, meals, reason, limit: enough ? "enough" : limit, dropped };
+  }
+
+  /**
+   * Gives every session its workout, and takes out a repeat that is not worth
+   * a day. The distribution plans how many days a block can use, but the
+   * sets a muscle can still take are only known as the week is built: by its
+   * fifth visit a muscle may be at its weekly maximum, and the repeat comes
+   * out empty (0 min) or with less than one typical exercise. The first
+   * session of a block always stays, so no muscle loses its day. Taking one
+   * out raises the share of the muscles on the others, so the week is built
+   * again until every repeat that remains is worth it.
+   * Returns the last builder (its events, gains and shortfalls describe the
+   * week that stays) and how many sessions were taken out.
+   */
+  buildWorkouts() {
+    const inWeek = (a, b) => DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour;
+    let dropped = 0;
+    for (;;) {
+      const builder = new WorkoutBuilder(this.sessions, this.sessionMinutes, id => this.selection.priority(id),
+                                         this.exercisePrefs, this.weeklyGoals());
+      builder.build();
+      const seen = new Set(), weak = [];
+      for (const s of [...this.sessions].sort(inWeek)) {
+        if (seen.has(s.block) && s.workout.sets < WORKOUT.setsPerExercise) weak.push(s);
+        seen.add(s.block);
+      }
+      if (!weak.length) return { builder, dropped };
+      // The barest first, the later day on a tie.
+      weak.sort((a, b) => a.workout.sets - b.workout.sets || inWeek(b, a));
+      this.removeSession(weak[0]);
+      dropped++;
+    }
   }
 
   /**
