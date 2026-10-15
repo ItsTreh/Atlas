@@ -1,1 +1,0 @@
-import bpy; me = bpy.data.objects["Mesh_0"].data; print("ATTRS", [a.name for a in me.color_attributes], me.color_attributes.active_color_name if hasattr(me.color_attributes, "active_color_name") else "")
