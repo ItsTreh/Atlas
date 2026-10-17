@@ -45,6 +45,64 @@ const WORKOUT = Object.freeze({
   offDayDemotion:     configValue("offDayDemotion")    // tier steps for one that also works a muscle trained on another day
 });
 
+/*
+ * How close a muscle's week must come to its weekly target, counted as
+ * weeklyVolume() counts it (direct sets plus half credit for assisting
+ * ones): never more than `under` below, and at most `over` above, which is
+ * less than one more exercise. The target is what the plan aims for; the
+ * weekly maximum (Muscle.weeklySets[1]) is only a safety limit, never a
+ * reason to add sets. Agreed in review (#69), not taken from a study.
+ */
+const TARGET_MATCH = Object.freeze({ under: 1, over: 2 });
+
+/**
+ * The least a muscle with weekly target `target` may end the week with:
+ * TARGET_MATCH.under below it, but never under the muscle's usual weekly
+ * minimum when the target is at or above it (a beginner's target is the
+ * minimum itself, and the week should not read as short of it).
+ */
+function targetFloor(muscle, target) {
+  const low = muscle.weeklySets[0];
+  return target >= low ? Math.max(target - TARGET_MATCH.under, low) : target - TARGET_MATCH.under;
+}
+
+/**
+ * Builds the workouts for `sessions` (WorkoutBuilder) and takes out a
+ * session not worth a day: one the other days' lifts already cover, so
+ * nothing is left to do in it, or a repeat of a block (a split the user
+ * chose) with less than one typical exercise. The first session of a block
+ * always stays, so no muscle loses its day. Taking one out raises the share
+ * of the muscles left on the others, so the week is built again until every
+ * session that remains is worth it. Returns { sessions, dropped }: the
+ * sessions kept and the ones taken out.
+ */
+function buildWeek(sessions, sessionMinutes, targets) {
+  const inWeek = (a, b) => DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour;
+  let kept = [...sessions];
+  const dropped = [];
+  for (;;) {
+    new WorkoutBuilder(kept, sessionMinutes, targets).build();
+    const seen = new Set(), weak = [];
+    for (const s of [...kept].sort(inWeek)) {
+      if (!s.workout.entries.length || (seen.has(s.block) && s.workout.sets < WORKOUT.setsPerExercise))
+        weak.push(s);
+      seen.add(s.block);
+    }
+    if (!weak.length) return { sessions: kept, dropped };
+    // The barest first, the later day on a tie.
+    weak.sort((a, b) => a.workout.sets - b.workout.sets || inWeek(b, a));
+    kept = kept.filter(s => s !== weak[0]);
+    dropped.push(weak[0]);
+  }
+}
+
+/** The most sets of one muscle that fit in `minutes` (muscleSessionMinutes, estimate.js). */
+function setsThatFit(minutes) {
+  let sets = 0;
+  while (muscleSessionMinutes(sets + 1) <= minutes) sets++;
+  return sets;
+}
+
 /**
  * How each kind of lift is done: reps per set and rest between sets (the
  * rests are the timing values in evidence.js). These are common starting
@@ -138,12 +196,15 @@ class WorkoutBuilder {
   /**
    * @param sessions        the WorkoutSessions placed this week
    * @param sessionMinutes  the planned session length
+   * @param targets         Map muscle id -> the weekly sets the plan aims for
+   *                        (WeeklyRoutine.plannedWeeklySets), or null
    */
-  constructor(sessions, sessionMinutes) {
+  constructor(sessions, sessionMinutes, targets = null) {
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
     this.limit = sessionMinutes;
-    this.available = Math.max(15, sessionMinutes - ESTIMATE.warmupMinutes);
+    this.available = usableMinutes(sessionMinutes);
+    this.targets = targets;
 
     // How many sessions this week train each muscle — spreads its weekly volume.
     this.timesThisWeek = new Map();
@@ -158,10 +219,152 @@ class WorkoutBuilder {
       s.block.muscles.filter(m => !s.block.riders.has(m)).map(m => m.id)));
   }
 
-  /** Gives every session its Workout, in week order. */
+  /** Gives every session its Workout, in week order, then brings each muscle's week to its target. */
   build() {
     for (const session of this.sessions) session.workout = this.buildOne(session);
+    this.meetTargets();
     return this.sessions;
+  }
+
+  /** The weekly sets `id` is aimed at: its target when the plan has one, else the middle of its range. */
+  targetFor(id) {
+    if (this.targets && this.targets.has(id)) return this.targets.get(id);
+    const [low, high] = MUSCLE_BY_ID.get(id).weeklySets;
+    return (low + high) / 2;
+  }
+
+  /** The most a muscle may be credited this week: its target and the agreed margin, never past its maximum. */
+  ceilingFor(id) {
+    const high = MUSCLE_BY_ID.get(id).weeklySets[1];
+    return this.targets && this.targets.has(id) ? Math.min(high, this.targets.get(id) + TARGET_MATCH.over) : high;
+  }
+
+  /**
+   * The least `id` may end the week with: TARGET_MATCH.under below its
+   * target, but never under its usual weekly minimum when the target is at
+   * or above it (a beginner's target is the minimum itself).
+   */
+  floorFor(id) {
+    return targetFloor(MUSCLE_BY_ID.get(id), this.targets.get(id));
+  }
+
+  /** What `id` is credited over the whole week: direct sets plus half credit for assisting ones. */
+  weekCredit(id) {
+    return this.sessions.reduce((t, s) => t + s.workout.directSets(id) + s.workout.assistedSets(id), 0);
+  }
+
+  /**
+   * The sessions are built one at a time, in week order, so a muscle dosed
+   * on Monday cannot see what Thursday's lifts will credit it. Once the week
+   * is built, each muscle with a target is brought within TARGET_MATCH of
+   * it, one set at a time on its own exercises: a set off the biggest, or an
+   * exercise dropped once its minimum is too much; a set onto the smallest,
+   * or one more exercise, only while the session stays within its length.
+   * A change that would push another muscle out of its own margin is not
+   * made. What cannot be closed stays, and weeklyVolume() reports it.
+   */
+  meetTargets() {
+    if (!this.targets) return;
+    const ids = [...this.targets.keys()].filter(id => this.timesThisWeek.has(id));
+    for (let pass = 0; pass < 60; pass++) {
+      let changed = false;
+      for (const id of ids) {
+        const got = this.weekCredit(id);
+        if (got > this.ceilingFor(id)) changed = this.takeSet(id) || changed;
+        else if (got < this.floorFor(id)) changed = this.addSet(id) || changed;
+      }
+      if (!changed) break;
+    }
+    for (const s of this.sessions) {
+      const w = s.workout;
+      w.skipped = w.skipped.filter(m => !w.entriesFor(m.id).length);
+      w.recommended = w.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
+    }
+  }
+
+  /**
+   * Whether changing `entry` by `delta` sets keeps every other muscle it
+   * trains within its margin: not over its ceiling when sets are added, not
+   * under its target when they are taken off.
+   */
+  sparesOthers(entry, delta) {
+    const ex = entry.exercise;
+    for (const id of [...ex.primary, ...ex.secondary]) {
+      if (id === entry.muscleId || !this.targets.has(id)) continue;
+      const after = this.weekCredit(id) + delta * (ex.primary.includes(id) ? 1 : WORKOUT.secondaryCredit);
+      if (delta > 0 ? after > this.ceilingFor(id) : after < this.floorFor(id)) return false;
+    }
+    return true;
+  }
+
+  /** One set off `id`'s own exercises; or, when each is at its minimum, one exercise. */
+  takeSet(id) {
+    const own = this.sessions.flatMap(s => s.workout.entriesFor(id).map(e => ({ s, e })));
+    const trimmable = own.filter(({ e }) => e.sets > WORKOUT.minDirectSets && this.sparesOthers(e, -1))
+                         .sort((a, b) => b.e.sets - a.e.sets);
+    if (trimmable.length) { trimmable[0].e.sets--; return true; }
+    // Dropping a whole exercise must not take the muscle under its floor. A
+    // session it leaves empty is taken out of the week (buildWorkouts).
+    const droppable = own.filter(({ e }) => this.weekCredit(id) - e.sets >= this.floorFor(id) && this.sparesOthers(e, -e.sets))
+                         .sort((a, b) => a.e.sets - b.e.sets);
+    if (!droppable.length) return false;
+    droppable[0].s.workout.remove(droppable[0].e);
+    return true;
+  }
+
+  /** One set onto `id`'s smallest exercise with room; or one more exercise for it. */
+  addSet(id) {
+    const muscle = MUSCLE_BY_ID.get(id);
+    const carrying = this.sessions.filter(s => s.block.has(muscle) && !s.block.riders.has(muscle));
+    const own = carrying.flatMap(s => s.workout.entriesFor(id).map(e => ({ s, e })))
+      .filter(({ s, e }) => e.sets < WORKOUT.maxSetsPerExercise &&
+                            s.workout.directSets(id) < WORKOUT.maxSetsPerSession && this.sparesOthers(e, 1))
+      .sort((a, b) => a.e.sets - b.e.sets);
+    for (const { s, e } of own) {
+      e.sets++;
+      if (s.workout.minutes <= this.limit) return true;
+      e.sets--;
+    }
+    // An exercise already at its most is not "blocked" by others: more sets
+    // there are not allowed; further sets go on another exercise below.
+    // One more exercise, at its minimum, in a session with time for it. A
+    // lift whose credit would push another muscle past its ceiling is tried
+    // after the ones that do not; failing that, the muscle it would push
+    // gives up a set of its own first (makeRoom), if it can spare one.
+    for (const s of [...carrying].sort((a, b) => a.workout.minutes - b.workout.minutes)) {
+      const w = s.workout;
+      if (w.directSets(id) + WORKOUT.minDirectSets > WORKOUT.maxSetsPerSession) continue;
+      const tried = new Set();
+      for (let ex; (ex = this.bestFor(muscle, s.block, w, tried)); ) {
+        tried.add(ex);
+        const entry = new WorkoutEntry(ex, id, WORKOUT.minDirectSets);
+        if (!this.sparesOthers(entry, WORKOUT.minDirectSets) && !this.makeRoom(entry, WORKOUT.minDirectSets)) continue;
+        const last = w.entries.map(x => x.muscleId).lastIndexOf(id);
+        w.entries.splice(last < 0 ? w.entries.length : last + 1, 0, entry);
+        if (w.minutes <= this.limit) return true;
+        w.remove(entry);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Frees the credit `entry` would need from the muscles it would push past
+   * their ceiling, by taking sets off their own exercises (takeSet keeps
+   * each at its floor). Returns whether `entry` then spares every muscle.
+   */
+  makeRoom(entry, sets) {
+    const ex = entry.exercise;
+    for (let guard = 0; guard < 12; guard++) {
+      const blocked = [...ex.primary, ...ex.secondary].find(id => {
+        if (id === entry.muscleId || !this.targets.has(id)) return false;
+        const after = this.weekCredit(id) + sets * (ex.primary.includes(id) ? 1 : WORKOUT.secondaryCredit);
+        return after > this.ceilingFor(id);
+      });
+      if (!blocked) return true;
+      if (!this.takeSet(blocked)) return false;
+    }
+    return this.sparesOthers(entry, sets);
   }
 
   buildOne(session) {
@@ -176,11 +379,11 @@ class WorkoutBuilder {
       (block.splitDay ? behind(a) - behind(b) : 0) || b.minutes - a.minutes);
     const workout = new Workout(order, []);
     const scale = Math.min(1, this.available / block.minutes);
-    // Working sets that fit in the session after the warm-up.
-    const budget = Math.floor(this.available / ESTIMATE.minutesPerSet);
+    // Minutes of working sets the session has left, timed the way the plan was.
+    const workMinutes = () => workout.entries.length ? workout.minutes - ESTIMATE.warmupMinutes : 0;
 
     for (const muscle of order) {
-      const room = budget - workout.sets;
+      const room = setsThatFit(this.available - workMinutes());
       if (room < WORKOUT.minDirectSets) { workout.skipped.push(muscle); continue; }
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
       let need;
@@ -213,7 +416,8 @@ class WorkoutBuilder {
     workout.recommended = workout.entries.map(e => new WorkoutEntry(e.exercise, e.muscleId, e.sets));
     // Every muscle trained this week, not only this session's: a Legs day's
     // Romanian deadlift credits the forearms trained on Pull days too.
-    for (const id of this.timesThisWeek.keys())
+    // and every chosen muscle, with a session of its own or not.
+    for (const id of new Set([...this.timesThisWeek.keys(), ...(this.targets ? this.targets.keys() : [])]))
       this.setsThisWeek.set(id, (this.setsThisWeek.get(id) || 0) +
         workout.directSets(id) + workout.assistedSets(id));
     return workout;
@@ -269,15 +473,16 @@ class WorkoutBuilder {
    * its maximum allows. Returns 0 when it needs nothing more here.
    */
   doseSets(muscle, workout, credit, block) {
-    const [low, high] = muscle.weeklySets;
     const times = this.timesThisWeek.get(muscle.id) || 1;
     const direct = workout.directSets(muscle.id);
+    // Never past the weekly target: what earlier sessions and this one
+    // already credit it counts first.
     const room = Math.min(WORKOUT.maxSetsPerSession - direct,
-                          Math.floor(high - (this.setsThisWeek.get(muscle.id) || 0) - credit));
+                          Math.floor(this.targetFor(muscle.id) - (this.setsThisWeek.get(muscle.id) || 0) - credit));
     // A day planned by distribution.js says how many sets each muscle gets;
-    // a split the user chose aims at the middle of the weekly range.
+    // a split the user chose spreads the weekly target over its sessions.
     const aim = block.plannedSets ? block.plannedSets.get(muscle.id) || 0
-                                  : (low + high) / 2 / times;
+                                  : this.targetFor(muscle.id) / times;
     const need = Math.min(room, Math.round(aim - credit));
     if (need >= WORKOUT.minDirectSets) return need;
     return direct === 0 && room >= WORKOUT.minDirectSets ? WORKOUT.minDirectSets : 0;
@@ -289,9 +494,10 @@ class WorkoutBuilder {
    * what earlier sessions and this one already credit it.
    */
   headroom(muscleId, workout) {
-    if (!this.timesThisWeek.has(muscleId)) return Infinity;
-    const m = MUSCLE_BY_ID.get(muscleId);
-    return m.weeklySets[1] - (this.setsThisWeek.get(muscleId) || 0) -
+    // A chosen muscle has its ceiling even with no session of its own: the
+    // lifts for the others still count towards it.
+    if (!this.timesThisWeek.has(muscleId) && !(this.targets && this.targets.has(muscleId))) return Infinity;
+    return this.ceilingFor(muscleId) - (this.setsThisWeek.get(muscleId) || 0) -
            workout.directSets(muscleId) - workout.assistedSets(muscleId);
   }
 
@@ -335,13 +541,13 @@ class WorkoutBuilder {
    *   2. how many of the session's other muscles it also trains
    *   3. list order in the ratings
    */
-  bestFor(muscle, block, workout) {
+  bestFor(muscle, block, workout, skip = null) {
     const used = this.usedThisWeek.get(muscle.id) || new Set();
     const others = block.muscles.filter(m => m !== muscle).map(m => m.id);
     let best = null, bestKey = null;
 
     exercisesFor(muscle.id).forEach((ex, order) => {
-      if (workout.has(ex) || workout.clashWith(ex)) return;
+      if (workout.has(ex) || workout.clashWith(ex) || (skip && skip.has(ex))) return;
       const elsewhere = ex.primary.some(id => id !== muscle.id && !block.muscles.some(m => m.id === id) &&
                                               this.trainedThisWeek.has(id));
       // On a split day, a lift that would take another muscle it trains past

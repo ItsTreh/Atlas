@@ -246,7 +246,8 @@ describe("the final plan", () => {
   });
 
   test("a moved session keeps its exercises and its recovery rules", () => {
-    const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2 });
+    // Three days asked, two placed: Chest twice, so the two sessions share a muscle.
+    const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 3 });
     const [a, b] = [...routine.sessions].sort((x, y) =>
       DayOfWeek.indexOf(x.day) - DayOfWeek.indexOf(y.day));
     const entries = a.workout.entries;

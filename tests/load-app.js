@@ -30,7 +30,7 @@ const EXPORTS = [
   "DayOfWeek", "SlotState", "FIRST_HOUR", "LAST_HOUR", "FAMILIES",
   "MUSCLES", "MUSCLE_BY_ID", "TrainingBlock",
   "PROGRAMS", "PROGRAM_BY_ID", "PROGRAM_GROUPS", "MuscleSelection", "PRIORITY_LEVELS", "EXPERIENCE_LEVELS", "weeklyTarget", "planDistribution", "maxSpread", "recoveryClash", "DEFAULT_EXPERIENCE", "fitToTime", "SESSION_LENGTH_OPTIONS",
-  "ESTIMATE", "estimateTraining",
+  "ESTIMATE", "estimateTraining", "muscleSessionMinutes", "muscleWeekMinutes", "TARGET_MATCH",
   "GOALS", "ACTIVITY_LEVELS", "MEAL_PATTERNS", "MEAL_COUNTS", "KCAL_FLOOR", "NutritionPlan",
   "WEIGHT_KG_RANGE", "BURN_RANGE", "weightRangeText",
   "TRAINING_ENERGY", "ADJUST_RANGE", "PROTEIN_PER_KG_RANGE", "trainingLoad", "recommendTargets",

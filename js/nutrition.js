@@ -99,7 +99,7 @@ const FULL_BODY_SETS = MUSCLES.reduce((t, m) => t + m.weeklySets[1], 0);
  * Session length is a ceiling, not a promise: the hours are the lesser of
  * the sessions booked and the sets the plan aims for (`weeklySets`, from the
  * weekly targets; the most each muscle takes when it gives none), warm-ups
- * included — the same per-set and warm-up times as the training estimate.
+ * included — the planner's one time model (muscleWeekMinutes, estimate.js).
  */
 function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = null }, weightKg) {
   if (!muscles.length || !sessionsPerWeek)
@@ -110,7 +110,8 @@ function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = n
   const sets = muscles.reduce((t, m) => t + setsOf(m), 0);
   const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? setsOf(m) : 0), 0);
   const minutes = Math.min(sessionsPerWeek * sessionMinutes,
-    sets * ESTIMATE.minutesPerSet + sessionsPerWeek * ESTIMATE.warmupMinutes);
+    muscles.reduce((t, m) => t + muscleWeekMinutes(setsOf(m), sessionsPerWeek), 0) +
+    sessionsPerWeek * ESTIMATE.warmupMinutes);
   const hours = minutes / 60;
   const bigShare = bigSets / sets;
   const [lo, hi] = TRAINING_ENERGY.kcalPerKgHour;

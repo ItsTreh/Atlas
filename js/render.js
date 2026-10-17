@@ -114,20 +114,31 @@ function renderWeekFit() {
   const fixes = [];
   if (fit.fixes.extraDay) fixes.push("one more training day (" + fit.fixes.extraDay + ")");
   if (fit.fixes.sessionMinutes) fixes.push("sessions of " + fit.fixes.sessionMinutes + " min");
-  const fix = fixes.length ? " With " + fixes.join(" or ") + " everything fits." : "";
+  const fix = fixes.length ? " With " + fixes.join(" or ") + " everything should fit (estimate)." : "";
+  // What the week the planner builds can hold (WeeklyRoutine.weekPlan): the
+  // days it really uses, and muscles a split leaves without a day.
+  const before = [];
+  if (fit.days < fit.askedDays)
+    before.push("Recovery and your free hours leave room for " + fit.days + " of your " +
+                fit.askedDays + " training days.");
+  if (fit.unplaced.length)
+    before.push(SPLITS[routine.split].label + " leaves " +
+                nameList(fit.unplaced.map(id => MUSCLE_BY_ID.get(id).name)) + " without a day this week.");
+  const lead = before.length ? before.join(" ") + " " : "";
   if (!fit.fits || !fit.meetsMinimums) {
     el.classList.add("warn");
     const low = fit.belowMinimum.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
-    el.textContent = "Even the usual minimum for every muscle needs more than your sessions hold (about " +
+    el.textContent = lead + "Even the usual minimum for every muscle needs more than your sessions hold (about " +
       h(fit.capacityMinutes) + " a week). " + (low ? "So that every muscle is still trained, " + low +
       " get less than their usual minimum. " : "") +
       "Add a training day, make sessions longer, or drop a muscle." + fix;
   } else if (fit.trimmed.length) {
     el.classList.add("warn");
-    el.textContent = "Your targets need about " + h(fit.requestedMinutes) + " a week and your sessions hold about " +
-      h(fit.capacityMinutes) + ", so we lowered " + names + " (never below their minimum)." + fix;
+    el.textContent = lead + "Your sessions (about " + h(fit.capacityMinutes) + " a week) can't hold every target, " +
+      "so we lowered " + names + " (never below their minimum)." + fix;
   } else {
-    el.textContent = "Fits your week: about " + h(fit.neededMinutes) + " of working sets in about " +
+    if (lead) el.classList.add("warn");
+    el.textContent = lead + "Fits your week: about " + h(fit.neededMinutes) + " of working sets in about " +
       h(fit.capacityMinutes) + " of session time (estimate).";
   }
 }

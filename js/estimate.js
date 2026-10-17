@@ -53,6 +53,40 @@ const SESSION_LENGTH_OPTIONS = Object.freeze([45, 60, 75, 90]);
 /** Minutes of working sets one session can hold, after the warm-up. */
 const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.warmupMinutes);
 
+/* ------------------------------ time model --------------------------------
+   The one way the planner times sets before the exercises are chosen. The
+   fit (fitToTime), the estimate (estimateTraining), the distribution
+   (distribution.js) and the workout builder (workouts.js) all use it, so a
+   week the targets fit is a week the sessions can hold. Every set is timed
+   with the compound rest, the longer one, and each exercise adds its setup,
+   split the way the builder splits a muscle's sets; the finished session is
+   then timed exercise by exercise (Workout.minutes) and can only come out
+   the same or shorter. */
+
+/** Exercises the builder splits `sets` of one muscle into in one session (WorkoutBuilder.buildOne). */
+const exercisesForSets = sets => Math.max(1, Math.round(sets / WORKOUT.setsPerExercise));
+
+/** Working minutes for `sets` of one muscle in one session. */
+function muscleSessionMinutes(sets) {
+  if (sets <= 0) return 0;
+  return sets * (ESTIMATE.workSetMinutes + ESTIMATE.restCompoundMinutes) +
+         exercisesForSets(sets) * ESTIMATE.setupMinutes;
+}
+
+/**
+ * Working minutes for one muscle's weekly sets, spread over as many sessions
+ * as distribution.js starts it with: enough to keep each at or under
+ * WORKOUT.maxSetsPerSession, at most `days`.
+ */
+function muscleWeekMinutes(sets, days = Infinity) {
+  if (sets <= 0) return 0;
+  const times = Math.max(1, Math.min(days, Math.ceil(sets / WORKOUT.maxSetsPerSession)));
+  const base = Math.floor(sets / times), extra = sets % times;
+  let minutes = 0;
+  for (let i = 0; i < times; i++) minutes += muscleSessionMinutes(base + (i < extra ? 1 : 0));
+  return minutes;
+}
+
 /**
  * Whether the weekly targets fit the time the user has, and what to do if
  * not. `targets` is a Map of muscle id -> sets; `muscles` are the Muscle
@@ -73,9 +107,9 @@ const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.w
  * (null when it would not, or is unavailable).
  */
 function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes) {
-  const minutesFor = (map, perWeek, len) => [...map.values()].reduce((t, n) => t + n, 0) *
-    ESTIMATE.minutesPerSet <= perWeek * usableMinutes(len);
-  const total = map => [...map.values()].reduce((t, n) => t + n, 0) * ESTIMATE.minutesPerSet;
+  const minutesOver = (map, days) => [...map.values()].reduce((t, n) => t + muscleWeekMinutes(n, days), 0);
+  const minutesFor = (map, perWeek, len) => minutesOver(map, perWeek) <= perWeek * usableMinutes(len);
+  const total = map => minutesOver(map, sessionsPerWeek);
   const floor = new Map(muscles.map(m => [m.id, m.weeklySets[0]]));
   const level = id => priorities.get(id) || "normal";
   const capacity = sessionsPerWeek * usableMinutes(sessionMinutes);
@@ -148,11 +182,12 @@ function estimateTraining(muscles, sessionMinutes) {
     low:  muscles.reduce((t, m) => t + m.weeklySets[0], 0),
     high: muscles.reduce((t, m) => t + m.weeklySets[1], 0)
   };
+  // The same time model as fitToTime, so this note and the fit note agree.
   const minutes = {
-    low:  Math.round(sets.low  * ESTIMATE.minutesPerSet),
-    high: Math.round(sets.high * ESTIMATE.minutesPerSet)
+    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(m.weeklySets[0]), 0)),
+    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(m.weeklySets[1]), 0))
   };
-  const usable = Math.max(15, sessionMinutes - ESTIMATE.warmupMinutes);
+  const usable = usableMinutes(sessionMinutes);
   const sessions = {
     low:  Math.max(1, Math.ceil(minutes.low  / usable)),
     high: Math.max(1, Math.ceil(minutes.high / usable))
