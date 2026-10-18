@@ -94,7 +94,6 @@ function planInputs() {
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
 }
 const days = n => n + (n === 1 ? " day" : " days");
-const timesText = n => ({ 1: "once", 2: "twice", 3: "three times" })[n] || n + " times";
 
 /**
  * After a session leaves the week by the user's hand — removed, painted
@@ -152,8 +151,8 @@ $("generate").addEventListener("click", () => {
           ? " The weekly sets for the muscles you selected already fit in " + r.placed +
             (r.placed === 1 ? " session" : " sessions") + " — another would have been " +
             "nearly empty" + restDays
-          : " Your targets are best trained about " + timesText(ESTIMATE.timesPerWeek) +
-            " a week each" + restDays));
+          : spare > 0 ? " Your targets are covered without the other " + days(spare) + " you offered, " +
+            (spare === 1 ? "so it is a rest day." : "so they are rest days.") : ""));
       break;
     }
     case "days":

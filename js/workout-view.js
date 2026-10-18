@@ -118,24 +118,20 @@ const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
 /**
  * How the week compares with what the chosen muscles usually need
  * (WeeklyRoutine.weeklyVolume). Muscles left without direct work, or under
- * the low end of their weekly sets, are a warning; muscles trained only once
- * a week are a quieter note. Silent when the week meets the estimate.
+ * the low end of their weekly sets, are a warning. Silent when the week meets
+ * the estimate.
  */
 function volumeNote(sessions, v = routine.weeklyVolume()) {
   // Muscles with no session at all are named above (leftOutText, or a removed
   // session); this note is about the sessions the week does have.
   const gap = v.noTime.length || v.short.length;
-  if (!gap && !v.infrequent.length) return "";
+  if (!gap) return "";
   const parts = [];
   if (v.noTime.length)
     parts.push("No time this week for " + nameList(v.noTime.map(m => m.name)) + ".");
   if (v.short.length)
     parts.push("Under their usual weekly minimum: " +
       someNames(v.short.map(r => r.muscle.name + " (" + fmtSets(r.sets) + " of " + r.need + " sets)")) + ".");
-  if (v.infrequent.length)
-    parts.push((v.infrequent.length === v.rows.length ? "Each muscle is trained once a week"
-      : "Trained once a week: " + someNames(v.infrequent.map(m => m.name))) +
-      "; twice usually works better.");
   const e = v.estimate;
   if (e && sessions.length < e.sessions.low)
     parts.push("Your targets usually take " + e.sessions.low + "–" + e.sessions.high + " sessions of " +
@@ -143,19 +139,14 @@ function volumeNote(sessions, v = routine.weeklyVolume()) {
   // Only the ways out this week really has: a day more is tried on a copy
   // (extraDayFits), and a longer session needs a longer option to pick.
   const longest = Math.max(...[...$("len").options].map(o => Number(o.value)));
-  const more = routine.extraDayFits();
-  if (gap) {
-    const ways = [];
-    if (more) ways.push("add a training day");
-    if (routine.sessionMinutes < longest) ways.push("lengthen sessions");
-    ways.push("pick fewer muscles");
-    parts.push("To close the gap, " + (ways.length < 2 ? ways[0]
-      : ways.slice(0, -1).join(", ") + " or " + ways[ways.length - 1]) + ".");
-  } else if (more) parts.push("A training day more would let them come round twice.");
-  else if (sessions.length >= routine.availableDays().length)
-    parts.push("Every day you have free is already a training day.");
-  return '<p class="' + (gap ? "week-gap" : "week-note") + '">' +
-    (gap ? "<b>Below what your targets usually need.</b> " : "") + esc(parts.join(" ")) + '</p>';
+  const ways = [];
+  if (routine.extraDayFits()) ways.push("add a training day");
+  if (routine.sessionMinutes < longest) ways.push("lengthen sessions");
+  ways.push("pick fewer muscles");
+  parts.push("To close the gap, " + (ways.length < 2 ? ways[0]
+    : ways.slice(0, -1).join(", ") + " or " + ways[ways.length - 1]) + ".");
+  return '<p class="week-gap">' +
+    "<b>Below what your targets usually need.</b> " + esc(parts.join(" ")) + '</p>';
 }
 
 function renderSession(session) {

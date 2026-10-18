@@ -199,10 +199,36 @@ const PLANNER_CONFIG = Object.freeze({
     note: "Tier steps for an exercise that also works a muscle trained on another " +
           "day, so that muscle is not quietly trained the day before its own session."
   },
-  minutesPerSet: {
+  workSetMinutes: {
+    group: "estimate", value: 0.75, origin: "heuristic", basedOn: [],
+    note: "Doing one set: about ten controlled reps plus getting into position under the " +
+          "weight. Not taken from a study."
+  },
+  restCompoundMinutes: {
+    group: "estimate", value: 3, origin: "heuristic", basedOn: ["rest-interval"],
+    note: "Rest after a set of a compound lift. Chosen by the project owner from gym " +
+          "practice (2.5 to 3 minutes). The research above found no clear hypertrophy " +
+          "benefit past about 60 to 90 seconds, so this is about performance and " +
+          "realistic session length, not a requirement."
+  },
+  restIsolationMinutes: {
     group: "estimate", value: 2.5, origin: "heuristic", basedOn: ["rest-interval"],
-    note: "One working set plus the rest after it: the average of the two rest " +
-          "ranges in LIFT_KINDS."
+    note: "Rest after a set of an isolation lift, at the low end of the owner's 2.5 to 3 " +
+          "minute range. Same caveat as the compound rest."
+  },
+  setupMinutes: {
+    group: "estimate", value: 2, origin: "heuristic", basedOn: [],
+    note: "Per exercise, not per set: fetching the weights or setting the machine, finding " +
+          "the spot, a first light set. Not taken from a study."
+  },
+  minutesPerSet: {
+    group: "estimate", origin: "heuristic", basedOn: ["rest-interval"],
+    // The average cost of a set when the exercise is not known yet: doing it,
+    // the mean of the two rests, and the setup shared over a typical exercise.
+    value: Math.round((0.75 + (3 + 2.5) / 2 + 2 / 3) * 10) / 10,
+    note: "Planning average for one working set before the exercises are chosen: the set " +
+          "itself, the mean of the two rests, and one exercise's setup shared over " +
+          "setsPerExercise sets. Finished sessions are timed exercise by exercise."
   },
   warmupMinutes: {
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
@@ -221,12 +247,6 @@ const PLANNER_CONFIG = Object.freeze({
           "supports in direction (more sets help with diminishing returns) but not in " +
           "these exact numbers. Maintain is the bottom of the range by definition. The " +
           "fractions are a starting point to adjust, not findings."
-  },
-  timesPerWeek: {
-    group: "estimate", value: 2, origin: "heuristic", basedOn: ["frequency"],
-    note: "How often a block may repeat in the automatic plan, and the figure the " +
-          "estimate reports. The research does not show that two is optimal; it is a " +
-          "way to spread volume across sessions."
   }
 });
 
@@ -258,9 +278,13 @@ const PLANNER_TABLES = Object.freeze({
     note: "Repetition and rest ranges for compound and isolation lifts. Compatible " +
           "with the rest evidence, which only asks for more than 60 seconds."
   },
-  sessionStretch: {
-    at: "routine.js, SESSION_STRETCH", origin: "optimization", basedOn: [],
-    note: "How far over the session length a family may run and still be one session."
+  distributionRules: {
+    at: "distribution.js", origin: "heuristic", basedOn: ["frequency", "weekly-volume"],
+    note: "How often a muscle trains and on which days: frequency from the sets a session " +
+          "can hold, extra sessions for Focus then Normal muscles only while each session " +
+          "keeps four sets or more, and a fixed order of tie-breaks for the days. The " +
+          "research does not show a best frequency at equal volume; this spreads the " +
+          "volume, it is not a finding."
   },
   schedulerScore: {
     at: "scheduler.js, SCORE", origin: "optimization", basedOn: ["recovery-between-sessions"],
