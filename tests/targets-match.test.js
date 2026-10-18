@@ -109,6 +109,86 @@ describe("with a busy calendar and meals on (review of #70)", () => {
   });
 });
 
+describe("overshoot: deliberate fails, incidental is allowed (review of #70)", () => {
+  // Deliberate: sets chosen for a muscle that has already reached its target
+  // (time left over is not a reason). Incidental: whole-exercise rounding, or a
+  // compound lift picked for a muscle still short that also trains this one.
+  // Both land above the target; only the second is allowed, up to TARGET_MATCH.over.
+  const ownSets = (r, id) => r.sessions.reduce((t, s) =>
+    t + s.workout.entriesFor(id).reduce((u, e) => u + e.sets, 0), 0);
+
+  test("sets chosen for a muscle never take it past its target", () => {
+    const bad = [];
+    for (const busy of [false, true]) for (const split of SPLITS) for (const program of PROGRAMS)
+      for (const experience of ["beginner", "advanced"]) for (const [days, minutes] of [[3, 75], [4, 90], [5, 60], [2, 45]]) {
+        const w = week({ program, split, experience, days, minutes, busy });
+        for (const m of w.r.selectedMuscles().filter(x => app.exercisesFor(x.id).length)) {
+          const own = ownSets(w.r, m.id), target = w.fit.targets.get(m.id);
+          if (own > target) bad.push([busy ? "busy" : "free", split, program, experience, days + "x" + minutes, m.id, "own " + own + " target " + target].join(" "));
+        }
+      }
+    expect(bad).toEqual([]);
+  }, 90000);
+
+  test("no muscle above its target keeps a set of its own that could be shed", () => {
+    // Own sets plus the credit of lifts chosen for other muscles can land above the
+    // target. What the plan can take off without costing another muscle its floor
+    // it takes off; what stays is rounding or other muscles' needs.
+    const bad = [];
+    for (const busy of [false, true]) for (const split of SPLITS) for (const program of PROGRAMS)
+      for (const [days, minutes] of [[3, 75], [4, 90], [5, 60]]) {
+        const w = week({ program, split, experience: "advanced", days, minutes, busy });
+        const builder = new app.WorkoutBuilder(w.r.sessions, minutes, w.fit.targets);
+        for (const m of w.r.selectedMuscles().filter(x => app.exercisesFor(x.id).length)) {
+          const credit = w.r.sessions.reduce((t, s) => t + s.workout.directSets(m.id) + s.workout.assistedSets(m.id), 0);
+          if (credit > w.fit.targets.get(m.id) && builder.shedSet(m.id))
+            bad.push([busy ? "busy" : "free", split, program, days + "x" + minutes, m.id].join(" "));
+        }
+      }
+    expect(bad).toEqual([]);
+  }, 90000);
+
+  test("a lone muscle with time to spare gets its target, not its maximum", () => {
+    // Nothing else is chosen, so nothing is incidental: 90 minutes a session
+    // and the whole week free must not stretch a muscle past its target.
+    const bad = [];
+    for (const m of app.MUSCLES.filter(x => app.exercisesFor(x.id).length)) for (const experience of ["beginner", "advanced"]) {
+      const r = new app.WeeklyRoutine();
+      r.selection.set(m.id, true);
+      Object.assign(r, { experience, sessionsPerWeek: 3, sessionMinutes: 90, split: "auto", preferredWindow: "evening" });
+      const target = r.weekFit().targets.get(m.id);
+      r.generate();
+      const got = r.weeklyVolume().rows[0].sets;
+      if (got > target || got < target - app.TARGET_MATCH.under) bad.push(m.id + " " + experience + " target " + target + " got " + got);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test("a compound for a muscle still short may push another past its target, within +2", () => {
+    // Full body, beginner, 3 x 75: the glutes' target is 3 and they get 5, all of it
+    // from squats chosen for the quads. Allowed; no lift is chosen for the glutes.
+    const w = week({ program: "full-body", split: "full-body", experience: "beginner", days: 3, minutes: 75 });
+    const target = w.fit.targets.get("glutes");
+    const got = w.r.weeklyVolume().rows.find(x => x.muscle.id === "glutes").sets;
+    expect(got).toBeGreaterThan(target);
+    expect(got).toBeLessThanOrEqual(target + app.TARGET_MATCH.over);
+    expect(ownSets(w.r, "glutes")).toBe(0);
+  });
+
+  test("a lift that would take a muscle past its target ranks below an alternative that would not", () => {
+    const hamstrings = app.MUSCLE_BY_ID.get("hamstrings");
+    const pick = glutesSoFar => {
+      const builder = new app.WorkoutBuilder([], 60, new Map([["hamstrings", 6], ["glutes", 3]]));
+      builder.setsThisWeek.set("glutes", glutesSoFar);
+      return builder.bestFor(hamstrings, new app.TrainingBlock([hamstrings]), new app.Workout([hamstrings], []));
+    };
+    const first = pick(0);                         // glutes still short: the best hamstring lift, whatever it credits
+    const spared = pick(3);                        // glutes at their target
+    expect(first.primary).toContain("glutes");     // Romanian deadlift: trains the glutes too
+    expect(spared.primary).not.toContain("glutes");
+  });
+});
+
 describe("a target is only lowered for a reason the page gives", () => {
   // The shown target comes down only when the time cannot hold it (the note
   // says "we lowered …"), when recovery leaves fewer days than asked, or when

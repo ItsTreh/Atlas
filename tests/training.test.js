@@ -51,9 +51,10 @@ describe("priorities", () => {
   });
 
   test("assisting work lowers what small muscles need directly", () => {
-    // Chest and triceps share a day here, so the presses count toward triceps.
+    // The chest day's presses count toward the triceps, whichever day they are on.
     const { routine } = generatedWeek(app, { program: "chest-triceps", sessions: 2 });
-    expect(routine.sessions.some(s => s.workout.assistedSets("triceps") > 0)).toBe(true);
+    const chestDay = routine.sessions.find(s => s.workout.entriesFor("chest").length);
+    expect(chestDay.workout.assistedSets("triceps")).toBeGreaterThan(0);
   });
 });
 

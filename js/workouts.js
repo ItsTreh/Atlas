@@ -46,14 +46,33 @@ const WORKOUT = Object.freeze({
 });
 
 /*
- * How close a muscle's week must come to its weekly target, counted as
- * weeklyVolume() counts it (direct sets plus half credit for assisting
- * ones): never more than `under` below, and at most `over` above, which is
- * less than one more exercise. The target is what the plan aims for; the
- * weekly maximum (Muscle.weeklySets[1]) is only a safety limit, never a
- * reason to add sets. Agreed in review (#69), not taken from a study.
+ * What the four numbers about a muscle's week mean. Sets are counted as
+ * weeklyVolume() counts them: direct sets plus half credit for assisting ones.
+ *
+ *   minimum    the low end of Muscle.weeklySets: the least that usually works.
+ *              A week may end below it only when the time, the days or the
+ *              split cannot hold it, and the fit note then says so.
+ *   target     what the plan aims for (weeklyTarget, fitted to the week): a
+ *              recommended goal, not a physiological ceiling. The plan stops
+ *              when a muscle reaches it and never adds sets to a muscle that
+ *              has, however much session time is left.
+ *   maximum    the high end of Muscle.weeklySets: a safety and planning
+ *              limit, never a goal and never a reason to add sets.
+ *   tolerance  TARGET_MATCH: how far the finished week may end from the
+ *              target: at most `under` below it, and at most `over` above.
+ *              The +2 is not permission to add sets. It absorbs what the
+ *              plan does not choose: whole-exercise rounding, and a compound
+ *              lift picked for a muscle still short of its target that also
+ *              trains this one (a back squat for the quads gives the glutes
+ *              direct sets). Sets chosen for a muscle that has reached its
+ *              target are the deliberate kind, and are shed (meetTargets).
+ *
+ * Agreed in review (#69 and #70), not taken from a study.
  */
 const TARGET_MATCH = Object.freeze({ under: 1, over: 2 });
+
+/** Tier steps an exercise drops when its credit would take another muscle past its target. */
+const OVERSHOOT_DEMOTION = 1;
 
 /**
  * The least a muscle with weekly target `target` may end the week with:
@@ -248,6 +267,22 @@ class WorkoutBuilder {
     return targetFloor(MUSCLE_BY_ID.get(id), this.targets.get(id));
   }
 
+  /** What `id` is credited so far: earlier sessions, and the lifts already in this one. */
+  creditSoFar(id, workout) {
+    return (this.setsThisWeek.get(id) || 0) + workout.directSets(id) + workout.assistedSets(id);
+  }
+
+  /** Whether `id` has reached its target so far (false for a muscle without one). */
+  reached(id, workout) {
+    return !!this.targets && this.targets.has(id) && this.creditSoFar(id, workout) >= this.targets.get(id);
+  }
+
+  /** Whether the smallest dose of a lift, at `weight` credit, would take `id` past its target. */
+  wouldPassTarget(id, workout, weight) {
+    return this.targets.has(id) &&
+           this.creditSoFar(id, workout) + WORKOUT.minDirectSets * weight > this.targets.get(id);
+  }
+
   /** What `id` is credited over the whole week: direct sets plus half credit for assisting ones. */
   weekCredit(id) {
     return this.sessions.reduce((t, s) => t + s.workout.directSets(id) + s.workout.assistedSets(id), 0);
@@ -272,6 +307,10 @@ class WorkoutBuilder {
         const got = this.weekCredit(id);
         if (got > this.ceilingFor(id)) changed = this.takeSet(id) || changed;
         else if (got < this.floorFor(id)) changed = this.addSet(id) || changed;
+        // Over its target, with sets of its own to spare: shed them. What stays
+        // above the target is what the plan does not choose (rounding, or credit
+        // from lifts picked for other muscles), up to TARGET_MATCH.over.
+        else if (got > this.targets.get(id)) changed = this.shedSet(id) || changed;
       }
       if (!changed) break;
     }
@@ -294,6 +333,20 @@ class WorkoutBuilder {
       const after = this.weekCredit(id) + delta * (ex.primary.includes(id) ? 1 : WORKOUT.secondaryCredit);
       if (delta > 0 ? after > this.ceilingFor(id) : after < this.floorFor(id)) return false;
     }
+    return true;
+  }
+
+  /**
+   * One set off the biggest exercise chosen for `id`, if it has one above its
+   * minimum and taking it spares every other muscle (its credit stays at or
+   * above its floor). Never drops an exercise: that is takeSet's last resort.
+   */
+  shedSet(id) {
+    const own = this.sessions.flatMap(s => s.workout.entriesFor(id).map(e => ({ s, e })))
+      .filter(({ e }) => e.sets > WORKOUT.minDirectSets && this.sparesOthers(e, -1))
+      .sort((a, b) => b.e.sets - a.e.sets);
+    if (!own.length) return false;
+    own[0].e.sets--;
     return true;
   }
 
@@ -556,10 +609,19 @@ class WorkoutBuilder {
       const overloads = block.splitDay &&
         (ex.primary.some(id => id !== muscle.id && this.headroom(id, workout) < WORKOUT.minDirectSets) ||
          ex.secondary.some(id => this.headroom(id, workout) < WORKOUT.minDirectSets * WORKOUT.secondaryCredit));
+      // A lift whose credit would take another muscle past its target ranks one
+      // tier lower, so an alternative of the same tier that does not goes first
+      // (a leg curl before a Romanian deadlift once the glutes have had theirs).
+      const pastTarget = this.targets && (
+        ex.primary.some(id => id !== muscle.id && this.wouldPassTarget(id, workout, 1)) ||
+        ex.secondary.some(id => this.wouldPassTarget(id, workout, WORKOUT.secondaryCredit)));
       const key = [
         tierRank(ex.tierFor(muscle.id)) + (used.has(ex) ? WORKOUT.repeatDemotion : 0) +
-          (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0),
-        -others.filter(id => ex.trainsPrimarily(id) || ex.assists(id)).length,
+          (elsewhere ? WORKOUT.offDayDemotion : 0) + (overloads ? TIERS.length + 1 : 0) +
+          (pastTarget ? OVERSHOOT_DEMOTION : 0),
+        // Sharing the session with the muscles that still need sets is a plus;
+        // sharing it with ones that have reached their target is not.
+        -others.filter(id => (ex.trainsPrimarily(id) || ex.assists(id)) && !this.reached(id, workout)).length,
         order
       ];
       if (!bestKey || compareKeys(key, bestKey) < 0) { best = ex; bestKey = key; }

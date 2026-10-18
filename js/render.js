@@ -104,7 +104,11 @@ function renderWeekTargets() {
       m.name + " " + t.get(m.id) + mark[routine.selection.priority(m.id)]).join(" · ") + ".";
 }
 
-/** Says whether the weekly targets fit the week, and what would help if not. */
+/**
+ * What the weekly targets look like against the week, and what would help if
+ * not. This is a prediction made before Generate (WeeklyRoutine.weekPlan), so
+ * it says "looks", "would" and "estimate", never "fits" as a fact.
+ */
 function renderWeekFit() {
   const fit = routine.weekFit(), el = $("week-fit");
   el.classList.remove("warn");
@@ -119,27 +123,27 @@ function renderWeekFit() {
   // days it really uses, and muscles a split leaves without a day.
   const before = [];
   if (fit.days < fit.askedDays)
-    before.push("Recovery and your free hours leave room for " + fit.days + " of your " +
-                fit.askedDays + " training days.");
+    before.push("Recovery and your free hours look like room for " + fit.days + " of your " +
+                fit.askedDays + " training days (estimate).");
   if (fit.unplaced.length)
-    before.push(SPLITS[routine.split].label + " leaves " +
+    before.push(SPLITS[routine.split].label + " would leave " +
                 nameList(fit.unplaced.map(id => MUSCLE_BY_ID.get(id).name)) + " without a day this week.");
   const lead = before.length ? before.join(" ") + " " : "";
   if (!fit.fits || !fit.meetsMinimums) {
     el.classList.add("warn");
     const low = fit.belowMinimum.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
-    el.textContent = lead + "Even the usual minimum for every muscle needs more than your sessions hold (about " +
-      h(fit.capacityMinutes) + " a week). " + (low ? "So that every muscle is still trained, " + low +
-      " get less than their usual minimum. " : "") +
+    el.textContent = lead + "Even the usual minimum for every muscle looks like more than your sessions can hold (about " +
+      h(fit.capacityMinutes) + " a week, estimate). " + (low ? "So that every muscle is still trained, " + low +
+      " would get less than their usual minimum. " : "") +
       "Add a training day, make sessions longer, or drop a muscle." + fix;
   } else if (fit.trimmed.length) {
     el.classList.add("warn");
-    el.textContent = lead + "Your sessions (about " + h(fit.capacityMinutes) + " a week) can't hold every target, " +
-      "so we lowered " + names + " (never below their minimum)." + fix;
+    el.textContent = lead + "Your sessions (about " + h(fit.capacityMinutes) + " a week, estimate) look too short for every target, " +
+      "so the plan lowers " + names + " (never below their minimum)." + fix;
   } else {
     if (lead) el.classList.add("warn");
-    el.textContent = lead + "Fits your week: about " + h(fit.neededMinutes) + " of working sets in about " +
-      h(fit.capacityMinutes) + " of session time (estimate).";
+    el.textContent = lead + "Your settings look feasible (estimate): about " + h(fit.neededMinutes) +
+      " of working sets in about " + h(fit.capacityMinutes) + " of session time.";
   }
 }
 

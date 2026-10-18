@@ -231,9 +231,10 @@ describe("the final plan", () => {
   });
 
   test("spare days become rest days instead of repeating a focus", () => {
-    // The plan adds a session to a muscle only while each session keeps four or more sets.
+    // The plan adds a session to a muscle only while each session keeps four or more
+    // sets: Push has two worthwhile days whatever number is asked for (3 to 7).
     const { routine, result } = generatedWeek(app, { program: "push", sessions: 6 });
-    expect(routine.sessions.length).toBeLessThan(6);
+    expect(routine.sessions.length).toBe(2);
     expect(result.reason).toBe("rest");
     expect(routine.nutrition.load.sessionsPerWeek).toBe(routine.sessions.length);
   });
@@ -343,14 +344,12 @@ describe("weekly volume against the estimate", () => {
   });
 
   test("a full-body week in three hours reports the gap", () => {
-    // The plan lowers every muscle to its minimum and the week still does not
-    // fit: that is reported by the time check (weekFit), which counts direct
-    // sets only. The finished week may still reach each minimum through the
-    // credit compound lifts give other muscles, so weeklyVolume need not.
     const { routine } = generatedWeek(app, { program: "full-body", sessions: 3, minutes: 60 });
-    const fit = routine.weekFit("beginner");
-    expect(fit.meetsMinimums).toBe(false);
-    expect(routine.weeklyVolume().estimate.sessions.low).toBeGreaterThan(3);
+    const v = routine.weeklyVolume();
+    expect(v.untrained.length + v.short.length).toBeGreaterThan(0);
+    expect(v.estimate.sessions.low).toBeGreaterThan(3);
+    // and the fit note says so before Generate: some muscles go below their usual minimum
+    expect(routine.weekFit("beginner").meetsMinimums).toBe(false);
   });
 
   test("a push week that meets its volume reports no gap", () => {
@@ -374,11 +373,17 @@ describe("splits the user chooses", () => {
   };
 
   test("Upper · Lower from Monday to Thursday is Upper, Lower, Upper, Lower", () => {
-    const { sessions, routine } = week("full-body", "upper-lower", 4, 90, ["FRI", "SAT", "SUN"]);
+    const { sessions } = week("full-body", "upper-lower", 4, 60, ["FRI", "SAT", "SUN"]);
     expect(sessions.map(s => s.day)).toEqual(["MON", "TUE", "WED", "THU"]);
     const names = sessions.map(s => s.block.name);
     expect(new Set(names)).toEqual(new Set(["Upper", "Lower"]));
     for (let i = 1; i < names.length; i++) expect(names[i]).not.toBe(names[i - 1]);
+  });
+
+  test("Upper · Lower from Monday to Thursday reaches every minimum when the sessions hold it", () => {
+    // 16 muscles in four 60-minute sessions do not hold every usual minimum
+    // (the fit note says so); in 90 minutes they do.
+    const { routine } = week("full-body", "upper-lower", 4, 90, ["FRI", "SAT", "SUN"]);
     const v = routine.weeklyVolume();
     expect(v.short).toEqual([]);
     expect(v.untrained).toEqual([]);
