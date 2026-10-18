@@ -16,15 +16,23 @@ const PROGRAMS = ["full-body", "upper", "lower", "push", "pull", "legs", "chest-
 const SPLITS = ["auto", "upper-lower", "push-pull-legs", "full-body"];
 const { under, over } = app.TARGET_MATCH;
 
-function week({ program, split, experience, days, minutes, focusFirst }) {
+/** Weekdays busy until 18:00, as for someone at work: the evening is all there is to train in. */
+const WORKDAYS = ["MON", "TUE", "WED", "THU", "FRI"];
+function busyUntil18(r) {
+  for (const day of WORKDAYS) for (let h = app.FIRST_HOUR; h < 18; h++) r.markBusy(day, h);
+}
+
+function week({ program, split, experience, days, minutes, focusFirst, busy = false }) {
   const r = new app.WeeklyRoutine();
   r.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
   if (focusFirst) r.selection.setPriority(r.selection.muscles()[0].id, "focus");
   Object.assign(r, { experience, sessionsPerWeek: days, sessionMinutes: minutes, split, preferredWindow: "evening" });
-  r.nutrition.showMeals = true;
+  r.nutrition.showMeals = true;                 // meals on: their hours push a session within the evening
+  if (busy) busyUntil18(r);
   const fit = r.weekFit();            // read before Generate: what the page shows
+  const plan = r.weekPlan(experience);          // the week the page worked out before Generate
   const result = r.generate();
-  return { r, fit, result, volume: r.weeklyVolume() };
+  return { r, fit, plan, result, volume: r.weeklyVolume() };
 }
 
 /** Every way a muscle can miss its target, as strings (empty when it matches). */
@@ -59,6 +67,46 @@ describe("the sets each muscle gets match the target shown", () => {
       }
     expect(bad).toEqual([]);
   }, 60000);
+});
+
+describe("with a busy calendar and meals on (review of #70)", () => {
+  // Weekdays busy until 18:00 leave a short evening, where a meal hour can move
+  // a session by an hour and so change which days and blocks the scheduler picks.
+  // A preview that scheduled without the meals told the user "fits" for a week
+  // Generate then could not place (biceps 7 → 3, Upper on PPL 3 × 75).
+  test("the sets still match the target shown", () => {
+    const bad = [];
+    for (const split of SPLITS) for (const program of PROGRAMS) for (const experience of ["beginner", "intermediate"])
+      for (const days of [2, 3, 4, 5]) for (const minutes of [60, 75, 90]) {
+        const w = week({ program, split, experience, days, minutes, busy: true });
+        for (const miss of misses(w))
+          bad.push([split, program, experience, days + "x" + minutes, miss].join(" "));
+      }
+    expect(bad).toEqual([]);
+  }, 90000);
+
+  test("Generate places the week the preview worked out, session for session", () => {
+    const bad = [];
+    for (const busy of [false, true]) for (const split of SPLITS) for (const program of PROGRAMS)
+      for (const [days, minutes] of [[3, 75], [5, 75], [4, 60], [2, 90]]) {
+        const w = week({ program, split, experience: "intermediate", days, minutes, busy });
+        const tag = [busy ? "busy" : "free", split, program, days + "x" + minutes].join(" ");
+        const placed = w.r.sessions.map(s => s.day + s.startHour + s.block.label).sort();
+        const planned = w.plan.placements.map(p => p.day + p.start + p.block.label).sort();
+        if (JSON.stringify(placed) !== JSON.stringify(planned)) bad.push(tag + " placed " + placed + " planned " + planned);
+        if (w.result.dropped !== w.plan.dropped) bad.push(tag + " dropped " + w.result.dropped + " vs " + w.plan.dropped);
+        if (w.r.weekPlan("intermediate") !== w.plan) bad.push(tag + " Generate changed the plan it placed");
+      }
+    expect(bad).toEqual([]);
+  }, 90000);
+
+  test("the scheduler reads the same meal hours the diet shows", () => {
+    const r = new app.WeeklyRoutine();
+    for (const count of app.MEAL_COUNTS) {
+      r.nutrition.mealsPerDay = count; r.nutrition.moved = {};
+      expect(r.nutrition.mealHours, "meals " + count).toEqual(r.nutrition.meals.map(m => m.hour));
+    }
+  });
 });
 
 describe("a target is only lowered for a reason the page gives", () => {

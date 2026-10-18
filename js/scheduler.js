@@ -82,7 +82,7 @@ class Scheduler {
       ? null : WINDOWS[routine.preferredWindow];
 
     const n = routine.nutrition;
-    this.mealHours = n.showMeals && n.isValid() ? n.meals.map(m => m.hour) : [];
+    this.mealHours = n.showMeals && n.isValid() ? n.mealHours : [];
 
     // How heavy each day is, counted once up front.
     this.load = new Map(DayOfWeek.values.map(day => [day,

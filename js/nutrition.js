@@ -335,6 +335,15 @@ class NutritionPlan {
               : Math.round(this.firstMeal + i * (this.lastMeal - this.firstMeal) / (n - 1)));
     return spread.map((h, i) => this.moved[i] ?? h);
   }
+  /**
+   * The hour of each meal in `meals`, without working out its calories: those
+   * depend on the planned training, and the plan of the week needs only the
+   * hours (a session keeps off them), so it can read these without a cycle.
+   */
+  get mealHours() {
+    const count = (MEAL_PATTERNS[this.mealsPerDay] || MEAL_PATTERNS[3]).length;
+    return this.hours.slice(0, count);
+  }
   /** The earliest and latest hour meal `index` can move to. */
   hourBounds(index) {
     const h = this.hours;

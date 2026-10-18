@@ -130,7 +130,8 @@ class WeeklyRoutine {
   weekPlan(experience) {
     const key = JSON.stringify([experience, this.split, this.sessionsPerWeek, this.sessionMinutes,
       this.preferredWindow, [...this.offDays].sort(), this.selection.snapshot(),
-      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour)]);
+      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour),
+      this.nutrition.showMeals && this.nutrition.isValid() ? this.nutrition.mealHours : []]);
     if (!this.planCache || this.planCache.key !== key)
       this.planCache = { key, plan: this.computeWeekPlan(experience) };
     return this.planCache.plan;
@@ -144,15 +145,15 @@ class WeeklyRoutine {
     const askedDays = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
     if (!muscles.length) {
       const fit = fitToTime(raw, muscles, priorities, askedDays, this.sessionMinutes);
-      return { fit: { ...fit, days: askedDays, askedDays }, blocks: [] };
+      return { fit: { ...fit, days: askedDays, askedDays }, blocks: [], placements: [], limit: null, dropped: 0 };
     }
 
-    let fit, blocks, placements, days = askedDays;
+    let fit, blocks, placements, limit, days = askedDays;
     for (; days >= 1; days--) {
       fit = fitToTime(raw, muscles, priorities, days, this.sessionMinutes);
       blocks = this.split === "auto" ? this.distributedBlocks(fit.targets, days) : this.splitBlocks();
-      placements = new Scheduler(this.schedulingView(), blocks, this.blockUses(blocks.length))
-        .plan(this.sessionsPerWeek).placements;
+      ({ placements, limit } = new Scheduler(this.schedulingView(), blocks, this.blockUses(blocks.length))
+        .plan(this.sessionsPerWeek));
       if (this.split !== "auto" || blocks.every(b => placements.some(p => p.block === b))) break;
     }
     days = Math.max(1, days);
@@ -218,14 +219,19 @@ class WeeklyRoutine {
              // The time of the sessions the week really has: a repeat taken out
              // for having nothing to do is not time the user can use.
              capacityMinutes: week.length * usableMinutes(this.sessionMinutes), days, askedDays },
-      blocks
+      blocks,
+      // Where the sessions that stay go, and what stopped the scheduler (generate() places these).
+      placements: week.map(s => placements[s.id]), limit, dropped: placements.length - week.length
     };
   }
 
   /**
-   * The grid as the user painted it, for trying a plan without touching
-   * this week: generated sessions and meals count as free, and meal times
-   * are left out (they only move a session within a day).
+   * The grid as the user painted it, for planning the week without touching
+   * the one on screen: generated sessions and meals count as free. Everything
+   * else the Scheduler reads is this routine's own (the preferred window, the
+   * days off, the meal hours), so the week it plans is the week Generate
+   * places: generate() takes its placements from weekPlan(), it does not
+   * schedule again.
    */
   schedulingView() {
     const slots = new Map(this.allSlots().map(s => [s.day + "-" + s.hour, {
@@ -234,7 +240,7 @@ class WeeklyRoutine {
       isFree() { return this.state === SlotState.FREE; }
     }]));
     return {
-      preferredWindow: this.preferredWindow, nutrition: { showMeals: false },
+      preferredWindow: this.preferredWindow, nutrition: this.nutrition,
       offDays: this.offDays, firstHour: this.firstHour, lastHour: this.lastHour,
       allSlots: () => [...slots.values()], slot: (day, hour) => slots.get(day + "-" + hour)
     };
@@ -494,21 +500,22 @@ class WeeklyRoutine {
     if (!this.availableDays().length || !this.allSlots().some(s => s.isFree()))
       return { placed: 0, requested, meals: 0, reason: "no-blocks" };
 
-    // Where each session goes is the Scheduler's call; see scheduler.js.
-    const plan = new Scheduler(this, blocks, this.blockUses(blocks.length)).plan(requested);
-    const { placements } = plan;
+    // Where each session goes was worked out with the targets (weekPlan, which
+    // asks the Scheduler, scheduler.js): Generate places that week, it does not
+    // plan another, so what the page showed beforehand is what it gets.
+    const plan = this.weekPlan(this.experience || DEFAULT_EXPERIENCE);
     let { limit } = plan;
-    for (const p of placements) {
+    for (const p of plan.placements) {
       const session = new WorkoutSession(this.nextId++, p.day, p.start, p.block);
       for (let h = session.startHour; h < session.endHour(); h++)
         this.slot(p.day, h).assignTo(session);
       this.sessions.push(session);
     }
 
-    // What to do in each session; see workouts.js. A repeat that comes out
-    // empty or bare is taken out of the week (buildWorkouts), so the count
-    // below, the status and the meals all describe the sessions that remain.
-    const dropped = this.buildWorkouts();
+    // What to do in each session; see workouts.js. The plan already took out the
+    // sessions not worth a day (`plan.dropped`), so building the week again on
+    // the ones that stay takes out none; if it ever did, they are counted too.
+    const dropped = plan.dropped + this.buildWorkouts();
     const placed = this.sessions.length;
     // A block none of the sessions carries got no day: more blocks than training
     // days (Push · Pull · Legs over 2 days), or no gap that fit. Said where the
