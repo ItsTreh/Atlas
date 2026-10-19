@@ -164,8 +164,7 @@ class WeeklyRoutine {
       const sessions = placements.map((p, i) => new WorkoutSession(i, p.day, p.start, p.block));
       return buildWeek(sessions, this.sessionMinutes, targets).sessions;
     };
-    const credit = (sessions, id) => sessions.reduce((t, s) =>
-      t + s.workout.directSets(id) + s.workout.assistedSets(id), 0);
+    const credit = (sessions, id) => sessions.reduce((t, s) => t + s.workout.counted(id), 0);
     const carried = id => placements.some(p => p.block.muscles.some(m => m.id === id && !p.block.riders.has(m)));
     // How far the week misses the targets, in sets: under a floor, or over a
     // ceiling (TARGET_MATCH) other than by assisting credit alone, which the
@@ -589,7 +588,7 @@ class WeeklyRoutine {
       let sets = 0, times = 0;
       for (const s of this.sessions) {
         if (!s.workout) continue;
-        const here = s.workout.directSets(m.id) + s.workout.assistedSets(m.id);
+        const here = s.workout.counted(m.id);
         sets += here;
         if (here >= 1) times++;          // at least a set's worth, direct or assisting
       }
