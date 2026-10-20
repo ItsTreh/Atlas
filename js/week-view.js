@@ -143,6 +143,9 @@ function weekTargetsText(fit) {
 
 /* ------------------------------ fit it in (config) ------------------------- */
 
+/* EXPERIENCE_LEVELS' labels, short enough to sit side by side in the setup row. */
+const EXPERIENCE_SHORT = { beginner: "Under 6 months", intermediate: "6 mo – 2 yrs", advanced: "2+ years" };
+
 function configHTML() {
   const pv = weekPreview(), fit = pv.fit;
   const muscles = routine.selectedMuscles(), src = routine.selection.source();
@@ -200,6 +203,16 @@ function configHTML() {
                 sp.label + '</button>';
             }).join("") +
           '</span></div>' +
+        '<div class="kv-col"><span class="eyebrow" id="experience-label">Training experience</span>' +
+          '<span class="segmented" role="radiogroup" aria-labelledby="experience-label">' +
+            EXPERIENCE_LEVELS.map(lv =>
+              '<button type="button" role="radio" aria-checked="' + (routine.experience === lv.id) + '" ' +
+                'data-experience="' + lv.id + '" data-key="exp-' + lv.id + '" aria-label="' + esc(lv.label) + '" ' +
+                'title="' + esc(lv.label) + '">' + esc(EXPERIENCE_SHORT[lv.id] || lv.label) + '</button>').join("") +
+          '</span>' +
+          (routine.experience ? '' : '<span class="field-note">Until you choose, sets start as for ' +
+            EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + '.</span>') +
+        '</div>' +
       '</div>' +
       '<div class="wk-notes" aria-live="polite">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
@@ -212,7 +225,7 @@ function configHTML() {
               (wk.targets ? "Hide the weekly sets per muscle" : "Weekly sets per muscle") + '</button>' +
             (wk.targets ? '<p class="soft">' + esc(weekTargetsText(fit)) + '. Hard sets to start from (estimate' +
               (routine.experience ? '' : ', assuming ' + EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() +
-                ' of training: set your experience on Targets') + ').</p>' : '')
+                ' of training: set your experience above') + ').</p>' : '')
           : '') +
       '</div>' +
       '<div class="wk-actions">' +
@@ -542,6 +555,7 @@ weekEl.addEventListener("click", e => {
   const [lo, hi] = TRAINING_DAYS_RANGE;
   if (d.daysStep) shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
   else if (d.split) shuffled(() => { routine.split = d.split; }, "shuffle");
+  else if (d.experience) shuffled(() => { routine.experience = d.experience; }, "shuffle");
   else if (b.id === "targets-toggle") { wk.targets = !wk.targets; renderWeek(); }
   else if (b.id === "open-shape") Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);
   else if (b.id === "close-shape" || b.id === "close-shape-back")

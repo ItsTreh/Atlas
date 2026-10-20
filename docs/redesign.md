@@ -134,7 +134,8 @@ is unchanged.
   - the **training focus grouped by family**, with priority marks (▲ focus,
     ▼ maintain) and expandable rows that set each muscle's priority;
   - **What it will take**, collapsed to its two figures, with the reasoning
-    on demand.
+    on demand. Hidden for now (`SHOW_ESTIMATE` in `js/targets.js`) and kept
+    for a later stage, likely an end-of-plan summary.
 - Caption and Front / Back under the body, centred and low.
 
 **Kept from the app** (the prototype skipped or simplified these):
@@ -147,8 +148,10 @@ is unchanged.
   directly, as in the design.
 - Removing a muscle from the summary (× in an expanded family). This is
   for keyboard users and the SVG fallback, as well as the figure.
-- **Training experience** now lives here, in the right rail (your call).
-  It sets each muscle's starting weekly sets, which the family rows show
+- **Training experience** first lived here, in the right rail, and has since
+  moved to the Week plan setup, beside Days a week and Split (your call,
+  2026-10-20): it is about how you train, not which muscles. It still sets
+  each muscle's starting weekly sets, which the family rows show
   (`weeklyTarget`, before the week fits them to your time).
 - The estimate is the real one (`estimateTraining`): sets, time, sessions,
   how often each muscle trains, the progress phases, and the caveat that it
@@ -158,7 +161,7 @@ is unchanged.
 **Decisions:**
 - The footer says "or scroll" only on wide screens, as in the design;
   narrower screens show just the button.
-- Experience uses short labels in the rail ("6 mo – 2 yrs"); screen readers
+- Experience uses short labels ("6 mo – 2 yrs"); screen readers
   and tooltips get the full ones.
 
 ## Stage 02 · Nutrition
@@ -313,7 +316,7 @@ side. There are three screens, one at a time:
 | Question | Answer |
 |---|---|
 | Where should the full session editing go (move day/time, swap/add/remove exercises, restore, remove session, recovery and fuel notes)? | Inside the session panel |
-| Where should training experience live? | Targets right rail |
+| Where should training experience live? | Targets right rail; moved to the Week plan setup on 2026-10-20 |
 | Busy hours at first? | Start empty, with presets (Weekdays 9–5, 8–6, Clear all) |
 | Git | A branch per stage, a commit per significant step, a PR per finished stage, everything documented |
 
