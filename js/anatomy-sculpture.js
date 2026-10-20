@@ -71,16 +71,21 @@ const SCULPTURE_VIEWS = [
      sy   where it lands down the canvas, 0 top … 1 bottom
      fov  the lens, vertical degrees
    SCULPTURE_MOBILE reframes them for a phone, where the figure sits in a
-   band above the content rather than beside it. */
+   band above the content rather than beside it. On a screen narrower than
+   SCULPTURE_WIDE (width ÷ height), a shot that sets the figure beside the
+   content steps back (by the square of the shortfall: the panel beside it
+   narrows faster than the screen), so the figure narrows with the screen
+   instead of reaching under the panel. */
 const SCULPTURE_SHOTS = {
   "targets-front":     { az: 0,   el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
   "targets-back":      { az: 180, el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
-  "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .22, sy: .40,  fov: 20 },
+  "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .19, sy: .40,  fov: 20 },
   "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
   "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
   "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 }
 };
 const SCULPTURE_SHOT_HEIGHT = 157.683;
+const SCULPTURE_WIDE = 1.6;
 const SCULPTURE_MOBILE = {
   "targets":   { d: 1.02 },
   "nutrition": { d: 1.15 },
@@ -298,6 +303,9 @@ class AnatomySculpture {
       s.sx = 0.5; s.sy = 0.5;
       if (fit.ty) s.ty = fit.ty;
       if (fit.d) s.d *= fit.d;
+    } else if (this.size && Math.abs(s.sx - 0.5) > 0.1) {
+      const aspect = this.size.cw / this.size.ch;
+      if (aspect < SCULPTURE_WIDE) s.d *= Math.pow(SCULPTURE_WIDE / aspect, 2);
     }
     s.ty *= this.scale; s.d *= this.scale;
     return s;
@@ -381,7 +389,8 @@ class AnatomySculpture {
     const W = this.mount.clientWidth, H = this.mount.clientHeight;
     if (!W || !H) return;                          // hidden: lay out when shown again
     this.size = { cw: W, ch: H };
-    if (!this.cur) this.cur = this.shotParams();
+    // A side shot depends on the canvas's proportions: re-take it as they change.
+    if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);

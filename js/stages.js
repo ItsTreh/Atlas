@@ -85,6 +85,7 @@ const Stages = {
       this.current = name;
       this.paintStage();
       this.call("enter");
+      this.toTop();
     }, STAGE_TIMING.settle, () => this.landed());
   },
 
@@ -95,7 +96,7 @@ const Stages = {
    */
   relayout(change, settle = 900) {
     if (this.busy) return;
-    this.run(() => { change(); this.call("enter"); }, settle, () => this.landed());
+    this.run(() => { change(); this.call("enter"); this.toTop(); }, settle, () => this.landed());
   },
 
   run(change, settle, done) {
@@ -117,6 +118,12 @@ const Stages = {
     this.phase = phase;
     this.root.dataset.phase = phase;
     this.refresh();
+  },
+
+  /** A stage arrives at its start: every pane in it scrolled to the top. */
+  toTop() {
+    const el = $("stage-" + this.current);
+    for (const pane of [el, ...el.querySelectorAll("[data-scroll]")]) pane.scrollTop = 0;
   },
 
   /** Focus follows the user to the new screen when it was left behind on the old one. */
