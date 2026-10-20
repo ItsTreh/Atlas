@@ -85,16 +85,18 @@ Done:
 - the Male_Body sculpture painted muscle by muscle and shown by default (2026-10-13); borders are left as painted
 - the stage redesign, from Claude Design's *ATLAS Stages v3* (`docs/redesign.md`, one PR per stage). It is one fixed screen. The sculpture sits behind every stage and a perspective camera moves between named shots (`SCULPTURE_SHOTS` in `js/anatomy-sculpture.js`: az, el, aim height, distance, screen position). `js/stages.js` runs each change of stage as out → moving → idle: motion between stages, stillness within. All three stages are done. Classic scripts share one global scope: `tests/globals.test.js` fails if two of them declare the same top-level name
 
+In progress:
+- the anatomical cartography (PR #79, `docs/cartography.md`): fine surface traces in the sculpture's material show the pointed and selected training groups, with a serif label beside the body. It is the hover and selection state now. The first version works, but the design is still being polished, so treat its look as unsettled and change it only when asked. It follows the authored borders and adds no anatomy: selectable regions still come only from the mesh and `ANATOMY_REGIONS`. `setDetailMode(true)` on the renderer gives exact anatomical names for the future zoom level and has no page control yet.
+
 Next:
-- refined hover and selection states, a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
+- a side view (90°) and zoom, a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
 
 **The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback (if the sculpture's file fails to load, or with `?anatomy=procedural`).
 
 **Future plans, not to build yet:**
-- zooming into a muscle group reveals finer selectable parts (e.g. the heads of the chest);
-- selection later becomes a map-like "cartography" system.
+- zooming into a muscle group reveals finer selectable parts (e.g. the heads of the chest). The cartography's detail mode is the hook for it.
 
-Don't build toward either unprompted, but flag any change that would make them harder. `lab/anatomy-cartography.*` is an untracked experiment, so leave it alone.
+Don't build toward it unprompted, but flag any change that would make it harder. `lab/anatomy-cartography.*` is an untracked experiment, so leave it alone.
 
 ## How to work with this user
 
