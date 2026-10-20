@@ -79,13 +79,13 @@ The redesign aims for a calm, monochrome, gallery-like interface with the body a
 Done:
 - the foundation theme
 - a dedicated anatomy stage
-- front/back controls and rotation (PR #33): one body turned by a single camera angle (`yaw` in `js/anatomy-sculpture.js`; front 0°, back 180°), a ±25° drag orbit, and keyboard focus that turns the body to the muscle
+- front/back controls and rotation (PR #33): a ±25° drag orbit, and keyboard focus that turns the body to the muscle
 - the Male_Body sculpture painted muscle by muscle and shown by default (2026-10-13); borders are left as painted
+- the stage redesign, from Claude Design's *ATLAS Stages v3* (`docs/redesign.md`, one PR per stage). It is one fixed screen. The sculpture sits behind every stage and a perspective camera moves between named shots (`SCULPTURE_SHOTS` in `js/anatomy-sculpture.js`: az, el, aim height, distance, screen position). `js/stages.js` runs each change of stage as out → moving → idle: motion between stages, stillness within. Targets is done; Nutrition and the Week plan follow, and until then they run unchanged in `.legacy` panels
 
 Next:
-- refined hover and selection states, a side view (90°) and zoom, both added to the same camera
-- side rails for programs and training demand
-- redesigned Nutrition and Week plan stages
+- the Nutrition and Week plan stages of the redesign (`docs/redesign.md`)
+- refined hover and selection states, a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
 
 **The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback (if the sculpture's file fails to load, or with `?anatomy=procedural`).
 

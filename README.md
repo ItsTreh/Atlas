@@ -4,6 +4,8 @@
 
 ATLAS is a weekly training planner in three stages. Pick your target muscles on an interactive anatomy figure, get a nutrition plan built from that training, then let it place the sessions, exercises and meals into the free hours of your week.
 
+One classical anatomical sculpture runs through all three. Moving to another stage moves the camera round it, and the interface settles around the body. The motion happens between stages; within one, everything stays still while you work.
+
 It runs entirely in the browser: no account, no server, no build step. Open `index.html` and it works.
 
 ---
@@ -11,9 +13,10 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 ## How it works
 
 ### 01 · Targets — define your focus
-- **Pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
-- **Or start from a program.** Full Body, Upper/Lower, Push · Pull · Legs and classic pairings. Point at one to preview its muscles, then edit freely ("Based on Push — added Abs").
-- **See what it will take.** A preliminary estimate of weekly hard sets, time a week, training frequency, and what consistent training usually brings, with the caveats stated plainly.
+- **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time with ← and →. Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
+- **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
+- **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first), and tell ATLAS how long you have trained.
+- **See what it will take.** A preliminary estimate of weekly hard sets and time a week, with frequency, what consistent training usually brings, and the caveats stated plainly, one click away.
 
 ### 02 · Nutrition — fuel the training
 - **Goal:** fat loss, muscle gain, maintenance or general fitness.
@@ -37,7 +40,7 @@ cd Atlas
 open index.html        # or double-click it
 ```
 
-That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops.
+That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond) from Google Fonts. Opened offline, they fall back to Georgia and nothing else changes.
 
 ### Tests
 
@@ -55,8 +58,9 @@ The logic (muscles, programs, estimates, nutrition, exercise selection, scheduli
 Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler. That's why it opens straight from disk.
 
 ```
-index.html          the three stages
-css/styles.css      the ATLAS theme: tokens, light/dark, layout
+index.html          one screen: the sculpture, the three stages over it
+css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
+css/legacy.css      stages not yet redesigned, scoped (see docs/redesign.md)
 js/
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
@@ -68,7 +72,8 @@ js/
   foods.js          foods, diet styles, example meals
   routine.js        WeeklyRoutine: the shared plan state
   scheduler.js      places sessions and meals in the week
-  anatomy*.js       the anatomy figure and the stage it lives in
+  anatomy*.js       the anatomy figure, its camera, and the stage it lives in
+  stages.js         moving between stages: motion between, stillness within
   targets.js, nutrition-view.js, workout-view.js, render.js, paint.js, app.js
                     the views and wiring
 tests/              Vitest suites
@@ -98,9 +103,10 @@ ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like int
 - [x] A dedicated, centred stage for the anatomy
 - [x] Front/back controls and rotation: one body that turns, with a limited free orbit
 - [ ] A stylised 3D anatomical sculpture in place of the flat figure *(painting in progress, behind a flag)*
+- [x] One continuous sculpture across the stages, with camera choreography between them
+- [x] Side rails for programs and training focus (Targets, stage 1 of the redesign)
+- [ ] Redesigned nutrition and week-plan stages *(in progress, one PR per stage; see `docs/redesign.md`)*
 - [ ] Refined hover and selection states, a side view and zoom
-- [ ] Side rails for programs and training demand
-- [ ] Redesigned nutrition and week-plan stages
 
 ### Planned for the anatomy
 
