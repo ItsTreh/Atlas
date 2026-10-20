@@ -50,13 +50,13 @@
   --seam:        #f4f5f6;
   --sel:         #2f3337;
   --sel-hover:   #474c51;
-  /* the sculpture's surfaces before light: form (bone, tendon, hands) and
-     muscle are one material — the light carves them apart, not the tone —
-     and a selected muscle is the selection charcoal, lifted so the light
-     still models it. Shading darkens them; lit faces sit near them. */
+  /* The sculpture shares the page's cool neutrals. Selection adds only a
+     small material shift; its surface constellation carries the state. */
   --sculpt-form:     #bfc4ca;
   --sculpt-muscle:   #bfc4ca;
   --sculpt-selected: #585e64;
+  --cartography-ink: var(--ink);
+  --cartography-line: var(--ink-faint);
 }
 
 [data-theme="dark"] {
@@ -96,9 +96,11 @@
   --seam:        #141618;
   --sel:         #e4e7ea;
   --sel-hover:   #c9cdd0;
-  --sculpt-form:     #5b636b;
-  --sculpt-muscle:   #5b636b;
+  --sculpt-form:     #858b8d;
+  --sculpt-muscle:   #858b8d;
   --sculpt-selected: #b6bbc0;
+  --cartography-ink: var(--ink);
+  --cartography-line: var(--ink-faint);
 }
 
 /* Type and shape, shared by both themes. The interface speaks in one sans
@@ -348,6 +350,29 @@ h1:focus-visible { outline: none; }
   transition: opacity .9s ease;
 }
 .anatomy-sculpture.inert canvas { pointer-events: none; }
+.cartography-annotation {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  opacity: 0; transition: opacity .25s ease;
+}
+.cartography-annotation.visible { opacity: 1; }
+.cartography-leader { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.cartography-leader path { fill: none; stroke: var(--cartography-line); stroke-width: .8; }
+.cartography-leader circle { fill: var(--cartography-ink); }
+.cartography-label {
+  position: absolute; left: 0; top: 0; display: grid; gap: 7px;
+  padding-top: 10px; border-top: 1px solid var(--cartography-line);
+  color: var(--ink); text-align: left;
+}
+.cartography-label-group {
+  font: 500 9px/1.3 var(--mono); letter-spacing: .13em; text-transform: uppercase;
+  color: var(--cartography-ink);
+}
+.cartography-label-name { font: 400 23px/1.13 var(--serif); text-wrap: balance; }
+.cartography-label-name::first-letter { text-transform: uppercase; }
+.cartography-label-action { font: 400 10px/1.4 var(--font); color: var(--ink-faint); }
+@media (prefers-reduced-motion: reduce) {
+  .cartography-annotation { transition: none; }
+}
 /* For the keyboard, a checkbox on each muscle, invisible until focused (the
    canvas draws the focused muscle's outline; the ring marks the point).
    Clipped: while a resize settles, checkboxes still at their old places
@@ -383,6 +408,10 @@ h1:focus-visible { outline: none; }
   font: 400 12.5px/1.45 var(--font); color: var(--ink-faint); text-align: center;
 }
 .anatomy-caption.live { color: var(--ink); }
+.anatomy-stage:has(.cartography-annotation.visible) .anatomy-caption { opacity: 0; }
+.cartography-caption { display: grid; gap: 2px; }
+.cartography-name { font: 400 18px/1.2 var(--serif); }
+.cartography-name::first-letter { text-transform: uppercase; }
 .turn { display: flex; align-items: center; gap: 6px; }
 .turn button {
   font: 500 13px/1.3 var(--font); color: var(--ink-faint);

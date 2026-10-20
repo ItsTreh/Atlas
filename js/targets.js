@@ -37,7 +37,7 @@ const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").match
 
 /* -------------------------------- figure --------------------------------- */
 
-let pointedAt = null;
+let pointedAt = null, pointedRegion = null, pointedDetailMode = false;
 
 function paintCaption() {
   const m = pointedAt;
@@ -46,13 +46,18 @@ function paintCaption() {
     const flat = $("anatomy-stage").classList.contains("flat");
     captionEl.textContent = Stages.narrow ? "Tap a muscle to select it"
       : flat ? "Click a muscle to select it · click again to deselect"
-      : "Click a muscle to select it · drag sideways to look around";
+      : "Explore the surface · click to select · drag to turn";
     return;
   }
+  // Keep the picked region for a future detailed view; the current overview
+  // names the training group that hovering and selection reveal together.
+  const regionName = pointedDetailMode && pointedRegion && pointedRegion.replace(/-/g, " ");
+  const action = Stages.narrow ? "tap" : "click";
   captionEl.innerHTML =
-    '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
-    '<span>' + esc(m.name) + ' · ' + FAMILIES[m.family].name + ' · ' +
-    (selection.has(m.id) ? "selected, click to remove" : "click to add") + '</span>';
+    '<span class="cartography-caption">' +
+    '<span class="cartography-name">' + esc(regionName || m.name) + '</span>' +
+    '<span>' + (regionName ? esc(m.name) + ' · ' : '') +
+    (selection.has(m.id) ? 'Selected · ' + action + ' to remove' : action + ' to add') + '</span></span>';
 }
 
 /** Front and Back: the view shown is underlined; a drag off it fades the line. */
@@ -75,7 +80,10 @@ if (typeof ANATOMY_MODEL_MALE_BODY === "object") validateAnatomyModel(anatomyMod
    (stages.js); this stage owns what it says and what pointing does. */
 const figure = new AnatomyStage($("anatomy-stage"), selection, {
   model: anatomyModel,
-  onHover(muscle) { pointedAt = muscle; paintCaption(); },
+  onHover(muscle, region, detailed = false) {
+    pointedAt = muscle; pointedRegion = region || null; pointedDetailMode = detailed;
+    paintCaption();
+  },
   onTurn(view, offView) { paintTurn(view, offView); },
   onChange() { paintCaption(); paintTurn(); }
 });
