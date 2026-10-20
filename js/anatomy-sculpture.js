@@ -7,17 +7,26 @@
    paint() and preview(ids), plus destroy(), and like the figure it only ever calls
    selection.toggle(). The selection stays the one source of truth.
 
-   What it draws: ANATOMY_MODEL, once, through an orthographic camera, so
-   it reads as a plate in an anatomy book rather than a scene. Light is
-   soft and follows the viewer. It draws only when something changes
-   (selection, pointer, size, theme, a turn); a change of state eases in
-   over a few frames, then drawing stops again.
+   One sculpture, every stage. The canvas fills the page behind the
+   interface, and a single camera moves between named shots
+   (SCULPTURE_SHOTS): the whole figure, centred, for Targets; the torso from
+   below, on the left, for Nutrition; a three-quarter close-up of the upper
+   body, on the right, for the Week plan. Motion helps the user understand
+   where they are going and stillness helps them concentrate, so the camera
+   moves only when the stage changes, then settles; nothing drifts while the
+   user works.
 
-   How it turns: one body, seen from the front or the back. The Front and
-   Back buttons turn it the half circle between them; a sideways drag
-   turns it a little either side of the view (SCULPTURE_TURN), and the
-   view's button turns it back exactly. The camera is one angle about the
-   body's upright axis, so a side view (90°) or a zoom can join it later.
+   What it draws: ANATOMY_MODEL (or the model it is given), once, through a
+   narrow perspective lens (20°), so the figure reads as a sculpture seen
+   from across a gallery rather than a scene. Light is soft and follows the
+   viewer. It draws only when something changes (selection, pointer, size,
+   theme, the camera); a change of state eases in over a few frames, then
+   drawing stops again.
+
+   How it turns: on Targets the camera stands in front of the body or
+   behind it. turnTo() walks it the half circle between them; a sideways
+   drag turns it a little either side (SCULPTURE_TURN) and turnTo() on the
+   same view turns it back exactly. Every other stage is one fixed shot.
 
      front 0° ─ drag ±25° ─┐            ┌─ drag ±25° ─ back 180°
                            └─ the turn ─┘
@@ -29,10 +38,14 @@
      rest → pointed at: a small step → selected: all the way →
      selected and pointed at: a small step back      (SCULPTURE_TONE)
 
+   Only Targets is interactive (setInteractive): there the selection shows
+   and the pointer picks. Elsewhere the figure rests unmarked, except for
+   the muscles the page highlights (setHighlight), such as the session the
+   user points at in the Week plan.
+
    How a muscle is found under the pointer: a second, hidden pass writes
-   each pixel's region into an offscreen buffer, read back once per resize
-   and again whenever the body comes to rest after a turn. While it turns,
-   nothing is pointed at.
+   each pixel's region into an offscreen buffer, read back whenever the
+   camera comes to rest. While it moves, nothing is pointed at.
    The region's name maps to an app muscle through ANATOMY_REGIONS.
 
      app muscle id → its regions (ANATOMY_REGIONS) → each region's colour
@@ -44,9 +57,43 @@
    ========================================================================= */
 
 const SCULPTURE_VIEWS = [
-  { id: "front", label: "Front", yaw: 0 },
-  { id: "back",  label: "Back",  yaw: 180 }
+  { id: "front", label: "Front" },
+  { id: "back",  label: "Back" }
 ];
+
+/* The camera's shots. Written against Male_Body (157.7 cm tall), in its
+   centimetres; any other figure scales them by its own height.
+     az   degrees round the upright axis: 0 in front, 90 at the figure's left
+     el   degrees above the point aimed at (below zero looks up)
+     ty   height of the point aimed at, cm
+     d    distance from it, cm
+     sx   where it lands across the canvas, 0 left … 1 right
+     sy   where it lands down the canvas, 0 top … 1 bottom
+     fov  the lens, vertical degrees
+   SCULPTURE_MOBILE reframes them for a phone, where the figure sits in a
+   band above the content rather than beside it. */
+const SCULPTURE_SHOTS = {
+  "targets-front":     { az: 0,   el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
+  "targets-back":      { az: 180, el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
+  "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .22, sy: .40,  fov: 20 },
+  "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
+  "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
+  "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 }
+};
+const SCULPTURE_SHOT_HEIGHT = 157.683;
+const SCULPTURE_MOBILE = {
+  "targets":   { d: 1.02 },
+  "nutrition": { d: 1.15 },
+  "plan":      { d: 1.15, ty: 122 },
+  "plan-generated": { d: 1.25, ty: 122 },
+  "plan-availability": { d: 1.15, ty: 122 }
+};
+
+/* How the camera moves between shots, in ms: longer the further round the
+   body it goes, and it eases out a little on the way (`arc`, a share of
+   the distance) when it swings round, so it never cuts through the figure.
+   Turning between Front and Back is `turn` (SCULPTURE_TURN). */
+const SCULPTURE_MOVE = { base: 1350, perDegree: 4.5, max: 2300, arc: 0.22, arcNear: 0.05 };
 
 /* How the body turns, in degrees and ms. Changing view turns it the half
    circle in `turn`. A drag turns it `perPx` degrees a pixel, up to `orbit`
@@ -55,9 +102,6 @@ const SCULPTURE_VIEWS = [
    view's own button is pressed. A press that moves under `slop` px is
    still a click. With reduced motion, turns are shown at once. */
 const SCULPTURE_TURN = { turn: 650, settle: 280, orbit: 25, give: 6, perPx: 0.3, slop: 4 };
-
-// The height under the body for the Front and Back control, CSS px.
-const SCULPTURE_CONTROL_H = 48;
 
 // How long a lost WebGL context gets to come back before the stage swaps in
 // the next renderer.
@@ -68,8 +112,9 @@ const SCULPTURE_RESTORE_MS = 3000;
    theme. Pointing takes a small step towards selected; on a selected
    muscle it takes a small step back, so the two never add up to more than
    selection. A program's muscles show part of the way while its button is
-   pointed at, as in the SVG figure. */
-const SCULPTURE_TONE = { hover: 0.32, selectedHover: 0.78, preview: 0.45 };
+   pointed at, as in the SVG figure. A highlight (a session pointed at in
+   the Week plan) shows a little further, and shades a little deeper. */
+const SCULPTURE_TONE = { hover: 0.32, selectedHover: 0.78, preview: 0.45, highlight: 0.62, highlightDepth: 0.4 };
 
 /* How much deeper a selected muscle is shaded (an exponent on the light),
    so it keeps its form rather than reading as a flat cut-out laid on it.
@@ -96,30 +141,40 @@ class AnatomySculpture {
   /**
    * @param opts.onHover  called with a Muscle when one is pointed at or
    *                      focused, and with null when it is left
+   * @param opts.onTurn   called with the view id ("front", "back") and
+   *                      whether a drag has turned the body off it
    * @param opts.model    the model to draw, in the ANATOMY_MODEL shape;
    *                      ANATOMY_MODEL when left out
+   * @param opts.shot     the shot to open on (SCULPTURE_SHOTS, or "targets")
    */
   constructor(mount, selection, opts = {}) {
     this.mount = mount;
     this.selection = selection;
     this.onHover = opts.onHover || (() => {});
     this.onFail = opts.onFail || (() => {});
+    this.onTurn = opts.onTurn || (() => {});
     this.model = opts.model || ANATOMY_MODEL;
     // Region index → app muscle id, or null where the region is not selectable.
     this.muscleOf = this.model.regions.map(name => ANATOMY_REGIONS[name] || null);
     this.isForm = this.model.kinds.map(kind => kind === "form");
-    this.shown = null;                       // per region: [selected, pointed at], eased (ease)
+    this.shown = null;                       // per region: [selected, pointed at, highlighted], eased (ease)
     this.reducedMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)");
     this.hovered = null;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
+    this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
+    this.interactive = true;                 // the selection shows and the pointer picks
     this.focused = null;                     // { view, id } while a muscle has keyboard focus
     this.hits = new Map();                   // "view:id" → its checkbox
-    this.view = SCULPTURE_VIEWS[0];          // the view the body is turned to, or turning to
-    this.base = 0;                           // that view's angle; counts on past 360 so a turn keeps its direction
-    this.yaw = 0;                            // the angle shown now: base, or off it by a drag or a turn
-    this.tween = null;                       // { from, to, t, ms, half } while the body turns on its own
-    this.drag = null;                        // { x, y, from, active, half } while a press may become a drag
-    this.pickYaw = null;                     // the angle the region buffer was drawn at
+    this.view = SCULPTURE_VIEWS[0];          // the view Targets turns to, or is turning to
+    this.mobile = false;                     // the phone framing (setLayout)
+    this.shotName = this.resolve(opts.shot || "targets");
+    this.cur = null;                         // the camera's shot now, without the drag
+    this.off = 0;                            // degrees a drag has turned it round the body
+    this.tween = null;                       // { from, to, t, ms, arc } while the camera moves
+    this.offTween = null;                    // { from, to, t, ms } while a drag springs back
+    this.drag = null;                        // { x, y, from, active } while a press may become a drag
+    this.pickKey = null;                     // the camera the region buffer was drawn with
+    this.dim = "1";                          // how strongly the figure shows (setDim)
 
     this.container = document.createElement("div");
     this.container.className = "anatomy-sculpture";
@@ -132,7 +187,8 @@ class AnatomySculpture {
       g.setAttribute("aria-label", v.label + " of the body");
       return g;
     });
-    this.container.append(this.canvas, this.buildControl(), ...this.groups);
+    this.canvas.style.opacity = "0";         // fades in once it has drawn (layout)
+    this.container.append(this.canvas, ...this.groups);
 
     this.gl = this.canvas.getContext("webgl2", { antialias: true, alpha: true, premultipliedAlpha: true });
     if (!this.gl) throw new Error("WebGL2 is not available");
@@ -160,6 +216,7 @@ class AnatomySculpture {
   destroy() {
     this.unbind();
     clearTimeout(this.lostTimer);
+    clearTimeout(this.hitTimer);
     cancelAnimationFrame(this.frame);
     this.frame = 0;
     this.ready = false;
@@ -189,17 +246,14 @@ class AnatomySculpture {
     gl.bindVertexArray(null);
     this.indexType = m.wideIndices ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
 
-    // How far the body reaches from its upright axis, so the canvas holds
-    // it whole at every angle of a turn (the bounds' corners overstate it).
-    const { min, max } = m.bounds, data = new DataView(bytes.buffer);
-    const cx = (min[0] + max[0]) / 2, cz = (min[2] + max[2]) / 2;
-    let reach = 0;
-    for (let i = 0, o = 0; i < m.vertexCount; i++, o += m.vertexBytes) {
-      const x = min[0] + data.getUint16(o, true) / 65535 * (max[0] - min[0]) - cx;
-      const z = min[2] + data.getUint16(o + 4, true) / 65535 * (max[2] - min[2]) - cz;
-      reach = Math.max(reach, x * x + z * z);
-    }
-    this.radius = Math.sqrt(reach);
+    // The figure's upright axis, its height, and how far it reaches from
+    // that axis in any direction, so the camera's depth range always holds
+    // all of it.
+    const { min, max } = m.bounds;
+    this.axis = [(min[0] + max[0]) / 2, (min[2] + max[2]) / 2];
+    this.height = max[1] - min[1];
+    this.scale = this.height / SCULPTURE_SHOT_HEIGHT;
+    this.reach = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
 
     const defs = "#define REGIONS " + m.regions.length + "\n#define SEAM_MAX " +
                  m.seamMax.toFixed(3) + "\n";
@@ -231,24 +285,72 @@ class AnatomySculpture {
     return { p, u };
   }
 
+  /* ------------------------------- camera -------------------------------- */
+
+  /** "targets" is whichever of Front and Back the body is turned to. */
+  resolve(name) { return name === "targets" ? "targets-" + this.view.id : name; }
+
+  /** A shot's camera in this figure's units, framed for the layout. */
+  shotParams(name = this.shotName) {
+    const s = { ...(SCULPTURE_SHOTS[name] || SCULPTURE_SHOTS["targets-front"]) };
+    if (this.mobile) {
+      const fit = SCULPTURE_MOBILE[name.startsWith("targets") ? "targets" : name] || {};
+      s.sx = 0.5; s.sy = 0.5;
+      if (fit.ty) s.ty = fit.ty;
+      if (fit.d) s.d *= fit.d;
+    }
+    s.ty *= this.scale; s.d *= this.scale;
+    return s;
+  }
+
+  /** The camera now: the shot, turned by any drag. */
+  live() { return this.cur ? { ...this.cur, az: this.cur.az + this.off } : this.shotParams(); }
+
   /**
-   * The matrices that show the model turned `yaw` degrees about its upright
-   * axis (0 the front, 180 the back; positive turns its front to the
-   * viewer's right): orthographic, centred, upright.
+   * The matrices that show the model through camera `s`: the eye `d` from
+   * the aim point at `az` round and `el` up, a perspective lens of `fov`,
+   * and the aim point moved to (`sx`, `sy`) on the canvas. Column-major.
    */
-  camera(yaw) {
-    const { min, max } = this.model.bounds;
-    const c = [0, 1, 2].map(i => (min[i] + max[i]) / 2);
-    const a = yaw * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
-    const hw = this.half[0], hh = this.half[1], depth = this.radius * 1.05;
-    // Column-major: clip = M · (p − c), with x and z turned about y.
-    const matrix = new Float32Array([
-      cos / hw, 0, sin / depth, 0,
-      0, 1 / hh, 0, 0,
-      sin / hw, 0, -cos / depth, 0,
-      -(cos * c[0] + sin * c[2]) / hw, -c[1] / hh, (cos * c[2] - sin * c[0]) / depth, 1
-    ]);
-    const normal = new Float32Array([cos, 0, -sin, 0, 1, 0, sin, 0, cos]);
+  camera(s) {
+    const r = Math.PI / 180, az = s.az * r, el = s.el * r;
+    const tx = this.axis[0], ty = this.model.bounds.min[1] + s.ty, tz = this.axis[1];
+    const eye = [tx + s.d * Math.sin(az) * Math.cos(el), ty + s.d * Math.sin(el),
+                 tz + s.d * Math.cos(az) * Math.cos(el)];
+    // Forward, right and up, a right-handed frame looking at the aim point.
+    let f = [tx - eye[0], ty - eye[1], tz - eye[2]];
+    const fl = Math.hypot(...f); f = f.map(v => v / fl);
+    let x = [f[1] * 0 - f[2] * 1, f[2] * 0 - f[0] * 0, f[0] * 1 - f[1] * 0];   // f × up(0,1,0)
+    const xl = Math.hypot(...x) || 1; x = x.map(v => v / xl);
+    const y = [x[1] * f[2] - x[2] * f[1], x[2] * f[0] - x[0] * f[2], x[0] * f[1] - x[1] * f[0]];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+    const W = this.size ? this.size.cw : 1, H = this.size ? this.size.ch : 1;
+    const t = Math.tan(s.fov * r / 2), aspect = W / H;
+    const near = Math.max(1, s.d - this.reach), far = s.d + this.reach;
+    const ox = 2 * (s.sx - 0.5), oy = -2 * (s.sy - 0.5);
+    // Projection, with the aim point shifted to (sx, sy): x' = x + ox·w.
+    const P = [
+      1 / (aspect * t), 0, 0, 0,
+      0, 1 / t, 0, 0,
+      -ox, -oy, (far + near) / (near - far), -1,
+      0, 0, 2 * far * near / (near - far), 0
+    ];
+    // View: rows x, y, −f; the eye at the origin.
+    const V = [
+      x[0], y[0], -f[0], 0,
+      x[1], y[1], -f[1], 0,
+      x[2], y[2], -f[2], 0,
+      -dot(x, eye), -dot(y, eye), dot(f, eye), 1
+    ];
+    const matrix = new Float32Array(16);
+    for (let c = 0; c < 4; c++)
+      for (let rr = 0; rr < 4; rr++) {
+        let v = 0;
+        for (let k = 0; k < 4; k++) v += P[k * 4 + rr] * V[c * 4 + k];
+        matrix[c * 4 + rr] = v;
+      }
+    // Normals into the camera's frame, so the light follows the viewer.
+    const normal = new Float32Array([x[0], y[0], -f[0], x[1], y[1], -f[1], x[2], y[2], -f[2]]);
     return { matrix, normal };
   }
 
@@ -265,7 +367,7 @@ class AnatomySculpture {
       this.frame = 0;
       const dt = this.lastFrame ? Math.min(now - this.lastFrame, 200) : 16;
       if (this.needsLayout) { this.needsLayout = false; this.layout(); }
-      const turning = this.stepTurn(dt);
+      const turning = this.stepCamera(dt);
       const moving = this.ease(dt) || turning;
       this.draw();
       this.lastFrame = moving ? now : 0;
@@ -273,149 +375,164 @@ class AnatomySculpture {
     });
   }
 
-  /**
-   * Fits the body into the mount: as large as its height allows (less the
-   * control under it) or its width, whichever is smaller. The canvas is as
-   * wide as the body reaches at any angle, so a turn never clips it.
-   */
+  /** The canvas fills the mount; the shot decides where the body sits in it. */
   layout() {
     if (!this.ready) return;
     const W = this.mount.clientWidth, H = this.mount.clientHeight;
     if (!W || !H) return;                          // hidden: lay out when shown again
-    const { min, max } = this.model.bounds;
-    const halfH = (max[1] - min[1]) / 2 * 1.015, halfW = this.radius * 1.015;
-    // CSS px per model unit.
-    const k = Math.max(1e-3, Math.min((H - SCULPTURE_CONTROL_H) / (2 * halfH), W / (2 * halfW)));
-    const cw = Math.max(26, Math.floor(2 * halfW * k)), ch = Math.max(26, Math.floor(2 * halfH * k));
-    // The camera takes the canvas's exact proportions, so rounding never squashes the figure.
-    this.half = [cw / 2 / k, ch / 2 / k];
-    this.size = { cw, ch, k };
-
-    this.container.style.width = cw + "px";
-    this.container.style.height = ch + SCULPTURE_CONTROL_H + "px";
-    this.canvas.style.width = cw + "px";
-    this.canvas.style.height = ch + "px";
-    this.groups.forEach(g => { g.style.height = ch + "px"; });
+    this.size = { cw: W, ch: H };
+    if (!this.cur) this.cur = this.shotParams();
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.round(cw * this.dpr);
-    this.canvas.height = Math.round(ch * this.dpr);
-    this.renderIds(this.yaw, "live");
-    // Placing the checkboxes draws each view and searches it; while a
-    // window is being dragged to a new size, do it once it settles.
-    clearTimeout(this.hitTimer);
-    this.hitTimer = setTimeout(() => {
-      if (!this.ready || !this.size) return;
-      SCULPTURE_VIEWS.forEach(view => this.renderIds(view.yaw, view.id));
-      this.placeHits();
-    }, this.hits.size ? 150 : 0);
+    this.canvas.width = Math.round(W * this.dpr);
+    this.canvas.height = Math.round(H * this.dpr);
+    this.pickKey = null;
+    if (this.calm() && this.interactive) this.renderIds(this.live(), "live");
+    this.placeHitsSoon();
+    if (!this.drawnOnce) {
+      this.drawnOnce = true;
+      requestAnimationFrame(() => { this.canvas.style.opacity = this.dim; });
+    }
   }
 
-  /* -------------------------------- turning ------------------------------- */
+  /* -------------------------------- moving -------------------------------- */
 
-  /** The Front and Back buttons, with a dial that shows how the body stands. */
-  buildControl() {
-    const control = document.createElement("div");
-    control.className = "turn";
-    control.style.height = SCULPTURE_CONTROL_H + "px";
-    control.setAttribute("role", "group");
-    control.setAttribute("aria-label", "Turn the body");
-    this.turnButtons = SCULPTURE_VIEWS.map(view => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = view.label;
-      b.setAttribute("aria-pressed", view === this.view ? "true" : "false");
-      b.addEventListener("click", () => this.turnTo(view));
-      return b;
-    });
-    // The body seen from above, on its plinth: the dot is its chest, so it
-    // sits nearest the viewer from the front and furthest from the back.
-    const ns = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(ns, "svg");
-    svg.setAttribute("class", "dial");
-    svg.setAttribute("viewBox", "-12 -12 24 24");
-    svg.setAttribute("aria-hidden", "true");
-    svg.innerHTML = '<circle class="plinth" r="10.5"/>' +
-      '<g class="figure"><ellipse rx="6" ry="2.8"/><circle class="chest" cy="5.6" r="1.5"/></g>';
-    this.dialFigure = svg.querySelector(".figure");
-    control.append(this.turnButtons[0], svg, this.turnButtons[1]);
-    return control;
+  /** Moves the camera to a shot (SCULPTURE_SHOTS, or "targets"). */
+  setShot(name) {
+    name = this.resolve(name);
+    if (name === this.shotName && !this.offTween && !this.off) return;
+    this.goShot(name);
   }
 
   /**
-   * Turns the body to a view: the half circle round when it shows the
-   * other one (on in the direction a drag already started, so it feels
-   * like walking round it), or back exactly when it was dragged off it.
+   * Moves the camera from where it is now to shot `name`. `dir` (+1 or −1)
+   * picks the way round for a half circle, which has no shorter side.
    */
-  turnTo(view) {
-    const half = view !== this.view;
-    if (half) {
-      this.base += this.yaw < this.base ? -180 : 180;
-      this.view = view;
-      this.turnButtons.forEach((b, i) => b.setAttribute("aria-pressed", SCULPTURE_VIEWS[i] === view ? "true" : "false"));
-    }
-    this.turnToYaw(this.base, half ? SCULPTURE_TURN.turn : SCULPTURE_TURN.settle, half);
-  }
-
-  /** Eases the body to `yaw` over `ms`, or shows it there at once with reduced motion. */
-  turnToYaw(yaw, ms, half = false) {
+  goShot(name, dir = 0) {
+    const fromName = this.shotName;
+    this.shotName = name;
     this.drag = null;
-    if (yaw === this.yaw || (this.reducedMotion && this.reducedMotion.matches)) {
+    this.offTween = null;
+    if (!this.cur) { this.off = 0; this.schedule(true); return; }
+    const to = this.shotParams(name);
+    const from = this.live();
+    this.off = 0;
+    let daz = ((to.az - from.az) % 360 + 540) % 360 - 180;
+    if (dir && Math.abs(Math.abs(daz) - 180) < 1e-6) daz = 180 * dir;
+    const viewOnly = fromName.startsWith("targets") && name.startsWith("targets");
+    if (this.reducedMotion && this.reducedMotion.matches) {
       this.tween = null;
-      this.yaw = yaw;
-      this.turned();
+      this.cur = to;
+      if (!viewOnly) this.flash();
+      this.moved();
       this.settle();
       this.schedule();
       return;
     }
-    this.tween = { from: this.yaw, to: yaw, t: 0, ms, half };
-    this.turned();
+    const ms = viewOnly ? SCULPTURE_TURN.turn
+             : Math.min(SCULPTURE_MOVE.max, SCULPTURE_MOVE.base + Math.abs(daz) * SCULPTURE_MOVE.perDegree);
+    const arc = viewOnly ? 0 : Math.abs(daz) > 30 ? SCULPTURE_MOVE.arc : SCULPTURE_MOVE.arcNear;
+    this.tween = { from, to: { ...to, az: from.az + daz }, t: 0, ms, arc };
+    this.moved();
     this.schedule();
   }
 
-  /** Moves a turn `dt` ms on; true while it is still under way. */
-  stepTurn(dt) {
-    const tw = this.tween;
-    if (!tw) return false;
-    tw.t += dt;
-    const p = Math.min(1, tw.t / tw.ms);
-    const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(2 - 2 * p, 3) / 2;   // ease in and out
-    this.yaw = tw.from + (tw.to - tw.from) * e;
-    this.turned();
-    if (p < 1) return true;
-    this.tween = null;
-    this.settle();
-    return false;
-  }
-
-  /** Follows the angle while it changes: the dial, and nothing pointed at. */
-  turned() {
-    this.dialFigure.setAttribute("transform", "rotate(" + (-this.yaw).toFixed(2) + ")");
-    const still = !this.tween && !(this.drag && this.drag.active);
-    this.container.classList.toggle("turning", !still);
-    this.container.classList.toggle("off-view", Math.abs(this.yaw - this.base) > 0.05);
-    if (!still && !this.focused) this.hover(null);
+  /** With reduced motion a new shot fades in rather than travels. */
+  flash() {
+    const c = this.canvas;
+    c.style.transition = "none";
+    c.style.opacity = "0";
+    requestAnimationFrame(() => { c.style.transition = ""; c.style.opacity = this.dim; });
   }
 
   /**
-   * The body has come to rest: redraw the region buffer at its angle, so
-   * pointing works again, and pick up the muscle under a pointer that
-   * waited on it.
+   * Turns the body to a view on Targets: the half circle round when it
+   * shows the other one (on in the direction a drag already started, so it
+   * feels like walking round it), or back exactly when it was dragged off.
+   */
+  turnTo(view) {
+    if (typeof view === "string") view = SCULPTURE_VIEWS.find(v => v.id === view);
+    const half = view !== this.view;
+    const dir = this.off > 0 ? 1 : -1;
+    this.view = view;
+    if (!this.shotName.startsWith("targets")) { this.onTurn(view.id, false); return; }
+    if (half) this.goShot(this.resolve("targets"), dir);
+    else this.springBack(0);
+    this.onTurn(view.id, false);
+  }
+
+  /** Eases a drag's turn to `to` degrees, or shows it there at once with reduced motion. */
+  springBack(to) {
+    this.drag = null;
+    if (to === this.off || (this.reducedMotion && this.reducedMotion.matches)) {
+      this.offTween = null;
+      this.off = to;
+      this.moved();
+      this.settle();
+      this.schedule();
+      return;
+    }
+    this.offTween = { from: this.off, to, t: 0, ms: SCULPTURE_TURN.settle };
+    this.moved();
+    this.schedule();
+  }
+
+  /** Moves the camera `dt` ms on; true while it is still under way. */
+  stepCamera(dt) {
+    const ease = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(2 - 2 * p, 3) / 2;   // in and out
+    let moving = false;
+    const tw = this.tween;
+    if (tw) {
+      tw.t += dt;
+      const p = Math.min(1, tw.t / tw.ms), e = ease(p);
+      const s = {};
+      for (const k of Object.keys(tw.to)) s[k] = tw.from[k] + (tw.to[k] - tw.from[k]) * e;
+      s.d *= 1 + tw.arc * Math.sin(Math.PI * e);
+      this.cur = s;
+      if (p < 1) moving = true;
+      else { this.cur = { ...tw.to, az: ((tw.to.az % 360) + 540) % 360 - 180 }; this.tween = null; }
+    }
+    const ot = this.offTween;
+    if (ot) {
+      ot.t += dt;
+      const p = Math.min(1, ot.t / ot.ms);
+      this.off = ot.from + (ot.to - ot.from) * ease(p);
+      if (p < 1) moving = true; else this.offTween = null;
+    }
+    if (tw || ot) {
+      this.moved();
+      if (!moving) this.settle();
+    }
+    return moving;
+  }
+
+  /** Follows the camera while it changes: nothing is pointed at, checkboxes hide. */
+  moved() {
+    const calm = this.calm();
+    this.container.classList.toggle("turning", !calm);
+    this.container.classList.toggle("off-view", Math.abs(this.off) > 0.05 || !this.shotName.startsWith("targets"));
+    if (!calm && !this.focused) this.hover(null);
+  }
+
+  /**
+   * The camera has come to rest: redraw the region buffer as it now sees
+   * the body, so pointing works again, and pick up the muscle under a
+   * pointer that waited on it.
    */
   settle() {
-    if (this.yaw === this.base && Math.abs(this.base) >= 360) {
-      this.base %= 360;
-      this.yaw = this.base;
-    }
-    this.turned();
-    if (!this.ready || !this.size) return;
-    this.renderIds(this.yaw, "live");
+    this.moved();
+    this.onTurn(this.view.id, Math.abs(this.off) > 0.05);
+    if (!this.ready || !this.size || !this.interactive) return;   // nothing to pick off Targets
+    this.renderIds(this.live(), "live");
     if (this.pointer && !this.focused) this.hover(this.muscleAt(...this.pointer));
   }
 
+  /** True while nothing moves the camera. */
+  calm() { return !this.tween && !this.offTween && !(this.drag && this.drag.active); }
+
   /** True while the region buffer matches what is drawn, so the pointer can use it. */
-  still() {
-    return !this.tween && !(this.drag && this.drag.active) && this.pickYaw === this.yaw;
-  }
+  still() { return this.calm() && this.pickKey === this.keyOf(this.live()); }
+
+  keyOf(s) { return s ? [s.az, s.el, s.ty, s.d, s.sx, s.sy, s.fov].map(v => v.toFixed(3)).join() + "@" + (this.size ? this.size.cw + "x" + this.size.ch : "") : ""; }
 
   /**
    * How far a drag `offset` degrees off the view turns the body: as far as
@@ -425,6 +542,50 @@ class AnatomySculpture {
     const { orbit, give } = SCULPTURE_TURN, over = Math.abs(offset) - orbit;
     if (over <= 0) return offset;
     return Math.sign(offset) * (orbit + give * (1 - Math.exp(-over / give)));
+  }
+
+  /* --------------------------- what the page sets -------------------------- */
+
+  /** "desktop" or "mobile": the phone frames each shot for a band above the content. */
+  setLayout(mode) {
+    const mobile = mode === "mobile";
+    if (mobile === this.mobile) return;
+    this.mobile = mobile;
+    this.tween = null;
+    if (this.cur) this.cur = this.shotParams();
+    this.moved();
+    this.schedule(true);
+  }
+
+  /** Whether the selection shows and the pointer picks (Targets only). */
+  setInteractive(on) {
+    on = !!on;
+    if (on === this.interactive) return;
+    this.interactive = on;
+    this.container.classList.toggle("inert", !on);
+    for (const g of this.groups) g.inert = !on;
+    if (!on) { this.drag = null; this.focused = null; this.hover(null); }
+    else if (this.ready && this.size && this.calm()) {
+      // The region buffer is drawn only while picking can use it (settle).
+      if (!this.still()) this.renderIds(this.live(), "live");
+      if (this.pointer) this.hover(this.muscleAt(...this.pointer));
+    }
+    this.schedule();
+  }
+
+  /** Lights these muscles whatever the stage (a session pointed at); null for none. */
+  setHighlight(ids) {
+    const next = ids && ids.length ? new Set(ids) : null;
+    const same = (a, b) => a === b || (a && b && a.size === b.size && [...a].every(id => b.has(id)));
+    if (same(next, this.highlighting)) return;
+    this.highlighting = next;
+    this.schedule();
+  }
+
+  /** How strongly the figure shows, 0 (gone) to 1, so a busy screen can let it recede. */
+  setDim(v) {
+    this.dim = String(Math.max(0, Math.min(1, Number(v))));
+    this.canvas.style.opacity = this.dim;
   }
 
   /* -------------------------------- drawing ------------------------------- */
@@ -449,7 +610,7 @@ class AnatomySculpture {
     gl.uniform3fv(u.uInkOnSelected, c.muscle);
     gl.uniform1f(u.uLineWidth, Math.max(1, 0.75 * dpr));
     gl.bindVertexArray(this.vao);
-    const cam = this.camera(this.yaw);
+    const cam = this.camera(this.live());
     gl.uniformMatrix4fv(u.uMatrix, false, cam.matrix);
     gl.uniformMatrix3fv(u.uNormal, false, cam.normal);
     gl.uniform4fv(u.uRegion, this.regionStates(this.view.id));
@@ -466,24 +627,29 @@ class AnatomySculpture {
   /* -------------------------------- state -------------------------------- */
 
   /**
-   * Where each region is heading, as [selected, pointed at] pairs: selected
-   * is 1 for a selected muscle (or the preview's share while a program is
-   * pointed at, when the selection underneath is set aside), pointed at is
-   * 1 for the muscle under the pointer or keyboard focus.
+   * Where each region is heading, as [selected, pointed at, highlighted]
+   * triples: selected is 1 for a selected muscle (or the preview's share
+   * while a program is pointed at, when the selection underneath is set
+   * aside), pointed at is 1 for the muscle under the pointer or keyboard
+   * focus, highlighted is 1 for a muscle the page lights. Off Targets only
+   * the highlight shows.
    */
   targets() {
     const n = this.model.regions.length;
-    const out = this.targetBuffer || (this.targetBuffer = new Float32Array(n * 2));
+    const out = this.targetBuffer || (this.targetBuffer = new Float32Array(n * 3));
     for (let r = 0; r < n; r++) {
       const id = this.muscleOf[r];
       let selected = 0, pointed = 0;
-      if (id && this.previewing) selected = this.previewing.has(id) ? SCULPTURE_TONE.preview : 0;
-      else if (id) {
-        selected = this.selection.has(id) ? 1 : 0;
-        pointed = id === this.hovered ? 1 : 0;
+      if (id && this.interactive) {
+        if (this.previewing) selected = this.previewing.has(id) ? SCULPTURE_TONE.preview : 0;
+        else {
+          selected = this.selection.has(id) ? 1 : 0;
+          pointed = id === this.hovered ? 1 : 0;
+        }
       }
-      out[r * 2] = selected;
-      out[r * 2 + 1] = pointed;
+      out[r * 3] = selected;
+      out[r * 3 + 1] = pointed;
+      out[r * 3 + 2] = id && this.highlighting && this.highlighting.has(id) ? 1 : 0;
     }
     return out;
   }
@@ -501,7 +667,7 @@ class AnatomySculpture {
     for (let i = 0; i < shown.length; i++) {
       const to = target[i], from = shown[i];
       if (from === to) continue;
-      const tau = i % 2 === 0 ? SCULPTURE_EASE.select
+      const tau = i % 3 !== 1 ? SCULPTURE_EASE.select
                 : to > from ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut;
       const next = instant ? to : from + (to - from) * (1 - Math.exp(-dt / tau));
       shown[i] = Math.abs(to - next) < 0.008 ? to : next;      // under a shade of grey
@@ -520,17 +686,17 @@ class AnatomySculpture {
     const n = this.model.regions.length;
     const out = this.regionBuffer || (this.regionBuffer = new Float32Array(n * 4));
     const shown = this.shown || this.targets();
+    const T = SCULPTURE_TONE;
     for (let r = 0; r < n; r++) {
-      const selected = shown[r * 2], pointed = shown[r * 2 + 1];
+      const selected = shown[r * 3], pointed = shown[r * 3 + 1], lit = shown[r * 3 + 2];
       // Where pointing takes it: from `hover` when resting to `selectedHover` when selected.
-      const whenPointed = SCULPTURE_TONE.hover +
-                          (SCULPTURE_TONE.selectedHover - SCULPTURE_TONE.hover) * selected;
+      const whenPointed = T.hover + (T.selectedHover - T.hover) * selected;
       const id = this.muscleOf[r];
       const focused = !!id && !!this.focused && this.focused.view === viewId && this.focused.id === id;
-      out[r * 4] = selected + (whenPointed - selected) * pointed;
+      out[r * 4] = Math.max(selected + (whenPointed - selected) * pointed, T.highlight * lit);
       out[r * 4 + 1] = focused ? 1 : 0;
       out[r * 4 + 2] = this.isForm[r] ? 1 : 0;
-      out[r * 4 + 3] = selected;
+      out[r * 4 + 3] = Math.max(selected, T.highlightDepth * lit);
     }
     return out;
   }
@@ -556,11 +722,11 @@ class AnatomySculpture {
   /* -------------------------------- picking ------------------------------- */
 
   /**
-   * Renders each pixel's region, with the body at `yaw`, and reads it back
+   * Renders each pixel's region, through camera `s`, and reads it back
    * into one of the region buffers: "live" (what is drawn, for the
-   * pointer) or a view's id (that view exactly, for the checkboxes).
+   * pointer) or a view's id (that Targets view exactly, for the checkboxes).
    */
-  renderIds(yaw, into) {
+  renderIds(s, into) {
     const gl = this.gl, { cw, ch } = this.size;
     if (!this.idTarget || this.idTarget.w !== cw || this.idTarget.h !== ch) {
       if (this.idTarget) {
@@ -589,12 +755,12 @@ class AnatomySculpture {
     gl.useProgram(this.pick.p);
     this.setModelUniforms(this.pick.u);
     gl.bindVertexArray(this.vao);
-    gl.uniformMatrix4fv(this.pick.u.uMatrix, false, this.camera(yaw).matrix);
+    gl.uniformMatrix4fv(this.pick.u.uMatrix, false, this.camera(s).matrix);
     gl.drawElements(gl.TRIANGLES, this.model.indexCount, this.indexType, 0);
     gl.bindVertexArray(null);
     gl.readPixels(0, 0, cw, ch, gl.RGBA, gl.UNSIGNED_BYTE, t.pixels[into]);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    if (into === "live") this.pickYaw = yaw;
+    if (into === "live") this.pickKey = this.keyOf(s);
   }
 
   /**
@@ -632,6 +798,16 @@ class AnatomySculpture {
 
   /* ------------------------------ checkboxes ------------------------------ */
 
+  /** Places the checkboxes once a resize settles; it draws and searches both views. */
+  placeHitsSoon() {
+    clearTimeout(this.hitTimer);
+    this.hitTimer = setTimeout(() => {
+      if (!this.ready || !this.size) return;
+      SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams("targets-" + view.id), view.id));
+      this.placeHits();
+    }, this.hits.size ? 150 : 0);
+  }
+
   /**
    * One focusable checkbox per muscle per view, placed well inside that
    * muscle (on the viewer's left where it shows on both sides), in
@@ -641,6 +817,8 @@ class AnatomySculpture {
    */
   placeHits() {
     const t = this.idTarget, { ch } = this.size;
+    const shot = this.shotParams("targets-front");
+    const middle = shot.sx * t.w;
     const stats = SCULPTURE_VIEWS.map(view => {
       const pixels = t.pixels[view.id], st = new Map();
       for (let yi = 0; yi < t.h; yi++)
@@ -651,13 +829,15 @@ class AnatomySculpture {
           let s = st.get(id);
           if (!s) st.set(id, s = { n: 0, left: 0, lx: 0, ly: 0, x: 0, y: 0 });
           s.n++; s.x += xi; s.y += yi;
-          if (xi < t.w / 2) { s.left++; s.lx += xi; s.ly += yi; }
+          if (xi < middle) { s.left++; s.lx += xi; s.ly += yi; }
         }
       return st;
     });
-    // A share of the box the body fills from the front (not the wider canvas).
+    // A share of the box the body fills from the front: the figure's width
+    // by its height, in pixels at the Targets shot.
     const { min, max } = this.model.bounds;
-    const minPixels = Math.max(16, (max[0] - min[0]) * 1.03 * this.size.k * ch * 0.0006);
+    const k = ch / (2 * shot.d * Math.tan(shot.fov * Math.PI / 360));        // px per unit at the aim point
+    const minPixels = Math.max(16, (max[0] - min[0]) * k * this.height * k * 0.0006);
     const best = id => Math.max(...stats.map(st => (st.get(id) || { n: 0 }).n));
     const keep = new Set();
     SCULPTURE_VIEWS.forEach((view, v) => {
@@ -742,27 +922,30 @@ class AnatomySculpture {
     this.canvas.addEventListener("pointerdown", e => {
       pointerType = e.pointerType;
       dragged = false;
-      if (pointerType === "mouse" && e.button !== 0) return;
-      // A press may become a drag that turns the body, but not while it
-      // turns the half circle on its own.
-      if (!(this.tween && this.tween.half))
-        this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: this.yaw, active: false };
+      if (!this.interactive || (pointerType === "mouse" && e.button !== 0)) return;
+      // A press may become a drag that turns the body, but not while the
+      // camera travels on its own.
+      if (!this.tween)
+        this.drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from: this.off, active: false };
       if (pointerType === "touch") this.hover(this.muscleAt(...local(e)) || this.muscleNear(...local(e)));
     });
     this.canvas.addEventListener("pointermove", e => {
       this.pointer = local(e);
+      if (!this.interactive) return;
       const d = this.drag;
       if (d && d.id === e.pointerId) {
         const dx = e.clientX - d.x, dy = e.clientY - d.y;
         if (!d.active && Math.abs(dx) >= SCULPTURE_TURN.slop && Math.abs(dx) > Math.abs(dy)) {
           d.active = true;
-          this.tween = null;
+          this.offTween = null;
           this.canvas.setPointerCapture(e.pointerId);
         }
         if (d.active) {
-          this.yaw = this.base + this.orbitOf(d.from - this.base + dx * SCULPTURE_TURN.perPx);
+          // Dragging right turns the body's front to the right, as if
+          // turning it by hand: the camera goes the other way round.
+          this.off = this.orbitOf(d.from - dx * SCULPTURE_TURN.perPx);
           this.canvas.style.cursor = "grabbing";
-          this.turned();
+          this.moved();
           this.schedule();
           return;
         }
@@ -778,8 +961,8 @@ class AnatomySculpture {
       if (!d.active) return;
       dragged = true;
       // Past the orbit it springs back to it; inside it, it stays.
-      const offset = Math.max(-SCULPTURE_TURN.orbit, Math.min(SCULPTURE_TURN.orbit, this.yaw - this.base));
-      this.turnToYaw(this.base + offset, SCULPTURE_TURN.settle);
+      const { orbit } = SCULPTURE_TURN;
+      this.springBack(Math.max(-orbit, Math.min(orbit, this.off)));
     };
     this.canvas.addEventListener("pointerup", release);
     this.canvas.addEventListener("pointercancel", release);
@@ -788,7 +971,7 @@ class AnatomySculpture {
       if (!this.drag || !this.drag.active) this.hover(null);
     });
     this.canvas.addEventListener("click", e => {
-      if (dragged) return;                      // the end of a drag, not a click
+      if (dragged || !this.interactive) return;    // the end of a drag, not a click
       let id = this.muscleAt(...local(e));
       if (!id && pointerType === "touch") id = this.muscleNear(...local(e));
       if (id) this.selection.toggle(id);
@@ -797,7 +980,7 @@ class AnatomySculpture {
     this.container.addEventListener("keydown", e => {
       if (e.key !== "Enter" && e.key !== " ") return;
       const hit = e.target.closest && e.target.closest(".hit");
-      if (!hit) return;
+      if (!hit || !this.interactive) return;
       e.preventDefault();
       this.selection.toggle(hit.dataset.muscle);
     });
@@ -805,11 +988,11 @@ class AnatomySculpture {
     // A muscle on the other side turns the body round to it, and one on
     // this side returns it exactly to the view its checkbox was placed in.
     this.container.addEventListener("focusin", e => {
-      if (!e.target.matches || !e.target.matches(".hit:focus-visible")) return;
+      if (!e.target.matches || !e.target.matches(".hit:focus-visible") || !this.interactive) return;
       this.focused = { view: e.target.dataset.view, id: e.target.dataset.muscle };
       this.hover(this.focused.id);
       const view = SCULPTURE_VIEWS.find(v => v.id === this.focused.view);
-      if (view !== this.view || this.yaw !== this.base) this.turnTo(view);
+      if (view !== this.view || this.off) this.turnTo(view);
       this.schedule();
     });
     this.container.addEventListener("focusout", e => {
