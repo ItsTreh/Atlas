@@ -67,100 +67,10 @@
   </div>
 
   <!-- =========================== Stage 2: nutrition ======================== -->
-  <section class="stage legacy" id="stage-nutrition" data-scroll aria-labelledby="nutrition-title">
-   <div class="legacy-inner">
-    <h1 class="visually-hidden" id="nutrition-title" tabindex="-1">Nutrition plan</h1>
-
-    <div class="nutrition">
-      <div class="nconf">
-        <div class="card cfg">
-          <h2 id="goal-label">Your goal</h2>
-          <div class="goal-cards" id="goal-cards" role="radiogroup" aria-labelledby="goal-label"></div>
-          <div class="tune">
-            <div>
-              <div class="cfg-label" id="adjust-label">Calories against your burn</div>
-              <div class="big-input">
-                <button type="button" class="step-btn" data-adjust-step="-0.01" aria-label="1% fewer calories">−</button>
-                <output class="tune-v" id="n-adjust" aria-labelledby="adjust-label" tabindex="-1"></output>
-                <button type="button" class="step-btn" data-adjust-step="0.01" aria-label="1% more calories">+</button>
-              </div>
-              <p class="cfg-hint" id="adjust-source"></p>
-            </div>
-            <div>
-              <div class="cfg-label" id="protein-label">Protein</div>
-              <div class="big-input">
-                <button type="button" class="step-btn" data-protein-step="-0.1" aria-label="0.1 g per kg less">−</button>
-                <output class="tune-v" id="n-protein" aria-labelledby="protein-label" tabindex="-1"></output>
-                <button type="button" class="step-btn" data-protein-step="0.1" aria-label="0.1 g per kg more">+</button>
-                <span class="unit">g per kg</span>
-              </div>
-              <p class="cfg-hint" id="protein-source"></p>
-            </div>
-          </div>
-        </div>
-
-        <div class="card cfg">
-          <h2>Training it fuels</h2>
-          <div class="fuels">
-            <p class="cfg-hint" id="n-training"></p>
-            <div class="window">
-              <label>Training days a week <select id="n-sessions"></select></label>
-              <label>Session length <select id="n-len"></select></label>
-            </div>
-          </div>
-          <p class="cfg-hint" id="n-training-effect"></p>
-        </div>
-
-        <div class="card cfg cfg-pair">
-          <div>
-            <h2><label for="n-weight">Body weight</label></h2>
-            <div class="big-input">
-              <input id="n-weight" type="number" min="30" max="550" step="0.5" inputmode="decimal">
-              <div class="seg small" role="radiogroup" aria-label="Weight unit">
-                <button type="button" class="seg-btn" role="radio" data-unit="kg">kg</button>
-                <button type="button" class="seg-btn" role="radio" data-unit="lb">lb</button>
-              </div>
-            </div>
-            <p class="cfg-hint">Sets your protein target.</p>
-          </div>
-          <div>
-            <h2><label for="n-burn">Calories you burn a day</label></h2>
-            <div class="big-input">
-              <button type="button" class="step-btn" data-step="-50" aria-label="50 kcal less">−</button>
-              <input id="n-burn" type="number" min="1000" max="6000" step="10" inputmode="numeric">
-              <button type="button" class="step-btn" data-step="50" aria-label="50 kcal more">+</button>
-              <span class="unit">kcal</span>
-            </div>
-            <p class="cfg-hint" id="burn-source"></p>
-            <div class="chips" id="activity-chips" role="radiogroup"
-                 aria-label="Estimate from how active your day is outside training"></div>
-          </div>
-        </div>
-
-        <div class="card cfg">
-          <h2>Eating rhythm</h2>
-          <div class="rhythm">
-            <div>
-              <div class="cfg-label" id="meals-label">Meals a day</div>
-              <div class="seg" id="meal-counts" role="radiogroup" aria-labelledby="meals-label"></div>
-            </div>
-            <div class="window">
-              <label>First meal <select id="first-meal"></select></label>
-              <label>Last meal <select id="last-meal"></select></label>
-            </div>
-          </div>
-          <div class="timeline" id="timeline" aria-hidden="true"></div>
-
-          <div class="cfg-label" id="diet-label">Diet style</div>
-          <div class="seg" id="diet-seg" role="radiogroup" aria-labelledby="diet-label"></div>
-        </div>
-      </div>
-
-      <aside class="card nplan" id="nplan" aria-live="polite"></aside>
-    </div>
-
-    <section class="card nmeals" id="nmeals" aria-label="Your day of eating"></section>
-   </div>
+  <!-- Optional. The plan sits right of the sculpture; nutrition-view.js
+       draws it, and "A day of eating", into the panel. -->
+  <section class="stage stage-nutrition" id="stage-nutrition" data-scroll aria-labelledby="nutrition-title">
+    <div class="nu" id="nutrition-panel"></div>
   </section>
 
   <!-- =========================== Stage 3: week plan ======================== -->
