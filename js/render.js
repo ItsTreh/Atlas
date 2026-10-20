@@ -20,9 +20,6 @@ function hourLabel(h) {
 
 function buildControls() {
   $("len").value = routine.sessionMinutes;
-  $("experience").innerHTML = '<option value="">Choose…</option>' +
-    EXPERIENCE_LEVELS.map(e => '<option value="' + e.id + '">' + e.label + '</option>').join("");
-  $("experience").value = routine.experience || "";
   renderWeekTargets();
   renderWeekFit();
   [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
@@ -95,7 +92,7 @@ function renderNutritionMini() {
 function renderWeekTargets() {
   const t = routine.weeklyTargets(), el = $("week-targets");
   if (!t || !t.size) {
-    el.textContent = t ? "" : "Tell us this once so each muscle starts from a sensible weekly volume. Until then the plan assumes under 6 months.";
+    el.textContent = t ? "" : "Set your training experience on Targets so each muscle starts from a sensible weekly volume. Until then the plan assumes under 6 months.";
     return;
   }
   const mark = { focus: " ▲", maintain: " ▼", normal: "" };
@@ -149,7 +146,6 @@ function renderWeekFit() {
 
 function readControls() {
   routine.sessionMinutes = Number($("len").value);
-  routine.experience = $("experience").value || null;
   const [lo, hi] = TRAINING_DAYS_RANGE;
   routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
   $("sessions").value = routine.sessionsPerWeek;

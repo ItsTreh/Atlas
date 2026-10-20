@@ -390,7 +390,7 @@ $("n-burn").addEventListener("change", e => {
   e.target.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
 });
 /* Training frequency and length belong to the routine; the week plan shows
-   the same numbers when it is opened (showStage). */
+   the same numbers when it is opened (its stage's enter, app.js). */
 $("n-sessions").addEventListener("change", e =>
   changed(() => { routine.sessionsPerWeek = Number(e.target.value); }));
 $("n-len").addEventListener("change", e =>
