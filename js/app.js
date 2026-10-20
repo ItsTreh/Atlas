@@ -1,23 +1,10 @@
 /* -------------------------------- stages --------------------------------- */
 
-/* Moving between stages is stages.js's; Targets registers itself
-   (targets.js). Nutrition and the Week plan are drawn here until their
-   redesigns land: full-screen panels over the sculpture, which recedes
-   behind them. Stages are hidden rather than rebuilt, so the grid the user
-   painted survives a trip back to change the muscles or the eating plan. */
-Stages.register("nutrition", {
-  enter: renderNutritionStage,
-  shot: () => "nutrition",
-  dim: () => 0,
-  focus: () => $("nutrition-title"),
-  footer: () => ({
-    back: "← Targets",
-    skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
-    next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
-    nextDisabled: routine.selection.isEmpty()
-  })
-});
-
+/* Moving between stages is stages.js's; Targets and Nutrition register
+   themselves (targets.js, nutrition-view.js). The Week plan is drawn here
+   until its redesign lands: a full-screen panel over the sculpture, which
+   recedes behind it. Stages are hidden rather than rebuilt, so the grid the
+   user painted survives a trip back to change the muscles or the eating plan. */
 Stages.register("plan", {
   enter() {
     buildControls();           // the nutrition stage may have changed sessions or length

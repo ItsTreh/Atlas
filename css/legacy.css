@@ -1,8 +1,8 @@
 /* ===========================================================================
-   Legacy stages — the Nutrition and Week plan stages as they were before
-   the stage redesign, kept working while their redesigns land (one pull
-   request per stage). Every rule is scoped to .legacy, the full-screen
-   panel those stages sit in, so none of it reaches the new design.
+   Legacy stage — the Week plan as it was before the stage redesign, kept
+   working while its redesign lands (one pull request per stage). Every
+   rule is scoped to .legacy, the full-screen panel it sits in, so none of
+   it reaches the new design.
    Generated from the previous css/styles.css; delete with the last legacy
    stage.
    ========================================================================= */
@@ -98,7 +98,7 @@
 
 .legacy .status { margin-top: 14px; font-size: 13px; line-height: 1.5;
           color: var(--ink-soft); min-height: 3em; }
-.legacy .status.warn, .legacy .np-warn { color: var(--warn); }
+.legacy .status.warn { color: var(--warn); }
 .legacy .status.err { color: var(--err); }
 
 .legacy .legend { margin-top: 20px; display: grid; gap: 7px; }
@@ -278,188 +278,14 @@
 .legacy .sel-gap { margin: 14px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft);
            padding: 1px 0 1px 12px; border-left: 2px solid var(--line); }
 
-/* --------------------------- nutrition stage ----------------------------- */
-
-.legacy .nutrition {
-  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: 18px; align-items: start;
-}
-.legacy .nconf { display: grid; gap: 18px; }
-.legacy .cfg { padding: 18px 20px; }
-.legacy .cfg h2 label { cursor: pointer; }
-.legacy .cfg-pair { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 24px; }
-.legacy .cfg-pair h2:not(:first-child) { margin-top: 0; }
+/* the shared hint and label the Week plan's panel still uses */
 .legacy .cfg-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
 .legacy .cfg-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); margin: 0 0 7px; }
-.legacy .cfg .cfg-label:not(:first-child) { margin-top: 18px; }
-
-/* goal cards: a radio group that reads as four plans to pick from */
-.legacy .goal-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.legacy .goal-card {
-  display: grid; gap: 4px; text-align: left; font: inherit; color: var(--ink);
-  padding: 12px 14px; border-radius: var(--r-md); cursor: pointer;
-  background: var(--raised); border: 1.5px solid var(--line);
-  transition: border-color .15s ease, background .15s ease;
-}
-.legacy .goal-card:hover { border-color: var(--ink-faint); }
-.legacy .goal-card.on { border-color: var(--accent); background: var(--accent-soft); }
-.legacy .gc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.legacy .gc-name { font: var(--t-heading); }
-.legacy .gc-adj { font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap;
-          font-variant-numeric: tabular-nums; }
-.legacy .gc-blurb { font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
-
-/* the goal's two targets, recommended until the user steps them */
-.legacy .tune { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px;
-        padding-top: 14px; border-top: 1px solid var(--line-soft); }
-.legacy .tune .cfg-label { margin-top: 0; }
-.legacy .tune-v { font: 500 24px/1.1 var(--font); letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
-          min-width: 72px; text-align: center; color: var(--ink); }
-
-/* the training the diet fuels */
-.legacy .fuels { display: flex; justify-content: space-between; align-items: flex-end;
-         gap: 16px; flex-wrap: wrap; }
-.legacy .fuels .cfg-hint { margin: 0; font-size: 13.5px; color: var(--ink); }
-
-/* big numeric inputs */
-.legacy .big-input { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.legacy .big-input input {
-  font: 500 28px/1.1 var(--font); letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
-  width: 118px; min-width: 0; padding: 4px 8px; text-align: center; color: var(--ink);
-  background: var(--free); border: 1px solid var(--line); border-radius: var(--r-md);
-}
-.legacy #n-burn { width: 124px; }
-.legacy .big-input input::-webkit-inner-spin-button { display: none; }
-.legacy .big-input input { -moz-appearance: textfield; }
-.legacy .big-input .unit { font-size: 13px; color: var(--ink-soft); }
-.legacy .step-btn {
-  width: 34px; height: 34px; border-radius: 50%; font: inherit; font-size: 18px;
-  cursor: pointer; color: var(--ink); background: var(--raised); border: 1px solid var(--line);
-}
-.legacy .step-btn:hover { border-color: var(--ink-faint); }
-.legacy .src { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-       padding: 3px 7px; border-radius: 999px; margin-right: 4px; }
-.legacy .src.est { background: var(--accent-soft); color: var(--accent); }
-.legacy .src.own { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-
-/* segmented controls and chips */
-.legacy .seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 3px;
-       background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md); }
-.legacy .seg.small { padding: 2px; border-radius: var(--r-sm); }
-.legacy .seg-btn {
-  font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
-  min-width: 38px; padding: 6px 11px; border-radius: var(--r-sm); border: 0; cursor: pointer;
-  background: transparent; position: relative;
-}
-.legacy .seg-btn:hover { color: var(--ink); }
-.legacy .seg-btn.on { background: var(--card); color: var(--ink); box-shadow: 0 0 0 1px var(--line), var(--shadow); }
-.legacy .seg-btn.suggested::after {
-  content: ""; position: absolute; top: 4px; right: 4px; width: 5px; height: 5px;
-  border-radius: 50%; background: var(--accent);
-}
-.legacy .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.legacy .chip-btn {
-  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
-  padding: 5px 11px; border-radius: 999px; cursor: pointer;
-  background: transparent; border: 1px solid var(--line);
-}
-.legacy .chip-btn:hover { border-color: var(--ink-faint); color: var(--ink); }
-.legacy .chip-btn.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-
-/* eating rhythm */
-.legacy .rhythm { display: flex; justify-content: space-between; align-items: flex-end;
-          gap: 16px; flex-wrap: wrap; }
-.legacy .window { display: flex; gap: 12px; flex-wrap: wrap; }
-.legacy .window label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
-.legacy .window select, .legacy .mc-time select { font: inherit; }
-.legacy .window select {
-  font-size: 14px; font-weight: 600; padding: 6px 9px; color: var(--ink);
-  background: var(--free); border: 1px solid var(--line); border-radius: var(--r-sm);
-}
-
-.legacy .timeline { position: relative; height: 64px; margin: 18px 6px 4px; }
-.legacy .timeline::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 22px; height: 4px;
-  border-radius: 2px; background: var(--line-soft);
-}
-.legacy .tl-window { position: absolute; top: 22px; height: 4px; border-radius: 2px;
-             background: var(--accent-soft); }
-.legacy .tl-meal { position: absolute; top: 24px; transform: translateX(-50%);
-           display: grid; justify-items: center; }
-.legacy .tl-dot {
-  width: var(--s); height: var(--s); border-radius: 50%; transform: translateY(-50%);
-  background: var(--accent); border: 2px solid var(--card); box-sizing: content-box;
-}
-.legacy .tl-meal.snack .tl-dot { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
-.legacy .tl-time { font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-top: -4px;
-           font-variant-numeric: tabular-nums; white-space: nowrap; }
-.legacy .tl-tick { position: absolute; top: 0; transform: translateX(-50%); font-size: 10.5px;
-           color: var(--ink-faint); }
-
-/* the live plan */
-.legacy .nplan { padding: 20px 22px; position: sticky; top: 18px; }
-.legacy .np-head { display: flex; align-items: center; gap: 10px; }
-.legacy .np-head h3 { margin: 0; font: var(--t-heading); }
 .legacy .tag {
   font: 600 10px/1 var(--font); letter-spacing: .08em;
   text-transform: uppercase; padding: 5px 8px; border-radius: 999px;
   background: var(--accent-soft); color: var(--accent);
 }
-.legacy .np-kcal { margin-top: 12px; font-size: 14px; color: var(--ink-soft); }
-.legacy .np-kcal .big { font: 500 44px/1 var(--font); letter-spacing: -0.025em; color: var(--ink);
-                font-variant-numeric: tabular-nums; margin-right: 4px; }
-.legacy .np-math { font-size: 12.5px; color: var(--ink-faint); margin-top: 6px; }
-.legacy .np-warn { margin: 10px 0 0; font-size: 12.5px; }
-.legacy .np-row { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
-.legacy .np-row .k { font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase;
-             color: var(--ink-faint); }
-.legacy .np-row .v { font-size: 15px; margin-top: 3px; }
-.legacy .np-row .v b { font: 500 20px/1.2 var(--font); font-variant-numeric: tabular-nums; }
-.legacy .np-row .s { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
-.legacy .np-suggest { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
-.legacy .np-suggest.ok { color: var(--ink-faint); }
-
-.legacy .dist { display: flex; gap: 3px; height: 14px; margin-top: 8px; }
-.legacy .dist-seg { border-radius: 4px; background: var(--accent); min-width: 6px; }
-.legacy .dist-seg.snack, .legacy .dist-key i.snack { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
-.legacy .dist-key { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px;
-            font-size: 12px; color: var(--ink-soft); }
-.legacy .dist-key i { display: inline-block; width: 8px; height: 8px; border-radius: 2px;
-              background: var(--accent); margin-right: 5px; }
-.legacy .np-why { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px;
-          font-size: 12.5px; color: var(--ink-soft); line-height: 1.45; }
-.legacy .np-why b { color: var(--ink); font-weight: 600; }
-.legacy .nplan .caveat { margin-top: 16px; }
-
-/* meal cards */
-.legacy .nmeals { margin-top: 18px; padding: 18px 20px; }
-.legacy .nm-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-.legacy .nm-head h3 { margin: 0; font: var(--t-heading); }
-.legacy .nm-sub { font-size: 12.5px; color: var(--ink-faint); }
-.legacy .meal-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-.legacy .meal-card {
-  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md);
-  padding: 12px 14px; border-top: 3px solid var(--accent);
-}
-.legacy .meal-card.snack { border-top-color: color-mix(in srgb, var(--accent) 45%, var(--card)); }
-.legacy .mc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.legacy .mc-time { font-size: 13px; font-weight: 700; padding: 2px 6px; margin-left: -6px;
-           font-variant-numeric: tabular-nums; color: var(--accent); }
-.legacy .mc-name { font: var(--t-heading); }
-.legacy .mc-share { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
-.legacy .mc-nums { margin-top: 6px; font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.legacy .mc-nums b { color: var(--ink); }
-.legacy .mc-focus { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
-.legacy .idea { margin-top: 10px; padding: 9px 10px; background: var(--card);
-        border: 1px solid var(--line-soft); border-radius: var(--r-sm); }
-.legacy .idea-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.legacy .idea-name { font-size: 13.5px; font-weight: 700; }
-.legacy .idea-nums { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap;
-             font-variant-numeric: tabular-nums; }
-.legacy .idea-foods { list-style: none; margin: 5px 0 0; padding: 0; font-size: 12px; color: var(--ink-soft); }
-.legacy .idea-foods li { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
-.legacy .idea-foods li span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink); }
-.legacy .mc-more { margin-top: 8px; font-size: 12.5px; }
 
 /* ----------------------------- nutrition --------------------------------- */
 
@@ -514,14 +340,11 @@
 @media (max-width: 900px) {
   .legacy .layout { grid-template-columns: minmax(0, 1fr); }
   .legacy aside.card { position: static; }
-  .legacy .nutrition { grid-template-columns: minmax(0, 1fr); }
-  .legacy .nplan { position: static; }
 }
 @media (max-width: 759px) {
   .legacy { padding: 72px 16px 88px; }
 }
 @media (max-width: 620px) {
-  .legacy .goal-cards, .legacy .cfg-pair, .legacy .tune { grid-template-columns: 1fr; }
   .legacy .wo-ex { padding-left: 0; gap: 8px; }
   .legacy .ex-add { margin-left: 0; }
 }

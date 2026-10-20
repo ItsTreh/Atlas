@@ -1,242 +1,277 @@
 /* ===========================================================================
-   Nutrition stage — configure the eating plan.
+   Nutrition stage — fuel the training (optional).
 
-   Left, the settings: goal and the targets it recommends, the training the
-   diet fuels, body weight, daily burn, eating rhythm and diet style. Right,
-   the plan they produce and how each input shaped it, redrawn on every
-   change. Below, the day as meal cards with example plates portioned to
-   each meal.
+   The sculpture turns to its left and the camera looks up at the torso; the
+   plan sits to its right, read top to bottom as the numbers are made:
 
-   Everything is read from and written to routine.nutrition (nutrition.js);
-   the goals, activity levels, meal patterns, diets and meal ideas all come
-   from data, so adding one there adds it here.
+     • the goal, as four plans to pick from, each showing what it would
+       change for this training
+     • the daily targets, large: calories and protein, labelled an estimate,
+       with the sum that made them and, on demand, every reason behind it
+     • four rows, each one line until opened: You (weight, the day outside
+       training, the daily burn), Training (how often and how long, the
+       same numbers as the Week plan), Targets (the calorie change and the
+       protein) and Rhythm (meals, the eating window, diet style)
+     • A day of eating: the day as a timeline with one meal open at a time,
+       its share of the day, how far the day's targets are met by the end of
+       it, and an example plate portioned to it
+
+   Everything is read from and written to routine.nutrition (nutrition.js)
+   and the routine's training settings; goals, activity levels, meal
+   patterns, diets and meal ideas all come from data, so adding one there
+   adds it here.
    ========================================================================= */
 
 const nutrition = () => routine.nutrition;
-const nplanEl = $("nplan"), nmealsEl = $("nmeals");
-const fmtK = n => n.toLocaleString("en-US");
+const nutritionEl = $("nutrition-panel");
+const fmtK = n => Math.round(n).toLocaleString("en-US");
 
-/* Which example plates each meal card shows: an offset into its ranked list. */
+/* What is open: one row at a time; the day view and its meal. */
+const nut = { row: null, day: false, meal: 0, dir: 1, reasons: false };
+
+/* Which example plate each meal shows: an offset into its ranked list. */
 const ideaOffset = {};
-
-/* ------------------------------ configurator ----------------------------- */
-
-function buildNutritionControls() {
-  $("goal-cards").innerHTML = Object.entries(GOALS).map(([key, g]) =>
-    '<button type="button" class="goal-card" role="radio" data-goal="' + key + '">' +
-      '<span class="gc-top"><span class="gc-name">' + g.label + '</span>' +
-      '<span class="gc-adj"></span></span>' +
-      '<span class="gc-blurb">' + g.blurb + '</span>' +
-    '</button>').join("");
-
-  $("activity-chips").innerHTML = Object.entries(ACTIVITY_LEVELS).map(([key, a]) =>
-    '<button type="button" class="chip-btn" role="radio" data-activity="' + key + '" ' +
-      'title="' + a.hint + '">' + a.label + '</button>').join("");
-
-  $("meal-counts").innerHTML = MEAL_COUNTS.map(n =>
-    '<button type="button" class="seg-btn" role="radio" data-meals="' + n + '" ' +
-      'aria-label="' + n + ' meals">' + n + '</button>').join("");
-
-  $("diet-seg").innerHTML = Object.entries(DIETS).map(([key, d]) =>
-    '<button type="button" class="seg-btn" role="radio" data-diet="' + key + '">' +
-      d.label + '</button>').join("");
-
-  const hourOptions = (from, to) => Array.from({ length: to - from + 1 }, (_, i) =>
-    '<option value="' + (from + i) + '">' + hourLabel(from + i) + '</option>').join("");
-  $("first-meal").innerHTML = hourOptions(FIRST_HOUR, 13);
-  $("last-meal").innerHTML = hourOptions(14, LAST_HOUR);
-
-  // The same choices as the week plan's controls, which edit the same numbers.
-  const [lo, hi] = TRAINING_DAYS_RANGE;
-  $("n-sessions").innerHTML = Array.from({ length: hi - lo + 1 }, (_, i) =>
-    '<option value="' + (lo + i) + '">' + (lo + i) + '</option>').join("");
-  $("n-len").innerHTML = $("len").innerHTML;
-}
 
 function adjustLabel(adjust) {
   if (!adjust) return "= your burn";
   return (adjust > 0 ? "+" : "−") + Math.round(Math.abs(adjust) * 100) + "%";
 }
 const fmtGkg = v => v.toFixed(1);
-
-/* Rewrites an element only when its content changes. A field's change event
-   fires on blur, just before the click that caused it; replacing the link
-   under the pointer then would swallow that click. */
-function setHTML(el, html) { if (el.innerHTML !== html) el.innerHTML = html; }
-
-/** Brings every control in line with the plan. Never rebuilds them, so focus stays put. */
-function paintNutritionControls() {
-  const n = nutrition();
-  const mark = (sel, on) => { for (const b of document.querySelectorAll(sel)) {
-    const active = on(b);
-    b.classList.toggle("on", active);
-    b.setAttribute("aria-checked", active ? "true" : "false");
-  }};
-  mark("[data-goal]", b => b.dataset.goal === n.goal);
-  // Each goal shows what it would recommend for this training, not a fixed number.
-  for (const b of document.querySelectorAll("[data-goal]"))
-    b.querySelector(".gc-adj").textContent =
-      adjustLabel(recommendTargets(b.dataset.goal, n.load).adjust);
-  mark("[data-activity]", b => n.burnIsEstimate && b.dataset.activity === n.activity);
-  mark("[data-meals]", b => Number(b.dataset.meals) === n.mealsPerDay);
-  mark("[data-diet]", b => b.dataset.diet === n.diet);
-  mark("[data-unit]", b => b.dataset.unit === n.unit);
-  for (const b of document.querySelectorAll("[data-meals]"))
-    b.classList.toggle("suggested", Number(b.dataset.meals) === n.suggestedMeals);
-
-  // Without a weight there is nothing to estimate from, so both fields stay empty.
-  const estimateless = n.burnIsEstimate && !n.isValid();
-  if (document.activeElement !== $("n-weight")) $("n-weight").value = n.weight ?? "";
-  if (document.activeElement !== $("n-burn")) $("n-burn").value = estimateless ? "" : n.burn;
-  setHTML($("burn-source"), estimateless
-    ? '<span class="src est">Estimate</span> needs your body weight. Know your number? Type it in.'
-    : n.burnIsEstimate
-    ? '<span class="src est">Estimate</span> from ' + fmtWeight(n) + ', ' +
-      ACTIVITY_LEVELS[n.activity].label.toLowerCase() + ' outside training' +
-      (n.load.kcalPerDay ? ', plus your training' : '') + '. Know your number? Type it in.'
-    : '<span class="src own">Your number</span> Include your training in it. ' +
-      '<button type="button" class="link-btn" id="burn-reset">Estimate it for me instead</button>');
-  $("first-meal").value = n.firstMeal;
-  $("last-meal").value = n.lastMeal;
-  paintTargets();
-  paintTraining();
-  paintTimeline();
-}
-
-/** The two targets the goal recommends, and whether the user has changed them. */
-function paintTargets() {
-  const n = nutrition();
-  const rec = n.recommended;
-  const goal = GOALS[n.goal].label.toLowerCase();
-  $("n-adjust").textContent = adjustLabel(n.adjust);
-  $("n-protein").textContent = fmtGkg(n.proteinPerKg);
-  setHTML($("adjust-source"), n.adjustIsRecommended
-    ? '<span class="src est">Recommended</span> for ' + goal + ' with your training.'
-    : '<span class="src own">Your setting</span> Recommended: ' + adjustLabel(rec.adjust) + '. ' +
-      '<button type="button" class="link-btn" data-tune-reset="adjust">Use it</button>');
-  setHTML($("protein-source"), n.proteinIsRecommended
-    ? '<span class="src est">Recommended</span> for ' + goal + ' with your training.'
-    : '<span class="src own">Your setting</span> Recommended: ' + fmtGkg(rec.protein) + ' g/kg. ' +
-      '<button type="button" class="link-btn" data-tune-reset="protein">Use it</button>');
-}
-
-/** What the diet is fuelling: the targets from stage 1, and how often they are trained. */
-function paintTraining() {
-  const n = nutrition();
-  const load = n.load;
-  const muscles = routine.selectedMuscles();
-  const src = routine.selection.source();
-  const name = src.kind === "program" ? src.program.name
-             : src.kind === "modified" ? src.program.name + " (edited)" : "Your own selection";
-  setHTML($("n-training"), muscles.length
-    ? '<b>' + esc(name) + '</b> · ' + muscles.length + (muscles.length === 1 ? " muscle" : " muscles") +
-      ' <button type="button" class="link-btn" data-goto="targets">Change</button>'
-    : 'No target muscles yet, so no training is counted. ' +
-      '<button type="button" class="link-btn" data-goto="targets">Pick targets</button>');
-  $("n-sessions").value = routine.sessionsPerWeek;
-  $("n-len").value = routine.sessionMinutes;
-  setHTML($("n-training-effect"),
-      muscles.length && !load.muscles.length
-    ? 'No exercises in the database yet for these muscles, so no training is counted.'
-    : !load.kcalPerDay || (n.burnIsEstimate && !n.isValid()) ? ""
-    : n.burnIsEstimate
-    ? '<span class="src est">Estimate</span> ≈ ' + fmtK(load.kcalPerDay) + ' kcal a day on ' +
-      'average, added to your burn — about ' + trainingHours(load.hours) + ' of lifting a week, ' +
-      'the sets your targets take with warm-ups.'
-    : 'Your own burn number already includes this training, so nothing is added to it.');
-}
-
+/* What a goal would change for this training, short enough for its card. */
+const goalAdjust = (goal, n) => { const a = recommendTargets(goal, n.load).adjust; return a ? adjustLabel(a) : "= burn"; };
 const trainingHours = h => { const v = Math.round(h * 2) / 2; return v + (v === 1 ? " hour" : " hours"); };
-
 const fmtWeight = n => (Math.round(n.weight * 10) / 10) + " " + n.unit;
+const hourSpan = (a, b) => hourLabel(a) + "–" + hourLabel(b);
+const tag = (own, text) => '<span class="pill-tag' + (own ? ' own' : '') + '">' + text + '</span>';
 
-/** The day from 6am to midnight, with each meal as a dot sized by its share. */
-function paintTimeline() {
-  const n = nutrition();
-  const span = LAST_HOUR + 1 - FIRST_HOUR;
-  const at = h => ((h - FIRST_HOUR) / span * 100).toFixed(2) + "%";
-  $("timeline").innerHTML =
-    '<div class="tl-window" style="left:' + at(n.firstMeal) + ';width:' +
-      ((n.lastMeal - n.firstMeal) / span * 100).toFixed(2) + '%"></div>' +
-    n.meals.map(m =>
-      '<div class="tl-meal ' + m.role + '" style="left:' + at(m.hour) + '" title="' +
-        m.name + ', ' + hourLabel(m.hour) + ', ' + m.kcal + ' kcal">' +
-        '<span class="tl-dot" style="--s:' + (12 + m.share * 40).toFixed(1) + 'px"></span>' +
-        '<span class="tl-time">' + hourLabel(m.hour) + '</span>' +
-      '</div>').join("") +
-    [6, 12, 18].map(h => '<span class="tl-tick" style="left:' + at(h) + '">' +
-      hourLabel(h) + '</span>').join("");
+/* ---------------------------------- plan ---------------------------------- */
+
+/** What the diet is fuelling, in one line under the title. */
+function fuelsText(n) {
+  const load = n.load;
+  if (!routine.selectedMuscles().length)
+    return "No target muscles yet, so no training is counted. Skip this if you only want training.";
+  if (!load.muscles.length) return "No exercises in the database yet for your targets, so no training is counted.";
+  const week = load.sessionsPerWeek + " × " + load.sessionMinutes + " min";
+  const adds = !n.burnIsEstimate ? "; your own burn number already includes it."
+             : n.isValid() ? ", adding ≈ " + fmtK(load.kcalPerDay) + " kcal a day to your burn." : ".";
+  return routine.sessions.length
+    ? "Fuels your " + week + " week" + adds
+    : "Assumes " + week + " a week" + adds + " It updates when you set your week. Skip this if you only want training.";
 }
 
-/* -------------------------------- the plan ------------------------------- */
+/** The rows' one-line summaries. */
+function rowSummaries(n) {
+  const load = n.load;
+  return {
+    body: n.isValid() ? fmtWeight(n) + " · burns ≈ " + fmtK(n.burn) + " kcal a day" : "Add your body weight",
+    training: !load.muscles.length ? "No training counted yet"
+      : routine.sessionsPerWeek + " × " + routine.sessionMinutes + " min a week" +
+        (n.burnIsEstimate && n.isValid() ? " · adds ≈ " + fmtK(load.kcalPerDay) + " kcal a day" : ""),
+    targets: adjustLabel(n.adjust) + " calories · " + fmtGkg(n.proteinPerKg) + " g protein per kg",
+    rhythm: n.mealsPerDay + " meals · " + hourSpan(n.hours[0], n.hours[n.hours.length - 1]) +
+      " · " + DIETS[n.diet].label
+  };
+}
+const ROWS = [["body", "You"], ["training", "Training"], ["targets", "Targets"], ["rhythm", "Rhythm"]];
 
-function renderPlan() {
-  const n = nutrition();
-  if (!n.isValid()) {
-    nplanEl.innerHTML = '<h3>Your daily plan</h3><p class="est-empty">Enter a body ' +
-      'weight between ' + weightRangeText() + ' to see your plan.</p>';
-    return;
-  }
+function planHTML() {
+  const n = nutrition(), sums = rowSummaries(n);
+  const goals = Object.entries(GOALS).map(([key, g]) =>
+    '<button type="button" class="goal" role="radio" aria-checked="' + (n.goal === key) + '" ' +
+      'data-goal="' + key + '" data-key="goal-' + key + '">' +
+      '<span class="goal-top"><span class="goal-name">' + g.label + '</span>' +
+        '<span class="goal-adj">' + goalAdjust(key, n) + '</span></span>' +
+      '<span class="goal-blurb">' + g.blurb + '</span>' +
+    '</button>').join("");
+  const rows = ROWS.map(([key, label]) => {
+    const open = nut.row === key;
+    return '<div class="nu-row' + (open ? ' open' : '') + '">' +
+      '<button type="button" class="row-toggle" data-row="' + key + '" data-key="row-' + key + '" ' +
+        'aria-expanded="' + open + '"' + (open ? ' aria-controls="row-' + key + '"' : '') + '>' +
+        '<span class="row-label">' + label + '</span>' +
+        '<span class="row-sum" data-row-sum="' + key + '">' + esc(sums[key]) + '</span>' +
+        '<span class="row-act">' + (open ? "Done" : "Edit") + '</span>' +
+      '</button>' +
+      (open ? '<div class="row-body" id="row-' + key + '">' + ROW_BODIES[key](n) + '</div>' : '') +
+    '</div>';
+  }).join("");
+  return '<div class="nu-head" data-reveal="0">' +
+      '<p class="eyebrow"><span><span class="n">02</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
+      '<h1 class="display nu-title" id="nutrition-title" tabindex="-1">Fuel the training</h1>' +
+      '<p class="nu-lede" id="nu-fuels">' + esc(fuelsText(n)) + '</p>' +
+    '</div>' +
+    '<div class="goals" role="radiogroup" aria-label="Your goal" data-reveal="1">' + goals + '</div>' +
+    '<div class="nu-figures" id="nu-figures" data-reveal="1">' + figuresHTML(n) + '</div>' +
+    '<div class="nu-rows" data-reveal="2">' + rows +
+      '<div class="nu-cta">' +
+        '<button type="button" class="btn ghost" id="open-day" data-key="open-day"' + (n.isValid() ? '' : ' disabled') + '>' +
+          'See a day of eating →</button>' +
+        '<p class="note-rule">Estimates to eat against, not a medical or dietetic prescription. Your real burn depends on ' +
+          'age, height, sex and body composition: weigh yourself for two or three weeks and adjust by 100–200 kcal ' +
+          'if the trend isn\'t moving the way you want. If you carry a lot of body fat, the low end of the protein ' +
+          'range is plenty.</p>' +
+      '</div>' +
+    '</div>';
+}
+
+/** The day's two targets, the sum that made them, and every reason on demand. */
+function figuresHTML(n) {
+  if (!n.isValid())
+    return '<div class="nu-big"><span class="nu-fig"><span class="nu-kcal">—</span><span class="nu-unit">kcal a day</span></span></div>' +
+      '<p class="nu-math">Enter a body weight between ' + weightRangeText() + ' to see your plan.</p>';
   const g = GOALS[n.goal];
-  const [lo, hi] = n.proteinRange;
-  const meals = n.meals;
   const math = n.adjust
-    ? fmtK(n.burn) + ' kcal burn ' + (n.adjust > 0 ? '+ ' : '− ') +
-      Math.round(Math.abs(n.adjust) * 100) + '% for ' + g.label.toLowerCase()
+    ? fmtK(n.burn) + ' kcal burn ' + (n.adjust > 0 ? '+ ' : '− ') + Math.round(Math.abs(n.adjust) * 100) + '% for ' + g.label.toLowerCase()
     : fmtK(n.burn) + ' kcal burn, unchanged for ' + g.label.toLowerCase();
-
-  const suggest = n.suggestedMeals !== n.mealsPerDay
-    ? '<div class="np-suggest">Suggested: <b>' + n.suggestedMeals + ' meals</b> — about ' +
-        Math.round(n.protein / n.suggestedMeals) + ' g protein each. ' +
-        '<button type="button" class="link-btn" data-use-meals="' + n.suggestedMeals + '">Use ' +
-        n.suggestedMeals + '</button></div>'
-    : '<div class="np-suggest ok">The suggested number of meals for your protein target.</div>';
-
-  nplanEl.innerHTML =
-    '<div class="np-head"><h3>Your daily plan</h3><span class="tag">Estimate</span></div>' +
-    '<div class="np-kcal"><span class="big">' + fmtK(n.kcal) + '</span> kcal a day</div>' +
-    '<div class="np-math">' + math + '</div>' +
-    (n.atFloor ? '<p class="np-warn">The maths comes out under ' + fmtK(KCAL_FLOOR) +
-      ' kcal, so the plan stops there. Going lower is worth doing only with a ' +
-      'professional\'s guidance.</p>' : '') +
-
-    '<div class="np-row"><div class="k">Protein</div><div class="v"><b>' + n.protein +
-      ' g</b> a day</div><div class="s">' + fmtGkg(n.proteinPerKg) + ' g per kg of body weight · usual range ' +
-      lo + '–' + hi + ' g</div></div>' +
-
-    '<div class="np-row"><div class="k">Meals</div><div class="v"><b>' + n.mealsPerDay +
-      '</b> a day, ' + hourLabel(meals[0].hour) + '–' + hourLabel(meals[meals.length - 1].hour) +
-      '</div>' + suggest + '</div>' +
-
-    '<div class="np-row"><div class="k">Distribution</div>' +
-      '<div class="dist" role="img" aria-label="' + meals.map(m =>
-        m.name + ' ' + Math.round(m.share * 100) + ' percent').join(", ") + '">' +
-      meals.map(m => '<span class="dist-seg ' + m.role + '" style="flex:' + m.share + '" ' +
-        'title="' + m.name + ': ' + m.kcal + ' kcal"></span>').join("") + '</div>' +
-      '<div class="dist-key">' + meals.map(m => '<span><i class="' + m.role + '"></i>' +
-        m.name + ' ' + Math.round(m.share * 100) + '%</span>').join("") + '</div></div>' +
-
-    '<div class="np-row"><div class="k">Built from your plan</div>' +
-      '<ul class="np-why">' + planReasons(n).map(r => '<li>' + r + '</li>').join("") +
-      '</ul></div>' +
-
-    '<p class="caveat">These are estimates to eat against, not a medical or dietetic ' +
-    'prescription. Your real burn depends on age, height, sex and body composition — ' +
-    'weigh yourself for two or three weeks and adjust by 100–200 kcal if the trend ' +
-    'is not moving the way you want. If you carry a lot of body fat, the low end of ' +
-    'the protein range is plenty.</p>';
+  return '<div class="nu-big" aria-live="polite">' +
+      '<span class="nu-fig"><span class="nu-kcal">' + fmtK(n.kcal) + '</span><span class="nu-unit">kcal a day</span></span>' +
+      '<span class="nu-fig"><span class="nu-prot">' + n.protein + '</span><span class="nu-unit">g protein</span></span>' +
+    '</div>' +
+    '<div class="nu-mathline">' +
+      tag(false, "Estimate") +
+      '<span class="nu-math">' + math + ' · ' + fmtGkg(n.proteinPerKg) + ' g per kg</span>' +
+      '<button type="button" class="text-link" id="nu-reasons" data-key="reasons" aria-expanded="' + nut.reasons + '">' +
+        (nut.reasons ? "Hide the reasoning" : "How it's worked out") + '</button>' +
+    '</div>' +
+    (n.atFloor ? '<p class="nu-warn">The maths comes out under ' + fmtK(KCAL_FLOOR) + ' kcal, so the plan stops there. ' +
+      'Going lower is worth doing only with a professional\'s guidance.</p>' : '') +
+    (nut.reasons ? '<ul class="nu-reasons">' + planReasons(n).map(r => '<li>' + r + '</li>').join("") + '</ul>' : '');
 }
+
+/* -------------------------------- the rows -------------------------------- */
+
+const stepper = (attr, step, label, text) =>
+  '<button type="button" class="stepper" ' + attr + '="' + step + '" data-key="' + attr + step + '" aria-label="' + label + '">' + text + '</button>';
+const segmented = (label, items, small) =>
+  '<span class="segmented' + (small ? ' small' : '') + '" role="radiogroup" aria-label="' + label + '">' + items.join("") + '</span>';
+const segBtn = (on, attr, value, text, extra = "") =>
+  '<button type="button" role="radio" aria-checked="' + on + '" ' + attr + '="' + value + '" data-key="' + attr + '-' + value + '"' + extra + '>' + text + '</button>';
+
+function burnNoteHTML(n) {
+  if (n.burnIsEstimate && !n.isValid())
+    return tag(false, "Estimate") + '<span>needs your body weight. Know your number? Type it in.</span>';
+  if (n.burnIsEstimate)
+    return tag(false, "Estimate") + '<span>From ' + fmtWeight(n) + ', ' +
+      ACTIVITY_LEVELS[n.activity].label.toLowerCase() + ' outside training' +
+      (n.load.kcalPerDay ? ', plus your training' : '') + '. Know your number? Type it in.</span>';
+  return tag(true, "Your number") + '<span>Include your training in it.</span>' +
+    '<button type="button" class="text-link" id="burn-reset" data-key="burn-reset">Estimate it for me</button>';
+}
+
+const ROW_BODIES = {
+  body(n) {
+    return '<div class="kv"><label class="kv-label" for="n-weight">Body weight</label>' +
+        '<input id="n-weight" class="serif-input" type="number" min="30" max="550" step="0.5" inputmode="decimal" ' +
+          'value="' + (n.weight ?? "") + '">' +
+        segmented("Weight unit", ["kg", "lb"].map(u => segBtn(n.unit === u, "data-unit", u, u)), true) +
+      '</div>' +
+      '<div class="kv top"><span class="kv-label" id="act-label">Outside training</span>' +
+        '<span class="pills" role="radiogroup" aria-labelledby="act-label">' +
+          Object.entries(ACTIVITY_LEVELS).map(([key, a]) =>
+            '<button type="button" class="pill" role="radio" aria-checked="' + (n.burnIsEstimate && n.activity === key) + '" ' +
+              'data-activity="' + key + '" data-key="act-' + key + '" title="' + esc(a.hint) + '">' + a.label + '</button>').join("") +
+        '</span>' +
+      '</div>' +
+      '<div class="kv"><label class="kv-label" for="n-burn">Daily burn</label>' +
+        stepper("data-burn-step", -50, "50 kcal less", "−") +
+        '<input id="n-burn" class="serif-input wide" type="number" min="1000" max="6000" step="10" inputmode="numeric" ' +
+          'value="' + (n.burnIsEstimate && !n.isValid() ? "" : n.burn) + '">' +
+        stepper("data-burn-step", 50, "50 kcal more", "+") +
+        '<span class="unit">kcal</span>' +
+      '</div>' +
+      '<p class="kv-note" id="burn-note">' + burnNoteHTML(n) + '</p>';
+  },
+
+  training(n) {
+    const muscles = routine.selectedMuscles(), src = routine.selection.source();
+    const name = src.kind === "program" ? src.program.name
+               : src.kind === "modified" ? src.program.name + " (edited)" : "Your own selection";
+    const load = n.load;
+    return '<p class="row-note">' + (muscles.length
+        ? '<b>' + esc(name) + '</b> · ' + muscles.length + (muscles.length === 1 ? " muscle" : " muscles") + ' '
+        : 'No target muscles yet, so no training is counted. ') +
+        '<button type="button" class="text-link" data-goto="targets">' + (muscles.length ? "Change" : "Pick targets") + '</button></p>' +
+      '<div class="kv-row">' +
+        '<div class="kv-col"><span class="kv-label" id="days-label">Days a week</span>' +
+          '<span class="kv">' + stepper("data-days-step", -1, "One day fewer", "−") +
+            '<output class="serif-out narrow" aria-labelledby="days-label">' + routine.sessionsPerWeek + '</output>' +
+            stepper("data-days-step", 1, "One day more", "+") + '</span></div>' +
+        '<div class="kv-col"><span class="kv-label">Session length</span>' +
+          segmented("Session length", SESSION_LENGTH_OPTIONS.map(m =>
+            segBtn(routine.sessionMinutes === m, "data-len", m, m + " min"))) + '</div>' +
+      '</div>' +
+      '<p class="kv-note flush">' + (
+          muscles.length && !load.muscles.length ? 'No exercises in the database yet for these muscles, so no training is counted.'
+        : !load.kcalPerDay || (n.burnIsEstimate && !n.isValid()) ? 'The same numbers as the Week plan: change them here or there.'
+        : n.burnIsEstimate
+        ? tag(false, "Estimate") + '<span>≈ ' + fmtK(load.kcalPerDay) + ' kcal a day on average, added to your burn: about ' +
+          trainingHours(load.hours) + ' of lifting a week' + fewerDays(load.sessionsPerWeek) + ', the sets your targets take with warm-ups.</span>'
+        : 'Your own burn number already includes this training, so nothing is added to it.') + '</p>';
+  },
+
+  targets(n) {
+    const rec = n.recommended, goal = GOALS[n.goal].label.toLowerCase();
+    const [plo, phi] = n.proteinRange;
+    return '<div class="tunes">' +
+      '<div class="tune"><span class="kv-label" id="adjust-label">Calories against your burn</span>' +
+        '<span class="kv">' + stepper("data-adjust-step", -0.01, "1% fewer calories", "−") +
+          '<output class="serif-out" aria-labelledby="adjust-label">' + adjustLabel(n.adjust) + '</output>' +
+          stepper("data-adjust-step", 0.01, "1% more calories", "+") + '</span>' +
+        '<p class="kv-note flush">' + (n.adjustIsRecommended
+          ? tag(false, "Recommended") + '<span>for ' + goal + ' with your training.</span>'
+          : tag(true, "Your setting") + '<span>Recommended: ' + adjustLabel(rec.adjust) + '.</span>' +
+            '<button type="button" class="text-link" data-tune-reset="adjust" data-key="reset-adjust">Use it</button>') + '</p>' +
+      '</div>' +
+      '<div class="tune"><span class="kv-label" id="protein-label">Protein</span>' +
+        '<span class="kv">' + stepper("data-protein-step", -0.1, "0.1 g per kg less", "−") +
+          '<output class="serif-out" aria-labelledby="protein-label">' + fmtGkg(n.proteinPerKg) + '</output>' +
+          stepper("data-protein-step", 0.1, "0.1 g per kg more", "+") + '<span class="unit">g per kg</span></span>' +
+        '<p class="kv-note flush">' + (n.proteinIsRecommended
+          ? tag(false, "Recommended") + '<span>for ' + goal + ' with your training.</span>'
+          : tag(true, "Your setting") + '<span>Recommended: ' + fmtGkg(rec.protein) + ' g/kg.</span>' +
+            '<button type="button" class="text-link" data-tune-reset="protein" data-key="reset-protein">Use it</button>') + '</p>' +
+        (n.isValid() ? '<p class="kv-note flush faint">≈ ' + n.protein + ' g a day · usual range ' + plo + '–' + phi + ' g</p>' : '') +
+      '</div>' +
+    '</div>';
+  },
+
+  rhythm(n) {
+    const hourOptions = (from, to, now) => Array.from({ length: to - from + 1 }, (_, i) => from + i).map(h =>
+      '<option value="' + h + '"' + (h === now ? ' selected' : '') + '>' + hourLabel(h) + '</option>').join("");
+    const suggest = !n.isValid() ? ""
+      : n.suggestedMeals !== n.mealsPerDay
+      ? '<p class="kv-note flush">Suggested: <b>' + n.suggestedMeals + ' meals</b>, about ' +
+        Math.round(n.protein / n.suggestedMeals) + ' g protein each. ' +
+        '<button type="button" class="text-link" data-use-meals="' + n.suggestedMeals + '" data-key="use-meals">Use ' +
+        n.suggestedMeals + '</button></p>'
+      : '<p class="kv-note flush faint">The suggested number of meals for your protein target.</p>';
+    return '<div class="kv-row">' +
+        '<div class="kv-col"><span class="kv-label">Meals a day</span>' +
+          segmented("Meals a day", MEAL_COUNTS.map(c => segBtn(n.mealsPerDay === c, "data-meals", c,
+            c + (c === n.suggestedMeals && n.isValid() ? '<span class="sug" aria-hidden="true"></span>' : ''),
+            c === n.suggestedMeals ? ' title="Suggested for your protein target"' : ''))) + '</div>' +
+        '<label class="kv-col"><span class="kv-label">First meal</span>' +
+          '<select class="select" id="first-meal" data-key="first-meal">' + hourOptions(FIRST_HOUR, 13, n.firstMeal) + '</select></label>' +
+        '<label class="kv-col"><span class="kv-label">Last meal</span>' +
+          '<select class="select" id="last-meal" data-key="last-meal">' + hourOptions(14, LAST_HOUR, n.lastMeal) + '</select></label>' +
+      '</div>' + suggest +
+      '<div class="kv-col"><span class="kv-label">Diet style</span>' +
+        segmented("Diet style", Object.entries(DIETS).map(([key, d]) => segBtn(n.diet === key, "data-diet", key, d.label))) +
+      '</div>';
+  }
+};
 
 /** Why fewer training days count than were asked for, if they do. */
 function fewerDays(counted) {
   const asked = routine.sessionsPerWeek, free = routine.availableDays().length;
   if (counted >= asked) return "";
-  const n = d => d + (d === 1 ? " day" : " days");
+  const d = x => x + (x === 1 ? " day" : " days");
   if (routine.sessions.length === counted && counted < Math.min(asked, free))
-    return " (" + n(counted) + " in your generated week)";
+    return " (" + d(counted) + " in your generated week)";
   if (free === counted)
-    return " (only " + n(free) + " of the week " + (free === 1 ? "is" : "are") + " free to train)";
-  return " (your targets use " + counted + " of the " + n(asked) + " you offered; the rest are rest days)";
+    return " (only " + d(free) + " of the week " + (free === 1 ? "is" : "are") + " free to train)";
+  return " (your targets use " + counted + " of the " + d(asked) + " you offered; the rest are rest days)";
 }
 
 /**
@@ -254,7 +289,7 @@ function planReasons(n) {
   if (!load.muscles.length) {
     out.push((selected ? "No exercises in the database yet for your target muscles"
                        : "No target muscles yet") +
-             ", so no training is counted. The numbers below are for your day alone.");
+             ", so no training is counted. The numbers are for your day alone.");
   } else {
     out.push('<b>Targets:</b> ' + load.muscles.length +
       (load.muscles.length === 1 ? " muscle" : " muscles") + ', about ' + pct(load.coverage) +
@@ -268,8 +303,7 @@ function planReasons(n) {
   }
 
   const [alo, ahi] = g.adjust;
-  const yours = n.adjustIsRecommended ? ""
-    : ' You set ' + adjustLabel(n.adjust) + ' instead.';
+  const yours = n.adjustIsRecommended ? "" : ' You set ' + adjustLabel(n.adjust) + ' instead.';
   if (g.adjustBy === "load")
     out.push('<b>Calories:</b> ' + adjustLabel(rec.adjust) + ' for ' + goal + '. The deficit ' +
       'runs from ' + adjustLabel(alo) + ' with no training to ' + adjustLabel(ahi) + ' for a ' +
@@ -277,134 +311,246 @@ function planReasons(n) {
   else if (g.adjustBy === "coverage")
     out.push('<b>Calories:</b> ' + adjustLabel(rec.adjust) + ' for ' + goal + '. The surplus ' +
       'runs from ' + adjustLabel(alo) + ' for a few muscles to ' + adjustLabel(ahi) + ' for the ' +
-      'whole body — muscle you do not train cannot use the extra.' + yours);
+      'whole body: muscle you do not train cannot use the extra.' + yours);
   else
     out.push('<b>Calories:</b> eat what you burn for ' + goal + '.' + yours);
 
   const [plo, phi] = g.protein;
   out.push('<b>Protein:</b> ' + fmtGkg(rec.protein) + ' g/kg, placed in the ' + fmtGkg(plo) + '–' +
     fmtGkg(phi) + ' range by how hard your week is' +
-    (load.hours ? ' (' + trainingHours(load.hours) + ' of lifting).' : ' — the low end with no training.') +
+    (load.hours ? ' (' + trainingHours(load.hours) + ' of lifting).' : ': the low end with no training.') +
     (n.proteinIsRecommended ? '' : ' You set ' + fmtGkg(n.proteinPerKg) + ' g/kg instead.'));
   return out;
 }
 
-/* --------------------------------- meals --------------------------------- */
+/* ------------------------------ a day of eating ---------------------------- */
 
-function renderMealCards() {
-  const n = nutrition();
-  nmealsEl.hidden = !n.isValid();
-  if (nmealsEl.hidden) { nmealsEl.innerHTML = ""; return; }
-  const shown = new Set();       // ideas already on an earlier card today
-
-  const cards = n.meals.map(m => {
+/** The day's meals, each with the example plate it shows (no plate repeated if avoidable). */
+function mealsWithIdeas(n) {
+  const shown = new Set();
+  return n.meals.map(m => {
     const ranked = mealIdeasFor(m, n.diet, shown);
-    const offset = ranked.length ? (ideaOffset[m.index] || 0) % ranked.length : 0;
-    // A second example only if it is new today: with a small pool (few vegan
-    // mains, say) one fresh plate beats a second one repeated from lunch.
-    const picks = [ranked[offset], ranked[(offset + 1) % ranked.length]]
-      .filter((p, i, a) => p && a.indexOf(p) === i && (i === 0 || !shown.has(p.idea)));
-    for (const p of picks) shown.add(p.idea);
-
-    const [lo, hi] = n.hourBounds(m.index);
-    const times = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map(h =>
-      '<option value="' + h + '"' + (h === m.hour ? " selected" : "") + '>' + hourLabel(h) +
-      '</option>').join("");
-
-    return '<article class="meal-card ' + m.role + '">' +
-      '<header class="mc-head">' +
-        '<span class="picker mc-time"><span class="picker-label" aria-hidden="true">' +
-          hourLabel(m.hour) + '</span><select data-move="' + m.index + '" aria-label="' +
-          m.name + ' time">' + times + '</select></span>' +
-        '<span class="mc-name">' + m.name + '</span>' +
-        '<span class="mc-share">' + Math.round(m.share * 100) + '%</span>' +
-      '</header>' +
-      '<div class="mc-nums"><b>≈ ' + fmtK(m.kcal) + '</b> kcal · <b>' + m.protein +
-        ' g</b> protein</div>' +
-      '<div class="mc-focus">' + m.focus + '</div>' +
-      (picks.length
-        ? picks.map(p => renderIdea(p)).join("") +
-          (ranked.length > 2 ? '<button type="button" class="link-btn mc-more" data-more="' +
-            m.index + '">Other ideas ↻</button>' : '')
-        : '<p class="est-empty">No example meals for this diet and meal yet.</p>') +
-    '</article>';
-  }).join("");
-
-  nmealsEl.innerHTML =
-    '<div class="nm-head"><h3>Your day of eating</h3>' +
-    '<span class="nm-sub">Example plates, portioned to each meal. Swap in foods you ' +
-    'like with similar calories and protein.</span></div>' +
-    '<div class="meal-cards">' + cards + '</div>';
+    const pick = ranked.length ? ranked[(ideaOffset[m.index] || 0) % ranked.length] : null;
+    if (pick) shown.add(pick.idea);
+    return { ...m, pick, choices: ranked.length };
+  });
 }
 
-function renderIdea(p) {
-  return '<div class="idea">' +
-    '<div class="idea-head"><span class="idea-name">' + esc(p.idea.name) + '</span>' +
-      '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g</span></div>' +
-    '<ul class="idea-foods">' + p.foods.map(([id, g]) =>
-      '<li><span>' + esc(FOODS[id].name) + '</span><span>' + amountLabel(id, g) +
-      '</span></li>').join("") + '</ul></div>';
+function dayHTML() {
+  const n = nutrition(), meals = mealsWithIdeas(n);
+  const mi = Math.min(nut.meal, meals.length - 1), cm = meals[mi];
+  const hours = meals.map(m => m.hour);
+  const t0 = Math.min(...hours) - 1, t1 = Math.max(...hours) + 1;
+  const at = h => ((h - t0) / (t1 - t0) * 100).toFixed(2) + "%";
+  // Names under the stops only where they have room to sit side by side.
+  const gap = Math.min(99, ...hours.slice(1).map((h, i) => h - hours[i])) / (t1 - t0);
+  const names = gap > 0.15 && !Stages.narrow;
+  let beforeK = 0, beforeP = 0;
+  meals.slice(0, mi).forEach(m => { beforeK += m.kcal; beforeP += m.protein; });
+  const pct = v => Math.min(100, v * 100).toFixed(1) + "%";
+  const [lo, hi] = n.hourBounds(cm.index);
+  const times = Array.from({ length: hi - lo + 1 }, (_, i) => lo + i).map(h =>
+    '<option value="' + h + '"' + (h === cm.hour ? ' selected' : '') + '>' + hourLabel(h) + '</option>').join("");
+
+  const stops = meals.map((m, i) =>
+    '<button type="button" class="stop' + (i < mi ? ' past' : '') + '" role="tab" aria-selected="' + (i === mi) + '" ' +
+      'data-meal="' + i + '" data-key="meal-' + i + '" tabindex="' + (i === mi ? 0 : -1) + '" style="left:' + at(m.hour) + '" ' +
+      'aria-label="' + esc(m.name) + ', ' + hourLabel(m.hour) + ', ' + fmtK(m.kcal) + ' kcal">' +
+      '<span class="stop-dot-wrap"><span class="stop-dot" style="--s:' + (10 + m.share * 36).toFixed(1) + 'px"></span></span>' +
+      '<span class="stop-time">' + hourLabel(m.hour) + '</span>' +
+      (names ? '<span class="stop-name">' + esc(m.name) + '</span>' : '') +
+    '</button>').join("");
+  const segs = meals.map((m, i) =>
+    '<button type="button" class="seg' + (i === mi ? ' on' : i < mi ? ' past' : '') + '" style="flex:' + m.kcal + '" ' +
+      'data-meal="' + i + '" tabindex="-1" aria-label="' + esc(m.name) + ', ' + fmtK(m.kcal) + ' kcal"></button>').join("");
+  const p = cm.pick;
+
+  return '<div class="day-head" data-reveal="0">' +
+      '<button type="button" class="quiet-btn" id="close-day" data-key="close-day">← Your daily plan</button>' +
+      '<h1 class="display" id="nutrition-title" tabindex="-1">A day of eating</h1>' +
+      '<p class="nu-lede">Example plates portioned to each meal: ' + fmtK(n.kcal) + ' kcal and ' + n.protein +
+        ' g protein across ' + n.mealsPerDay + ' meals. Swap in foods you like with similar numbers.</p>' +
+    '</div>' +
+    '<div class="day-body" data-reveal="1">' +
+      '<div class="meal-line' + (names ? ' named' : '') + '" role="tablist" aria-label="Meals">' + stops + '</div>' +
+      '<div class="meal-segs-wrap">' +
+        '<div class="meal-segs">' + segs + '</div>' +
+        '<span class="meal-share">' + esc(cm.name) + ' is ' + Math.round(cm.share * 100) + '% of the day · ' +
+          fmtK(beforeK + cm.kcal) + ' of ' + fmtK(n.kcal) + ' kcal eaten by ' + hourLabel(cm.hour) + '</span>' +
+      '</div>' +
+      '<article class="meal-card" id="meal-card" aria-live="polite">' +
+        '<header class="meal-card-head">' +
+          '<div class="meal-card-title">' +
+            '<span class="eyebrow meal-when"><span class="picker meal-time"><span class="picker-label" aria-hidden="true">' +
+              hourLabel(cm.hour) + '</span><select data-move="' + cm.index + '" data-key="move" aria-label="' + esc(cm.name) +
+              ' time">' + times + '</select></span><span>· ' + (mi + 1) + ' of ' + meals.length + '</span></span>' +
+            '<span class="meal-name">' + esc(cm.name) + '</span>' +
+          '</div>' +
+          '<div class="meal-nav">' +
+            '<button type="button" class="round-btn big" data-meal-step="-1" data-key="meal-prev" aria-label="Previous meal"' + (mi === 0 ? ' disabled' : '') + '>←</button>' +
+            '<button type="button" class="round-btn big" data-meal-step="1" data-key="meal-next" aria-label="Next meal"' + (mi === meals.length - 1 ? ' disabled' : '') + '>→</button>' +
+          '</div>' +
+        '</header>' +
+        '<div class="meal-figs">' +
+          '<span><b>' + fmtK(cm.kcal) + '</b> kcal</span>' +
+          '<span><b>' + cm.protein + '</b> g protein</span>' +
+          '<span class="meal-of">' + Math.round(cm.share * 100) + '% of the day</span>' +
+        '</div>' +
+        '<div class="meal-progress">' +
+          [["Calories by the end of " + cm.name.toLowerCase() + ": " + fmtK(beforeK + cm.kcal) + " / " + fmtK(n.kcal), beforeK / n.kcal, cm.kcal / n.kcal],
+           ["Protein: " + (beforeP + cm.protein) + " / " + n.protein + " g", beforeP / n.protein, cm.protein / n.protein]]
+            .map(([label, before, now]) =>
+              '<div class="bar-block"><span class="bar-label">' + label + '</span>' +
+                '<span class="bar"><span class="bar-before" style="width:' + pct(before) + '"></span>' +
+                '<span class="bar-now" style="left:' + pct(before) + ';width:' + pct(now) + '"></span></span></div>').join("") +
+        '</div>' +
+        '<div class="meal-idea">' +
+          '<span class="meal-focus">' + esc(cm.focus) + '</span>' +
+          (p
+            ? '<span class="idea-head"><span class="idea-name">' + esc(p.idea.name) + '</span>' +
+                '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g</span></span>' +
+              '<ul class="idea-foods">' + p.foods.map(([id, g]) =>
+                '<li><span>' + esc(FOODS[id].name) + '</span><span>' + amountLabel(id, g) + '</span></li>').join("") + '</ul>' +
+              (cm.choices > 1 ? '<button type="button" class="text-link" data-more="' + cm.index + '" data-key="more">Other ideas ↻</button>' : '')
+            : '<p class="kv-note flush">No example meals for this diet and meal yet.</p>') +
+        '</div>' +
+      '</article>' +
+    '</div>';
 }
 
-/* ------------------------------- updating -------------------------------- */
+/** Opens another meal: the card slides out and the next one in. */
+function pickMeal(i) {
+  const count = nutrition().meals.length;
+  if (i < 0 || i >= count || i === nut.meal) return;
+  const card = $("meal-card");
+  nut.dir = i > nut.meal ? 1 : -1;
+  if (!card || reducedMotion()) { nut.meal = i; renderNutritionStage(); return; }
+  card.style.setProperty("--dir", nut.dir);
+  card.classList.add("out");
+  clearTimeout(nut.timer);
+  nut.timer = setTimeout(() => {
+    nut.meal = i;
+    renderNutritionStage();
+    // The new card comes in from the side the old one left towards.
+    const fresh = $("meal-card");
+    fresh.style.setProperty("--dir", -nut.dir);
+    fresh.classList.add("out", "instant");
+    requestAnimationFrame(() => requestAnimationFrame(() => fresh.classList.remove("out", "instant")));
+  }, 160);
+}
+
+/* -------------------------------- drawing --------------------------------- */
 
 function renderNutritionStage() {
-  paintNutritionControls();
-  renderPlan();
-  renderMealCards();
+  // Remember what had focus: the panel is redrawn after every change.
+  const active = document.activeElement;
+  const focusKey = active && nutritionEl.contains(active) ? (active.dataset.key || active.id) : null;
+  nutritionEl.innerHTML = nut.day && nutrition().isValid() ? dayHTML() : planHTML();
+  if (focusKey) {
+    const again = nutritionEl.querySelector('[data-key="' + focusKey + '"]') || $(focusKey);
+    if (again) again.focus({ preventScroll: true });
+  }
 }
 
-function changed(fn) { fn(nutrition()); renderNutritionStage(); saveRoutine(routine); }
+/**
+ * Repaints what the typed weight or burn changes, in place: the field the
+ * user is typing in is never rebuilt, so nothing under their hands moves.
+ */
+function paintNutritionFigures() {
+  const n = nutrition(), sums = rowSummaries(n);
+  $("nu-figures").innerHTML = figuresHTML(n);
+  $("nu-fuels").textContent = fuelsText(n);
+  for (const b of nutritionEl.querySelectorAll("[data-goal]"))
+    b.querySelector(".goal-adj").textContent = goalAdjust(b.dataset.goal, n);
+  for (const [key, text] of Object.entries(sums)) {
+    const el = nutritionEl.querySelector('[data-row-sum="' + key + '"]');
+    if (el) el.textContent = text;
+  }
+  const burn = $("n-burn");
+  if (burn && document.activeElement !== burn) burn.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
+  if ($("burn-note")) $("burn-note").innerHTML = burnNoteHTML(n);
+  $("open-day").disabled = !n.isValid();
+}
 
-$("stage-nutrition").addEventListener("click", e => {
+function changed(fn) {
+  fn(nutrition());
+  saveRoutine(routine);
+  renderNutritionStage();
+}
+
+nutritionEl.addEventListener("click", e => {
   const b = e.target.closest("button");
-  if (!b) return;
-  if (b.dataset.goal)      changed(n => n.setGoal(b.dataset.goal));
-  else if (b.dataset.activity) changed(n => n.setActivity(b.dataset.activity));
-  else if (b.dataset.meals)    changed(n => n.setMealCount(Number(b.dataset.meals)));
-  else if (b.dataset.useMeals) changed(n => n.setMealCount(Number(b.dataset.useMeals)));
-  else if (b.dataset.diet)     changed(n => { n.diet = b.dataset.diet; });
-  else if (b.dataset.unit)     changed(n => n.setUnit(b.dataset.unit));
-  else if (b.dataset.step)     changed(n => n.setBurn(n.burn + Number(b.dataset.step)));
-  else if (b.id === "burn-reset") { changed(n => { n.burnInput = null; }); $("n-burn").focus(); }
-  else if (b.dataset.adjustStep)  changed(n => n.setAdjust(n.adjust + Number(b.dataset.adjustStep)));
-  else if (b.dataset.proteinStep) changed(n => n.setProtein(n.proteinPerKg + Number(b.dataset.proteinStep)));
-  else if (b.dataset.tuneReset) {
-    // The link goes once used; keep focus on the target it reset.
-    const which = b.dataset.tuneReset;
-    changed(n => { n[which + "Input"] = null; });
-    $("n-" + which).focus();
+  if (!b || b.disabled) return;
+  const d = b.dataset;
+  if (d.goal) changed(n => n.setGoal(d.goal));
+  else if (d.row) { nut.row = nut.row === d.row ? null : d.row; renderNutritionStage(); }
+  else if (d.unit) changed(n => n.setUnit(d.unit));
+  else if (d.activity) changed(n => n.setActivity(d.activity));
+  else if (d.burnStep) changed(n => n.setBurn(n.burn + Number(d.burnStep)));
+  else if (b.id === "burn-reset") { changed(n => { n.burnInput = null; }); if ($("n-burn")) $("n-burn").focus(); }
+  else if (d.daysStep) {
+    const [lo, hi] = TRAINING_DAYS_RANGE;
+    changed(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); });
   }
-  else if (b.dataset.more) {
-    ideaOffset[b.dataset.more] = (ideaOffset[b.dataset.more] || 0) + 2;
-    renderMealCards();
-    const again = nmealsEl.querySelector('[data-more="' + b.dataset.more + '"]');
-    if (again) again.focus();
-  }
+  else if (d.len) changed(() => { routine.sessionMinutes = Number(d.len); });
+  else if (d.adjustStep) changed(n => n.setAdjust(n.adjust + Number(d.adjustStep)));
+  else if (d.proteinStep) changed(n => n.setProtein(n.proteinPerKg + Number(d.proteinStep)));
+  else if (d.tuneReset) changed(n => { n[d.tuneReset + "Input"] = null; });
+  else if (d.meals) changed(n => { n.setMealCount(Number(d.meals)); nut.meal = 0; });
+  else if (d.useMeals) changed(n => { n.setMealCount(Number(d.useMeals)); nut.meal = 0; });
+  else if (d.diet) changed(n => { n.diet = d.diet; });
+  else if (b.id === "nu-reasons") { nut.reasons = !nut.reasons; renderNutritionStage(); }
+  else if (b.id === "open-day") Stages.relayout(() => { nut.day = true; nut.row = null; nut.meal = 0; }, 500);
+  else if (b.id === "close-day") Stages.relayout(() => { nut.day = false; }, 500);
+  else if (d.meal) pickMeal(Number(d.meal));
+  else if (d.mealStep) pickMeal(nut.meal + Number(d.mealStep));
+  else if (d.more) { ideaOffset[d.more] = (ideaOffset[d.more] || 0) + 1; renderNutritionStage(); }
 });
 
-$("n-weight").addEventListener("input", e => changed(n => n.setWeight(e.target.valueAsNumber)));
-$("n-burn").addEventListener("change", e => {
-  changed(n => n.setBurn(Number(e.target.value)));
-  const n = nutrition();   // the field has focus, so repaint it here
-  e.target.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
+nutritionEl.addEventListener("input", e => {
+  if (e.target.id !== "n-weight") return;
+  nutrition().setWeight(e.target.valueAsNumber);
+  saveRoutine(routine);
+  paintNutritionFigures();
 });
-/* Training frequency and length belong to the routine; the week plan shows
-   the same numbers when it is opened (its stage's enter, app.js). */
-$("n-sessions").addEventListener("change", e =>
-  changed(() => { routine.sessionsPerWeek = Number(e.target.value); }));
-$("n-len").addEventListener("change", e =>
-  changed(() => { routine.sessionMinutes = Number(e.target.value); }));
-$("first-meal").addEventListener("change", e =>
-  changed(n => n.setWindow(Number(e.target.value), n.lastMeal)));
-$("last-meal").addEventListener("change", e =>
-  changed(n => n.setWindow(n.firstMeal, Number(e.target.value))));
-nmealsEl.addEventListener("change", e => {
-  const s = e.target.closest("[data-move]");
-  if (!s) return;
-  changed(n => n.moveMeal(Number(s.dataset.move), Number(s.value)));
-  const again = nmealsEl.querySelector('[data-move="' + s.dataset.move + '"]');
-  if (again) again.focus();
+nutritionEl.addEventListener("change", e => {
+  const t = e.target, n = nutrition();
+  if (t.id === "n-burn") {
+    n.setBurn(Number(t.value));
+    t.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
+    saveRoutine(routine);
+    paintNutritionFigures();
+  }
+  else if (t.id === "first-meal") changed(n => n.setWindow(Number(t.value), n.lastMeal));
+  else if (t.id === "last-meal") changed(n => n.setWindow(n.firstMeal, Number(t.value)));
+  else if (t.dataset.move) changed(n => n.moveMeal(Number(t.dataset.move), Number(t.value)));
 });
 
-buildNutritionControls();
+/* Arrow keys move along the day's meals, as a tab list should. */
+nutritionEl.addEventListener("keydown", e => {
+  if (!e.target.closest(".meal-line") || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+  e.preventDefault();
+  const i = nut.meal + (e.key === "ArrowRight" ? 1 : -1);
+  if (i < 0 || i >= nutrition().meals.length) return;
+  nut.meal = i;
+  renderNutritionStage();
+  const stop = nutritionEl.querySelector('.stop[data-meal="' + i + '"]');
+  if (stop) stop.focus();
+});
+
+Stages.register("nutrition", {
+  enter() {
+    // Without a weight there is nothing to plan from: open where it goes.
+    if (!nutrition().isValid()) { nut.day = false; nut.row = "body"; }
+    renderNutritionStage();
+  },
+  shot: () => "nutrition",
+  dim: () => nut.day ? 0.45 : 1,
+  focus: () => $("nutrition-title"),
+  footer: () => ({
+    back: "← Targets",
+    skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
+    next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
+    nextDisabled: routine.selection.isEmpty()
+  })
+});
