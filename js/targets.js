@@ -7,8 +7,8 @@
      • left    where to start: the program families as tabs, one program
                at a time with previous and next, and what applying it does
      • right   until something is chosen, how ATLAS works; then the
-               training focus, grouped by family, each muscle's priority,
-               the user's training experience, and what it will take
+               training focus, grouped by family, and each muscle's
+               priority (training experience is set on the Week plan)
 
    Four views of one MuscleSelection (routine.selection): the figure, the
    programs, the focus summary and the estimate. None of them talk to each
@@ -28,8 +28,9 @@ const programsEl = $("programs"), summaryEl = $("focus-summary"), captionEl = $(
 const PROGRAM_TABS = { whole: "Whole body", movement: "Push · Pull · Legs", pairing: "Pairings" };
 const PRIORITY_CHOICES = [["maintain", "Maintain"], ["normal", "Normal"], ["focus", "Focus"]];
 const PRIORITY_MARK = { focus: "▲", maintain: "▼", normal: "" };
-/* EXPERIENCE_LEVELS' labels, short enough to sit side by side in the rail. */
-const EXPERIENCE_SHORT = { beginner: "Under 6 months", intermediate: "6 mo – 2 yrs", advanced: "2+ years" };
+/* "What it will take" (estimateHTML) is hidden from Targets for now and kept
+   for a later stage, likely an end-of-plan summary. Set true to show it here. */
+const SHOW_ESTIMATE = false;
 
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -283,7 +284,7 @@ function startingSets(m) {
   return weeklyTarget(m, routine.experience || DEFAULT_EXPERIENCE, selection.priority(m.id)) || 0;
 }
 
-/** Once something is chosen: the count, the focus by family, experience, the estimate. */
+/** Once something is chosen: the count and the focus by family. */
 function focusHTML() {
   const muscles = selection.muscles();
   const families = Object.keys(FAMILIES).map(key => ({ key, muscles: muscles.filter(m => m.family === key) }))
@@ -329,20 +330,6 @@ function focusHTML() {
     '</div>';
   }).join("");
 
-  const experience = '<div class="field-block">' +
-      '<span class="eyebrow" id="experience-label">Training experience</span>' +
-      '<span class="segmented" role="radiogroup" aria-labelledby="experience-label">' +
-        EXPERIENCE_LEVELS.map(lv =>
-          '<button type="button" role="radio" aria-checked="' + (routine.experience === lv.id) + '" ' +
-            'data-experience="' + lv.id + '" data-key="exp-' + lv.id + '" aria-label="' + esc(lv.label) + '" ' +
-            'title="' + esc(lv.label) + '">' + esc(EXPERIENCE_SHORT[lv.id] || lv.label) + '</button>').join("") +
-      '</span>' +
-      '<span class="field-note">' + (routine.experience
-        ? "Each muscle's weekly sets start from this."
-        : "Tell ATLAS once so each muscle starts from a sensible weekly volume. Until then it assumes " +
-          EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + ".") + '</span>' +
-    '</div>';
-
   return '<div class="sel-head">' +
       '<span class="sel-count-wrap"><span class="sel-count">' + muscles.length + '</span>' +
         '<span class="sel-noun">' + (muscles.length === 1 ? "muscle group" : "muscle groups") + '</span></span>' +
@@ -354,8 +341,7 @@ function focusHTML() {
       groups +
     '</div>' +
     noExercisesNote(muscles) +
-    experience +
-    estimateHTML(muscles);
+    (SHOW_ESTIMATE ? estimateHTML(muscles) : "");
 }
 
 /** Says up front which chosen muscles the exercise database cannot fill yet. */
@@ -428,11 +414,6 @@ summaryEl.addEventListener("click", e => {
   }
   else if (b.dataset.familyToggle) {
     focusState.open = focusState.open === b.dataset.familyToggle ? null : b.dataset.familyToggle;
-    renderSummary();
-  }
-  else if (b.dataset.experience) {
-    routine.experience = b.dataset.experience;
-    saveRoutine(routine);
     renderSummary();
   }
   else if (b.id === "est-toggle") { focusState.estimate = !focusState.estimate; renderSummary(); }
