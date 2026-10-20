@@ -1,15 +1,18 @@
 /* ===========================================================================
-   Your week — the final plan, Monday to Sunday.
+   A session, in full — what the generated week's session panel shows.
 
-   A training day shows its time, focus, exercises (sets × reps, rest),
-   duration, when each muscle is next trained, and the meals around the
-   session. A rest day says what is recovering; a day off says so. The user
-   can move or remove a session and swap, drop or add exercises. Every change
-   goes through the routine or the session's Workout (routine.js,
-   workouts.js); this file only draws them and turns clicks into those calls.
+   A training day shows its day and time (each a picker that moves it), its
+   muscles and their sets, its exercises grouped by muscle (sets × reps,
+   rest, movement, what else they train), when each muscle is next trained,
+   and the meals around it. The user can move or remove the session and
+   swap, drop or add exercises. Every change goes through the routine or the
+   session's Workout (routine.js, workouts.js); this file only draws them and
+   turns clicks into those calls. week-view.js places the panel: beside the
+   calendar on a desktop, under the day in the phone's agenda.
+
+   Also here: what the week as a whole is missing (leftOutText, volumeNote),
+   which the generated week shows under its summary.
    ========================================================================= */
-
-const workoutsEl = $("workouts");
 
 const TIER_CSS = { "S+": "splus", "S": "s", "A+": "aplus", "A": "a" };
 const tierBadge = label =>
@@ -22,151 +25,55 @@ const byWeekOrder = (a, b) =>
 const DAY_NAME = DayOfWeek.name;
 const nameList = names => names.length < 2 ? names.join("")
   : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+const fmtSets = n => (n % 1 ? n.toFixed(1) : String(n));
 
-function renderWorkouts() {
-  const sessions = [...routine.sessions].sort(byWeekOrder);
-  if (!sessions.length) {
-    workoutsEl.innerHTML = '<h3>Your week</h3><p class="empty-nutri">Generate your plan ' +
-      'to see each day: the session, its exercises, rest days and meals.</p>';
-    return;
-  }
-
-  // Remember what had focus: the card is redrawn after every edit.
-  const focusKey = document.activeElement && workoutsEl.contains(document.activeElement)
-    ? document.activeElement.dataset.key : null;
-
-  workoutsEl.innerHTML =
-    '<h3>Your week</h3>' + weekSummary(sessions) +
-    '<p class="note">Exercises are picked from the tiers for the muscles you chose — ' +
-    'higher tiers first, one per movement in a session, rotated across the week. ' +
-    'Click an exercise to swap it or × to drop it; move a session with its day and time.</p>' +
-    '<div class="tier-key">' + TIERS.map(tierBadge).join('<span class="gt">›</span>') +
-      '<span class="tk-label">recommendation priority</span></div>' +
-    DayOfWeek.values.map(day => {
-      const session = sessions.find(s => s.day === day);
-      return session ? renderSession(session) : renderRestDay(day);
-    }).join("");
-
-  if (focusKey) {
-    const again = workoutsEl.querySelector('[data-key="' + focusKey + '"]');
-    if (again) again.focus();
-  }
+/** A session's short name: its split day ("Upper"), else the families it trains ("Push + Pull"). */
+function blockName(block) {
+  if (block.name) return block.name;
+  const worked = block.muscles.filter(m => !block.riders.has(m));
+  const fams = Object.keys(FAMILIES).filter(f => (worked.length ? worked : block.muscles).some(m => m.family === f));
+  if (["push", "pull", "legs"].every(f => fams.includes(f))) return "Full body";
+  return fams.map(f => FAMILIES[f].name).join(" + ");
 }
+/** The families a block works, in catalogue order. */
+const blockFamilies = block => Object.keys(FAMILIES).filter(f =>
+  block.muscles.some(m => m.family === f && !block.riders.has(m)));
+const familyDots = fams => fams.map(f => '<span class="fdot" style="background:var(--' + FAMILIES[f].css + ')"></span>').join("");
 
-/**
- * Training, rest and off days, time, how often each muscle is trained, any
- * chosen muscle the week no longer trains, and the daily targets.
- */
-function weekSummary(sessions) {
-  const minutes = sessions.reduce((t, s) => t + s.workout.minutes, 0);
-  // "Trained" means the same here as in the notes below: a session gives the
-  // muscle at least a set's worth, direct or assisting (weeklyVolume).
-  const v = routine.weeklyVolume();
-  const counts = [...new Set(v.rows.filter(r => r.times > 0).map(r => r.times))].sort();
-  const freq = !counts.length ? ""
-    : counts.length === 1 ? "each muscle " + counts[0] + "× a week"
-    : "each muscle " + counts[0] + "–" + counts[counts.length - 1] + "× a week";
-  // Muscles no session carries at all. Those of a block the plan could not
-  // give a day are explained by leftOutText(); the rest lost their session
-  // to the user, and generating again does fit them back in.
-  const leftIds = new Set((routine.leftOut || []).flatMap(b => b.muscles.map(m => m.id)));
-  const missing = v.unplanned.filter(m => !leftIds.has(m.id)).map(m => m.name);
-  const left = leftOutText();
-  const off = DayOfWeek.values.filter(d => routine.isDayUnavailable(d)).length;
-  const n = routine.nutrition;
-  const h = Math.floor(minutes / 60), m = minutes % 60;
-  return '<div class="week-sum">' +
-    '<span><b>' + sessions.length + '</b> training ' + (sessions.length === 1 ? "day" : "days") + '</span>' +
-    '<span><b>' + (7 - sessions.length - off) + '</b> rest</span>' +
-    (off ? '<span><b>' + off + '</b> off</span>' : '') +
-    (minutes ? '<span>≈ <b>' + (h ? h + ' h ' : '') + (m ? m + ' min' : '') + '</b> training</span>' : '') +
-    (freq ? '<span>' + freq + '</span>' : '') +
-    (n.isValid() ? '<span>≈ <b>' + n.kcal.toLocaleString("en-US") + '</b> kcal · <b>' + n.protein +
-      '</b> g protein a day</span>' : '') +
-  '</div>' +
-  (left ? '<p class="week-gap">' + esc(left) + '</p>' : '') +
-  (missing.length ? '<p class="week-gap">Not trained this week: ' + esc(nameList(missing)) +
-    ' — its session was removed. Generate again to fit ' + (missing.length === 1 ? 'it' : 'them') +
-    ' back in.</p>' : '') +
-  volumeNote(sessions, v);
-}
+/* ------------------------------- the panel -------------------------------- */
 
-/**
- * What the last generate() left without a day, and why, or "": the blocks no
- * session carries. Plain text; the caller escapes it. Generating again does
- * not change this, so it names what would: a day more, or a smaller split.
- */
-function leftOutText() {
-  const out = routine.leftOut || [];
-  if (!out.length) return "";
-  const names = out.map(b => (b.name || "Some muscles") + " (" +
-    nameList(b.muscles.filter(m => !b.riders.has(m)).map(m => m.name)) + ")");
-  const days = routine.sessions.length, split = SPLITS[routine.split];
-  const wanted = new Set(routine.sessions.map(s => s.block)).size + out.length;
-  const why = split.days && wanted > days
-    ? split.label + " has " + wanted + " days and this week has " + days + " training " +
-      (days === 1 ? "day" : "days") + ". Add a training day, or choose a split with fewer days."
-    : "No free gap fit it, or its muscles were still inside a recovery window.";
-  return "No day this week for " + nameList(names) + ". " + why;
-}
-
-/* At most this many names in a volume note before "and N more". */
-const VOLUME_NOTE_NAMES = 4;
-const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
-  : names.slice(0, VOLUME_NOTE_NAMES).join(", ") + " and " + (names.length - VOLUME_NOTE_NAMES) + " more";
-
-/**
- * How the week compares with what the chosen muscles usually need
- * (WeeklyRoutine.weeklyVolume). Muscles left without direct work, or under
- * the low end of their weekly sets, are a warning. Silent when the week meets
- * the estimate.
- */
-function volumeNote(sessions, v = routine.weeklyVolume()) {
-  // Muscles with no session at all are named above (leftOutText, or a removed
-  // session); this note is about the sessions the week does have.
-  const gap = v.noTime.length || v.short.length;
-  if (!gap) return "";
-  const parts = [];
-  if (v.noTime.length)
-    parts.push("No time this week for " + nameList(v.noTime.map(m => m.name)) + ".");
-  if (v.short.length)
-    parts.push("Under their usual weekly minimum: " +
-      someNames(v.short.map(r => r.muscle.name + " (" + fmtSets(r.sets) + " of " + r.need + " sets)")) + ".");
-  const e = v.estimate;
-  if (e && sessions.length < e.sessions.low)
-    parts.push("Your targets usually take " + e.sessions.low + "–" + e.sessions.high + " sessions of " +
-      e.sessionMinutes + " min a week; this plan has " + sessions.length + ".");
-  // Only the ways out this week really has: a day more is tried on a copy
-  // (extraDayFits), and a longer session needs a longer option to pick.
-  const longest = Math.max(...[...$("len").options].map(o => Number(o.value)));
-  const ways = [];
-  if (routine.extraDayFits()) ways.push("add a training day");
-  if (routine.sessionMinutes < longest) ways.push("lengthen sessions");
-  ways.push("pick fewer muscles");
-  parts.push("To close the gap, " + (ways.length < 2 ? ways[0]
-    : ways.slice(0, -1).join(", ") + " or " + ways[ways.length - 1]) + ".");
-  return '<p class="week-gap">' +
-    "<b>Below what your targets usually need.</b> " + esc(parts.join(" ")) + '</p>';
-}
-
-function renderSession(session) {
+/** Everything about one session, for the panel (or, with `inline`, the phone's agenda). */
+function sessionDetailHTML(session, inline = false) {
   const w = session.workout;
-  return '<article class="wo" data-session="' + session.id + '">' +
-    '<header class="wo-head">' +
-      '<div><div class="wo-when">' + moveControls(session) + '</div>' +
-        '<div class="wo-title">' + esc(session.block.label) + '</div></div>' +
-      '<div class="wo-meta">' + w.entries.length + ' exercises · ' + w.sets + ' sets · ≈ ' +
-        w.minutes + ' min' +
-        (w.edited ? ' · <button type="button" class="link-btn" data-act="restore" ' +
-                    'data-key="restore-' + session.id + '" aria-label="Restore suggested exercises for ' +
-                    DAY_NAME[session.day] + '">Restore suggestions</button>' : '') +
-        ' · <button type="button" class="link-btn" data-act="drop" data-key="drop-' + session.id +
-          '" aria-label="Remove ' + DAY_NAME[session.day] + '\'s session">Remove session</button>' +
-      '</div>' +
-    '</header>' +
-    '<p class="wo-notes">' + lengthNote(session) + recoveryNote(session) + fuelNote(session) + '</p>' +
-    w.muscles.map(m => renderMuscle(session, w, m)).join("") +
-  '</article>';
+  const muscles = session.block.muscles.filter(m => !session.block.riders.has(m));
+  const notes = lengthNote(session) + recoveryNote(session) + fuelNote(session);
+  return '<div class="sd" data-session="' + session.id + '">' +
+    (inline ? '' :
+      '<div class="sd-head">' +
+        '<div class="sd-title">' +
+          '<span class="sd-when">' + moveControls(session) + '</span>' +
+          '<span class="sd-name">' + esc(blockName(session.block)) + '</span>' +
+        '</div>' +
+        '<button type="button" class="close-x" data-act="close" data-key="close-' + session.id + '" aria-label="Close">×</button>' +
+      '</div>') +
+    (inline ? '<span class="sd-when">' + moveControls(session) + '</span>' : '') +
+    '<div class="sd-meta">' + w.entries.length + ' exercises · ' + w.sets + ' sets · ≈ ' + w.minutes + ' min' +
+      (w.edited ? ' · <button type="button" class="text-link" data-act="restore" data-key="restore-' + session.id +
+        '" aria-label="Restore suggested exercises for ' + DAY_NAME[session.day] + '">Restore suggestions</button>' : '') +
+      ' · <button type="button" class="text-link" data-act="drop" data-key="drop-' + session.id +
+        '" aria-label="Remove ' + DAY_NAME[session.day] + '\'s session">Remove session</button>' +
+    '</div>' +
+    '<div class="sd-muscles">' + muscles.map(m => {
+      const direct = w.directSets(m.id), assisted = w.assistedSets(m.id);
+      return '<span class="sd-m"><span class="fdot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
+        esc(m.name) + ' <span class="faint">' + (direct ? direct + " sets" : "") +
+        (assisted ? (direct ? " + " : "") + "≈" + fmtSets(assisted) + " assisting" : "") + '</span></span>';
+    }).join("") + '</div>' +
+    (notes ? '<div class="sd-notes">' + notes + '</div>' : '') +
+    w.muscles.map(m => muscleHTML(session, w, m)).join("") +
+    '<div class="tier-key">' + TIERS.map(tierBadge).join('<span class="gt">›</span>') +
+      '<span class="tk-label">exercise tier</span></div>' +
+  '</div>';
 }
 
 /**
@@ -199,10 +106,10 @@ function moveControls(session) {
   const times = routine.startsFor(session, session.day).map(h =>
     '<option value="' + h + '"' + (h === session.startHour ? " selected" : "") + '>' +
       hourLabel(h) + '–' + hourLabel(h + session.durationHours) + '</option>').join("");
-  return '<span class="picker"><span class="picker-label" aria-hidden="true">' +
+  return '<span class="picker caret"><span class="picker-label" aria-hidden="true">' +
       DAY_NAME[session.day] + '</span><select data-act="move-day" data-key="day-' + session.id +
       '" aria-label="Day of ' + esc(session.block.label) + ' session">' + days + '</select></span>' +
-    '<span class="picker"><span class="picker-label" aria-hidden="true">' +
+    '<span class="picker caret"><span class="picker-label" aria-hidden="true">' +
       hourLabel(session.startHour) + '–' + hourLabel(session.endHour()) + '</span>' +
       '<select data-act="move-time" data-key="time-' + session.id + '" aria-label="Time of ' +
       esc(session.block.label) + ' session">' + times + '</select></span>';
@@ -224,6 +131,7 @@ function recoveryNote(session) {
     : nameList(names) + ' once this week');
   // Riders get no work of their own, so they set no rest.
   const worked = session.block.muscles.filter(m => !session.block.riders.has(m));
+  if (!worked.length) return "";
   const need = Math.max(...worked.map(m => m.recoveryDays));
   const one = worked.length === 1;
   return '<span><b>Recovery:</b> ' + parts.join(' · ') + '. Give ' + (one ? 'it' : 'these muscles') +
@@ -248,19 +156,11 @@ function fuelNote(session) {
   return parts.length ? '<span><b>Fuel:</b> ' + parts.join(' · ') + '.</span>' : "";
 }
 
-/** A day with no session: a day off, or a rest day and what is recovering on it. */
-function renderRestDay(day) {
-  const meals = routine.plannedMeals.filter(m => m.day === day).sort((a, b) => a.hour - b.hour);
-  const mealLine = meals.length
-    ? ' <span class="rd-meals">Meals ' + meals.map(m => hourLabel(m.hour)).join(" · ") + '</span>' : '';
-  if (routine.isDayUnavailable(day))
-    return '<div class="rest-day off"><span class="rd-day">' + DAY_NAME[day] + '</span>' +
-      '<span class="rd-what">Day off — no training</span>' + mealLine + '</div>';
+/** A day with no session, in words: a day off, or a rest day and what is recovering on it. */
+function restDayText(day) {
+  if (routine.isDayUnavailable(day)) return "Day off — no training";
   const recovering = routine.recoveringOn(day);
-  return '<div class="rest-day"><span class="rd-day">' + DAY_NAME[day] + '</span>' +
-    '<span class="rd-what"><b>Rest day</b>' + (recovering.length
-      ? ' — ' + esc(nameList(recovering.map(m => m.name))) + ' recovering' : '') + '</span>' +
-    mealLine + '</div>';
+  return "Rest day" + (recovering.length ? " — " + nameList(recovering.map(m => m.name)) + " recovering" : "");
 }
 
 /**
@@ -280,7 +180,7 @@ function skippedWhere(muscle) {
     : "add an exercise yourself.";
 }
 
-function renderMuscle(session, w, muscle) {
+function muscleHTML(session, w, muscle) {
   const entries = w.entriesFor(muscle.id);
   const pool = exercisesFor(muscle.id);
   const direct = w.directSets(muscle.id), assisted = w.assistedSets(muscle.id);
@@ -300,25 +200,25 @@ function renderMuscle(session, w, muscle) {
       : session.block.splitDay && direct + assisted > 0
       ? '<p class="wm-empty">Covered by the lifts above: an exercise of its own here would ' +
         'add more than it needs this week.</p>' : '';
-    body = noRoom + '<ul class="wm-list">' + entries.map(e => renderEntry(session, w, e)).join("") + '</ul>' +
+    body = noRoom + '<ul class="wm-list">' + entries.map(e => entryHTML(session, w, e)).join("") + '</ul>' +
       exerciseSelect(w, muscle.id, null, session.id);
   }
 
   return '<section class="wm">' +
-    '<div class="wm-head"><span class="dot" style="background:var(--' +
+    '<div class="wm-head"><span class="fdot" style="background:var(--' +
       FAMILIES[muscle.family].css + ')"></span><b>' + esc(muscle.name) + '</b>' +
       '<span class="wm-sets">' + (direct ? direct + (direct === 1 ? " set" : " sets") : "") +
       (assisted ? (direct ? " + " : "") + "≈" + fmtSets(assisted) + " assisting" : "") + '</span></div>' +
     body + '</section>';
 }
 
-function renderEntry(session, w, entry) {
+function entryHTML(session, w, entry) {
   const i = w.entries.indexOf(entry);
   const ex = entry.exercise;
   const clash = w.clashWith(ex, entry);
   const also = [...ex.primary, ...ex.secondary].filter(id => id !== entry.muscleId)
     .map(id => MUSCLE_BY_ID.get(id).name);
-  return '<li class="wo-ex' + (entry.manual ? ' manual' : '') + '">' +
+  return '<li class="ex' + (entry.manual ? ' manual' : '') + '">' +
     tierBadge(entry.tier) +
     '<div class="ex-main">' +
       exerciseSelect(w, entry.muscleId, entry, session.id, i) +
@@ -330,7 +230,7 @@ function renderEntry(session, w, entry) {
     '</div>' +
     '<span class="ex-sets" title="' + entry.sets + ' sets of ' + entry.reps + ' reps">' +
       entry.sets + ' × ' + entry.reps + '</span>' +
-    '<button type="button" class="x" data-act="remove" data-entry="' + i + '" ' +
+    '<button type="button" class="row-x" data-act="remove" data-entry="' + i + '" ' +
       'data-key="rm-' + session.id + '-' + i + '" aria-label="Remove ' + esc(ex.name) + '">×</button>' +
   '</li>';
 }
@@ -363,7 +263,7 @@ function exerciseSelect(w, muscleId, entry, sessionId, index) {
   // keyboard- and screen-reader-friendly select, but only as wide as the name.
   const name = MUSCLE_BY_ID.get(muscleId).name;
   return entry
-    ? '<span class="picker ex-pick"><span class="picker-label" aria-hidden="true">' +
+    ? '<span class="picker caret ex-pick"><span class="picker-label" aria-hidden="true">' +
         esc(entry.exercise.name) + '</span>' +
         '<select data-act="replace" data-entry="' + index + '" ' +
         'data-key="pick-' + sessionId + '-' + index + '" ' +
@@ -376,34 +276,115 @@ function exerciseSelect(w, muscleId, entry, sessionId, index) {
         '<option value="">Choose an exercise…</option>' + groups + '</select></span>';
 }
 
-const fmtSets = n => (n % 1 ? n.toFixed(1) : String(n));
+/* --------------------------- what the week misses -------------------------- */
+
+/**
+ * What the last generate() left without a day, and why, or "": the blocks no
+ * session carries. Plain text; the caller escapes it. Generating again does
+ * not change this, so it names what would: a day more, or a smaller split.
+ */
+function leftOutText() {
+  const out = routine.leftOut || [];
+  if (!out.length) return "";
+  const names = out.map(b => (b.name || "Some muscles") + " (" +
+    nameList(b.muscles.filter(m => !b.riders.has(m)).map(m => m.name)) + ")");
+  const days = routine.sessions.length, split = SPLITS[routine.split];
+  const wanted = new Set(routine.sessions.map(s => s.block)).size + out.length;
+  const why = split.days && wanted > days
+    ? split.label + " has " + wanted + " days and this week has " + days + " training " +
+      (days === 1 ? "day" : "days") + ". Add a training day, or choose a split with fewer days."
+    : "No free gap fit it, or its muscles were still inside a recovery window.";
+  return "No day this week for " + nameList(names) + ". " + why;
+}
+
+/* At most this many names in a volume note before "and N more". */
+const VOLUME_NOTE_NAMES = 4;
+const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
+  : names.slice(0, VOLUME_NOTE_NAMES).join(", ") + " and " + (names.length - VOLUME_NOTE_NAMES) + " more";
+
+/**
+ * How the week compares with what the chosen muscles usually need
+ * (WeeklyRoutine.weeklyVolume). Muscles left without direct work, or under
+ * the low end of their weekly sets, are a warning. Silent when the week meets
+ * the estimate. Plain text.
+ */
+function volumeNote(sessions, v = routine.weeklyVolume()) {
+  // Muscles with no session at all are named elsewhere (leftOutText, or a
+  // removed session); this note is about the sessions the week does have.
+  if (!v.noTime.length && !v.short.length) return "";
+  const parts = [];
+  if (v.noTime.length)
+    parts.push("No time this week for " + nameList(v.noTime.map(m => m.name)) + ".");
+  if (v.short.length)
+    parts.push("Under their usual weekly minimum: " +
+      someNames(v.short.map(r => r.muscle.name + " (" + fmtSets(r.sets) + " of " + r.need + " sets)")) + ".");
+  const e = v.estimate;
+  if (e && sessions.length < e.sessions.low)
+    parts.push("Your targets usually take " + e.sessions.low + "–" + e.sessions.high + " sessions of " +
+      e.sessionMinutes + " min a week; this plan has " + sessions.length + ".");
+  // Only the ways out this week really has: a day more is tried on a copy
+  // (extraDayFits), and a longer session needs a longer option to pick.
+  const ways = [];
+  if (routine.extraDayFits()) ways.push("add a training day");
+  if (routine.sessionMinutes < Math.max(...SESSION_LENGTH_OPTIONS)) ways.push("lengthen sessions");
+  ways.push("pick fewer muscles");
+  parts.push("To close the gap, " + (ways.length < 2 ? ways[0]
+    : ways.slice(0, -1).join(", ") + " or " + ways[ways.length - 1]) + ".");
+  return "Below what your targets usually need. " + parts.join(" ");
+}
+
+/** Every gap the generated week has, as plain sentences, for the notes under its summary. */
+function weekGaps() {
+  const sessions = [...routine.sessions].sort(byWeekOrder);
+  if (!sessions.length) return [];
+  const v = routine.weeklyVolume();
+  // Muscles no session carries at all. Those of a block the plan could not
+  // give a day are explained by leftOutText(); the rest lost their session
+  // to the user, and generating again does fit them back in.
+  const leftIds = new Set((routine.leftOut || []).flatMap(b => b.muscles.map(m => m.id)));
+  const missing = v.unplanned.filter(m => !leftIds.has(m.id)).map(m => m.name);
+  return [
+    leftOutText(),
+    missing.length ? "Not trained this week: " + nameList(missing) + " — " +
+      (missing.length === 1 ? "its session was" : "their sessions were") + " removed. Generate again to fit " +
+      (missing.length === 1 ? "it" : "them") + " back in." : "",
+    volumeNote(sessions, v)
+  ].filter(Boolean);
+}
 
 /* ------------------------------- editing --------------------------------- */
 
 function sessionOf(el) {
-  const art = el.closest("[data-session]");
-  return art && routine.sessions.find(s => s.id === Number(art.dataset.session));
+  const box = el.closest("[data-session]");
+  return box && routine.sessions.find(s => s.id === Number(box.dataset.session));
 }
 
-workoutsEl.addEventListener("change", e => {
-  const el = e.target, session = sessionOf(el);
+/** Redraws the week after an edit and keeps keyboard focus on the same control. */
+function afterEdit(key) {
+  render();
+  const again = key && document.querySelector('#stage-plan [data-key="' + key + '"]');
+  if (again) again.focus({ preventScroll: true });
+}
+
+$("stage-plan").addEventListener("change", e => {
+  const el = e.target;
+  if (!el.dataset.act) return;
+  const session = sessionOf(el);
   if (!session || !el.value) return;
   if (el.dataset.act === "move-day" || el.dataset.act === "move-time") {
     // A new day keeps the start time where it fits, else the nearest that does.
     if (el.dataset.act === "move-day") routine.moveSession(session, el.value);
     else routine.moveSession(session, session.day, Number(el.value));
-    render();
-    const again = workoutsEl.querySelector('[data-key="' + el.dataset.key + '"]');
-    if (again) again.focus();
+    afterEdit(el.dataset.key);
     return;
   }
   const w = session.workout, ex = EXERCISE_BY_ID.get(el.value);
   if (el.dataset.act === "replace") w.replace(w.entries[Number(el.dataset.entry)], ex);
   else if (el.dataset.act === "add") w.add(el.dataset.muscle, ex);
-  renderWorkouts();
+  afterEdit(el.dataset.key);
 });
 
-workoutsEl.addEventListener("click", e => {
+$("stage-plan").addEventListener("click", e => {
   const el = e.target.closest("button[data-act]");
   const session = el && sessionOf(el);
   if (!session) return;
@@ -411,23 +392,22 @@ workoutsEl.addEventListener("click", e => {
   if (el.dataset.act === "remove") {
     const i = Number(el.dataset.entry);
     w.remove(w.entries[i]);
-    renderWorkouts();
     // Keep focus nearby: the next row's ×, else this session's add menu.
-    const art = workoutsEl.querySelector('[data-session="' + session.id + '"]');
-    const next = art.querySelector('[data-key="rm-' + session.id + '-' + i + '"]') ||
-                 art.querySelector(".ex-add select");
-    if (next) next.focus();
+    afterEdit("rm-" + session.id + "-" + i);
+    const box = document.querySelector('#stage-plan [data-session="' + session.id + '"]');
+    if (box && !box.contains(document.activeElement)) {
+      const add = box.querySelector(".ex-add select");
+      if (add) add.focus({ preventScroll: true });
+    }
   } else if (el.dataset.act === "restore") {
     w.restore();
-    renderWorkouts();
     // The link goes once there is nothing to restore; stay in this session.
-    workoutsEl.querySelector('[data-key="day-' + session.id + '"]').focus();
+    afterEdit("day-" + session.id);
   } else if (el.dataset.act === "drop") {
     routine.removeSession(session);
-    render();
-    renderNutritionMini();
     weekEdited() || warnIfStale();
-    const rest = workoutsEl.querySelector("[data-act=drop]") || $("generate");
-    rest.focus();
+    closeSession();
+  } else if (el.dataset.act === "close") {
+    closeSession();
   }
 });

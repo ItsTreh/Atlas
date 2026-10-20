@@ -10,7 +10,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;display=swap">
 <link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="css/legacy.css">
 </head>
 <body>
 <!-- One screen, three stages. The sculpture is a single element behind
@@ -74,91 +73,10 @@
   </section>
 
   <!-- =========================== Stage 3: week plan ======================== -->
-  <section class="stage legacy" id="stage-plan" data-scroll aria-labelledby="plan-title">
-   <div class="legacy-inner">
-    <h1 class="visually-hidden" id="plan-title" tabindex="-1">Week plan</h1>
-    <div class="layout">
-
-    <aside class="card">
-      <h2>Targets</h2>
-      <div class="targets-mini" id="targets-mini"></div>
-
-      <h2>Training</h2>
-      <div class="field">
-        <label for="len">About how long a session</label>
-        <select id="len">
-          <option value="45">45 min</option>
-          <option value="60" selected>60 min</option>
-          <option value="75">75 min</option>
-          <option value="90">90 min</option>
-        </select>
-      </div>
-      <p class="cfg-hint" id="week-targets"></p>
-      <p class="cfg-hint" id="week-fit" role="status"></p>
-      <div class="field">
-        <label for="sessions">Training days per week</label>
-        <input id="sessions" type="number" min="1" max="7" value="4">
-      </div>
-      <div class="field">
-        <label for="split">Split the week as</label>
-        <select id="split"></select>
-      </div>
-      <p class="hint" id="split-note" hidden></p>
-      <div class="field-col">
-        <div class="cfg-label" id="off-label">Days I can't train</div>
-        <div class="day-chips" id="off-days" role="group" aria-labelledby="off-label"></div>
-      </div>
-      <div class="field">
-        <label for="window">I prefer to train</label>
-        <select id="window">
-          <option value="any">Whenever</option>
-          <option value="morning">Morning</option>
-          <option value="midday">Midday</option>
-          <option value="evening" selected>Evening</option>
-        </select>
-      </div>
-
-      <h2>Nutrition</h2>
-      <div class="targets-mini" id="nutrition-mini"></div>
-      <label class="toggle">
-        <input type="checkbox" id="showmeals" checked>
-        <span>Put meals on the calendar</span>
-      </label>
-
-      <div class="actions">
-        <button class="act primary" id="generate">Generate my plan</button>
-        <button class="act ghost" id="reset">Reset</button>
-      </div>
-
-      <p class="status" id="status" role="status" aria-live="polite">
-        Click or drag across the grid to block the hours you are not available.
-      </p>
-
-      <div class="legend">
-        <div class="row"><span class="chip" style="background:var(--free)"></span> Free</div>
-        <div class="row"><span class="chip chip-busy"></span> Busy</div>
-        <div class="row"><span class="chip" style="background:var(--push-bg);border-left:4px solid var(--push)"></span> Push</div>
-        <div class="row"><span class="chip" style="background:var(--pull-bg);border-left:4px solid var(--pull)"></span> Pull</div>
-        <div class="row"><span class="chip" style="background:var(--legs-bg);border-left:4px solid var(--legs)"></span> Legs</div>
-        <div class="row"><span class="chip" style="background:var(--core-bg);border-left:4px solid var(--core)"></span> Core</div>
-        <div class="row"><span class="chip" style="background:var(--meal-bg);border-left:4px dashed var(--meal)"></span> Meal</div>
-      </div>
-    </aside>
-
-    <main>
-      <div class="card grid-card">
-        <div class="grid" id="grid" role="grid" aria-label="Weekly planner"></div>
-        <p class="hint">Click a cell to block it · drag to block a range · click a
-          blocked, scheduled or meal cell to clear it.</p>
-      </div>
-
-      <section class="card workouts" id="workouts" aria-label="Your week"></section>
-
-      <section class="card nutri" id="nutri"></section>
-    </main>
-
-    </div>
-   </div>
+  <!-- Fit it into your life, Shape your week, and Your week: week-view.js
+       draws whichever is open into the panel. -->
+  <section class="stage stage-plan" id="stage-plan" data-scroll data-view="config" aria-labelledby="plan-title">
+    <div class="wk" id="week-panel"></div>
   </section>
 
   <!-- The way on and back. Inside Training it is the step progress; on a
@@ -210,6 +128,7 @@
 <script src="js/targets.js"></script>
 <script src="js/workout-view.js"></script>
 <script src="js/nutrition-view.js"></script>
+<script src="js/week-view.js"></script>
 <script src="js/paint.js"></script>
 <script src="js/app.js"></script>
 </body>

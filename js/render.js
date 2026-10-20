@@ -1,5 +1,6 @@
 /* =========================================================================
-   Presentation
+   Presentation — what every view shares: the one routine, and a few
+   helpers for drawing it.
    ========================================================================= */
 
 const routine = new WeeklyRoutine();
@@ -7,8 +8,6 @@ const routine = new WeeklyRoutine();
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const gridEl = $("grid"), targetsMiniEl = $("targets-mini"), statusEl = $("status"),
-      nutriEl = $("nutri");
 
 function hourLabel(h) {
   h = h % 24;                   // a session ending at midnight ends at 12am
@@ -16,290 +15,22 @@ function hourLabel(h) {
   return (h % 12 === 0 ? 12 : h % 12) + s;
 }
 
-/* ------------------------------- controls -------------------------------- */
-
-function buildControls() {
-  $("len").value = routine.sessionMinutes;
-  renderWeekTargets();
-  renderWeekFit();
-  [$("sessions").min, $("sessions").max] = TRAINING_DAYS_RANGE;
-  $("sessions").value = routine.sessionsPerWeek;
-  // A split day with nothing chosen for it says so here, before Generate, so
-  // a shorter week does not look like a scheduling failure.
-  $("split").innerHTML = Object.entries(SPLITS).map(([id, s]) => {
-    const empty = routine.emptySplitDays(id);
-    return '<option value="' + id + '">' + s.label +
-      (empty.length ? ' — no muscles for ' + empty.join(" or ") : '') + '</option>';
-  }).join("");
-  $("split").value = routine.split;
-  renderSplitNote();
-  $("window").value = routine.preferredWindow;
-  $("showmeals").checked = routine.nutrition.showMeals;
+/** "6–7pm", "11am–1pm": an hour range, the shared suffix said once. */
+function hourRange(a, b) {
+  const A = hourLabel(a), B = hourLabel(b);
+  return A.slice(-2) === B.slice(-2) ? A.slice(0, -2) + "–" + B : A + "–" + B;
 }
 
-/**
- * The option text above is cut off in a narrow select, so the chosen split's
- * empty days are also said in plain text under it, where a phone shows them.
- */
-function renderSplitNote() {
-  const empty = routine.emptySplitDays();
-  const el = $("split-note");
-  el.hidden = !empty.length;
-  el.textContent = empty.length ? "Nothing you selected goes on " + empty.join(" or ") + " days." : "";
-}
-
-/** The sidebar's short reminder of what the Targets stage chose. */
-function renderTargetsMini() {
-  const muscles = routine.selectedMuscles();
-  const src = routine.selection.source();
-  const label = src.kind === "program"  ? src.program.name
-              : src.kind === "modified" ? src.program.name + " (edited)"
-              : muscles.length ? "Custom" : "None selected";
-  targetsMiniEl.innerHTML =
-    '<div class="tm-head"><span class="tm-name"></span>' +
-    '<button type="button" class="link-btn" data-goto="targets">Change</button></div>' +
-    '<div class="tm-list"></div>';
-  targetsMiniEl.querySelector(".tm-name").textContent =
-    label + " · " + muscles.length + (muscles.length === 1 ? " muscle" : " muscles");
-  const list = targetsMiniEl.querySelector(".tm-list");
-  for (const key of Object.keys(FAMILIES)) {
-    const names = muscles.filter(m => m.family === key).map(m => m.name);
-    if (!names.length) continue;
-    const row = document.createElement("div");
-    row.className = "tm-row";
-    row.innerHTML = '<span class="dot" style="background:var(--' + key + ')"></span>';
-    row.append(names.join(", "));
-    list.appendChild(row);
-  }
-}
-
-/** The sidebar's short reminder of what the Nutrition stage set up. */
-function renderNutritionMini() {
-  const n = routine.nutrition;
-  const el = $("nutrition-mini");
-  el.innerHTML =
-    '<div class="tm-head"><span class="tm-name"></span>' +
-    '<button type="button" class="link-btn" data-goto="nutrition">Change</button></div>' +
-    '<div class="tm-list"><div class="tm-row"></div></div>';
-  el.querySelector(".tm-name").textContent = GOALS[n.goal].label;
-  el.querySelector(".tm-row").textContent = n.isValid()
-    ? "≈ " + n.kcal.toLocaleString("en-US") + " kcal · " + n.protein + " g protein · " +
-      n.mealsPerDay + " meals, " + hourLabel(n.hours[0]) + "–" + hourLabel(n.hours[n.hours.length - 1])
-    : "Add your body weight to get a plan.";
-}
-
-/** The weekly sets each chosen muscle starts from, once experience is known. */
-function renderWeekTargets() {
-  const t = routine.weeklyTargets(), el = $("week-targets");
-  if (!t || !t.size) {
-    el.textContent = t ? "" : "Set your training experience on Targets so each muscle starts from a sensible weekly volume. Until then the plan assumes under 6 months.";
-    return;
-  }
-  const mark = { focus: " ▲", maintain: " ▼", normal: "" };
-  el.textContent = "Weekly hard sets to start from (estimate): " +
-    routine.selection.muscles().map(m =>
-      m.name + " " + t.get(m.id) + mark[routine.selection.priority(m.id)]).join(" · ") + ".";
-}
-
-/**
- * What the weekly targets look like against the week, and what would help if
- * not. This is a prediction made before Generate (WeeklyRoutine.weekPlan), so
- * it says "looks", "would" and "estimate", never "fits" as a fact.
- */
-function renderWeekFit() {
-  const fit = routine.weekFit(), el = $("week-fit");
-  el.classList.remove("warn");
-  if (!fit || !routine.selection.size) { el.textContent = ""; return; }
-  const h = min => (Math.round(min / 6) / 10) + " h";
-  const names = fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
-  const fixes = [];
-  if (fit.fixes.extraDay) fixes.push("one more training day (" + fit.fixes.extraDay + ")");
-  if (fit.fixes.sessionMinutes) fixes.push("sessions of " + fit.fixes.sessionMinutes + " min");
-  const fix = fixes.length ? " With " + fixes.join(" or ") + " everything should fit (estimate)." : "";
-  // What the week the planner builds can hold (WeeklyRoutine.weekPlan): the
-  // days it really uses, and muscles a split leaves without a day.
-  const before = [];
-  if (fit.days < fit.askedDays)
-    before.push("Recovery and your free hours look like room for " + fit.days + " of your " +
-                fit.askedDays + " training days (estimate).");
-  if (fit.unplaced.length)
-    before.push(SPLITS[routine.split].label + " would leave " +
-                nameList(fit.unplaced.map(id => MUSCLE_BY_ID.get(id).name)) + " without a day this week.");
-  const lead = before.length ? before.join(" ") + " " : "";
-  if (!fit.fits || !fit.meetsMinimums) {
-    el.classList.add("warn");
-    const low = fit.belowMinimum.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
-    el.textContent = lead + "Even the usual minimum for every muscle looks like more than your sessions can hold (about " +
-      h(fit.capacityMinutes) + " a week, estimate). " + (low ? "So that every muscle is still trained, " + low +
-      " would get less than their usual minimum. " : "") +
-      "Add a training day, make sessions longer, or drop a muscle." + fix;
-  } else if (fit.trimmed.length) {
-    el.classList.add("warn");
-    el.textContent = lead + "Your sessions (about " + h(fit.capacityMinutes) + " a week, estimate) look too short for every target, " +
-      "so the plan lowers " + names + " (never below their minimum)." + fix;
-  } else {
-    if (lead) el.classList.add("warn");
-    el.textContent = lead + "Your settings look feasible (estimate): about " + h(fit.neededMinutes) +
-      " of working sets in about " + h(fit.capacityMinutes) + " of session time.";
-  }
-}
-
-function readControls() {
-  routine.sessionMinutes = Number($("len").value);
-  const [lo, hi] = TRAINING_DAYS_RANGE;
-  routine.sessionsPerWeek = Math.max(lo, Math.min(hi, Math.round(Number($("sessions").value)) || lo));
-  $("sessions").value = routine.sessionsPerWeek;
-  routine.preferredWindow = $("window").value;
-  if (SPLITS[$("split").value]) routine.split = $("split").value;
-  routine.nutrition.showMeals = $("showmeals").checked;
-}
-
-/* --------------------------------- grid ---------------------------------- */
-
-function buildGrid() {
-  gridEl.innerHTML = "";
-  const corner = document.createElement("div");
-  corner.className = "corner";
-  gridEl.appendChild(corner);
-
-  for (const day of DayOfWeek.values) {
-    const h = document.createElement("div");
-    h.className = "head"; h.textContent = DayOfWeek.label[day];
-    gridEl.appendChild(h);
-  }
-  for (let hour = routine.firstHour; hour <= routine.lastHour; hour++) {
-    const lab = document.createElement("div");
-    lab.className = "hour"; lab.textContent = hourLabel(hour);
-    gridEl.appendChild(lab);
-    for (const day of DayOfWeek.values) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      cell.dataset.day = day; cell.dataset.hour = hour;
-      cell.setAttribute("role", "gridcell");
-      gridEl.appendChild(cell);
-    }
-  }
-  render();
-}
-
-function render() {
-  renderGrid(); paintOffDays(); renderWorkouts(); renderNutrition();
-  saveRoutine(routine);   // every change that reaches render() should survive a reload
-}
-
-/** The "Days I can't train" toggles, one per day, pressed when the whole day is busy. */
-function buildOffDays() {
-  $("off-days").innerHTML = DayOfWeek.values.map(day =>
-    '<button type="button" class="day-chip" data-off="' + day + '" aria-pressed="false">' +
-      DayOfWeek.label[day] + '</button>').join("");
-}
-function paintOffDays() {
-  for (const b of $("off-days").querySelectorAll("[data-off]")) {
-    const off = routine.isDayUnavailable(b.dataset.off);
-    b.setAttribute("aria-pressed", off ? "true" : "false");
-    b.title = off ? "Can't train " + DayOfWeek.label[b.dataset.off] + " — click to free it"
-                  : "Mark all of " + DayOfWeek.label[b.dataset.off] + " as busy";
-  }
-}
-
-/**
- * Repaints the grid. A cell is only touched when its rendered content actually
- * changed — during a drag this runs on every pointermove, and rewriting 126
- * cells each time was slow enough to make the browser drop move events.
- */
-function renderGrid() {
-  for (const cell of gridEl.querySelectorAll(".cell")) {
-    const slot = routine.slot(cell.dataset.day, Number(cell.dataset.hour));
-
-    // The session's minutes change as exercises are edited; a day off is
-    // drawn on its free cells. Both are part of what the cell shows.
-    const off = routine.offDays.has(slot.day);
-    const sig = (slot.state === SlotState.WORKOUT
-        ? "W" + slot.session.id + ":" + slot.hour + ":" + sessionMinutes(slot.session)
-        : slot.state === SlotState.MEAL ? "M" + slot.meal.id : slot.state) + (off ? ":off" : "");
-    if (cell.dataset.sig === sig) continue;
-    cell.dataset.sig = sig;
-
-    cell.className = "cell";
-    if (off) cell.classList.add("offday");
-    cell.innerHTML = "";
-    const where = DayOfWeek.label[slot.day] + " " + hourLabel(slot.hour);
-
-    if (slot.state === SlotState.BUSY) {
-      cell.classList.add("busy");
-      cell.setAttribute("aria-label", where + ", busy");
-
-    } else if (slot.state === SlotState.WORKOUT) {
-      const s = slot.session, first = slot.hour === s.startHour;
-      cell.classList.add(s.block.css);
-      if (!first) cell.classList.add("cont");
-      const minutes = sessionMinutes(s);
-      cell.innerHTML = '<span class="bar"></span>' +
-        (first
-          ? '<span class="t1">' + (s.block.name || s.block.label) + '</span>' +
-            '<span class="t2">≈ ' + minutes + ' min' +
-              (s.block.name || s.block.mixed ? '' : ' · ' + FAMILIES[s.block.family].name) + '</span>'
-          : '<span class="t2">…continues</span>');
-      cell.setAttribute("aria-label",
-        where + ", " + s.block.label + " session, about " + minutes + " minutes");
-
-    } else if (slot.state === SlotState.MEAL) {
-      const m = slot.meal;
-      cell.classList.add("meal");
-      cell.innerHTML = '<span class="bar"></span>' +
-        '<span class="t1">' + m.name + '</span>' +
-        '<span class="t2">' + m.kcal + ' kcal · ' + m.protein + 'g P</span>';
-      cell.setAttribute("aria-label",
-        where + ", " + m.name + ", " + m.kcal + " calories, " + m.protein + " grams protein");
-
-    } else {
-      cell.setAttribute("aria-label", where + (off ? ", day off training" : ", free"));
-    }
-  }
-}
-
-/** A session's length as the plan below shows it: its workout, else the block's share of the session. */
+/** A session's length as the plan shows it: its workout, else the block's share of the session. */
 function sessionMinutes(session) {
   return session.workout ? session.workout.minutes : session.block.sessionMinutes;
 }
 
-function renderNutrition() {
-  const n = routine.nutrition;
-  if (!n.isValid()) {
-    nutriEl.innerHTML = '<h3>Nutrition</h3><p class="empty-nutri">Enter a body ' +
-      'weight between ' + weightRangeText() + ' to see your daily targets.</p>';
-    return;
-  }
-  const fmtK = v => v.toLocaleString("en-US");
-  const rows = n.meals.map(m => {
-    const placedToday = routine.plannedMeals.filter(p => p.name === m.name && p.day === "MON");
-    const at = placedToday.length ? hourLabel(placedToday[0].hour) : hourLabel(m.hour);
-    return '<tr><td class="name">' + m.name + '</td><td>' + at + '</td><td>' +
-           fmtK(m.kcal) + ' kcal</td><td>' + m.protein + ' g</td>' +
-           '<td class="food">' + m.focus + '</td></tr>';
-  }).join("");
-
-  nutriEl.innerHTML =
-    '<h3>Nutrition</h3>' +
-    '<p class="note">Estimated in the Nutrition step from your daily burn, your goal ' +
-    'and the training above. A rough target to eat against, not a prescription.</p>' +
-    '<div class="stats">' +
-      '<div class="stat"><div class="k">Daily calories</div>' +
-        '<div class="v">' + fmtK(n.kcal) + ' <span class="u">kcal</span></div></div>' +
-      '<div class="stat"><div class="k">Daily protein</div>' +
-        '<div class="v">' + n.protein + ' <span class="u">g</span></div></div>' +
-      '<div class="stat"><div class="k">Goal</div>' +
-        '<div class="v" style="font-size:17px">' + GOALS[n.goal].label + '</div></div>' +
-      '<div class="stat"><div class="k">Meals placed</div>' +
-        '<div class="v">' + routine.plannedMeals.length +
-        ' <span class="u">this week</span></div></div>' +
-    '</div>' +
-    '<table class="meals"><thead><tr><th>Meal</th><th>Around</th><th>Calories</th>' +
-    '<th>Protein</th><th>Build it from</th></tr></thead><tbody>' + rows +
-    '</tbody></table>';
-}
-
-function setStatus(text, kind) {
-  statusEl.textContent = text;
-  statusEl.className = "status" + (kind ? " " + kind : "");
+/**
+ * Redraws the week after anything that changes it, and saves: every change
+ * that reaches render() should survive a reload.
+ */
+function render() {
+  if (typeof renderWeek === "function") renderWeek();
+  saveRoutine(routine);
 }
