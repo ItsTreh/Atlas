@@ -50,15 +50,13 @@
   --seam:        #f4f5f6;
   --sel:         #2f3337;
   --sel-hover:   #474c51;
-  /* the sculpture's surfaces before light: form (bone, tendon, hands) and
-     muscle are one material — the light carves them apart, not the tone —
-     and a selected muscle is the selection charcoal, lifted so the light
-     still models it. Shading darkens them; lit faces sit near them. */
-  --sculpt-form:     #d6d2c9;
-  --sculpt-muscle:   #d6d2c9;
+  /* The sculpture shares the page's cool neutrals. Selection adds only a
+     small material shift; its surface constellation carries the state. */
+  --sculpt-form:     #bfc4ca;
+  --sculpt-muscle:   #bfc4ca;
   --sculpt-selected: #585e64;
-  --cartography-ink: #76552c;
-  --cartography-line: #b8a88b;
+  --cartography-ink: var(--ink);
+  --cartography-line: var(--ink-faint);
 }
 
 [data-theme="dark"] {
@@ -101,8 +99,8 @@
   --sculpt-form:     #858b8d;
   --sculpt-muscle:   #858b8d;
   --sculpt-selected: #b6bbc0;
-  --cartography-ink: #e6c996;
-  --cartography-line: #887756;
+  --cartography-ink: var(--ink);
+  --cartography-line: var(--ink-faint);
 }
 
 /* Type and shape, shared by both themes. The interface speaks in one sans

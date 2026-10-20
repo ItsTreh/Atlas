@@ -2,70 +2,67 @@
 
 The sculpture is the body. The cartography is how the body communicates.
 
-The default WebGL sculpture now uses surface points and fine contours for
-hover, selection, program previews, and workout highlights. The stone keeps
-its modelling instead of becoming a filled selection patch.
+The WebGL sculpture reveals fine, curved traces within its material. Their
+direction follows each authored region's shape, with gentle bending and
+tapered accents that travel together while the pointer hovers. Neutral ink
+matches the page; the light theme uses the sculpture's original cool grey.
 
-- Exploring the body reveals a sparse field. Near the pointed muscle, more
-  points resolve and rearrange on the surface. Motion settles when the
-  pointer stops; there is no continuously running particle simulation.
-- Selected training groups retain a quieter, denser map and border contours.
-- A small serif annotation beside the body identifies the authored region
-  and its training group, with a fine leader to the surface. It appears only
-  when there is room between the sculpture and the side rails. Smaller
-  layouts use the caption. Multiple regions can still select one group.
-- Keyboard focus exposes the same map with a strong focus edge. Touch
-  selects directly. Reduced motion shows state changes immediately.
-- Program previews and session highlights use the map in the existing
-  workflow. The SVG fallback remains available without WebGL2.
+- Hover reveals a whole training group, with a little more emphasis near
+  the pointer. The surface stays alive while the pointer rests on a muscle.
+- Selected groups retain a faint, stationary imprint that preserves the
+  sculpture's shading. Program previews and workout highlights use the same
+  presentation through the existing selection workflow.
+- A serif label beside the body names the group, such as Chest or Shoulders,
+  with a fine leader to the surface. Narrow layouts use the caption instead.
+- Keyboard focus has a strong focus edge and a static map. Touch selects
+  directly. Reduced motion keeps the traces still and applies state changes
+  immediately. Ongoing flow pauses when the document is hidden, the stage is
+  inactive, the camera moves, or a program preview is active.
+
+## Overview and detailed presentation
+
+The overview responds to all authored regions belonging to the pointed
+training group. Picking still records the precise region under the pointer.
+The renderer's `setDetailMode(true)` method exposes exact anatomical names
+and a response limited to that region for a future detailed view. There is
+no page control for this mode; `setDetailMode(false)` restores the overview.
+Selection uses shared training groups in either mode.
 
 ## Anatomical limits
 
-The authored mesh and `ANATOMY_REGIONS` remain the source of truth. This
-version changes how selection is presented, not where muscle boundaries
-are authored. Geometry alone cannot reliably identify a more accurate
-anatomical division. No new divisions or functional relationships are inferred.
+The authored mesh and `ANATOMY_REGIONS` determine selectable anatomy. The
+flow field describes surface shape, **not muscle fibres, new anatomical
+divisions, or functional relationships**. It does not improve the accuracy
+of the authored boundaries.
 
-Hover contours are oblique geometric sections through the actual surface,
-clipped to the authored region and faded near the pointer. They are survey
-guides, **not additional muscles or muscle fibres**. The baked seam-distance
-field softens their ends and supplies one quiet boundary for selection;
-there are no repeated outlines around each painted patch.
-
-Each particle has two area-sampled barycentric positions on the same mesh
-triangle. Interpolating between them keeps it on that triangle and inside
-the same region; particles never fly through the body or migrate across
-regions. Density also increases locally near the pointer. These are modest
-surface rearrangements, not long-distance attraction between muscles.
-
-Depth testing hides points on rear surfaces. Bone, tendon, and other
-nonselectable regions can carry the faint exploratory field but never gain
-a selectable muscle's dense map. A touch directly on such a region cannot
-borrow a nearby muscle; touch tolerance applies only outside the silhouette.
+Traces are evaluated in the sculpture's material shader and therefore stay
+on its visible surface. They cannot float above it, bridge empty space, or
+draw through the body. The baked seam distance softens their ends near
+region boundaries. Bone, tendon, and other nonselectable regions never gain
+a muscle's hover or selected map. A touch on such a region cannot borrow a
+nearby muscle; touch tolerance applies only outside the silhouette.
 
 ## Implementation and checks
 
-`js/anatomy-cartography.js` creates 14,000 deterministic, area-weighted
-candidate points (bounded to 24,000), then admits them into three nested
-levels with minimum spacing. The coarse landmarks remain as finer detail
-resolves. Unneeded candidates stay invisible. Density follows the sculpture's
-projected size, so a phone does not compress the desktop point field into
-glitter. Point depth follows its source triangle so markers remain round
-on sloping surfaces. Colour and contrast use dedicated bronze/ivory theme
-tokens, with a warmer stone material in the light theme.
+`js/anatomy-cartography.js` retains deterministic, area-weighted surface
+sampling. `buildAnatomyFlowFrames` uses those samples to derive each region's
+scale and centre, together with the shape axes in `model.regionAnchors`.
+Regions without valid anchors use an axis estimated from their sample
+positions. Paired regions share a direction by folding coordinates around
+the body's upright plane. These frames guide the material traces; samples
+are not rendered as particles or a separate graph.
 
-`js/anatomy-sculpture.js` owns the GPU resources, finite easing, picking,
-contours, camera, and context restoration. `MuscleSelection` remains the
-only source of selection state. No asset export or build step is needed.
+`js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
+picking, presentation mode, camera, and context restoration. It advances the
+clock only during visible pointer exploration with normal motion enabled.
+Resting selections remain still. `MuscleSelection` is the only source of
+selection state. Classic scripts and the SVG fallback remain available;
+no asset export or build step is needed.
 
-Run `npm test -- --maxWorkers=3`. The cartography tests cover area weighting,
-both index formats, movement staying inside source triangles, region
-integrity, reproducibility, minimum spacing at every detail level, bounded
-movement, degenerate geometry, animation settling, reduced motion, and
-touch boundaries.
-
-Browser validation should cover both themes, pointer movement within and
-between regions, click-to-toggle, keyboard selection, front/back and drag,
-touch, program/session previews, context restoration, and the procedural
-and SVG fallbacks. Check that the sculpture renders with no WebGL errors
-and stops requesting frames once interaction settles.
+Run `npm test -- --maxWorkers=3`. Check sampling and frame validity, precise
+picking, touch boundaries, overview/detail switching, and motion gating.
+Browser validation should cover both themes, hover over time, the stationary
+selected state, keyboard and reduced motion, front/back and drag, narrow
+layouts, program/session previews, context restoration, and both fallbacks.
+Confirm there are no WebGL errors and that continuous drawing stops when
+pointer exploration ends or the document becomes hidden.

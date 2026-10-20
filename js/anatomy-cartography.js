@@ -110,69 +110,95 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
       }
     }
   });
-  return { data, triangles, count, stride: particleStride, radii };
+  return { data, triangles, count, stride: particleStride, radii, positions };
 }
 
-const CARTOGRAPHY_VERTEX = `
-layout(location = 0) in vec3 aRest;
-layout(location = 1) in vec3 aGathered;
-layout(location = 2) in vec3 aNormal;
-layout(location = 3) in vec3 aInfo; // anatomical region, spaced level, border distance
-uniform mat4 uMatrix;
-uniform mat3 uNormal;
-uniform vec3 uStates[REGIONS];
-uniform vec2 uSize, uPointer;
-uniform float uPresence, uPointerActive, uDpr, uPointedRegion, uDetail;
-out float vAlpha;
-out float vNode;
-out vec2 vDepthSlope;
-
-void main() {
-  vec3 state = uStates[int(aInfo.x + 0.5)];
-  vec4 projected = uMatrix * vec4(aGathered, 1.0);
-  vec2 screen = (projected.xy / projected.w * vec2(0.5, -0.5) + 0.5) * uSize;
-  float near = 1.0 - smoothstep(22.0, 115.0, distance(screen, uPointer));
-  float exact = mix(1.0, 1.0 - step(0.5, abs(aInfo.x - uPointedRegion)), uPointerActive);
-  float local = state.y * mix(0.9, near, uPointerActive) * exact;
-  float engagement = max(max(state.x * 0.38, state.z * 0.48), local);
-  float density = max(uPresence * 0.075, engagement * uDetail);
-  float visible = smoothstep(aInfo.y - 0.045, aInfo.y + 0.045, density);
-  // A small, finite rearrangement on the original surface as the map resolves.
-  vec3 position = mix(aRest, aGathered, engagement);
-  gl_Position = uMatrix * vec4(position, 1.0);
-  vec3 normal = normalize(aNormal);
-  vec3 tangent = normalize(cross(normal, abs(normal.y) < 0.9 ? vec3(0,1,0) : vec3(1,0,0)));
-  vec4 t = uMatrix * vec4(position + tangent, 1.0);
-  vec4 b = uMatrix * vec4(position + cross(normal, tangent), 1.0);
-  vec3 td = t.xyz / t.w - gl_Position.xyz / gl_Position.w;
-  vec3 bd = b.xyz / b.w - gl_Position.xyz / gl_Position.w;
-  float determinant = td.x * bd.y - bd.x * td.y;
-  vec2 gradient = abs(determinant) < 1e-9 ? vec2(0.0) :
-    vec2(td.z * bd.y - bd.z * td.y, td.x * bd.z - bd.x * td.z) / determinant;
-  // Bias only depth, not world position; hidden surfaces remain occluded.
-  gl_Position.z -= 0.000015 * gl_Position.w;
-  float facing = smoothstep(0.05, 0.45, (uNormal * normalize(aNormal)).z);
-  vNode = (1.0 - step(0.04, aInfo.y)) * engagement;
-  float edge = mix(0.3, 1.0, smoothstep(0.08, 0.65, aInfo.z));
-  vAlpha = visible * facing * mix(0.3, 0.9, engagement) *
-           min(1.0, uPresence + engagement * 4.0) * edge;
-  gl_PointSize = (2.2 + vNode * 4.8) * mix(0.72, 1.0, uDetail) * uDpr;
-  vDepthSlope = gradient * vec2(1.0, -1.0) * gl_PointSize / (uSize * uDpr);
-}`;
-
-const CARTOGRAPHY_FRAGMENT = `
-precision highp float;
-uniform vec3 uInk;
-in float vAlpha;
-in float vNode;
-in vec2 vDepthSlope;
-out vec4 outColor;
-void main() {
-  float radius = length(gl_PointCoord - 0.5) * 2.0;
-  float core = 1.0 - smoothstep(mix(0.35, 0.14, vNode), mix(0.9, 0.4, vNode), radius);
-  float ring = (1.0 - smoothstep(0.07, 0.2, abs(radius - 0.72))) * vNode * 0.65;
-  float alpha = max(core, ring) * vAlpha;
-  if (alpha < 0.01) discard;
-  gl_FragDepth = gl_FragCoord.z + dot(gl_PointCoord - 0.5, vDepthSlope);
-  outColor = vec4(uInk, alpha);
-}`;
+/* Bilateral surface frames for the flowing material. Coordinates fold around
+ * the body's upright axis, so paired regions share a coherent direction. The
+ * authored principal axes describe shape, not inferred muscle fibres.
+ */
+function buildAnatomyFlowFrames(model, samples) {
+  const count = model.regions.length, centers = new Float32Array(count * 4), axes = new Float32Array(count * 4);
+  const midX = (model.bounds.min[0] + model.bounds.max[0]) * 0.5;
+  const minimum = Math.max(1e-4, (model.bounds.max[1] - model.bounds.min[1]) * 0.002);
+  const sums = Array.from({ length: count }, () => ({ n: 0, p: [0, 0, 0], normal: [0, 0, 0], covariance: new Float64Array(9) }));
+  const pointAt = offset => [Math.abs(samples.data[offset + 3] - midX), samples.data[offset + 4], samples.data[offset + 5]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const unit = (v, fallback = [0, 1, 0]) => {
+    const length = Math.hypot(...v);
+    return length > 1e-8 && Number.isFinite(length) ? v.map(x => x / length) : [...fallback];
+  };
+  const valid = v => v && v.length === 3 && v.every(Number.isFinite);
+  for (let i = 0; i < samples.count; i++) {
+    const offset = i * samples.stride, sum = sums[samples.data[offset + 9]];
+    if (!sum) continue;
+    const p = pointAt(offset);
+    if (!valid(p)) continue;
+    sum.n++;
+    const sign = samples.data[offset + 3] < midX ? -1 : 1;
+    for (let k = 0; k < 3; k++) {
+      sum.p[k] += p[k];
+      sum.normal[k] += samples.data[offset + 6 + k] * (k === 0 ? sign : 1);
+    }
+  }
+  const means = sums.map(sum => sum.n ? sum.p.map(x => x / sum.n) :
+    [0, (model.bounds.min[1] + model.bounds.max[1]) * 0.5, (model.bounds.min[2] + model.bounds.max[2]) * 0.5]);
+  for (let i = 0; i < samples.count; i++) {
+    const offset = i * samples.stride, r = samples.data[offset + 9], sum = sums[r];
+    if (!sum) continue;
+    const p = pointAt(offset).map((x, k) => x - means[r][k]);
+    if (!valid(p)) continue;
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) sum.covariance[a * 3 + b] += p[a] * p[b];
+  }
+  for (let r = 0; r < count; r++) {
+    const sum = sums[r], covariance = sum.covariance;
+    let center = [...means[r]], axis = null;
+    const anchors = model.regionAnchors && model.regionAnchors[model.regions[r]];
+    if (anchors) {
+      let weight = 0;
+      const averagedAxis = [0, 0, 0], averagedCenter = [0, 0, 0];
+      let reference = null;
+      for (const [side, anchor] of Object.entries(anchors)) {
+        if (!anchor || !valid(anchor.centroid) || !valid(anchor.axis) || !(anchor.area > 0) || !Number.isFinite(anchor.area)) continue;
+        const sign = anchor.centroid[0] < midX ? -1 : 1;
+        const foldedAxis = unit([anchor.axis[0] * sign, anchor.axis[1], anchor.axis[2]]);
+        if (!reference) reference = foldedAxis;
+        const alignment = dot(reference, foldedAxis) < 0 ? -1 : 1;
+        const foldedCenter = side === "centre" && sum.n ? means[r] :
+          [Math.abs(anchor.centroid[0] - midX), anchor.centroid[1], anchor.centroid[2]];
+        for (let k = 0; k < 3; k++) {
+          averagedAxis[k] += foldedAxis[k] * anchor.area * alignment;
+          averagedCenter[k] += foldedCenter[k] * anchor.area;
+        }
+        weight += anchor.area;
+      }
+      if (weight) { axis = unit(averagedAxis); center = averagedCenter.map(x => x / weight); }
+    }
+    if (!axis) {
+      let major = 0;
+      for (let k = 1; k < 3; k++) if (covariance[k * 3 + k] > covariance[major * 3 + major]) major = k;
+      axis = [0, 0, 0]; axis[major] = 1;
+      for (let iteration = 0; iteration < 16; iteration++) axis = unit([0, 1, 2].map(a =>
+        covariance[a * 3] * axis[0] + covariance[a * 3 + 1] * axis[1] + covariance[a * 3 + 2] * axis[2]), axis);
+    }
+    let major = 0;
+    for (let k = 1; k < 3; k++) if (Math.abs(axis[k]) > Math.abs(axis[major])) major = k;
+    if (axis[major] < 0) axis = axis.map(x => -x);
+    const longitudinalVariance = axis.reduce((total, a, i) => total + axis.reduce((s, b, j) =>
+      s + a * covariance[i * 3 + j] * b, 0), 0) / Math.max(1, sum.n);
+    const variance = (covariance[0] + covariance[4] + covariance[8]) / Math.max(1, sum.n);
+    const radius = Math.max(minimum, Math.sqrt(Math.max(0, variance - longitudinalVariance)));
+    const length = Math.max(minimum, Math.sqrt(Math.max(0, longitudinalVariance)) * 2);
+    // A surface centroid lies on the shell. Move the angular origin inward,
+    // perpendicular to the longitudinal axis, to avoid a visible atan vortex.
+    const projection = dot(sum.normal, axis);
+    const outward = sum.normal.map((x, k) => (x - axis[k] * projection) / Math.max(1, sum.n));
+    if (Math.hypot(...outward) > 0.05) {
+      const normal = unit(outward);
+      center = center.map((x, k) => x - normal[k] * radius);
+    }
+    centers.set([...center, radius], r * 4);
+    axes.set([...axis, length], r * 4);
+  }
+  return { centers, axes };
+}
