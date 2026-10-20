@@ -197,8 +197,9 @@ h1:focus-visible { outline: none; }
 .masthead :is(button, a) { pointer-events: auto; }
 /* Over a screen that fills the page (Shape your week, Your week), the
    masthead takes the ground so what scrolls beneath it does not show
-   through, and leaves the scrollbar its room. */
-.atlas:has(#stage-plan.is-current:is([data-view="shape"], [data-view="gen"])) .masthead {
+   through, and leaves the scrollbar its room. Only once the camera has
+   landed: while it travels, a band of ground would cut across the figure. */
+.atlas[data-phase="idle"]:has(#stage-plan.is-current:is([data-view="shape"], [data-view="gen"])) .masthead {
   background: var(--bg); right: 12px;
 }
 .mast-start { display: flex; align-items: baseline; gap: 16px; }
@@ -586,12 +587,22 @@ h1:focus-visible { outline: none; }
 
 /* The plan to the right of the sculpture, which looks up at the torso from
    its left. Wide enough that the rows read in one line each. */
+/* How strongly the veil shows: a registered property, so it can fade. */
+@property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .stage-nutrition {
   right: var(--pad); width: calc(min(760px, 56vw) + 48px); top: 100px; bottom: 90px;
   overflow: auto; padding: 0 12px 0 48px;
   /* Where the figure reaches under the text, it recedes behind a veil of
-     the ground, fading in over the panel's margin. */
-  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg) 84%, transparent) 48px);
+     the ground, fading in over the panel's margin. The veil comes and goes
+     with the text (data-reveal), so it never covers the figure while the
+     camera is still travelling. */
+  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg) var(--veil), transparent) 48px);
+  --veil: 0%;
+  transition: --veil .22s ease;
+}
+.atlas[data-phase="idle"] .stage-nutrition.is-current {
+  --veil: 84%;
+  transition: --veil .8s ease .06s;
 }
 .nu { display: flex; flex-direction: column; gap: 20px; padding-bottom: 8px; }
 .nu-head, .day-head { display: flex; flex-direction: column; gap: 14px; }
@@ -1146,6 +1157,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 @media (prefers-reduced-motion: reduce) {
   [data-reveal], .atlas[data-phase="idle"] .stage.is-current [data-reveal] { transform: none; }
   .atlas[data-phase="idle"] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
+  .atlas[data-phase="idle"] .stage-nutrition.is-current { transition: --veil .25s ease; }
   .figure-controls, .atlas[data-stage="targets"][data-phase="idle"] .figure-controls {
     transform: translate(-50%, 0); transition: opacity .25s ease;
   }
