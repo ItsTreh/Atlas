@@ -9,13 +9,14 @@ stage at a time, one pull request each:
 | Stage | Branch | Status |
 |---|---|---|
 | 01 Targets, plus the shell and the sculpture's camera | `redesign/01-targets` | PR #72 |
-| 02 Nutrition | `redesign/02-nutrition` | this PR (stacked on #72) |
-| 03 Week plan | `redesign/03-week-plan` | next |
+| 02 Nutrition | `redesign/02-nutrition` | PR #73 (stacked on #72) |
+| 03 Week plan | `redesign/03-week-plan` | this PR (stacked on #73) |
 
-Until a stage's redesign lands, it keeps working as it was, inside a
+While a stage's redesign hadn't landed, it kept working as it was, inside a
 full-screen panel over the sculpture (`css/legacy.css`, scoped to
-`.legacy`). Nothing in the logic changes: the redesign is the views, the
-styles and the renderer. Every test runs the same logic files as before.
+`.legacy`). Stage 3 removes the last of it. Nothing in the logic changes:
+the redesign is the views, the styles and the renderer. Every test runs the
+same logic files as before.
 
 ## The principles
 
@@ -223,6 +224,90 @@ script in order in one shared context and fails on any SyntaxError, which
 includes a top-level name declared twice. It was checked to fail on that
 exact clash.
 
+## Stage 03 · Week plan
+
+**From the design (v3, framing B):** the camera comes in close on the upper
+body, three-quarter from the figure's left, and the plan takes the other
+side. There are three screens, one at a time:
+
+- **Fit it into your life**, with the sculpture on the right:
+  - the muscles chosen, with *Change*;
+  - the week as seven day tiles (the session's name, its families' dots,
+    its time; *Rest*, or hatched *Off*);
+  - one line of facts (session length, preferred time, busy hours) with
+    *Customize week →*;
+  - **Days a week** (− n +) and **Split**;
+  - notes that appear where a setting causes something;
+  - **Generate my week**.
+
+  Pointing at a day lights its muscles on the sculpture.
+- **Shape your week**, the whole screen, with the sculpture receding:
+  - Done, and a status line that says whether the week fits;
+  - a toolbar: Session length, Preferred time, *Fill busy hours*
+    (Weekdays 9–5, Weekdays 8–6, Clear all) and the Meals switch, or
+    *Set up nutrition* when there is no nutrition plan;
+  - a full-width calendar of day cards. Drag down a day to mark busy hours,
+    drag again to clear them, and click a day's name to take it off. The
+    preferred time shows as a band, each day's planned session as a solid
+    block, and meals as pills.
+- **Your week**, the whole screen:
+  - "Your week", with sessions, hours and hard sets, labelled an estimate,
+    and *Adjust plan*;
+  - the generated week as day cards with session blocks, busy hours and
+    meals;
+  - the sculpture in a right-hand column. Pointing at a session lights its
+    muscles; clicking one opens its panel over that column (below 1180px,
+    over the calendar).
+  - On a phone: an agenda, one line a day, with a session opening in place.
+- Busy hours start empty (your call), with the presets one click away.
+
+**Kept from the app** (the prototype skipped or simplified these):
+- **The planner is the real one.** The tiles and the calendar's planned
+  sessions are `routine.weekPlan()`, the same placements Generate then
+  makes: recovery per muscle, the scoring scheduler, the distribution,
+  meals kept clear. Nothing is faked from a simple rotation as the prototype
+  did, so what the setup shows is what Generate places.
+- **The fit**, before Generate: "looks feasible", "looks too short, so the
+  plan lowers …", room for fewer days, a split leaving muscles without a
+  day, and what would fix it. The weekly sets per muscle are one click away.
+- **The session panel holds everything** the old "Your week" card could do
+  (your call):
+  - move the session to another day (days it can't go to are listed with
+    the reason: day off, has a session, no free time, a muscle still
+    recovering) or another time;
+  - swap an exercise (grouped by tier, flagged when it repeats a
+    movement), add one, remove one, *Restore suggestions*, *Remove
+    session*;
+  - the muscles with direct and assisting sets;
+  - the Length, Recovery and Fuel notes;
+  - the "no time left / covered by the lifts above" notes;
+  - the tier key.
+- **Every Generate message**: why fewer days than asked, which split would
+  fit better, blocks left without a day, muscles under their weekly
+  minimum, and what would close the gap. It also says when an edit removed
+  a session, and when the week is out of date ("Generate again").
+- *Reset* (all hours, days off and training settings back to defaults),
+  and *Your generated week →* after *Adjust plan*.
+- Painting fills the rectangle between where a drag started and ended, as
+  before, so a fast drag is not left patchy. While dragging, only the busy
+  blocks are redrawn; the plan is worked out again on release.
+- Days off are a click on the day's name. A fully painted day counts as
+  off, as before.
+- Saving between visits, and landing back on your week.
+
+**Decisions:**
+- On the setup screen, an automatic plan's days are named after the
+  families they train ("Push + Core"); a chosen split's days keep their
+  names ("Upper"). Three or more of push, pull and legs together is "Full
+  body".
+- Painting "clear" clears busy hours only. A generated session is removed
+  by painting busy over it, or from its panel, and the status then says
+  so.
+- Sessions too short for their time line on a crowded calendar show only
+  their name; the time is in the day's head and the panel.
+- `render.js` is now just what every view shares. The old grid, sidebar
+  and status box are gone with their markup, and so is `css/legacy.css`.
+
 ## Questions answered before starting
 
 | Question | Answer |
@@ -236,8 +321,8 @@ exact clash.
 
 `npm test` covers the logic, which is unchanged, and (from stage 2) that the
 page's scripts load together. The views were checked in
-Chromium, opened from `file://`, at 1440×900, 1280×800 and 390×844, in
-both themes, with the Male_Body sculpture, the procedural figure
+Chromium, opened from `file://`, at 1440×900, 1280×800, 1100×800, 1024×768
+and 390×844, in both themes, with the Male_Body sculpture, the procedural figure
 (`?anatomy=procedural`) and the SVG fallback (WebGL off). Checked:
 applying, browsing and editing programs; picking muscles on the
 perspective camera; Front/Back; priorities; experience; the estimate;
