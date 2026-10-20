@@ -15,6 +15,7 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 ### 01 · Targets — define your focus
 - **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time with ← and →. Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
 - **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
+- **Explore the surface.** Anatomical cartography reveals sparse points across the sculpture, resolving into a denser field near the muscle you point at. Fine contours and a quieter point field mark your selection; the caption names the anatomical region and its training group. The map follows the existing authored borders (see `docs/cartography.md`).
 - **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first), and tell ATLAS how long you have trained.
 - **See what it will take.** A preliminary estimate of weekly hard sets and time a week, with frequency, what consistent training usually brings, and the caveats stated plainly, one click away.
 
