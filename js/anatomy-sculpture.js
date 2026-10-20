@@ -32,8 +32,8 @@
                            └─ the turn ─┘
 
    The sculpture is the body; cartography is how the body communicates.
-   Area-weighted surface particles resolve around the pointer, with fine
-   contours measured from the authored region borders. Selection retains
+   Spaced surface particles resolve around the pointer, with fine geometric
+   sections clipped to the authored regions. Selection retains
    a quieter map instead of painting a solid patch onto the sculpture.
 
    Only Targets is interactive (setInteractive): there the selection shows
@@ -123,7 +123,7 @@ const SCULPTURE_SELECTED_GAIN = 1.4;
    exponential ease: a muscle answers the pointer almost at once, eases
    back when left, and a selection settles in between. With reduced
    motion, changes are drawn at once. */
-const SCULPTURE_EASE = { hoverIn: 35, hoverOut: 90, select: 60 };
+const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130 };
 
 class AnatomySculpture {
   /** True when this browser can draw the sculpture (ANATOMY_MODEL, or `model`). */
@@ -188,7 +188,13 @@ class AnatomySculpture {
       return g;
     });
     this.canvas.style.opacity = "0";         // fades in once it has drawn (layout)
-    this.container.append(this.canvas, ...this.groups);
+    this.mapAnnotation = document.createElement("div");
+    this.mapAnnotation.className = "cartography-annotation";
+    this.mapAnnotation.setAttribute("aria-hidden", "true"); // the caption announces the same information
+    this.mapAnnotation.innerHTML = '<svg class="cartography-leader"><path/><circle r="2"/></svg>' +
+      '<div class="cartography-label"><span class="cartography-label-group"></span>' +
+      '<span class="cartography-label-name"></span><span class="cartography-label-action"></span></div>';
+    this.container.append(this.canvas, this.mapAnnotation, ...this.groups);
 
     this.gl = this.canvas.getContext("webgl2", { antialias: true, alpha: true, premultipliedAlpha: true });
     if (!this.gl) throw new Error("WebGL2 is not available");
@@ -270,9 +276,9 @@ class AnatomySculpture {
     gl.bindVertexArray(this.mapVao);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.mapBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.mapSamples.data, gl.STATIC_DRAW);
-    [3, 3, 3, 2].forEach((size, location) => {
+    [3, 3, 3, 3].forEach((size, location) => {
       gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, size, gl.FLOAT, false, 44, location * 12);
+      gl.vertexAttribPointer(location, size, gl.FLOAT, false, this.mapSamples.stride * 4, location * 12);
     });
     gl.bindVertexArray(null);
     this.idTarget = null;
@@ -627,6 +633,13 @@ class AnatomySculpture {
     gl.uniform3fv(u.uSelected, c.selected);
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
     gl.uniform3fv(u.uInk, c.ink);
+    gl.uniform3fv(u.uMapInk, c.mapInk);
+    gl.uniform3fv(u.uMapState, this.shown || this.targets());
+    gl.uniform2fv(u.uMapPointer, this.mapPointer);
+    gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
+    gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
+    gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
+    gl.uniform1f(u.uDpr, this.dpr);
     gl.uniform1f(u.uLineWidth, Math.max(1, 0.75 * dpr));
     gl.bindVertexArray(this.vao);
     const cam = this.camera(this.live());
@@ -635,11 +648,51 @@ class AnatomySculpture {
     gl.uniform4fv(u.uRegion, this.regionStates(this.view.id));
     gl.drawElements(gl.TRIANGLES, this.model.indexCount, this.indexType, 0);
     this.drawCartography(cam);
+    this.drawAnnotation();
     gl.bindVertexArray(null);
+  }
+
+  drawAnnotation() {
+    const root = this.mapAnnotation, muscle = MUSCLE_BY_ID.get(this.hovered);
+    const shot = this.live(), { cw, ch } = this.size;
+    const bounds = this.model.bounds;
+    const k = ch / (2 * shot.d * Math.tan(shot.fov * Math.PI / 360));
+    const halfWidth = (bounds.max[0] - bounds.min[0]) * k * 0.5;
+    // Only use the space between the sculpture and rails; small screens keep
+    // the existing caption instead of putting a floating panel over the body.
+    const width = Math.min(174, (cw - 720) * 0.5 - halfWidth - 24);
+    const show = muscle && this.interactive && this.calm() && !this.previewing &&
+      !this.mobile && width >= 124 && (this.pointer || this.focused);
+    root.classList.toggle("visible", !!show);
+    if (!show) return;
+    let anchor = this.mapPointer;
+    if (this.focused) {
+      const hit = this.hits.get(this.focused.view + ":" + this.focused.id);
+      if (!hit) { root.classList.remove("visible"); return; }
+      anchor = [parseFloat(hit.style.left), parseFloat(hit.style.top)];
+    }
+    const center = shot.sx * cw, left = anchor[0] < center;
+    const x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
+    const y = Math.max(100, Math.min(ch - 170, anchor[1] - 18));
+    const label = root.querySelector(".cartography-label");
+    label.style.width = width + "px";
+    label.style.transform = "translate(" + x + "px," + y + "px)";
+    const name = this.hoveredRegion ? this.hoveredRegion.replace(/-/g, " ") : muscle.name;
+    root.querySelector(".cartography-label-group").textContent = muscle.name + " / " + FAMILIES[muscle.family].name;
+    root.querySelector(".cartography-label-name").textContent = name;
+    root.querySelector(".cartography-label-action").textContent = this.selection.has(muscle.id)
+      ? "Selected · click to remove" : "Click muscle to add";
+    const end = left ? x + width : x;
+    root.querySelector("path").setAttribute("d", "M" + anchor[0] + " " + anchor[1] +
+      " L" + (end + (left ? 16 : -16)) + " " + y + " H" + end);
+    const dot = root.querySelector("circle");
+    dot.setAttribute("cx", anchor[0]); dot.setAttribute("cy", anchor[1]);
   }
 
   drawCartography(cam) {
     const gl = this.gl, { p, u } = this.mapProgram;
+    const shot = this.live();
+    const projectedHeight = this.height * this.size.ch / (2 * shot.d * Math.tan(shot.fov * Math.PI / 360));
     gl.useProgram(p);
     gl.uniformMatrix4fv(u.uMatrix, false, cam.matrix);
     gl.uniformMatrix3fv(u.uNormal, false, cam.normal);
@@ -649,7 +702,9 @@ class AnatomySculpture {
     gl.uniform1f(u.uPresence, this.mapPresence);
     gl.uniform1f(u.uPointerActive, this.pointer && !this.focused ? 1 : 0);
     gl.uniform1f(u.uDpr, this.dpr);
-    gl.uniform3fv(u.uInk, this.colors.ink);
+    gl.uniform1f(u.uDetail, Math.min(1, projectedHeight / 720));
+    gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
+    gl.uniform3fv(u.uInk, this.colors.mapInk);
     gl.bindVertexArray(this.mapVao);
     gl.depthMask(false);
     gl.enable(gl.BLEND);
@@ -663,6 +718,10 @@ class AnatomySculpture {
     const { min, max } = this.model.bounds;
     this.gl.uniform3fv(u.uMin, min);
     this.gl.uniform3fv(u.uExt, [max[0] - min[0], max[1] - min[1], max[2] - min[2]]);
+  }
+
+  pointedRegionIndex() {
+    return this.hoveredRegion ? this.model.regions.indexOf(this.hoveredRegion) : -1;
   }
 
   /* -------------------------------- state -------------------------------- */
@@ -766,7 +825,7 @@ class AnatomySculpture {
     };
     this.colors = {
       form: read("--sculpt-form"), muscle: read("--sculpt-muscle"),
-      selected: read("--sculpt-selected"), ink: read("--ink")
+      selected: read("--sculpt-selected"), ink: read("--ink"), mapInk: read("--cartography-ink")
     };
     probe.remove();
   }
@@ -1115,15 +1174,17 @@ uniform vec3 uMin, uExt;
 uniform mat4 uMatrix;
 uniform mat3 uNormal;
 uniform vec4 uRegion[REGIONS];            // tone, focus edge, form, selected (regionStates)
+uniform vec3 uMapState[REGIONS];
 uniform vec3 uForm, uMuscle, uSelected;   // surfaces before light, sRGB
 out vec3 vNormal;
 out float vOcclusion;
 out float vSeam;
+out vec3 vSurface;
+flat out vec3 vMapState;
 flat out vec3 vAlbedo;                    // linear
 flat out float vSelected;
 flat out float vFocus;
 flat out float vRegionId;
-flat out float vMap;
 
 vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -1137,6 +1198,8 @@ vec3 octDecode(vec2 e) {
 
 void main() {
   gl_Position = uMatrix * vec4(uMin + aPos * uExt, 1.0);
+  vSurface = uMin + aPos * uExt;
+  vMapState = uMapState[int(aAttr.x + 0.5)];
   vNormal = uNormal * octDecode(aOct);
   vOcclusion = aAttr.y / 255.0;
   vSeam = aAttr.z / 255.0 * SEAM_MAX;
@@ -1144,7 +1207,6 @@ void main() {
   float tone = region.z > 0.5 ? 0.0 : region.x;
   vAlbedo = toLinear(region.z > 0.5 ? uForm : mix(uMuscle, uSelected, tone * 0.07));
   vSelected = region.z > 0.5 ? 0.0 : region.w * 0.08;
-  vMap = region.z > 0.5 ? 0.0 : max(region.x, region.y);
   vFocus = region.y;
   vRegionId = aAttr.x;
 }`;
@@ -1159,12 +1221,16 @@ precision highp float;
 in vec3 vNormal;
 in float vOcclusion;
 in float vSeam;
+in vec3 vSurface;
+flat in vec3 vMapState;
 flat in vec3 vAlbedo;
 flat in float vSelected;
 flat in float vFocus;
 flat in float vRegionId;
-flat in float vMap;
 uniform vec3 uInk;                       // sRGB
+uniform vec3 uMapInk;
+uniform vec2 uMapPointer, uMapSize;
+uniform float uMapPointerActive, uPointedRegion, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
 out vec4 outColor;
@@ -1199,16 +1265,24 @@ void main() {
   // across a boundary, so it never reads as a panel line.
   c *= 1.0 - mix(0.12, 0.05, smoothstep(0.85, 1.0, vOcclusion)) * seam;
 
-  // Survey contours follow distance to the AUTHORED border. Their ends
-  // fade before the stored seam distance saturates; never invent interior
-  // muscle divisions or connect lines across bone, tendon, or empty space.
-  float interval = 0.85;
-  float phase = vSeam / interval;
-  float contourPx = abs(fract(phase + 0.5) - 0.5) / max(fwidth(phase), 1e-4);
-  float contour = (1.0 - smoothstep(0.3, 0.85, contourPx)) *
-                  (1.0 - smoothstep(1.8, 2.5, vSeam));
-  float mapped = max(seam * 0.5, contour * 0.2) * vMap;
-  c = mix(c, toLinear(uInk), mapped);
+  // Geometric sections of the actual surface, clipped to its authored region.
+  // These are survey lines, not inferred muscle fibres. No repeated border bands.
+  vec2 screen = vec2(gl_FragCoord.x / uDpr, uMapSize.y - gl_FragCoord.y / uDpr);
+  float nearPointer = 1.0 - smoothstep(28.0, 120.0, distance(screen, uMapPointer));
+  float exact = mix(1.0, 1.0 - step(0.5, abs(vRegionId - uPointedRegion)), uMapPointerActive);
+  float explore = vMapState.y * mix(0.85, nearPointer, uMapPointerActive) * exact;
+  float chosen = max(vMapState.x, vMapState.z * 0.8);
+  float phase = (vSurface.y + vSurface.z * 0.65) / 1.9;
+  float footprint = max(fwidth(phase), 1e-4);
+  float contourPx = abs(fract(phase + 0.5) - 0.5) / footprint;
+  float sections = (1.0 - smoothstep(0.25 * uDpr, 0.65 * uDpr, contourPx)) *
+                   (1.0 - smoothstep(0.22, 0.45, footprint));
+  float inset = smoothstep(0.12, 0.85, vSeam);
+  float grazing = smoothstep(0.05, 0.5, n.z);
+  float map = sections * explore * inset * grazing * 0.46;
+  // A single, restrained edge retains the selection when the pointer leaves.
+  map = max(map, seam * (chosen * 0.045 + explore * 0.15));
+  c = mix(c, toLinear(uMapInk), map);
 
   // Keyboard focus keeps a strong edge independent of point density.
   float ring = (1.0 - smoothstep(2.4 * uLineWidth - 0.6, 2.4 * uLineWidth + 0.6, px)) *

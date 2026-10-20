@@ -1,4 +1,4 @@
-# Anatomical cartography — first version
+# Anatomical cartography
 
 The sculpture is the body. The cartography is how the body communicates.
 
@@ -10,8 +10,10 @@ its modelling instead of becoming a filled selection patch.
   points resolve and rearrange on the surface. Motion settles when the
   pointer stops; there is no continuously running particle simulation.
 - Selected training groups retain a quieter, denser map and border contours.
-- The caption identifies the authored anatomical region and the training
-  group it selects. Multiple regions can still select one group.
+- A small serif annotation beside the body identifies the authored region
+  and its training group, with a fine leader to the surface. It appears only
+  when there is room between the sculpture and the side rails. Smaller
+  layouts use the caption. Multiple regions can still select one group.
 - Keyboard focus exposes the same map with a strong focus edge. Touch
   selects directly. Reduced motion shows state changes immediately.
 - Program previews and session highlights use the map in the existing
@@ -24,9 +26,11 @@ version changes how selection is presented, not where muscle boundaries
 are authored. Geometry alone cannot reliably identify a more accurate
 anatomical division. No new divisions or functional relationships are inferred.
 
-Contours are offsets from the authored border, using the existing baked
-seam-distance field. They are cartographic guides, **not additional muscles
-or muscle fibres**. The paths fade before that field's stored distance limit.
+Hover contours are oblique geometric sections through the actual surface,
+clipped to the authored region and faded near the pointer. They are survey
+guides, **not additional muscles or muscle fibres**. The baked seam-distance
+field softens their ends and supplies one quiet boundary for selection;
+there are no repeated outlines around each painted patch.
 
 Each particle has two area-sampled barycentric positions on the same mesh
 triangle. Interpolating between them keeps it on that triangle and inside
@@ -41,16 +45,24 @@ borrow a nearby muscle; touch tolerance applies only outside the silhouette.
 
 ## Implementation and checks
 
-`js/anatomy-cartography.js` creates a deterministic, area-weighted sample
-of 14,000 points (bounded to 24,000) and supplies the point shaders.
+`js/anatomy-cartography.js` creates 14,000 deterministic, area-weighted
+candidate points (bounded to 24,000), then admits them into three nested
+levels with minimum spacing. The coarse landmarks remain as finer detail
+resolves. Unneeded candidates stay invisible. Density follows the sculpture's
+projected size, so a phone does not compress the desktop point field into
+glitter. Point depth follows its source triangle so markers remain round
+on sloping surfaces. Colour and contrast use dedicated bronze/ivory theme
+tokens, with a warmer stone material in the light theme.
+
 `js/anatomy-sculpture.js` owns the GPU resources, finite easing, picking,
 contours, camera, and context restoration. `MuscleSelection` remains the
 only source of selection state. No asset export or build step is needed.
 
 Run `npm test -- --maxWorkers=3`. The cartography tests cover area weighting,
 both index formats, movement staying inside source triangles, region
-integrity, reproducibility, degenerate geometry, animation settling,
-reduced motion, and touch boundaries.
+integrity, reproducibility, minimum spacing at every detail level, bounded
+movement, degenerate geometry, animation settling, reduced motion, and
+touch boundaries.
 
 Browser validation should cover both themes, pointer movement within and
 between regions, click-to-toggle, keyboard selection, front/back and drag,

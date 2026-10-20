@@ -50,12 +50,49 @@ describe("anatomical surface sampling", () => {
       .toEqual(app.buildAnatomyCartography(model, bytes, 100).data);
   });
 
+  test("each detail level keeps its points separated on the surface", () => {
+    const { model, bytes } = surface();
+    const samples = app.buildAnatomyCartography(model, bytes, 300);
+    let previous = [];
+    [0.04, 0.3, 0.8].forEach((threshold, level) => {
+      const indices = Array.from({ length: samples.count }, (_, i) => i)
+        .filter(i => samples.data[i * samples.stride + 10] < threshold);
+      expect(indices.length).toBeGreaterThan(previous.length);
+      expect(previous.every(i => indices.includes(i))).toBe(true);
+      for (let a = 0; a < indices.length; a++) for (let b = 0; b < a; b++) {
+        const at = indices[a] * samples.stride, bt = indices[b] * samples.stride;
+        const distance = Math.hypot(...[0, 1, 2].map(k => samples.data[at + 3 + k] - samples.data[bt + 3 + k]));
+        expect(distance).toBeGreaterThanOrEqual(samples.radii[level] - 1e-6);
+      }
+      previous = indices;
+    });
+    for (let i = 0; i < samples.count; i++) {
+      const offset = i * samples.stride;
+      const movement = Math.hypot(...[0, 1, 2].map(k => samples.data[offset + k] - samples.data[offset + 3 + k]));
+      expect(movement).toBeLessThanOrEqual(Math.sqrt(5 / 300) * 0.18 + 1e-6);
+    }
+  });
+
   test("omits triangles crossing anatomical regions", () => {
     const { model, bytes } = surface();
     bytes[10] = 2;
     const samples = app.buildAnatomyCartography(model, bytes, 100);
     expect([...samples.triangles].every(t => t === 1)).toBe(true);
     expect(samples.count).toBe(100);
+  });
+
+  test("marker depth uses the source face's plane on a sloped surface", () => {
+    const { model, bytes } = surface();
+    const view = new DataView(bytes.buffer);
+    for (let i = 0; i < 6; i++) view.setUint16(i * 14 + 4, view.getUint16(i * 14, true), true);
+    const samples = app.buildAnatomyCartography(model, bytes, 60);
+    for (let i = 0; i < samples.count; i++) {
+      const offset = i * samples.stride;
+      expect(samples.data[offset + 6]).toBeCloseTo(-Math.SQRT1_2, 6);
+      expect(samples.data[offset + 7]).toBe(0);
+      expect(samples.data[offset + 8]).toBeCloseTo(Math.SQRT1_2, 6);
+      expect(samples.data[offset + 3]).toBeCloseTo(samples.data[offset + 5], 6);
+    }
   });
 
   test("handles empty geometry and bounds its rendering budget", () => {

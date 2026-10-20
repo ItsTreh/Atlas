@@ -35,7 +35,8 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
     cumulative[t] = area;
   }
   const count = area > 0 ? Math.max(0, Math.min(24000, Math.floor(budget))) : 0;
-  const data = new Float32Array(count * 11), triangles = new Uint32Array(count);
+  const particleStride = 12;
+  const data = new Float32Array(count * particleStride), triangles = new Uint32Array(count);
   let seed = 1963, triangle = 0;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   const weights = () => { const u = Math.sqrt(random()), v = random(); return [1 - u, u * (1 - v), u * v]; };
@@ -43,7 +44,7 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
     const at = (i + 0.5) / count * area;
     while (cumulative[triangle] <= at) triangle++;
     const vertices = [index(triangle * 3), index(triangle * 3 + 1), index(triangle * 3 + 2)];
-    const rest = weights(), gathered = weights(), offset = i * 11;
+    const rest = weights(), gathered = weights(), offset = i * particleStride;
     for (let k = 0; k < 3; k++) {
       for (let j = 0; j < 3; j++) {
         data[offset + k] += positions[vertices[j] * 3 + k] * rest[j];
@@ -51,44 +52,112 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
         data[offset + 6 + k] += normals[vertices[j] * 3 + k] * gathered[j];
       }
     }
+    // A marker's depth follows its source face. Using only its center depth
+    // clips circular points into flecks on sloping surfaces.
+    const ab = [0, 1, 2].map(k => positions[vertices[1] * 3 + k] - positions[vertices[0] * 3 + k]);
+    const ac = [0, 1, 2].map(k => positions[vertices[2] * 3 + k] - positions[vertices[0] * 3 + k]);
+    const normal = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    const alignment = normal.reduce((sum, v, k) => sum + v * data[offset + 6 + k], 0) < 0 ? -1 : 1;
+    const normalLength = Math.hypot(...normal);
+    for (let k = 0; k < 3; k++) data[offset + 6 + k] = normal[k] / normalLength * alignment;
     data[offset + 9] = region(vertices[0]);
-    data[offset + 10] = random();
+    data[offset + 10] = 2; // suppressed until admitted to a spaced level below
+    for (let j = 0; j < 3; j++) data[offset + 11] +=
+      view.getUint8(vertices[j] * stride + 12) / 255 * (model.seamMax || 3) * gathered[j];
+    // Movement is a small surface adjustment, not a jump across a large face.
+    const length = Math.hypot(...[0, 1, 2].map(k => data[offset + k] - data[offset + 3 + k]));
+    const movement = Math.min(1, Math.sqrt(area / Math.max(count, 1)) * 0.18 / (length || 1));
+    for (let k = 0; k < 3; k++) data[offset + k] = data[offset + 3 + k] +
+      (data[offset + k] - data[offset + 3 + k]) * movement;
     triangles[i] = triangle;
   }
-  return { data, triangles, count, stride: 11 };
+  // Nested blue-noise levels: coarse landmarks, selected field, close detail.
+  // A random opacity threshold alone made the surface look like visual noise.
+  // Every finer level retains the coarser one and enforces a minimum distance.
+  const order = Uint32Array.from({ length: count }, (_, i) => i);
+  for (let i = count - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const spacing = Math.sqrt(area / Math.max(count, 1));
+  const radii = [4.4, 2.2, 1.1].map(factor => spacing * factor);
+  radii.forEach((radius, level) => {
+    const grid = new Map(), key = (x, y, z) => x + "," + y + "," + z;
+    const cell = i => [0, 1, 2].map(k => Math.floor(data[i * particleStride + 3 + k] / radius));
+    const insert = i => {
+      const name = key(...cell(i));
+      const bucket = grid.get(name);
+      if (bucket) bucket.push(i); else grid.set(name, [i]);
+    };
+    for (const i of order) if (data[i * particleStride + 10] < 1) insert(i);
+    for (const i of order) {
+      const offset = i * particleStride;
+      if (data[offset + 10] < 1) continue;
+      const [x, y, z] = cell(i);
+      let clear = true;
+      for (let dx = -1; dx <= 1 && clear; dx++)
+        for (let dy = -1; dy <= 1 && clear; dy++)
+          for (let dz = -1; dz <= 1 && clear; dz++)
+            for (const j of grid.get(key(x + dx, y + dy, z + dz)) || []) {
+              const other = j * particleStride;
+              const d2 = [0, 1, 2].reduce((sum, k) => sum +
+                (data[offset + 3 + k] - data[other + 3 + k]) ** 2, 0);
+              if (d2 < radius * radius) { clear = false; break; }
+            }
+      if (clear) {
+        data[offset + 10] = [0.015, 0.2, 0.56][level] + random() * [0.02, 0.08, 0.22][level];
+        insert(i);
+      }
+    }
+  });
+  return { data, triangles, count, stride: particleStride, radii };
 }
 
 const CARTOGRAPHY_VERTEX = `
 layout(location = 0) in vec3 aRest;
 layout(location = 1) in vec3 aGathered;
 layout(location = 2) in vec3 aNormal;
-layout(location = 3) in vec2 aInfo;
+layout(location = 3) in vec3 aInfo; // anatomical region, spaced level, border distance
 uniform mat4 uMatrix;
 uniform mat3 uNormal;
 uniform vec3 uStates[REGIONS];
 uniform vec2 uSize, uPointer;
-uniform float uPresence, uPointerActive, uDpr;
+uniform float uPresence, uPointerActive, uDpr, uPointedRegion, uDetail;
 out float vAlpha;
 out float vNode;
+out vec2 vDepthSlope;
 
 void main() {
   vec3 state = uStates[int(aInfo.x + 0.5)];
   vec4 projected = uMatrix * vec4(aGathered, 1.0);
   vec2 screen = (projected.xy / projected.w * vec2(0.5, -0.5) + 0.5) * uSize;
-  float near = 1.0 - smoothstep(12.0, 95.0, distance(screen, uPointer));
-  float local = state.y * mix(0.8, near, uPointerActive);
-  float engagement = max(max(state.x * 0.57, state.z * 0.7), local);
-  float density = max(uPresence * 0.065, engagement);
-  float visible = smoothstep(aInfo.y - 0.035, aInfo.y + 0.035, density);
+  float near = 1.0 - smoothstep(22.0, 115.0, distance(screen, uPointer));
+  float exact = mix(1.0, 1.0 - step(0.5, abs(aInfo.x - uPointedRegion)), uPointerActive);
+  float local = state.y * mix(0.9, near, uPointerActive) * exact;
+  float engagement = max(max(state.x * 0.38, state.z * 0.48), local);
+  float density = max(uPresence * 0.075, engagement * uDetail);
+  float visible = smoothstep(aInfo.y - 0.045, aInfo.y + 0.045, density);
   // A small, finite rearrangement on the original surface as the map resolves.
   vec3 position = mix(aRest, aGathered, engagement);
   gl_Position = uMatrix * vec4(position, 1.0);
+  vec3 normal = normalize(aNormal);
+  vec3 tangent = normalize(cross(normal, abs(normal.y) < 0.9 ? vec3(0,1,0) : vec3(1,0,0)));
+  vec4 t = uMatrix * vec4(position + tangent, 1.0);
+  vec4 b = uMatrix * vec4(position + cross(normal, tangent), 1.0);
+  vec3 td = t.xyz / t.w - gl_Position.xyz / gl_Position.w;
+  vec3 bd = b.xyz / b.w - gl_Position.xyz / gl_Position.w;
+  float determinant = td.x * bd.y - bd.x * td.y;
+  vec2 gradient = abs(determinant) < 1e-9 ? vec2(0.0) :
+    vec2(td.z * bd.y - bd.z * td.y, td.x * bd.z - bd.x * td.z) / determinant;
   // Bias only depth, not world position; hidden surfaces remain occluded.
   gl_Position.z -= 0.000015 * gl_Position.w;
   float facing = smoothstep(0.05, 0.45, (uNormal * normalize(aNormal)).z);
-  vNode = 1.0 - step(0.035, aInfo.y);
-  vAlpha = visible * facing * mix(0.4, 0.86, engagement) * min(1.0, uPresence + engagement * 4.0);
-  gl_PointSize = mix(1.8, 2.3, engagement) * uDpr + vNode * engagement * 1.8 * uDpr;
+  vNode = (1.0 - step(0.04, aInfo.y)) * engagement;
+  float edge = mix(0.3, 1.0, smoothstep(0.08, 0.65, aInfo.z));
+  vAlpha = visible * facing * mix(0.3, 0.9, engagement) *
+           min(1.0, uPresence + engagement * 4.0) * edge;
+  gl_PointSize = (2.2 + vNode * 4.8) * mix(0.72, 1.0, uDetail) * uDpr;
+  vDepthSlope = gradient * vec2(1.0, -1.0) * gl_PointSize / (uSize * uDpr);
 }`;
 
 const CARTOGRAPHY_FRAGMENT = `
@@ -96,12 +165,14 @@ precision highp float;
 uniform vec3 uInk;
 in float vAlpha;
 in float vNode;
+in vec2 vDepthSlope;
 out vec4 outColor;
 void main() {
   float radius = length(gl_PointCoord - 0.5) * 2.0;
-  float edge = 1.0 - smoothstep(0.65, 1.0, radius);
-  float ring = mix(1.0, smoothstep(0.25, 0.55, radius), vNode);
-  float alpha = edge * ring * vAlpha;
+  float core = 1.0 - smoothstep(mix(0.35, 0.14, vNode), mix(0.9, 0.4, vNode), radius);
+  float ring = (1.0 - smoothstep(0.07, 0.2, abs(radius - 0.72))) * vNode * 0.65;
+  float alpha = max(core, ring) * vAlpha;
   if (alpha < 0.01) discard;
+  gl_FragDepth = gl_FragCoord.z + dot(gl_PointCoord - 0.5, vDepthSlope);
   outColor = vec4(uInk, alpha);
 }`;
