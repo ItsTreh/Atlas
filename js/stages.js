@@ -46,7 +46,8 @@ const Stages = {
 
   /**
    * A stage's view:
-   *   enter()       draw it, as it is entered (before it is shown)
+   *   arrive()      set up for arriving from elsewhere (before enter)
+   *   enter()       draw it, as it is entered or rearranged (before it is shown)
    *   shot()        the sculpture's shot (SCULPTURE_SHOTS), default the stage
    *   dim()         how strongly the sculpture shows, 0–1, default 1
    *   highlight()   muscle ids to light, or null
@@ -70,6 +71,7 @@ const Stages = {
     if (!this.can(name)) name = "targets";
     this.current = name;
     this.paintStage();
+    this.call("arrive");
     this.call("enter");
     this.phase = "idle";
     this.root.dataset.phase = "idle";
@@ -84,6 +86,7 @@ const Stages = {
       if (before) before();
       this.current = name;
       this.paintStage();
+      this.call("arrive");
       this.call("enter");
       this.toTop();
     }, STAGE_TIMING.settle, () => this.landed());
