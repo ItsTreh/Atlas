@@ -81,10 +81,10 @@ Done:
 - a dedicated anatomy stage
 - front/back controls and rotation (PR #33): a ±25° drag orbit, and keyboard focus that turns the body to the muscle
 - the Male_Body sculpture painted muscle by muscle and shown by default (2026-10-13); borders are left as painted
-- the stage redesign, from Claude Design's *ATLAS Stages v3* (`docs/redesign.md`, one PR per stage). It is one fixed screen. The sculpture sits behind every stage and a perspective camera moves between named shots (`SCULPTURE_SHOTS` in `js/anatomy-sculpture.js`: az, el, aim height, distance, screen position). `js/stages.js` runs each change of stage as out → moving → idle: motion between stages, stillness within. Targets is done; Nutrition and the Week plan follow, and until then they run unchanged in `.legacy` panels
+- the stage redesign, from Claude Design's *ATLAS Stages v3* (`docs/redesign.md`, one PR per stage). It is one fixed screen. The sculpture sits behind every stage and a perspective camera moves between named shots (`SCULPTURE_SHOTS` in `js/anatomy-sculpture.js`: az, el, aim height, distance, screen position). `js/stages.js` runs each change of stage as out → moving → idle: motion between stages, stillness within. Targets and Nutrition are done; the Week plan follows, and until then it runs unchanged in a `.legacy` panel. Classic scripts share one global scope: `tests/globals.test.js` fails if two of them declare the same top-level name
 
 Next:
-- the Nutrition and Week plan stages of the redesign (`docs/redesign.md`)
+- the Week plan stage of the redesign (`docs/redesign.md`)
 - refined hover and selection states, a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
 
 **The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback (if the sculpture's file fails to load, or with `?anatomy=procedural`).

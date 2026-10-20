@@ -8,9 +8,9 @@ stage at a time, one pull request each:
 
 | Stage | Branch | Status |
 |---|---|---|
-| 01 Targets, plus the shell and the sculpture's camera | `redesign/01-targets` | this PR |
-| 02 Nutrition | `redesign/02-nutrition` | next |
-| 03 Week plan | `redesign/03-week-plan` | after |
+| 01 Targets, plus the shell and the sculpture's camera | `redesign/01-targets` | PR #72 |
+| 02 Nutrition | `redesign/02-nutrition` | this PR (stacked on #72) |
+| 03 Week plan | `redesign/03-week-plan` | next |
 
 Until a stage's redesign lands, it keeps working as it was, inside a
 full-screen panel over the sculpture (`css/legacy.css`, scoped to
@@ -160,6 +160,69 @@ is unchanged.
 - Experience uses short labels in the rail ("6 mo – 2 yrs"); screen readers
   and tooltips get the full ones.
 
+## Stage 02 · Nutrition
+
+**From the design (v3, the "panels" layout with framing C):**
+- The sculpture turns to its left and the camera looks up at the torso. The
+  plan sits to its right, at a width where each row reads on one line.
+- "02 / Nutrition *optional*", *Fuel the training*, and one line on what the
+  diet is fuelling.
+- The goal as four cards, each showing what it would change for this
+  training (−17%, +8%, = burn).
+- The day's targets, large: calories, and protein beside them, labelled
+  **Estimate**, with the sum that made them.
+- Rows that are one line until opened: **You** (body weight and unit, the
+  day outside training, daily burn with ±50), **Targets** (calories against
+  burn, protein per kg; *Recommended* or *Your setting* with *Use it*) and
+  **Rhythm** (meals a day with the suggested count marked, first and last
+  meal, diet style).
+- *See a day of eating →*: the day as a timeline with dots sized by each
+  meal's share, a bar of the day's calories, and **one meal open at a
+  time**. It shows the meal's calories and protein, its share of the day,
+  how far the day's targets are met by its end, and an example plate, with
+  ← → to move between meals. The full day is still visible at a glance on
+  the timeline.
+- Footer: ← Targets · *Skip, training only* · *Continue to week plan →*.
+
+**Kept from the app** (the prototype skipped or simplified these):
+- All the numbers are the real `NutritionPlan`'s: goal ranges, load-based
+  deficits and coverage-based surpluses, protein placed by how hard the
+  week is, the 1,200 kcal floor with its warning, meal patterns of 2–6.
+- **How it's worked out**: the old "Built from your plan" reasons, one click
+  from the figures.
+- **A Training row** (new to the design): days a week and session length,
+  the same numbers as the Week plan, plus what the training adds to the
+  burn. The old stage had these controls; the design didn't.
+- The protein's usual range, the suggested number of meals with *Use N*,
+  and *Estimate it for me* to go back from your own burn number.
+- A body weight is required, not prefilled as in the prototype. Without one
+  the figures say so, the You row opens, and the day of eating waits.
+- Each meal's time can be moved within its neighbours (the time label in
+  the open meal is a picker), and **Other ideas ↻** cycles the example
+  plate. The plates are the real `mealIdeasFor` ideas, portioned to the
+  meal, not repeated across the day where avoidable.
+- Arrow keys move along the meals; every control keeps keyboard focus
+  through a redraw. Typing a weight repaints the figures in place, so the
+  field under the user's hands is never rebuilt.
+
+**Decisions:**
+- The Nutrition shot puts the figure at 19% across, not 22%. At 1440×900 the
+  design's framing put the hand under the rows' labels.
+- On screens narrower than 16:10, side-placed shots step back by the square
+  of the shortfall, because the panel narrows faster than the screen.
+  Where the figure still reaches under the panel, a veil of the ground
+  fades in over the panel's margin, so the sculpture recedes behind text
+  instead of competing with it.
+- A pane starts at the top whenever its stage changes or rearranges.
+
+**Also in this PR:** `tests/globals.test.js`. Building this stage hit a real
+trap: `render.js` already declared `nutriEl`, so the new view's
+`const nutriEl` stopped the whole script from loading. That only shows in a
+browser, because the logic tests skip view files. The test runs every page
+script in order in one shared context and fails on any SyntaxError, which
+includes a top-level name declared twice. It was checked to fail on that
+exact clash.
+
 ## Questions answered before starting
 
 | Question | Answer |
@@ -171,7 +234,8 @@ is unchanged.
 
 ## Checking it
 
-`npm test` covers the logic, which is unchanged. The views were checked in
+`npm test` covers the logic, which is unchanged, and (from stage 2) that the
+page's scripts load together. The views were checked in
 Chromium, opened from `file://`, at 1440×900, 1280×800 and 390×844, in
 both themes, with the Male_Body sculpture, the procedural figure
 (`?anatomy=procedural`) and the SVG fallback (WebGL off). Checked:

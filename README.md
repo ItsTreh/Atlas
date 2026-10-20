@@ -18,10 +18,12 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 - **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first), and tell ATLAS how long you have trained.
 - **See what it will take.** A preliminary estimate of weekly hard sets and time a week, with frequency, what consistent training usually brings, and the caveats stated plainly, one click away.
 
-### 02 · Nutrition — fuel the training
-- **Goal:** fat loss, muscle gain, maintenance or general fitness.
-- **Targets from your training:** calories are set against your daily burn and protein per kg of body weight, both adjusted to the plan's training load. You can fine-tune either.
-- **Your rhythm:** meals a day, first and last meal times, and a diet style (everything, pescatarian, vegetarian, vegan), with example meals that hit the numbers.
+### 02 · Nutrition — fuel the training *(optional)*
+- **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for your training.
+- **Targets from your training:** calories are set against your daily burn and protein per kg of body weight, both adjusted to the plan's training load. The figures show the sum that made them, and every reason is one click away. You can fine-tune either.
+- **Your rhythm:** meals a day, first and last meal times, and a diet style (everything, pescatarian, vegetarian, vegan).
+- **A day of eating:** the day as a timeline, one meal open at a time, with its share of the day, how far the targets are met by its end, and an example plate portioned to it.
+- **Skip it** if you only want training.
 
 ### 03 · Week plan — fit it into your life
 - **Paint your availability.** Click or drag across the hourly grid to block the time you're busy.
@@ -60,7 +62,7 @@ Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler.
 ```
 index.html          one screen: the sculpture, the three stages over it
 css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
-css/legacy.css      stages not yet redesigned, scoped (see docs/redesign.md)
+css/legacy.css      the stage not yet redesigned, scoped (see docs/redesign.md)
 js/
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
@@ -105,7 +107,8 @@ ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like int
 - [ ] A stylised 3D anatomical sculpture in place of the flat figure *(painting in progress, behind a flag)*
 - [x] One continuous sculpture across the stages, with camera choreography between them
 - [x] Side rails for programs and training focus (Targets, stage 1 of the redesign)
-- [ ] Redesigned nutrition and week-plan stages *(in progress, one PR per stage; see `docs/redesign.md`)*
+- [x] Redesigned nutrition stage: the plan beside the sculpture, a day of eating one meal at a time
+- [ ] Redesigned week-plan stage *(in progress; see `docs/redesign.md`)*
 - [ ] Refined hover and selection states, a side view and zoom
 
 ### Planned for the anatomy
