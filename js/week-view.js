@@ -29,7 +29,7 @@ const planEl = $("stage-plan");
 
 /* What is on screen: the screen, the session open or pointed at, the day
    tile pointed at, the last Generate's message, and what was just changed. */
-const wk = { view: "config", sel: null, hover: null, tile: null, status: null, changed: null, targets: false };
+const wk = { view: "config", sel: null, hover: null, tile: null, status: null, changed: null };
 
 /* The calendars' hours, and how tall a day's head is. */
 const WEEK_HOURS = [FIRST_HOUR, LAST_HOUR + 1];
@@ -133,12 +133,24 @@ function fitNote(fit) {
     " of working sets in about " + h(fit.capacityMinutes) + " of session time." };
 }
 
-/** The weekly sets each chosen muscle is planned at, after fitting the time. */
-function weekTargetsText(fit) {
-  if (!fit || !fit.targets.size) return "";
-  const mark = { focus: " ▲", maintain: " ▼", normal: "" };
-  return routine.selection.muscles().filter(m => fit.targets.has(m.id)).map(m =>
-    m.name + " " + fit.targets.get(m.id) + mark[routine.selection.priority(m.id)]).join(" · ");
+/**
+ * The setup screen's one line about the fit: only when the plan would cut
+ * something, the most serious thing first. The full reasoning is fitNote,
+ * shown in Shape your week.
+ */
+function shortFitNote(fit) {
+  if (!fit || !routine.selection.size) return null;
+  const list = ids => nameList(ids.map(id => MUSCLE_BY_ID.get(id).name));
+  if (!fit.fits || !fit.meetsMinimums)
+    return "Even the usual minimum for every muscle looks like more than your sessions can hold (estimate).";
+  if (fit.trimmed.length)
+    return "Your sessions look too short for every target, so " + list(fit.trimmed) +
+      (fit.trimmed.length === 1 ? " is" : " are") + " lowered (estimate).";
+  if (fit.unplaced.length)
+    return SPLITS[routine.split].label + " would leave " + list(fit.unplaced) + " without a day this week.";
+  if (fit.days < fit.askedDays)
+    return "There looks to be room for " + fit.days + " of your " + fit.askedDays + " training days (estimate).";
+  return null;
 }
 
 /* ------------------------------ fit it in (config) ------------------------- */
@@ -163,7 +175,7 @@ function configHTML() {
     '</div>';
   }).join("");
   const unplacedBlocks = pv.plan.blocks.filter(b => !pv.plan.placements.some(p => p.block === b));
-  const note = fitNote(fit), empty = routine.emptySplitDays();
+  const short = shortFitNote(fit), empty = routine.emptySplitDays();
   const busy = busySummary();
   const status = wk.status && !routine.sessions.length ? wk.status : null;
   const [lo, hi] = TRAINING_DAYS_RANGE;
@@ -217,16 +229,8 @@ function configHTML() {
       '<div class="wk-notes" aria-live="polite">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (empty.length ? '<p class="warn">Nothing you selected goes on ' + empty.join(" or ") + ' days.</p>' : '') +
-        (wk.changed === "days" ? '<p class="soft">' + pv.plan.placements.length + ' sessions placed this week' +
-          (fit.days < fit.askedDays ? '' : ', about ' + Math.round(sumSets(fit) / Math.max(1, fit.days)) + ' hard sets each') + ' (estimate).</p>' : '') +
-        (note ? '<p class="' + (note.warn ? "warn" : "soft") + '">' + esc(note.text) + '</p>' : '') +
-        (fit && fit.targets.size
-          ? '<button type="button" class="text-link small" id="targets-toggle" data-key="targets-toggle" aria-expanded="' + wk.targets + '">' +
-              (wk.targets ? "Hide the weekly sets per muscle" : "Weekly sets per muscle") + '</button>' +
-            (wk.targets ? '<p class="soft">' + esc(weekTargetsText(fit)) + '. Hard sets to start from (estimate' +
-              (routine.experience ? '' : ', assuming ' + EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() +
-                ' of training: set your experience above') + ').</p>' : '')
-          : '') +
+        (short ? '<p class="warn">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
+          'data-key="note-shape">See why</button></p>' : '') +
       '</div>' +
       '<div class="wk-actions">' +
         '<button type="button" class="btn primary" id="generate" data-key="generate">Generate my week</button>' +
@@ -239,7 +243,6 @@ function configHTML() {
     '</div>' +
   '</div>';
 }
-const sumSets = fit => [...fit.targets.values()].reduce((t, n) => t + n, 0);
 
 /* ------------------------------ shape your week ---------------------------- */
 
@@ -556,8 +559,7 @@ weekEl.addEventListener("click", e => {
   if (d.daysStep) shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
   else if (d.split) shuffled(() => { routine.split = d.split; }, "shuffle");
   else if (d.experience) shuffled(() => { routine.experience = d.experience; }, "shuffle");
-  else if (b.id === "targets-toggle") { wk.targets = !wk.targets; renderWeek(); }
-  else if (b.id === "open-shape") Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);
+  else if (b.id === "open-shape" || d.shape) Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);
   else if (b.id === "close-shape" || b.id === "close-shape-back")
     Stages.relayout(() => { wk.view = "config"; wk.changed = null; }, 900);
   else if (d.len) { routine.sessionMinutes = Number(d.len); afterWeekChange(); }
