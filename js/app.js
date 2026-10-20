@@ -1,63 +1,20 @@
 /* -------------------------------- stages --------------------------------- */
 
-/* Moving between stages is stages.js's; Targets and Nutrition register
-   themselves (targets.js, nutrition-view.js). The Week plan is drawn here
-   until its redesign lands: a full-screen panel over the sculpture, which
-   recedes behind it. Stages are hidden rather than rebuilt, so the grid the
-   user painted survives a trip back to change the muscles or the eating plan. */
-Stages.register("plan", {
-  enter() {
-    buildControls();           // the nutrition stage may have changed sessions or length
-    renderTargetsMini();
-    renderNutritionMini();
-    render();                  // the plan's summary shows the day's targets too
-    warnIfStale();
-  },
-  shot: () => "plan",
-  dim: () => 0,
-  focus: () => $("plan-title"),
-  footer: () => ({ back: "← Nutrition" })
-});
+/* Moving between stages is stages.js's. Each stage registers itself:
+   targets.js, nutrition-view.js and week-view.js. Stages are hidden rather
+   than rebuilt, so the hours the user painted survive a trip back to change
+   the muscles or the eating plan. */
 
 routine.selection.onChange(() => saveRoutine(routine));
-routine.selection.onChange(renderWeekTargets);
-routine.selection.onChange(renderWeekFit);
 
-/* -------------------------------- actions -------------------------------- */
+/* ------------------------------- the week -------------------------------- */
 
-/* The week plan's controls write straight to the routine, so the nutrition
-   stage (whose estimate reads sessions and length) and the targets estimate
-   always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "sessions", "split", "window", "showmeals"])
-  $(id).addEventListener("change", () => {
-    readControls();
-    renderWeekTargets();
-    renderWeekFit();
-    renderTargets();
-    renderSplitNote();
-    renderNutritionMini();
-    renderNutrition();
-    renderWorkouts();
-    warnIfStale();
-    saveRoutine(routine);
-  });
-
-/* The fit note above the training days follows the days as they are typed.
-   Left to "change", it would grow or shrink on the tap that blurs the field,
-   moving Generate out from under that tap on a phone. */
-$("sessions").addEventListener("input", () => {
-  const n = Number($("sessions").value), [lo, hi] = TRAINING_DAYS_RANGE;
-  if (!Number.isInteger(n) || n < lo || n > hi) return;
-  routine.sessionsPerWeek = n;
-  renderWeekFit();
-});
-
-/* What the grid on screen was generated from, to spot a stale week: the
+/* What the week on screen was generated from, to spot a stale week: the
    muscles, how many days of what length were asked for, the days off, the
    preferred window, whether meals go on the calendar, the training days the
    week can hold, and the meals it placed (time, calories and protein, as
-   the grid shows them) and kept sessions away from. Painting over a session
-   or removing one is an edit, not a changed input; see weekEdited(). */
+   the calendar shows them) and kept sessions away from. Painting over a
+   session or removing one is an edit, not a changed input; see weekEdited(). */
 let generatedFor = null, placedCount = 0;
 function planInputs() {
   const n = routine.nutrition;
@@ -68,6 +25,11 @@ function planInputs() {
          (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
 }
 const days = n => n + (n === 1 ? " day" : " days");
+
+/** True when the week on screen was generated from inputs that have since changed. */
+function weekIsStale() {
+  return !!generatedFor && routine.sessions.length > 0 && generatedFor !== planInputs();
+}
 
 /**
  * After a session leaves the week by the user's hand — removed, painted
@@ -83,36 +45,29 @@ function weekEdited() {
   return true;
 }
 function warnIfStale() {
-  if (generatedFor && routine.sessions.length && generatedFor !== planInputs())
+  if (weekIsStale())
     setStatus("Your targets, training or nutrition changed since this week was generated. " +
               "Generate again to plan for them.", "warn");
 }
 
-/* A day toggle paints or clears that whole column of the grid; what the
-   training and diet can use follows at once. */
-$("off-days").addEventListener("click", e => {
-  const b = e.target.closest("[data-off]");
-  if (!b) return;
-  routine.setDayUnavailable(b.dataset.off, !routine.isDayUnavailable(b.dataset.off));
-  render();
-  renderNutritionMini();
-  weekEdited() || warnIfStale();
-});
-
-$("generate").addEventListener("click", () => {
-  readControls();
+/**
+ * Generates the week (routine.generate) and says what happened: how many
+ * days, why fewer than asked if so, and which split would fit better. The
+ * message goes to the week's status (setStatus, week-view.js).
+ */
+function generateWeek() {
   const r = routine.generate();
   generatedFor = planInputs();
   placedCount = routine.sessions.length;
-  render();
 
   const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
   const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
   const exNote = exercises ? " with " + exercises + " exercises" : "";
+  let text, kind = "";
 
   switch (r.reason) {
     case "ok":
-      setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote);
+      text = "Planned " + days(r.placed) + " of training" + exNote + "." + mealNote;
       break;
     case "rest": {
       const spare = Math.min(r.requested, r.free) - r.placed;
@@ -120,42 +75,44 @@ $("generate").addEventListener("click", () => {
         (spare === 1 ? "is a rest day." : "are rest days.") : ".";
       // A repeat taken out for having too little to do (buildWorkouts): the
       // weekly sets already fit, which is the reason, not how often to train.
-      setStatus("Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
+      text = "Planned " + days(r.placed) + " of training" + exNote + "." + mealNote +
         (r.dropped
           ? " The weekly sets for the muscles you selected already fit in " + r.placed +
             (r.placed === 1 ? " session" : " sessions") + " — another would have been " +
             "nearly empty" + restDays
           : spare > 0 ? " Your targets are covered without the other " + days(spare) + " you offered, " +
-            (spare === 1 ? "so it is a rest day." : "so they are rest days.") : ""));
+            (spare === 1 ? "so it is a rest day." : "so they are rest days.") : "");
       break;
     }
     case "days":
-      setStatus("Planned " + days(r.placed) + " of training" + exNote + " — every day you " +
+      text = "Planned " + days(r.placed) + " of training" + exNote + " — every day you " +
         "have free." + mealNote + " Free up " + (r.requested - r.placed === 1 ? "another day"
-        : (r.requested - r.placed) + " more days") + " to train " + days(r.requested) + ".", "warn");
+        : (r.requested - r.placed) + " more days") + " to train " + days(r.requested) + ".";
+      kind = "warn";
       break;
     case "partial":
-      setStatus("Planned " + days(r.placed) + " of the " + days(r.requested) + " you asked for." +
+      text = "Planned " + days(r.placed) + " of the " + days(r.requested) + " you asked for." +
         mealNote + " The rest were left out: either no free day had a long enough " +
-        "gap, or every remaining muscle was still inside its recovery window.", "warn");
+        "gap, or every remaining muscle was still inside its recovery window.";
+      kind = "warn";
       break;
     case "no-muscles":
-      setStatus("Pick at least one muscle first.", "err");
+      text = "Pick at least one muscle first."; kind = "err";
       break;
     case "no-exercises":
-      setStatus("None of your target muscles have exercises in the database yet, so there " +
-        "is nothing to schedule. Add a muscle such as Chest, Lats or Quads.", "err");
+      text = "None of your target muscles have exercises in the database yet, so there " +
+        "is nothing to schedule. Add a muscle such as Chest, Lats or Quads."; kind = "err";
       break;
     case "no-room":
-      setStatus("No free gap is long enough for a " + routine.sessionMinutes + "-minute session. " +
-        "Clear some hours or shorten the session.", "err");
+      text = "No free gap is long enough for a " + routine.sessionMinutes + "-minute session. " +
+        "Clear some hours or shorten the session."; kind = "err";
       break;
     case "no-blocks":
-      setStatus("Every hour is blocked. Free some days or clear some cells and try again.", "err");
+      text = "Every hour is blocked. Free some days or clear some hours and try again."; kind = "err";
       break;
     default:
-      setStatus("Nothing could be placed without breaking a recovery window. " +
-        "Free up more hours, select more muscles, or shorten the session.", "err");
+      text = "Nothing could be placed without breaking a recovery window. " +
+        "Free up more hours, select more muscles, or shorten the session."; kind = "err";
   }
 
   // A split whose days the selection leaves empty repeats the days it has,
@@ -175,36 +132,24 @@ $("generate").addEventListener("click", () => {
       return SPLITS[id].label + " would fit: with nothing for " + gaps.join(" or ") +
         ", it alternates " + used.join(" and ");
     });
-    setStatus("Nothing you selected goes on " + empty.join(" or ") + " days, so the week repeats " +
+    text = "Nothing you selected goes on " + empty.join(" or ") + " days, so the week repeats " +
       kept.join(" and ") + ", which needs rest days between: " + r.placed + " of the " +
-      days(r.requested) + " fit." + (fits.length ? " " + fits.join("; ") + "." : ""),
-      "warn");
+      days(r.requested) + " fit." + (fits.length ? " " + fits.join("; ") + "." : "");
+    kind = "warn";
   }
-
-  // Blocks the plan could not give a day (Push · Pull · Legs over 2 days):
-  // named here, with what would change it, rather than left out silently.
-  const left = leftOutText();
-  if (left) setStatus($("status").textContent + " " + left, "warn");
 
   // A week that falls short of what the targets usually need says so here
-  // too, not only in the note under Your week.
+  // too, not only in the notes under the summary.
   if (r.placed) {
     const v = routine.weeklyVolume();
-    if (v.untrained.length || v.short.length)
-      setStatus($("status").textContent + " Some muscles get less than they usually need " +
-                "this week — see the note under Your week.", "warn");
+    if (v.untrained.length || v.short.length) {
+      text += " Some muscles get less than they usually need this week — see the notes below.";
+      kind = kind || "warn";
+    }
   }
-});
-
-$("reset").addEventListener("click", () => {
-  routine.reset();
-  buildControls();
   render();
-  renderNutritionMini();       // reset puts sessions and length back, which the targets use
-  setStatus("Cleared. Click or drag across the grid to block the hours you are " +
-            "not available.");
-});
-
+  return { text, kind, placed: r.placed };
+}
 
 /* --------------------------------- theme --------------------------------- */
 
@@ -225,10 +170,10 @@ $("theme").addEventListener("click", () => {
 /* ---------------------------------- boot --------------------------------- */
 
 /* Bring back whatever was saved (see storage.js) before anything else reads
-   the routine, so the controls below are built from the restored values,
-   not the defaults. A restored week counts as generated already, the same
-   bookkeeping the Generate button does, so an edit right after loading is
-   correctly seen as an edit rather than a silent, unflagged change. */
+   the routine, so every stage is drawn from the restored values, not the
+   defaults. A restored week counts as generated already, the same
+   bookkeeping Generate does, so an edit right after loading is correctly
+   seen as an edit rather than a silent, unflagged change. */
 const restored = loadRoutine(routine);
 if (restored && routine.sessions.length) {
   generatedFor = planInputs();
@@ -236,9 +181,6 @@ if (restored && routine.sessions.length) {
 }
 
 paintThemeButton();
-buildOffDays();
-buildControls();
-buildGrid();
 Stages.start(restored && routine.sessions.length ? "plan"
            : restored && !routine.selection.isEmpty() ? "nutrition"
            : "targets");

@@ -1,10 +1,14 @@
 /* --------------------------- click-drag painting -------------------------- */
 
+/* "Shape your week": dragging down a day (or across days) marks those hours
+   busy; dragging again over busy hours clears them. Each hour of a day is a
+   .paint cell (week-view.js) carrying its day and hour. */
+
 let painting = false, paintMode = null, anchor = null;
 
 function cellUnder(x, y) {
   const el = document.elementFromPoint(x, y);
-  return el && el.closest ? el.closest(".cell") : null;
+  return el && el.closest ? el.closest(".paint") : null;
 }
 
 /**
@@ -23,26 +27,28 @@ function paintTo(day, hour) {
   const [h1, h2] = [anchor.hour, hour].sort((a, b) => a - b);
   for (let di = d1; di <= d2; di++) {
     const d = DayOfWeek.values[di];
+    if (routine.isDayUnavailable(d) && paintMode === "busy") continue;   // a day off is not painted
     for (let h = h1; h <= h2; h++) {
       if (paintMode === "busy") routine.markBusy(d, h);
-      else routine.clearSlot(d, h);
+      else if (routine.slot(d, h).state === SlotState.BUSY) routine.clearSlot(d, h);
     }
   }
-  renderGrid();
+  paintBusy();                 // only the busy blocks while the drag is under way
 }
 
-/** The .cell an event landed on, whatever child element it actually hit. */
+/** The .paint cell an event landed on, whatever child element it actually hit. */
 function cellOf(target) {
-  return target && target.closest ? target.closest(".cell") : null;
+  return target && target.closest ? target.closest(".paint") : null;
 }
 
 function beginStroke(cell) {
   const day = cell.dataset.day, hour = Number(cell.dataset.hour);
   const slot = routine.slot(day, hour);
   if (!slot) return;
-  // A free cell becomes busy; a busy, session or meal cell clears, as the
-  // hint under the grid says — clearing a session frees its hours.
-  paintMode = slot.state === SlotState.FREE ? "busy" : "clear";
+  // A free hour becomes busy; a busy one clears, as the hint under the
+  // calendar says. Painting busy over a generated session's hour frees that
+  // session's hours (routine.markBusy), which the week then reports.
+  paintMode = slot.state === SlotState.BUSY ? "clear" : "busy";
   painting = true;
   anchor = { day, hour };
   paintTo(day, hour);          // the click alone must already do something
@@ -51,13 +57,7 @@ function beginStroke(cell) {
 function endStroke() {
   if (!painting) return;
   painting = false; paintMode = null; anchor = null;
-  renderWorkouts();            // a cleared cell may have removed a session
-  paintOffDays();              // a painted column is a day off
-  renderNutrition();           // the meal count only needs refreshing once
-  renderNutritionMini();       // days free to train change what training counts
-  renderWeekFit();             // and how much time the week has
-  weekEdited() || warnIfStale();
-  saveRoutine(routine);
+  afterWeekChange();           // the planned days, the fit and the status follow; saved
 }
 
 /* Pointer Events are the primary path: one code path for mouse, pen and touch.
@@ -65,17 +65,17 @@ function endStroke() {
    fallback below stays dormant when they do and never double-handles. */
 let pointerSeen = false, mouseSeen = false;
 
-gridEl.addEventListener("pointerdown", e => {
+weekEl.addEventListener("pointerdown", e => {
   pointerSeen = true;
   const cell = cellOf(e.target);
-  if (!cell) return;
+  if (!cell || (e.pointerType === "mouse" && e.button !== 0)) return;
   e.preventDefault();
   beginStroke(cell);
 });
 
-/* Move and up listen on the window, not the grid: the pointer routinely leaves
-   the grid mid-drag, and this keeps the stroke alive without pointer capture.
-   An earlier version called gridEl.setPointerCapture() here — it throws in
+/* Move and up listen on the window, not the calendar: the pointer routinely
+   leaves it mid-drag, and this keeps the stroke alive without pointer
+   capture. An earlier version called setPointerCapture() here — it throws in
    embedded contexts where the pointer id is not active for the document, and
    because it sat BEFORE the painting call, one throw killed the whole
    interaction: neither click nor drag did anything. */
@@ -89,7 +89,7 @@ window.addEventListener("pointercancel", endStroke);
 
 /* Fallback for any environment that does not deliver Pointer Events to the
    page. Dormant whenever the pointer path works. */
-gridEl.addEventListener("mousedown", e => {
+weekEl.addEventListener("mousedown", e => {
   if (pointerSeen) return;
   mouseSeen = true;
   const cell = cellOf(e.target);
@@ -105,8 +105,8 @@ window.addEventListener("mousemove", e => {
 window.addEventListener("mouseup", () => { if (!pointerSeen) endStroke(); });
 
 /* Last resort: if neither pointer nor mouse events arrive but a click does,
-   a plain click still toggles the cell. */
-gridEl.addEventListener("click", e => {
+   a plain click still toggles the hour. */
+weekEl.addEventListener("click", e => {
   if (pointerSeen || mouseSeen || painting) return;
   const cell = cellOf(e.target);
   if (!cell) return;

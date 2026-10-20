@@ -26,9 +26,9 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 - **Skip it** if you only want training.
 
 ### 03 · Week plan — fit it into your life
-- **Paint your availability.** Click or drag across the hourly grid to block the time you're busy.
-- **Choose how you train:** sessions a week, session length, days off and preferred time of day.
-- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts. You can then swap, add or remove exercises.
+- **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days and how the week is split. Notes say what fits and what won't (an estimate).
+- **Shape your week.** A full-width calendar: drag down a day to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and whether meals go on the calendar.
+- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises.
 
 Every calorie, protein and progress figure is labelled an **estimate**, shows how it was worked out, and never promises a physique by a date.
 
@@ -62,7 +62,6 @@ Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler.
 ```
 index.html          one screen: the sculpture, the three stages over it
 css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
-css/legacy.css      the stage not yet redesigned, scoped (see docs/redesign.md)
 js/
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
@@ -76,8 +75,10 @@ js/
   scheduler.js      places sessions and meals in the week
   anatomy*.js       the anatomy figure, its camera, and the stage it lives in
   stages.js         moving between stages: motion between, stillness within
-  targets.js, nutrition-view.js, workout-view.js, render.js, paint.js, app.js
-                    the views and wiring
+  targets.js, nutrition-view.js, week-view.js, workout-view.js
+                    the stages; workout-view.js is a session in full
+  render.js, paint.js, app.js
+                    shared helpers, painting busy hours, generating, boot
 tests/              Vitest suites
 ```
 
@@ -108,7 +109,7 @@ ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like int
 - [x] One continuous sculpture across the stages, with camera choreography between them
 - [x] Side rails for programs and training focus (Targets, stage 1 of the redesign)
 - [x] Redesigned nutrition stage: the plan beside the sculpture, a day of eating one meal at a time
-- [ ] Redesigned week-plan stage *(in progress; see `docs/redesign.md`)*
+- [x] Redesigned week-plan stage: the week before Generate, Shape your week, and the generated week beside the sculpture (see `docs/redesign.md`)
 - [ ] Refined hover and selection states, a side view and zoom
 
 ### Planned for the anatomy
