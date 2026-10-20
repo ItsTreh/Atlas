@@ -1,50 +1,37 @@
 /* -------------------------------- stages --------------------------------- */
 
-/* Targets, then nutrition, then the week. Stages are hidden rather than
-   rebuilt, so the grid the user painted survives a trip back to change the
-   muscles or the eating plan. */
-const STAGES = { targets: $("stage-targets"), nutrition: $("stage-nutrition"),
-                 plan: $("stage-plan") };
+/* Moving between stages is stages.js's; Targets registers itself
+   (targets.js). Nutrition and the Week plan are drawn here until their
+   redesigns land: full-screen panels over the sculpture, which recedes
+   behind them. Stages are hidden rather than rebuilt, so the grid the user
+   painted survives a trip back to change the muscles or the eating plan. */
+Stages.register("nutrition", {
+  enter: renderNutritionStage,
+  shot: () => "nutrition",
+  dim: () => 0,
+  focus: () => $("nutrition-title"),
+  footer: () => ({
+    back: "← Targets",
+    skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
+    next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
+    nextDisabled: routine.selection.isEmpty()
+  })
+});
 
-/* The quiet line under the product name: the stage's number and name. */
-const STAGE_LABELS = { targets: "Define your focus", nutrition: "Nutrition", plan: "Week plan" };
-function paintStageLabel(name) {
-  const n = String(Object.keys(STAGES).indexOf(name) + 1).padStart(2, "0");
-  $("stage-label").innerHTML = '<span class="stage-n">' + n + '</span> / ' + STAGE_LABELS[name];
-}
-
-function showStage(name) {
-  if (name === "plan" && routine.selection.isEmpty()) name = "targets";
-  for (const [key, el] of Object.entries(STAGES)) el.hidden = key !== name;
-  paintStageLabel(name);
-  for (const b of document.querySelectorAll(".step"))
-    if (b.dataset.goto === name) b.setAttribute("aria-current", "step");
-    else b.removeAttribute("aria-current");
-  if (name === "plan") {
+Stages.register("plan", {
+  enter() {
     buildControls();           // the nutrition stage may have changed sessions or length
     renderTargetsMini();
     renderNutritionMini();
     render();                  // the plan's summary shows the day's targets too
     warnIfStale();
-  } else if (name === "nutrition") {
-    renderNutritionStage();
-  } else {
-    renderTargets();
-  }
-  window.scrollTo({ top: 0 });
-}
-
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-goto]");
-  if (b && !b.disabled) showStage(b.dataset.goto);
+  },
+  shot: () => "plan",
+  dim: () => 0,
+  focus: () => $("plan-title"),
+  footer: () => ({ back: "← Nutrition" })
 });
 
-/* The Week plan step is only reachable once something is selected. */
-function paintSteps() {
-  for (const b of document.querySelectorAll('button[data-goto="plan"]'))
-    b.disabled = routine.selection.isEmpty();
-}
-routine.selection.onChange(paintSteps);
 routine.selection.onChange(() => saveRoutine(routine));
 routine.selection.onChange(renderWeekTargets);
 routine.selection.onChange(renderWeekFit);
@@ -54,7 +41,7 @@ routine.selection.onChange(renderWeekFit);
 /* The week plan's controls write straight to the routine, so the nutrition
    stage (whose estimate reads sessions and length) and the targets estimate
    always see what is on screen. The nutrition summary follows at once. */
-for (const id of ["len", "experience", "sessions", "split", "window", "showmeals"])
+for (const id of ["len", "sessions", "split", "window", "showmeals"])
   $(id).addEventListener("change", () => {
     readControls();
     renderWeekTargets();
@@ -265,7 +252,6 @@ paintThemeButton();
 buildOffDays();
 buildControls();
 buildGrid();
-paintSteps();
-showStage(restored && routine.sessions.length ? "plan"
-        : restored && !routine.selection.isEmpty() ? "nutrition"
-        : "targets");
+Stages.start(restored && routine.sessions.length ? "plan"
+           : restored && !routine.selection.isEmpty() ? "nutrition"
+           : "targets");

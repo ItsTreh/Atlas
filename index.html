@@ -4,61 +4,72 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ATLAS — weekly training planner</title>
+<!-- A classical serif for stage titles and figures only. Offline (opened
+     from disk without a connection) they fall back to Georgia. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;display=swap">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/legacy.css">
 </head>
 <body>
-<div class="wrap">
+<!-- One screen, three stages. The sculpture is a single element behind
+     them all; moving between stages moves its camera (stages.js), and each
+     stage's interface settles around it. -->
+<div class="atlas" id="atlas" data-stage="targets" data-phase="idle">
 
   <header class="masthead">
-    <h1 class="brand">ATLAS</h1>
-    <p class="stage-label" id="stage-label"><span class="stage-n">01</span> / Define your focus</p>
-    <button class="theme-btn" id="theme" aria-label="Switch colour theme">
-      <span id="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Dark</span>
-    </button>
+    <div class="mast-start">
+      <span class="brand">ATLAS</span>
+      <span class="mast-stage" id="stage-label"><span class="n">01</span> / Targets</span>
+    </div>
+    <nav class="stage-nav" id="stage-nav" aria-label="Stages">
+      <button type="button" data-goto="targets" aria-current="step"><span>Targets</span></button>
+      <button type="button" data-goto="nutrition"><span>Nutrition</span></button>
+      <button type="button" data-goto="plan"><span>Week plan</span></button>
+    </nav>
+    <div class="mast-end">
+      <button type="button" class="theme-btn" id="theme" aria-label="Switch colour theme">
+        <span id="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Dark</span>
+      </button>
+    </div>
   </header>
 
-  <nav class="steps" aria-label="Planner stages">
-    <button type="button" class="step" data-goto="targets" aria-current="step">
-      <span class="n">1</span><span>Targets</span></button>
-    <span class="step-line" aria-hidden="true"></span>
-    <button type="button" class="step" data-goto="nutrition">
-      <span class="n">2</span><span>Nutrition</span></button>
-    <span class="step-line" aria-hidden="true"></span>
-    <button type="button" class="step" data-goto="plan">
-      <span class="n">3</span><span>Week plan</span></button>
-  </nav>
-
   <!-- ============================ Stage 1: targets ========================= -->
-  <section class="stage" id="stage-targets" aria-labelledby="targets-title">
-    <h2 class="visually-hidden" id="targets-title">Choose target muscles</h2>
-
-    <!-- The body's stage. The page talks to AnatomyStage; the renderer it
-         mounts into the viewport draws everything inside it. -->
-    <div class="anatomy-stage" id="anatomy-stage">
-      <div class="anatomy-viewport" data-anatomy-mount></div>
-      <p class="anatomy-caption" id="anatomy-caption" aria-live="polite"></p>
-    </div>
-
-    <div class="targets-panel">
-      <div class="panel-section">
-        <h2>Recommended programs</h2>
-        <div id="programs"></div>
+  <section class="stage stage-targets" id="stage-targets" aria-labelledby="targets-title">
+    <div class="rail rail-start" data-scroll data-reveal="0">
+      <div class="rail-head">
+        <p class="eyebrow"><span class="n">01</span> / Targets</p>
+        <h1 class="display" id="targets-title" tabindex="-1">Define your focus</h1>
+        <p class="lede">Begin from a program, then refine it on the sculpture.</p>
       </div>
-      <div class="panel-section" id="selection-summary"></div>
+      <div class="programs" id="programs"></div>
     </div>
-
-    <section class="estimate" id="estimate" aria-live="polite"></section>
-
-    <div class="stage-actions">
-      <span class="hint" id="to-plan-hint"></span>
-      <button type="button" class="act primary" id="to-plan" data-goto="nutrition">
-        Continue to nutrition →</button>
-    </div>
+    <div class="rail-gap" aria-hidden="true"></div>
+    <div class="rail rail-end" id="focus-summary" data-scroll data-reveal="2" aria-live="polite"></div>
   </section>
 
+  <!-- The body's stage, one layer behind every stage (z-index puts it
+       there; it comes after Targets in the source so the keyboard meets
+       the programs and the focus summary before the muscles). The page
+       talks to AnatomyStage; the renderer it mounts into the viewport
+       draws everything inside it. -->
+  <div class="anatomy-stage" id="anatomy-stage">
+    <div class="anatomy-viewport" data-anatomy-mount></div>
+    <div class="figure-controls">
+      <p class="anatomy-caption" id="anatomy-caption" aria-live="polite"></p>
+      <div class="turn" id="turn" role="group" aria-label="Turn the body">
+        <button type="button" data-view="front" aria-pressed="true">Front</button>
+        <span class="turn-line" aria-hidden="true"></span>
+        <button type="button" data-view="back" aria-pressed="false">Back</button>
+      </div>
+    </div>
+  </div>
+
   <!-- =========================== Stage 2: nutrition ======================== -->
-  <section class="stage" id="stage-nutrition" hidden aria-labelledby="nutrition-title">
-    <h2 class="visually-hidden" id="nutrition-title">Nutrition plan</h2>
+  <section class="stage legacy" id="stage-nutrition" data-scroll aria-labelledby="nutrition-title">
+   <div class="legacy-inner">
+    <h1 class="visually-hidden" id="nutrition-title" tabindex="-1">Nutrition plan</h1>
 
     <div class="nutrition">
       <div class="nconf">
@@ -149,15 +160,14 @@
     </div>
 
     <section class="card nmeals" id="nmeals" aria-label="Your day of eating"></section>
-
-    <div class="stage-actions">
-      <button type="button" class="act primary" data-goto="plan">Continue to week plan →</button>
-    </div>
+   </div>
   </section>
 
   <!-- =========================== Stage 3: week plan ======================== -->
-  <section class="stage" id="stage-plan" hidden>
-  <div class="layout">
+  <section class="stage legacy" id="stage-plan" data-scroll aria-labelledby="plan-title">
+   <div class="legacy-inner">
+    <h1 class="visually-hidden" id="plan-title" tabindex="-1">Week plan</h1>
+    <div class="layout">
 
     <aside class="card">
       <h2>Targets</h2>
@@ -172,10 +182,6 @@
           <option value="75">75 min</option>
           <option value="90">90 min</option>
         </select>
-      </div>
-      <div class="field">
-        <label for="experience">Training experience</label>
-        <select id="experience"></select>
       </div>
       <p class="cfg-hint" id="week-targets"></p>
       <p class="cfg-hint" id="week-fit" role="status"></p>
@@ -241,8 +247,23 @@
       <section class="card nutri" id="nutri"></section>
     </main>
 
-  </div>
+    </div>
+   </div>
   </section>
+
+  <!-- The way on and back. Inside Training it is the step progress; on a
+       phone it also holds the stage navigation. -->
+  <footer class="stage-foot" id="stage-foot">
+    <div class="foot-start">
+      <button type="button" class="quiet-btn" id="foot-back" hidden></button>
+    </div>
+    <nav class="foot-dots" id="foot-dots" aria-label="Stages"></nav>
+    <div class="foot-end">
+      <button type="button" class="quiet-btn" id="foot-skip" hidden></button>
+      <span class="foot-hint" id="foot-hint"></span>
+      <button type="button" class="btn primary" id="foot-next" hidden></button>
+    </div>
+  </footer>
 </div>
 
 <!-- Classic scripts, loaded in dependency order. They share the global scope,
@@ -275,6 +296,7 @@
 <script src="js/anatomy-stage.js"></script>
 <script src="js/render.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/stages.js"></script>
 <script src="js/targets.js"></script>
 <script src="js/workout-view.js"></script>
 <script src="js/nutrition-view.js"></script>

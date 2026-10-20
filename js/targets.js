@@ -1,40 +1,65 @@
 /* ===========================================================================
-   Targets stage — pick the muscles to train.
+   Targets stage — define your focus.
 
-   Four views of one MuscleSelection (routine.selection):
-     • the anatomy stage      click a muscle to toggle it
-     • the program list       apply a recommended selection in one click
-     • the summary            what is selected, and where it came from
-     • the estimate           what training those muscles will take
+   The sculpture stands in the centre; the two rails either side of it
+   carry what the user needs while choosing:
 
-   None of them talk to each other. Each writes to the selection and redraws
-   when it changes, so a new view (or a later stage) only has to subscribe.
+     • left    where to start: the program families as tabs, one program
+               at a time with previous and next, and what applying it does
+     • right   until something is chosen, how ATLAS works; then the
+               training focus, grouped by family, each muscle's priority,
+               the user's training experience, and what it will take
+
+   Four views of one MuscleSelection (routine.selection): the figure, the
+   programs, the focus summary and the estimate. None of them talk to each
+   other. Each writes to the selection and redraws when it changes, so a
+   new view (or a later stage) only has to subscribe.
+
+   Browsing never costs the user their work: with nothing chosen, or a
+   selection of their own, previous and next only show programs (pointing
+   at one previews it on the sculpture) until one is applied. Once the
+   selection follows a program, they switch programs directly.
    ========================================================================= */
 
 const selection = routine.selection;
-const programsEl = $("programs"), summaryEl = $("selection-summary"),
-      estimateEl = $("estimate"), captionEl = $("anatomy-caption"),
-      toPlanBtn = $("to-plan");
+const programsEl = $("programs"), summaryEl = $("focus-summary"), captionEl = $("anatomy-caption");
 
-const PRIORITY_LABEL = { maintain: "Maintain (minimum, trimmed first)", normal: "Normal",
-                         focus: "Focus (more sets and days)" };
-const NEXT_PRIORITY = { normal: "focus", focus: "maintain", maintain: "normal" };
+/* The tab names: the families of PROGRAM_GROUPS, shortened to fit. */
+const PROGRAM_TABS = { whole: "Whole body", movement: "Push · Pull · Legs", pairing: "Pairings" };
+const PRIORITY_CHOICES = [["maintain", "Maintain"], ["normal", "Normal"], ["focus", "Focus"]];
+const PRIORITY_MARK = { focus: "▲", maintain: "▼", normal: "" };
+/* EXPERIENCE_LEVELS' labels, short enough to sit side by side in the rail. */
+const EXPERIENCE_SHORT = { beginner: "Under 6 months", intermediate: "6 mo – 2 yrs", advanced: "2+ years" };
 
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* -------------------------------- figure --------------------------------- */
 
-const CAPTION_IDLE = "Click a muscle to select it · click again to deselect";
 let pointedAt = null;
 
 function paintCaption() {
   const m = pointedAt;
   captionEl.classList.toggle("live", !!m);
-  if (!m) { captionEl.textContent = CAPTION_IDLE; return; }
+  if (!m) {
+    const flat = $("anatomy-stage").classList.contains("flat");
+    captionEl.textContent = Stages.narrow ? "Tap a muscle to select it"
+      : flat ? "Click a muscle to select it · click again to deselect"
+      : "Click a muscle to select it · drag sideways to look around";
+    return;
+  }
   captionEl.innerHTML =
     '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
-    '<span><b>' + esc(m.name) + '</b> · ' + FAMILIES[m.family].name + ' · ' +
-    (selection.has(m.id) ? "selected — click to remove" : "click to add") + '</span>';
+    '<span>' + esc(m.name) + ' · ' + FAMILIES[m.family].name + ' · ' +
+    (selection.has(m.id) ? "selected, click to remove" : "click to add") + '</span>';
+}
+
+/** Front and Back: the view shown is underlined; a drag off it fades the line. */
+function paintTurn(view = "front", offView = false) {
+  const turn = $("turn");
+  turn.classList.toggle("off-view", offView);
+  for (const b of turn.querySelectorAll("[data-view]"))
+    b.setAttribute("aria-pressed", b.dataset.view === view ? "true" : "false");
 }
 
 /* The anatomy on the stage: the Male_Body sculpture, or the procedural
@@ -45,156 +70,293 @@ const anatomyModel = typeof ANATOMY_MODEL_MALE_BODY === "object" ? ANATOMY_MODEL
   : typeof ANATOMY_MODEL === "object" ? ANATOMY_MODEL : null;
 if (typeof ANATOMY_MODEL_MALE_BODY === "object") validateAnatomyModel(anatomyModel);
 
-const stage = new AnatomyStage($("anatomy-stage"), selection, {
+/* The one sculpture every stage shares. Its camera is the stages' to move
+   (stages.js); this stage owns what it says and what pointing does. */
+const figure = new AnatomyStage($("anatomy-stage"), selection, {
   model: anatomyModel,
-  onHover(muscle) { pointedAt = muscle; paintCaption(); }
+  onHover(muscle) { pointedAt = muscle; paintCaption(); },
+  onTurn(view, offView) { paintTurn(view, offView); },
+  onChange() { paintCaption(); paintTurn(); }
 });
 
-/* ------------------------------- programs -------------------------------- */
+$("turn").addEventListener("click", e => {
+  const b = e.target.closest("[data-view]");
+  if (b) figure.turnTo(b.dataset.view);
+});
 
+/* ---------------------------- left: programs ----------------------------- */
+
+const rail = { program: PROGRAMS[0], out: false, dir: 1 };
+
+/** True while previous and next only show programs, rather than apply them. */
+const browsing = () => selection.isEmpty() || selection.source().kind === "custom";
+
+/** The structure is built once; paintPrograms() keeps it in step, so focus stays put. */
 function buildPrograms() {
-  programsEl.innerHTML = "";
-  for (const group of PROGRAM_GROUPS) {
-    const list = PROGRAMS.filter(p => p.group === group.id);
-    if (!list.length) continue;
-    const head = document.createElement("div");
-    head.className = "prog-group";
-    head.textContent = group.name;
-    programsEl.appendChild(head);
-
-    const row = document.createElement("div");
-    row.className = "prog-row";
-    for (const program of list) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "prog";
-      b.dataset.program = program.id;
-      b.setAttribute("aria-pressed", "false");
-      b.title = program.why;
-      b.innerHTML = '<span class="pn">' + esc(program.name) + '</span>' +
-                    '<span class="pc">' + program.muscles.length + '</span>';
-      // Clicking the active program again clears it, like clicking a muscle.
-      b.addEventListener("click", () => {
-        const src = selection.source();
-        if (src.kind === "program" && src.program === program) selection.clear();
-        else selection.applyProgram(program);
-      });
-      b.addEventListener("pointerenter", () => previewProgram(program));
-      b.addEventListener("focus", () => previewProgram(program));
-      b.addEventListener("pointerleave", () => previewProgram(null));
-      b.addEventListener("blur", () => previewProgram(null));
-      row.appendChild(b);
-    }
-    programsEl.appendChild(row);
-  }
-  const why = document.createElement("p");
-  why.className = "prog-why";
-  why.id = "prog-why";
-  programsEl.appendChild(why);
+  programsEl.innerHTML =
+    '<div class="tabs" role="tablist" aria-label="Program families">' +
+      PROGRAM_GROUPS.map(g =>
+        '<button type="button" role="tab" class="tab" data-group="' + g.id + '" title="' + esc(g.name) + '">' +
+          esc(PROGRAM_TABS[g.id] || g.name) + '<span class="tab-line" aria-hidden="true"></span></button>').join("") +
+    '</div>' +
+    '<div class="slider">' +
+      '<div class="slider-head">' +
+        '<span class="eyebrow">Starting from</span>' +
+        '<div class="slider-ctl">' +
+          '<button type="button" class="round-btn" data-step="-1">←</button>' +
+          '<div class="pips" id="program-pips"></div>' +
+          '<button type="button" class="round-btn" data-step="1">→</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="program" id="program" aria-live="polite">' +
+        '<span class="program-title"><span class="program-name" id="program-name"></span>' +
+          '<span class="program-edited" id="program-edited" hidden>edited</span></span>' +
+        '<span class="program-count" id="program-count"></span>' +
+        '<p class="program-why" id="program-why"></p>' +
+        '<div class="program-diff" id="program-diff" hidden></div>' +
+      '</div>' +
+      '<button type="button" class="text-link program-action" id="program-action" hidden></button>' +
+      '<p class="note-rule">Refine it on the sculpture: click a muscle to add or remove it.</p>' +
+    '</div>';
 }
 
-/** Shows why a program groups what it does, while it is pointed at. */
-function previewProgram(program) {
-  stage.preview(program ? program.muscles : null);
-  const why = $("prog-why");
-  if (program) {
-    why.innerHTML = '<b>' + esc(program.name) + ':</b> ' + esc(program.why);
-    return;
-  }
-  const src = selection.source();
-  why.innerHTML = src.program
-    ? '<b>' + esc(src.program.name) + ':</b> ' + esc(src.program.why)
-    : "Pick a program to start from, then add or remove muscles on the figure.";
-}
+function inGroup(program = rail.program) { return PROGRAMS.filter(p => p.group === program.group); }
 
 function paintPrograms() {
   const src = selection.source();
-  for (const b of programsEl.querySelectorAll(".prog")) {
-    const p = PROGRAM_BY_ID.get(b.dataset.program);
-    const active = src.kind === "program" && src.program === p;
-    const edited = src.kind === "modified" && src.program === p;
-    b.classList.toggle("active", active);
-    b.classList.toggle("edited", edited);
-    b.setAttribute("aria-pressed", active ? "true" : "false");
+  // The rail follows the selection when it is a program, whichever way it got there.
+  if (src.program && src.program !== rail.program && !rail.out) rail.program = src.program;
+  const shown = rail.program, list = inGroup(), i = list.indexOf(shown);
+  const prev = list[i - 1], next = list[i + 1];
+
+  for (const tab of programsEl.querySelectorAll("[data-group]")) {
+    const on = tab.dataset.group === shown.group;
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.tabIndex = on ? 0 : -1;
   }
-  previewProgram(null);      // the line under the buttons follows the selection
+  const pips = $("program-pips");
+  if (pips.dataset.group !== shown.group) {
+    pips.dataset.group = shown.group;
+    pips.innerHTML = list.map(p =>
+      '<button type="button" class="pip" data-program="' + p.id + '" aria-label="' + esc(p.name) + '" title="' + esc(p.name) + '">' +
+      '<span></span></button>').join("");
+  }
+  for (const pip of pips.children)
+    if (pip.dataset.program === shown.id) pip.setAttribute("aria-current", "true");
+    else pip.removeAttribute("aria-current");
+  const [back, on] = programsEl.querySelectorAll(".round-btn");
+  back.disabled = !prev; on.disabled = !next;
+  back.setAttribute("aria-label", prev ? "Previous: " + prev.name : "First program");
+  on.setAttribute("aria-label", next ? "Next: " + next.name : "Last program");
+  back.title = back.getAttribute("aria-label"); on.title = on.getAttribute("aria-label");
+
+  const edited = src.kind === "modified" && src.program === shown;
+  const exact = src.kind === "program" && src.program === shown;
+  $("program-name").textContent = shown.name;
+  $("program-edited").hidden = !edited;
+  $("program-count").textContent = plural(shown.muscles.length, "muscle group", "muscle groups");
+  $("program-why").textContent = shown.why;
+  const diff = $("program-diff");
+  diff.hidden = !edited;
+  diff.innerHTML = !edited ? "" :
+    (src.added.length ? '<span><span class="faint">Added</span> ' + esc(src.added.map(m => m.name).join(", ")) + '</span>' : '') +
+    (src.removed.length ? '<span><span class="faint">Removed</span> ' + esc(src.removed.map(m => m.name).join(", ")) + '</span>' : '');
+  const action = $("program-action");
+  action.hidden = exact;
+  action.textContent = edited ? "Reset to " + shown.name : "Apply " + shown.name + " →";
 }
 
-/* -------------------------------- summary -------------------------------- */
-
-function renderSummary() {
-  const muscles = selection.muscles();
-  const src = selection.source();
-
-  let origin;
-  if (src.kind === "program") {
-    origin = 'Matches the <b>' + esc(src.program.name) + '</b> program.';
-  } else if (src.kind === "modified") {
-    const parts = [];
-    if (src.added.length)   parts.push("added " + src.added.map(m => esc(m.name)).join(", "));
-    if (src.removed.length) parts.push("removed " + src.removed.map(m => esc(m.name)).join(", "));
-    origin = 'Based on <b>' + esc(src.program.name) + '</b> — ' + parts.join("; ") + '.';
-  } else if (src.kind === "custom") {
-    origin = "Your own selection.";
-  } else {
-    origin = "Nothing selected yet. Click muscles on the figure or pick a program.";
-  }
-
-  const targets = routine.weeklyTargets();
-  const chips = muscles.map(m => {
-    const now = selection.priority(m.id);
-    const mark = { focus: "▲", maintain: "▼", normal: "" }[now];
-    const target = targets && targets.get(m.id);
-    return '<li class="sel-chip" data-level="' + now + '">' +
-      '<button type="button" class="chip-main" data-cycle="' + m.id + '" ' +
-        'title="' + PRIORITY_LABEL[now] + ' — click to change" ' +
-        'aria-label="' + esc(m.name) + ', ' + PRIORITY_LABEL[now] + '. Click to change priority.">' +
-        '<span class="dot" style="background:var(--' + FAMILIES[m.family].css + ')"></span>' +
-        esc(m.name) + (mark ? ' <span class="pri-mark" aria-hidden="true">' + mark + '</span>' : '') +
-        (target ? ' <span class="pri-sets">≈' + target + '</span>' : '') +
-      '</button>' +
-      '<button type="button" class="x" data-remove="' + m.id + '" ' +
-        'aria-label="Remove ' + esc(m.name) + '">×</button>' +
-    '</li>';
-  }).join("");
-
-  summaryEl.innerHTML =
-    '<div class="sel-head">' +
-      '<h3 aria-live="polite"><span class="big">' + muscles.length + '</span> ' +
-        (muscles.length === 1 ? "muscle group" : "muscle groups") + ' selected</h3>' +
-      '<button type="button" class="link-btn" id="clear-sel"' +
-        (muscles.length ? "" : " disabled") + '>Clear</button>' +
-    '</div>' +
-    '<p class="sel-origin">' + origin + '</p>' +
-    (muscles.length ? '<ul class="sel-list">' + chips + '</ul>' +
-      '<p class="sel-hint">Click a muscle to set its priority: Normal → <b>▲ Focus</b> → <b>▼ Maintain</b>. ' +
-      'Focus gets more weekly sets and days; Maintain gets the minimum and is trimmed first when your ' +
-      'week is short. Your plan will use this in the next steps.</p>' : '') +
-    noExercisesNote(muscles);
+/**
+ * Shows another program: slides the old one out and the new one in. Unless
+ * the user is only browsing, it is applied as it arrives.
+ */
+function showProgram(program, dir) {
+  if (!program || program === rail.program) return;
+  const apply = !browsing();
+  const swap = () => {
+    rail.program = program;
+    rail.out = false;
+    $("program").classList.remove("out");
+    if (apply) selection.applyProgram(program); else paintPrograms();
+  };
+  figure.preview(null);
+  if (reducedMotion()) { swap(); return; }
+  rail.out = true;
+  $("program").style.setProperty("--dir", dir);
+  $("program").classList.add("out");
+  clearTimeout(rail.timer);
+  rail.timer = setTimeout(swap, 170);
 }
 
-summaryEl.addEventListener("click", e => {
-  const cyc = e.target.closest("[data-cycle]");
-  if (cyc) {
-    const id = cyc.dataset.cycle;
-    selection.setPriority(id, NEXT_PRIORITY[selection.priority(id)]);
-    // The list redraws; put keyboard focus back on the chip that was pressed.
-    const again = summaryEl.querySelector('[data-cycle="' + id + '"]');
-    if (again) again.focus();
+const programAt = el => {
+  if (el.dataset.program) return PROGRAM_BY_ID.get(el.dataset.program);
+  if (el.dataset.step) return inGroup()[inGroup().indexOf(rail.program) + Number(el.dataset.step)];
+  if (el.id === "program-action") return rail.program;
+  return null;
+};
+
+programsEl.addEventListener("click", e => {
+  const tab = e.target.closest("[data-group]");
+  if (tab) {
+    if (tab.dataset.group !== rail.program.group)
+      showProgram(PROGRAMS.find(p => p.group === tab.dataset.group), 1);
     return;
   }
-  const x = e.target.closest("[data-remove]");
-  if (x) {
-    const next = x.closest("li").nextElementSibling || x.closest("li").previousElementSibling;
-    const nextId = next && next.querySelector("[data-remove]").dataset.remove;
-    selection.set(x.dataset.remove, false);
-    // Keep keyboard focus in the list rather than dropping it on <body>.
-    const target = nextId && summaryEl.querySelector('[data-remove="' + nextId + '"]');
-    (target || $("clear-sel")).focus();
-  } else if (e.target.id === "clear-sel") {
-    selection.clear();
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.id === "program-action") {
+    selection.applyProgram(rail.program);
+    figure.preview(null);
+    return;
   }
+  const p = programAt(b);
+  if (p) showProgram(p, inGroup().indexOf(p) > inGroup().indexOf(rail.program) ? 1 : -1);
 });
+
+/* Arrow keys move along the tabs, as a tab list should. */
+programsEl.addEventListener("keydown", e => {
+  const tab = e.target.closest("[data-group]");
+  if (!tab || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+  const tabs = [...programsEl.querySelectorAll("[data-group]")];
+  const to = tabs[(tabs.indexOf(tab) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  to.focus();
+  to.click();
+});
+
+/* Pointing at the action, an arrow or a pip previews that program on the
+   sculpture; leaving it goes back to the selection. */
+const previewFrom = el => {
+  const b = el.closest && el.closest(".round-btn, .pip, #program-action");
+  if (!b || b.disabled) return;
+  const p = programAt(b);
+  if (p && (b.id === "program-action" || p !== rail.program)) figure.preview(p.muscles);
+};
+programsEl.addEventListener("pointerover", e => previewFrom(e.target));
+programsEl.addEventListener("pointerout", e => {
+  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest(".round-btn, .pip, #program-action"))
+    figure.preview(null);
+});
+programsEl.addEventListener("focusin", e => { if (e.target.matches(":focus-visible")) previewFrom(e.target); });
+programsEl.addEventListener("focusout", () => figure.preview(null));
+
+/* ------------------------- right: training focus ------------------------- */
+
+const focusState = { open: null, estimate: false };
+
+function renderSummary() {
+  // Remember what had focus: the rail is redrawn after every change.
+  const focusKey = document.activeElement && summaryEl.contains(document.activeElement)
+    ? document.activeElement.dataset.key : null;
+  summaryEl.innerHTML = selection.isEmpty() ? introHTML() : focusHTML();
+  if (focusKey) {
+    const again = summaryEl.querySelector('[data-key="' + focusKey + '"]');
+    if (again) again.focus({ preventScroll: true });
+  }
+}
+
+/** Before anything is chosen: what ATLAS does and how to begin. */
+function introHTML() {
+  const steps = [
+    ["Targets", "You are here", "Choose the muscles to build, then set any of them to focus or maintain."],
+    ["Nutrition", "Optional", "Calories and protein to match the training. Skip it if you only want workouts."],
+    ["Week plan", "", "Tell ATLAS when you're busy. It fits the sessions around you and picks the exercises."]
+  ];
+  return '<div class="intro">' +
+      '<span class="eyebrow">How ATLAS works</span>' +
+      '<span class="intro-title">A week of training, built around you.</span>' +
+      '<p>Plan around the muscles you want to build and the time you actually have.</p>' +
+    '</div>' +
+    '<ol class="howto">' + steps.map(([title, tag, text], i) =>
+      '<li' + (i === 0 ? ' class="here"' : '') + '>' +
+        '<span class="howto-head"><span class="howto-title">' + title + '</span>' +
+          '<span class="howto-tag">' + tag + '</span></span>' +
+        '<span class="howto-text">' + text + '</span></li>').join("") + '</ol>' +
+    '<div class="intro-start">' +
+      '<span class="intro-start-title">Start on the left, or on the figure.</span>' +
+      '<span>Apply a program, or click any muscle on the sculpture. Nothing is selected yet.</span>' +
+    '</div>';
+}
+
+/** The weekly hard sets a muscle starts from, for its experience and priority (estimate.js). */
+function startingSets(m) {
+  if (!exercisesFor(m.id).length) return 0;
+  return weeklyTarget(m, routine.experience || DEFAULT_EXPERIENCE, selection.priority(m.id)) || 0;
+}
+
+/** Once something is chosen: the count, the focus by family, experience, the estimate. */
+function focusHTML() {
+  const muscles = selection.muscles();
+  const families = Object.keys(FAMILIES).map(key => ({ key, muscles: muscles.filter(m => m.family === key) }))
+    .filter(f => f.muscles.length);
+
+  const groups = families.map(({ key, muscles: ms }) => {
+    const open = focusState.open === key;
+    const sets = ms.reduce((t, m) => t + startingSets(m), 0);
+    const names = ms.map(m => {
+      const p = selection.priority(m.id);
+      return '<span class="fam-m" data-level="' + p + '">' + esc(m.name) +
+        (PRIORITY_MARK[p] ? '<span class="mark" aria-hidden="true">' + PRIORITY_MARK[p] + '</span>' : '') + '</span>';
+    }).join("");
+    const rows = ms.map(m => {
+      const now = selection.priority(m.id);
+      return '<div class="fam-row">' +
+        '<span class="fam-row-name">' + esc(m.name) + '</span>' +
+        '<span class="segmented small" role="radiogroup" aria-label="' + esc(m.name) + ' priority">' +
+          PRIORITY_CHOICES.map(([level, label]) =>
+            '<button type="button" role="radio" aria-checked="' + (now === level) + '" ' +
+              'data-priority="' + level + '" data-muscle="' + m.id + '" data-key="pri-' + m.id + '-' + level + '">' +
+              label + '</button>').join("") +
+        '</span>' +
+        '<button type="button" class="row-x" data-remove="' + m.id + '" data-key="rm-' + m.id + '" ' +
+          'aria-label="Remove ' + esc(m.name) + '" title="Remove ' + esc(m.name) + '">×</button>' +
+      '</div>';
+    }).join("");
+    return '<div class="fam" data-family="' + key + '">' +
+      '<button type="button" class="fam-toggle" data-family-toggle="' + key + '" data-key="fam-' + key + '" ' +
+        'aria-expanded="' + open + '">' +
+        '<span class="fam-line">' +
+          '<span class="fam-dot" style="background:var(--' + FAMILIES[key].css + ')"></span>' +
+          '<span class="fam-name">' + FAMILIES[key].name + '</span>' +
+          '<span class="fam-count">' + ms.length + '</span>' +
+          '<span class="fam-sets">' + (sets ? '≈ ' + sets + ' sets' : '') + '</span>' +
+          '<span class="fam-chev" aria-hidden="true">' + (open ? "−" : "+") + '</span>' +
+        '</span>' +
+        (open ? '' : '<span class="fam-names">' + names + '</span>') +
+      '</button>' +
+      (open ? '<div class="fam-rows">' + rows +
+        '<p class="fam-note">Focus gets more weekly sets and days. Maintain keeps the minimum and is trimmed first ' +
+        'when your week is short.</p></div>' : '') +
+    '</div>';
+  }).join("");
+
+  const experience = '<div class="field-block">' +
+      '<span class="eyebrow" id="experience-label">Training experience</span>' +
+      '<span class="segmented" role="radiogroup" aria-labelledby="experience-label">' +
+        EXPERIENCE_LEVELS.map(lv =>
+          '<button type="button" role="radio" aria-checked="' + (routine.experience === lv.id) + '" ' +
+            'data-experience="' + lv.id + '" data-key="exp-' + lv.id + '" aria-label="' + esc(lv.label) + '" ' +
+            'title="' + esc(lv.label) + '">' + esc(EXPERIENCE_SHORT[lv.id] || lv.label) + '</button>').join("") +
+      '</span>' +
+      '<span class="field-note">' + (routine.experience
+        ? "Each muscle's weekly sets start from this."
+        : "Tell ATLAS once so each muscle starts from a sensible weekly volume. Until then it assumes " +
+          EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + ".") + '</span>' +
+    '</div>';
+
+  return '<div class="sel-head">' +
+      '<span class="sel-count-wrap"><span class="sel-count">' + muscles.length + '</span>' +
+        '<span class="sel-noun">' + (muscles.length === 1 ? "muscle group" : "muscle groups") + '</span></span>' +
+      '<button type="button" class="quiet-btn" id="clear-sel" data-key="clear">Clear</button>' +
+    '</div>' +
+    '<div class="focus">' +
+      '<div class="focus-head"><span class="eyebrow">Training focus</span>' +
+        '<span class="focus-key"><span>▲</span> focus <span>▼</span> maintain</span></div>' +
+      groups +
+    '</div>' +
+    noExercisesNote(muscles) +
+    experience +
+    estimateHTML(muscles);
+}
 
 /** Says up front which chosen muscles the exercise database cannot fill yet. */
 function noExercisesNote(muscles) {
@@ -203,7 +365,7 @@ function noExercisesNote(muscles) {
   const names = bare.map(m => esc(m.name));
   const list = names.length === 1 ? names[0]
              : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
-  return '<p class="sel-gap">No exercises in the database yet for ' + list + '. ' +
+  return '<p class="note-rule">No exercises in the database yet for ' + list + '. ' +
     (bare.length === muscles.length
       ? "Sessions for " + (bare.length === 1 ? "it" : "them") + " will be planned without exercises."
       : (bare.length === 1 ? "It rides" : "They ride") + " along in related sessions, credited " +
@@ -221,49 +383,72 @@ function timeRange(lo, hi) {
 }
 function range(lo, hi) { return lo === hi ? String(lo) : lo + "–" + hi; }
 
-function renderEstimate() {
-  const e = estimateTraining(selection.muscles(), routine.sessionMinutes);
-  if (!e) {
-    estimateEl.innerHTML =
-      '<h3>What it will take</h3>' +
-      '<p class="est-empty">Once you pick target muscles, this estimates the ' +
-      'weekly training volume, the time it needs, and how long consistent ' +
-      'training usually takes before progress shows.</p>';
-    return;
-  }
-
-  const sessions = range(e.sessions.low, e.sessions.high);
-  const phases = e.phases.map(p =>
-    '<li><div class="ph-when">' + p.when + '</div>' +
-    '<div class="ph-what">' + p.what + '</div></li>').join("");
-
-  estimateEl.innerHTML =
-    '<h3>What it will take <span class="tag">Preliminary estimate</span></h3>' +
-    '<p class="note">The next stages use these ' + plural(e.muscleCount, "muscle", "muscles") +
-    ' to plan your training volume, schedule and diet. Here is a first pass at what ' +
-    'training them usually takes.</p>' +
-    '<div class="stats">' +
-      '<div class="stat"><div class="k">Weekly volume</div>' +
-        '<div class="v">' + range(e.sets.low, e.sets.high) + ' <span class="u">hard sets</span></div>' +
-        '<div class="s">Start at the low end; add sets as you adapt.</div></div>' +
-      '<div class="stat"><div class="k">Time a week</div>' +
-        '<div class="v">' + timeRange(e.minutes.low, e.minutes.high) + '</div>' +
-        '<div class="s">≈ ' + sessions + ' ' + (e.sessions.high === 1 ? "session" : "sessions") +
-          ' of ' + e.sessionMinutes + ' min, warm-up included.</div></div>' +
-      '<div class="stat"><div class="k">Frequency</div>' +
-        '<div class="v">Set by volume</div>' +
-        '<div class="s">A muscle trains as often as it takes to keep each session to ' +
-          WORKOUT.maxSetsPerSession + ' sets or fewer. The research does not show a best number.</div></div>' +
-    '</div>' +
-    '<h4>If you train consistently</h4>' +
-    '<ol class="phases">' + phases + '</ol>' +
-    '<p class="caveat"><b>This is not a prediction of when you will reach a ' +
-    'particular physique</b> — no app can know that. These are typical ranges ' +
-    'that assume you complete most planned sessions, most weeks. Training ' +
-    'history, sleep, nutrition, age and genetics all change the pace, and ' +
-    'missed weeks stretch every timeline. The estimate gets more specific as ' +
-    'the schedule and diet stages fill in.</p>';
+/** What it will take: two figures, and the reasoning behind them on demand. */
+function estimateHTML(muscles) {
+  const e = estimateTraining(muscles, routine.sessionMinutes);
+  if (!e) return "";
+  const open = focusState.estimate;
+  return '<div class="est">' +
+    '<button type="button" class="est-toggle" id="est-toggle" data-key="est" aria-expanded="' + open + '" aria-controls="est-body">' +
+      '<span class="est-label"><span class="eyebrow">What it will take</span><span class="est-tag">estimate</span></span>' +
+      '<span class="fam-chev" aria-hidden="true">' + (open ? "−" : "+") + '</span>' +
+      '<span class="est-figures">' +
+        '<span><b>' + range(e.sets.low, e.sets.high) + '</b> sets a week</span>' +
+        '<span><b>' + timeRange(e.minutes.low, e.minutes.high) + '</b> a week</span>' +
+      '</span>' +
+    '</button>' +
+    (open ? '<div class="est-body" id="est-body">' +
+      '<p>Hard sets across ' + plural(e.muscleCount, "selected muscle", "selected muscles") +
+        '; start at the low end and add sets as you adapt. ≈ ' + range(e.sessions.low, e.sessions.high) + ' ' +
+        (e.sessions.high === 1 ? "session" : "sessions") + ' of ' + e.sessionMinutes + ' min, warm-up included.</p>' +
+      '<p>A muscle trains as often as it takes to keep each session to ' + WORKOUT.maxSetsPerSession +
+        ' sets or fewer. The research does not show a best number.</p>' +
+      '<ol class="phase-list">' + e.phases.map(p =>
+        '<li><span class="phase-when">' + p.when + '</span><span class="phase-what">' + p.what + '</span></li>').join("") +
+      '</ol>' +
+      '<p class="note-rule"><b>Not a prediction of when you will reach a particular physique</b> — no app can know that. ' +
+        'Typical ranges if you complete most planned sessions, most weeks; training history, sleep, food, age and ' +
+        'genetics all change the pace.</p>' +
+    '</div>' : '') +
+  '</div>';
 }
+
+summaryEl.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.priority) selection.setPriority(b.dataset.muscle, b.dataset.priority);
+  else if (b.dataset.remove) {
+    // Keep keyboard focus in the family rather than dropping it on <body>.
+    const row = b.closest(".fam-row"), near = row.nextElementSibling || row.previousElementSibling;
+    const nearId = near && near.querySelector("[data-remove]") && near.querySelector("[data-remove]").dataset.remove;
+    selection.set(b.dataset.remove, false);
+    const to = (nearId && summaryEl.querySelector('[data-remove="' + nearId + '"]')) ||
+               summaryEl.querySelector("[data-family-toggle]") || $("targets-title");
+    to.focus();
+  }
+  else if (b.dataset.familyToggle) {
+    focusState.open = focusState.open === b.dataset.familyToggle ? null : b.dataset.familyToggle;
+    renderSummary();
+  }
+  else if (b.dataset.experience) {
+    routine.experience = b.dataset.experience;
+    saveRoutine(routine);
+    renderSummary();
+  }
+  else if (b.id === "est-toggle") { focusState.estimate = !focusState.estimate; renderSummary(); }
+  else if (b.id === "clear-sel") { selection.clear(); $("targets-title").focus(); }
+});
+
+/* Pointing at a family shows its muscles on the sculpture. */
+summaryEl.addEventListener("pointerover", e => {
+  const fam = e.target.closest("[data-family]");
+  if (fam) figure.preview(selection.muscles().filter(m => m.family === fam.dataset.family).map(m => m.id));
+});
+summaryEl.addEventListener("pointerout", e => {
+  const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-family]");
+  const from = e.target.closest("[data-family]");
+  if (from && to !== from) figure.preview(null);
+});
 
 /* --------------------------------- wiring -------------------------------- */
 
@@ -271,12 +456,22 @@ function renderTargets() {
   paintCaption();
   paintPrograms();
   renderSummary();
-  renderEstimate();
-  toPlanBtn.disabled = selection.isEmpty();
-  $("to-plan-hint").textContent = selection.isEmpty()
-    ? "Select at least one muscle to continue." : "";
 }
 
 buildPrograms();
 selection.onChange(renderTargets);
-renderTargets();
+
+Stages.register("targets", {
+  enter: renderTargets,
+  shot: () => "targets",
+  focus: () => $("targets-title"),
+  footer() {
+    const empty = selection.isEmpty();
+    return {
+      next: Stages.narrow ? "Continue →" : "Continue to nutrition →",
+      nextDisabled: empty,
+      hint: empty ? "Select at least one muscle to continue." : Stages.wide ? "or scroll" : ""
+    };
+  },
+  onNext() { if (!selection.isEmpty()) Stages.go("nutrition"); return true; }
+});
