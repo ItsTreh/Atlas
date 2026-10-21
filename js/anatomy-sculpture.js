@@ -111,9 +111,10 @@ const SCULPTURE_TURN = { turn: 650, settle: 280, orbit: 25, give: 6, perPx: 0.3,
 const SCULPTURE_RESTORE_MS = 3000;
 
 /* Relative strength of the map's contours. The shader leaves only a trace
-   of surface tint, so the same material models every state. Program and
-   workout previews use the same map without changing the selection. */
-const SCULPTURE_TONE = { hover: 0.32, selectedHover: 0.78, preview: 0.45, highlight: 0.62, highlightDepth: 0.4 };
+   of surface tint, so the same material models every state. Program
+   previews light muscles (the lit channel) and sessions draw as a hover,
+   neither changing the selection itself. */
+const SCULPTURE_TONE = { hover: 0.32, selectedHover: 0.78, highlight: 0.62, highlightDepth: 0.4 };
 
 /* A small amount of modelling under selection; the vertex shader attenuates
    the selection weight so cartography, rather than a solid fill, leads. */
@@ -122,8 +123,14 @@ const SCULPTURE_SELECTED_GAIN = 1.4;
 /* How fast the drawing follows a change, as time constants (ms) of an
    exponential ease: a muscle answers the pointer almost at once, eases
    back when left, and a selection settles in between. With reduced
-   motion, changes are drawn at once. */
-const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130 };
+   motion, changes are drawn at once. Lit muscles draw their traces in
+   along their length once, over `reveal`, then rest. */
+const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130, reveal: 720 };
+
+/** True when two Sets of muscle ids (or nulls) hold the same ids. */
+function sameMuscleSet(a, b) {
+  return a === b || !!(a && b && a.size === b.size && [...a].every(id => b.has(id)));
+}
 
 class AnatomySculpture {
   /** True when this browser can draw the sculpture (ANATOMY_MODEL, or `model`). */
@@ -163,6 +170,7 @@ class AnatomySculpture {
     this.mapPresence = 0;
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
+    this.litReveal = 1;                      // 0 … 1 as newly lit muscles draw in
     this.flowTime = 0;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
     this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
@@ -400,10 +408,14 @@ class AnatomySculpture {
     });
   }
 
-  /** The surface moves only during exploration; resting selections stay still. */
+  /**
+   * The surface moves only during exploration, or while the page highlights
+   * muscles (a session pointed at, drawn as a hover); resting selections
+   * stay still.
+   */
   flowing(visible = !document.hidden) {
-    return !!(this.ready && this.interactive && this.hovered && this.pointer && !this.focused &&
-      this.calm() && !this.previewing && visible &&
+    const exploring = this.interactive && this.hovered && this.pointer && !this.focused && !this.previewing;
+    return !!(this.ready && (exploring || this.highlighting) && this.calm() && visible &&
       !(this.reducedMotion && this.reducedMotion.matches));
   }
 
@@ -609,8 +621,7 @@ class AnatomySculpture {
   /** Lights these muscles whatever the stage (a session pointed at); null for none. */
   setHighlight(ids) {
     const next = ids && ids.length ? new Set(ids) : null;
-    const same = (a, b) => a === b || (a && b && a.size === b.size && [...a].every(id => b.has(id)));
-    if (same(next, this.highlighting)) return;
+    if (sameMuscleSet(next, this.highlighting)) return;
     this.highlighting = next;
     this.schedule();
   }
@@ -648,6 +659,7 @@ class AnatomySculpture {
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
     gl.uniform1f(u.uMapInfluence, this.mapInfluence);
+    gl.uniform1f(u.uLitReveal, 1 - Math.pow(1 - this.litReveal, 3));
     gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
     gl.uniform1f(u.uDetailed, this.detailMode ? 1 : 0);
     gl.uniform1f(u.uFlowTime, this.flowTime);
@@ -722,29 +734,30 @@ class AnatomySculpture {
   /* -------------------------------- state -------------------------------- */
 
   /**
-   * Where each region is heading, as [selected, pointed at, highlighted]
-   * triples: selected is 1 for a selected muscle (or the preview's share
-   * while a program is pointed at, when the selection underneath is set
-   * aside), pointed at is 1 for the muscle under the pointer or keyboard
-   * focus, highlighted is 1 for a muscle the page lights. Off Targets only
-   * the highlight shows.
+   * Where each region is heading, as [selected, pointed at, lit] triples:
+   * selected is 1 for a selected muscle, pointed at is 1 for the muscle
+   * under the pointer or keyboard focus and for the muscles the page
+   * highlights (a session pointed at reads exactly as a group hovered on
+   * Targets), lit is 1 for a muscle a program pointed at would work. While a program is pointed at, selected
+   * muscles outside it are set aside. Off Targets only the highlight shows.
    */
   targets() {
     const n = this.model.regions.length;
     const out = this.targetBuffer || (this.targetBuffer = new Float32Array(n * 3));
     for (let r = 0; r < n; r++) {
       const id = this.muscleOf[r];
-      let selected = 0, pointed = 0;
+      let selected = 0, pointed = 0, lit = 0;
       if (id && this.interactive) {
-        if (this.previewing) selected = this.previewing.has(id) ? SCULPTURE_TONE.preview : 0;
-        else {
-          selected = this.selection.has(id) ? 1 : 0;
-          pointed = id === this.hovered ? 1 : 0;
-        }
+        selected = this.selection.has(id) ? 1 : 0;
+        if (this.previewing) {
+          lit = this.previewing.has(id) ? 1 : 0;
+          selected *= lit;
+        } else pointed = id === this.hovered ? 1 : 0;
       }
+      if (id && this.highlighting && this.highlighting.has(id)) pointed = 1;
       out[r * 3] = selected;
       out[r * 3 + 1] = pointed;
-      out[r * 3 + 2] = id && this.highlighting && this.highlighting.has(id) ? 1 : 0;
+      out[r * 3 + 2] = lit;
     }
     return out;
   }
@@ -772,6 +785,10 @@ class AnatomySculpture {
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
     if (this.pointer) for (let i = 0; i < 2; i++)
       this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
+    if (this.litReveal < 1) {
+      this.litReveal = instant ? 1 : Math.min(1, this.litReveal + dt / SCULPTURE_EASE.reveal);
+      if (this.litReveal < 1) moving = true;
+    }
     for (let i = 0; i < shown.length; i++) {
       const to = target[i], from = shown[i];
       if (from === to) continue;
@@ -1150,7 +1167,10 @@ class AnatomySculpture {
    * button is pointed at. Pass null to go back to the real selection.
    */
   preview(ids) {
-    this.previewing = ids ? new Set(ids) : null;
+    const next = ids ? new Set(ids) : null;
+    if (sameMuscleSet(next, this.previewing)) return;     // pointerover repeats within one row
+    this.previewing = next;
+    if (next) this.litReveal = 0;
     this.schedule();
   }
 
@@ -1234,7 +1254,7 @@ flat in float vRegionId;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
 uniform vec2 uMapPointer, uMapSize;
-uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
+uniform float uMapPointerActive, uMapInfluence, uLitReveal, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
 out vec4 outColor;
@@ -1276,25 +1296,31 @@ void main() {
   float exact = 1.0 - step(0.5, abs(vRegionId - uPointedRegion));
   float hover = vMapState.y * mix(1.0, mix(1.0, exact, uMapPointerActive), uDetailed);
   float pointed = hover * mix(1.0, 0.8 + nearby * 0.2, uMapPointerActive);
-  float chosen = max(vMapState.x, vMapState.z * 0.85);
+  float selected = vMapState.x, lit = vMapState.z;
+  float chosen = max(selected, lit);
   float angle = atan(vFlow.x, vFlow.y);
   float along = vFlow.z;
   float warp = 0.22 * sin(along * 2.4) + hover * 0.32 *
     (sin(along * 2.4 - uFlowTime * 0.48) - sin(along * 2.4));
   warp += hover * 0.08 * sin(along * 5.2 - uFlowTime * 0.32);
   float phase = angle * 3.2 + warp;
-  // Pull the existing curves gently toward the pointer. Derivatives express
-  // their local direction on screen; the material remains on the actual mesh.
-  // Selected areas respond too, including when the pointer is on a nearby group.
+  // Pull the existing curves gently toward the pointer. Derivatives give
+  // their local direction on screen; only that direction is used, never its
+  // product with the distance, so the 2×2 steps in screen derivatives stay
+  // a fraction of a line rather than breaking lines far from the pointer.
+  // Within ~18 px the pull eases to zero, so nothing jumps under the cursor.
   vec2 offset = screen - uMapPointer;
   vec2 gradient = vec2(dFdx(phase), -dFdy(phase)) * uDpr;
+  float lean = dot(gradient, offset) / ((length(gradient) + 1e-4) * (length(offset) + 18.0));
   float reach = exp(-dot(offset, offset) / (105.0 * 105.0));
-  phase += clamp(dot(gradient, offset) * 0.3, -0.4, 0.4) * reach *
-           uMapInfluence * max(hover, chosen);
+  phase += 0.3 * lean * reach * uMapInfluence * max(hover, chosen);
   float footprint = max(fwidth(phase), 0.0001);
   float linePx = abs(fract(phase + 0.5) - 0.5) / footprint;
-  float trace = 1.0 - smoothstep(0.25 * uDpr, 0.85 * uDpr, linePx);
-  float coarse = 1.0 - step(0.5, mod(floor(phase + 0.5), 2.0));
+  // Engraved weight: lines swell in shadow and thin in the light, so the
+  // traces model the form instead of laying a pattern over it.
+  float dark = 1.0 - smoothstep(0.35, 0.95, shade);
+  float weight = mix(0.75, 1.35, dark);
+  float trace = 1.0 - smoothstep(0.25 * uDpr * weight, 0.85 * uDpr * weight, linePx);
   // Tapered accents travel together along the field. They reveal short arcs
   // instead of drawing a fixed set of stripes across the entire muscle.
   float travel = 0.5 + 0.5 * cos(along * 3.6 - uFlowTime * 1.05 + angle * 2.1);
@@ -1303,10 +1329,25 @@ void main() {
   float inset = smoothstep(0.08, 0.85, vSeam);
   float facing = smoothstep(0.08, 0.5, n.z);
   float visible = (1.0 - smoothstep(0.2, 0.5, footprint)) * inset * facing;
-  // Selection has a persistent, legible backbone even between passing accents.
-  float etched = trace * visible * min(0.72,
-    chosen * mix(0.045, 0.25, coarse) + pointed * drift * 0.48);
+  // Lit muscles (a program or session pointed at) draw their lines in along
+  // their length once, a slightly darker head leading, then rest fully drawn.
+  float front = mix(-1.5, 2.5, uLitReveal);
+  float drawn = 1.0 - smoothstep(front - 0.3, front, along);
+  float ahead = (along - front) / 0.22;
+  float head = exp(-ahead * ahead) * (1.0 - uLitReveal);
+  float etched = trace * visible * min(0.8,
+    selected * mix(0.07, 0.26, dark) +
+    lit * (drawn * mix(0.24, 0.5, dark) + head * 0.3) +
+    pointed * drift * 0.48);
   c = mix(c, toLinear(uMapInk) * clamp(shade, 0.45, 1.0), etched);
+
+  // Chosen muscles keep a fine border just inside their seams, as a map
+  // draws a territory's edge; hover alone has none, so the two never read alike.
+  float border = (1.0 - smoothstep(0.4 * uLineWidth, 0.4 * uLineWidth + 0.8,
+                                   abs(px - 3.0 * uLineWidth))) *
+                 (1.0 - smoothstep(0.3, 0.6, vSeam)) * facing * (1.0 - vFocus);
+  c = mix(c, toLinear(uMapInk) * clamp(shade, 0.45, 1.0),
+          border * max(selected * 0.32, lit * mix(0.3, 0.6, drawn)));
 
   // Keyboard focus keeps a strong edge independent of point density.
   float ring = (1.0 - smoothstep(2.4 * uLineWidth - 0.6, 2.4 * uLineWidth + 0.6, px)) *

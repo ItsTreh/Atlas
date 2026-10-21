@@ -10,18 +10,31 @@ matches the page; the light theme uses the sculpture's original cool grey.
 - Hover reveals a whole training group, with a little more emphasis near
   the pointer and a visible baseline between traveling accents. The surface
   stays alive while the pointer rests on a muscle.
-- Selected groups retain clear, alternating-weight traces that preserve the
-  sculpture's shading. Program previews and workout highlights use the same
-  presentation through the existing selection workflow.
+- Lines are engraved: they swell in shadow and thin in the light, so the
+  traces model the form rather than lie over it.
+- Selected groups keep still, engraved traces and a fine border just inside
+  their seams, as a map draws a territory's edge. Hover alone has no border,
+  so pointing and choosing never read alike.
+- Lit groups, the muscles a program or family pointed at would work, are
+  the strongest state: darker traces and border, drawn in once along each
+  muscle's length (about 0.7 s, a darker head leading) and then still.
+  While a program or family is pointed at, selected muscles outside it are
+  set aside. Reduced motion shows them fully drawn at once.
+- A session pointed at on the week stage draws its training groups exactly
+  as a group hovered on Targets: the same moving traces, no border and no
+  draw-in, so it never outlines individual authored regions.
 - Moving the pointer gently draws nearby hovered and selected traces toward
-  it. The response eases away when exploration ends; resting selections stay
-  still. Reduced motion disables this deformation.
+  it. Only the direction to the pointer bends them, by at most a third of a
+  line, so lines far from the pointer stay whole. The response eases away
+  when exploration ends; resting selections stay still. Reduced motion
+  disables this deformation.
 - A serif label beside the body names the group, such as Chest or Shoulders,
   with a fine leader to the surface. Narrow layouts use the caption instead.
 - Keyboard focus has a strong focus edge and a static map. Touch selects
   directly. Reduced motion keeps the traces still and applies state changes
-  immediately. Ongoing flow pauses when the document is hidden, the stage is
-  inactive, the camera moves, or a program preview is active.
+  immediately. Ongoing flow pauses when the document is hidden, the camera
+  moves, or a program preview is active; off Targets it runs only while a
+  session is pointed at.
 
 ## Overview and detailed presentation
 
@@ -58,8 +71,11 @@ are not rendered as particles or a separate graph.
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the
-clock only during visible pointer exploration with normal motion enabled.
-Resting selections remain still. `MuscleSelection` is the only source of
+clock only during visible pointer exploration, or while a session is
+highlighted, with normal motion enabled.
+A lit group's draw-in (program and family previews only) is a single eased reveal (`SCULPTURE_EASE.reveal`),
+not the clock; it restarts only when the lit set changes. Resting
+selections remain still. `MuscleSelection` is the only source of
 selection state. Classic scripts and the SVG fallback remain available;
 no asset export or build step is needed.
 
