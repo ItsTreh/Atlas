@@ -127,6 +127,10 @@ const SCULPTURE_SELECTED_GAIN = 1.4;
    along their length once, over `reveal`, then rest. */
 const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130, reveal: 720 };
 
+/* Families whose summary preview draws its traces in the family's hue
+   (`--<family>-trace`), as a hover rather than a lit preview. */
+const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
+
 /** True when two Sets of muscle ids (or nulls) hold the same ids. */
 function sameMuscleSet(a, b) {
   return a === b || !!(a && b && a.size === b.size && [...a].every(id => b.has(id)));
@@ -171,6 +175,9 @@ class AnatomySculpture {
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
     this.litReveal = 1;                      // 0 … 1 as newly lit muscles draw in
+    this.previewFamily = null;               // a tinted family while its summary row is pointed at
+    this.mapTint = 0;                        // 0 … 1 toward that family's trace colour
+    this.tintInk = null;                     // the last family colour, kept while it fades
     this.flowTime = 0;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
     this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
@@ -415,7 +422,8 @@ class AnatomySculpture {
    */
   flowing(visible = !document.hidden) {
     const exploring = this.interactive && this.hovered && this.pointer && !this.focused && !this.previewing;
-    return !!(this.ready && (exploring || this.highlighting) && this.calm() && visible &&
+    const showing = this.highlighting || (this.interactive && this.previewFamily);
+    return !!(this.ready && (exploring || showing) && this.calm() && visible &&
       !(this.reducedMotion && this.reducedMotion.matches));
   }
 
@@ -651,7 +659,8 @@ class AnatomySculpture {
     gl.uniform3fv(u.uSelected, c.selected);
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
     gl.uniform3fv(u.uInk, c.ink);
-    gl.uniform3fv(u.uMapInk, c.mapInk);
+    const tint = this.tintInk ? this.mapTint : 0;
+    gl.uniform3fv(u.uMapInk, tint ? c.mapInk.map((v, i) => v + (this.tintInk[i] - v) * tint) : c.mapInk);
     gl.uniform4fv(u.uFlowCenters, this.flowFrames.centers);
     gl.uniform4fv(u.uFlowAxes, this.flowFrames.axes);
     gl.uniform3fv(u.uMapState, this.shown || this.targets());
@@ -750,8 +759,9 @@ class AnatomySculpture {
       if (id && this.interactive) {
         selected = this.selection.has(id) ? 1 : 0;
         if (this.previewing) {
-          lit = this.previewing.has(id) ? 1 : 0;
-          selected *= lit;
+          const shown = this.previewing.has(id) ? 1 : 0;
+          selected *= shown;
+          if (this.previewFamily) pointed = shown; else lit = shown;
         } else pointed = id === this.hovered ? 1 : 0;
       }
       if (id && this.highlighting && this.highlighting.has(id)) pointed = 1;
@@ -785,6 +795,8 @@ class AnatomySculpture {
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
     if (this.pointer) for (let i = 0; i < 2; i++)
       this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
+    if (this.tintInk) this.mapTint = follow(this.mapTint, this.previewFamily ? 1 : 0,
+      this.previewFamily ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut, 0.005);
     if (this.litReveal < 1) {
       this.litReveal = instant ? 1 : Math.min(1, this.litReveal + dt / SCULPTURE_EASE.reveal);
       if (this.litReveal < 1) moving = true;
@@ -839,8 +851,10 @@ class AnatomySculpture {
     };
     this.colors = {
       form: read("--sculpt-form"), muscle: read("--sculpt-muscle"),
-      selected: read("--sculpt-selected"), ink: read("--ink"), mapInk: read("--cartography-ink")
+      selected: read("--sculpt-selected"), ink: read("--ink"), mapInk: read("--cartography-ink"),
+      families: Object.fromEntries(SCULPTURE_TINTED.map(f => [f, read("--" + f + "-trace")]))
     };
+    if (this.previewFamily) this.tintInk = this.colors.families[this.previewFamily];
     probe.remove();
   }
 
@@ -1164,13 +1178,19 @@ class AnatomySculpture {
 
   /**
    * Shows what a program would select without changing anything, while its
-   * button is pointed at. Pass null to go back to the real selection.
+   * button is pointed at. Pass null to go back to the real selection. With
+   * a tinted `family` (a summary row), its muscles draw as a hover in the
+   * family's hue instead.
    */
-  preview(ids) {
+  preview(ids, family = null) {
     const next = ids ? new Set(ids) : null;
-    if (sameMuscleSet(next, this.previewing)) return;     // pointerover repeats within one row
+    const tinted = next && this.colors && this.colors.families[family] ? family : null;
+    // pointerover repeats within one row
+    if (sameMuscleSet(next, this.previewing) && tinted === this.previewFamily) return;
     this.previewing = next;
-    if (next) this.litReveal = 0;
+    this.previewFamily = tinted;
+    if (tinted) this.tintInk = this.colors.families[tinted];
+    else if (next) this.litReveal = 0;
     this.schedule();
   }
 

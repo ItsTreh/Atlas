@@ -101,7 +101,7 @@ class AnatomyStage {
   get moves() { return !!(this.renderer && this.renderer.setShot); }
 
   /** Shows a program's muscles without selecting them; null to stop. */
-  preview(ids) { if (this.renderer) this.renderer.preview(ids); }
+  preview(ids, family) { if (this.renderer) this.renderer.preview(ids, family); }
 
   /** Moves the camera to a named shot (SCULPTURE_SHOTS, or "targets"). */
   setShot(name) { this.state.shot = name; if (this.moves) this.renderer.setShot(name); }

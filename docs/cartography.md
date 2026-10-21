@@ -20,6 +20,11 @@ matches the page; the light theme uses the sculpture's original cool grey.
   muscle's length (about 0.7 s, a darker head leading) and then still.
   While a program or family is pointed at, selected muscles outside it are
   set aside. Reduced motion shows them fully drawn at once.
+- Pointing at a family row (Push, Pull, Legs, Core) in the selection
+  summary draws its muscles as a hover (the moving traces, no draw-in) in
+  the family's hue, `--<family>-trace`: a deeper shade of the family's dot
+  colour (lighter in the dark theme) so fine lines hold up on the lit
+  sculpture. The hue eases in and out with the hover.
 - A session pointed at on the week stage draws its training groups exactly
   as a group hovered on Targets: the same moving traces, no border and no
   draw-in, so it never outlines individual authored regions.

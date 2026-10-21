@@ -428,10 +428,11 @@ summaryEl.addEventListener("click", e => {
   else if (b.id === "clear-sel") { selection.clear(); $("targets-title").focus(); }
 });
 
-/* Pointing at a family shows its muscles on the sculpture. */
+/* Pointing at a family shows its muscles on the sculpture, in the family's
+   hue where the sculpture has one for it. */
 summaryEl.addEventListener("pointerover", e => {
-  const fam = e.target.closest("[data-family]");
-  if (fam) figure.preview(selection.muscles().filter(m => m.family === fam.dataset.family).map(m => m.id));
+  const fam = e.target.closest("[data-family]"), key = fam && fam.dataset.family;
+  if (fam) figure.preview(selection.muscles().filter(m => m.family === key).map(m => m.id), key);
 });
 summaryEl.addEventListener("pointerout", e => {
   const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-family]");
