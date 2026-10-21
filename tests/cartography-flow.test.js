@@ -109,10 +109,10 @@ test("a program pointed at lights its muscles and sets aside the rest of the sel
   expect([...AnatomySculpture.prototype.targets.call(r)]).toEqual([1, 0, 0, 1, 0, 0, 0, 1, 0]);
 });
 
-test("a session pointed at off Targets draws exactly as a hovered group, flowing", () => {
+test("a session pointed at off Targets draws as a selected group hovered on Targets, flowing", () => {
   const r = { model: { regions: ["a", "b"] }, muscleOf: ["chest", "quads"], interactive: false,
     selection: { has: () => true }, previewing: null, highlighting: new Set(["quads"]) };
-  expect([...AnatomySculpture.prototype.targets.call(r)]).toEqual([0, 0, 0, 0, 1, 0]);
+  expect([...AnatomySculpture.prototype.targets.call(r)]).toEqual([0, 0, 0, 1, 1, 0]);
   const flow = changes => AnatomySculpture.prototype.flowing.call({ ...r, ready: true,
     hovered: null, pointer: null, reducedMotion: { matches: false }, calm: () => true, ...changes }, true);
   expect(flow()).toBe(true);
@@ -143,8 +143,7 @@ test("a tinted family preview draws as a hover in the family's hue, flowing, the
   const S = AnatomySculpture.prototype;
   const r = { model: { regions: ["a", "b"] }, muscleOf: ["lats", "chest"], interactive: true,
     selection: { has: () => true }, hovered: null, highlighting: null, previewing: null,
-    previewFamily: null, mapTint: 0, tintInk: null, litReveal: 1, schedule() {},
-    colors: { families: { pull: [0, 0, 1] } } };
+    previewFamily: null, litReveal: 1, schedule() {} };
   S.preview.call(r, ["lats"], "pull");
   expect(r.previewFamily).toBe("pull");
   expect(r.litReveal).toBe(1);                                // no draw-in
@@ -152,15 +151,41 @@ test("a tinted family preview draws as a hover in the family's hue, flowing, the
   const flow = () => S.flowing.call({ ...r, ready: true, pointer: null,
     reducedMotion: { matches: false }, calm: () => true }, true);
   expect(flow()).toBe(true);
-  Object.assign(r, { targets: () => S.targets.call(r), reducedMotion: { matches: false },
+  Object.assign(r, { targets: () => S.targets.call(r), tintTargets: () => S.tintTargets.call(r),
+    tintShown: new Float32Array(2), reducedMotion: { matches: false },
     calm: () => true, pointer: null, regionAt: () => -1, mapPresence: 0, mapPointer: [0, 0], mapInfluence: 0 });
+  S.ease.call(r, 16);
+  expect(r.tintShown[0]).toBeGreaterThan(0);
+  expect(r.tintShown[0]).toBeLessThan(1);
   for (let i = 0; i < 100; i++) S.ease.call(r, 16);
-  expect(r.mapTint).toBe(1);
+  expect([...r.tintShown]).toEqual([1, 0]);
   S.preview.call(r, null);
   for (let i = 0; i < 100; i++) S.ease.call(r, 16);
-  expect(r.mapTint).toBe(0);
+  expect([...r.tintShown]).toEqual([0, 0]);
   expect(flow()).toBe(false);
   S.preview.call(r, ["chest"], "other");                        // no hue: the lit preview
   expect(r.previewFamily).toBe(null);
   expect(r.litReveal).toBe(0);
+});
+
+test("a session tints each of its muscles in its own family hue, mixed sessions side by side", () => {
+  const S = AnatomySculpture.prototype;
+  const r = { model: { regions: ["a", "b", "c"] }, muscleOf: ["lats", "upper-back", "quads"],
+    interactive: false, previewFamily: null, previewing: null, highlighting: null, schedule() {} };
+  S.setHighlight.call(r, ["lats", "upper-back"]);
+  expect([...S.tintTargets.call(r)]).toEqual([1, 1, 0]);
+  S.setHighlight.call(r, ["lats", "quads"]);
+  expect([...S.tintTargets.call(r)]).toEqual([1, 0, 1]);
+  S.setHighlight.call(r, null);
+  expect([...S.tintTargets.call(r)]).toEqual([0, 0, 0]);
+});
+
+test("traces scale with the body's size on screen against Targets, within bounds", () => {
+  const S = AnatomySculpture.prototype;
+  const at = d => S.traceScale.call({ live: () => ({ d, fov: 20 }),
+    shotParams: () => ({ d: 600, fov: 20 }) });
+  expect(at(600)).toBeCloseTo(1, 6);
+  expect(at(300)).toBeCloseTo(2, 6);
+  expect(at(100)).toBe(2.5);
+  expect(at(2000)).toBe(0.7);
 });

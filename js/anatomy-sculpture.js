@@ -176,8 +176,7 @@ class AnatomySculpture {
     this.mapInfluence = 0;
     this.litReveal = 1;                      // 0 … 1 as newly lit muscles draw in
     this.previewFamily = null;               // a tinted family while its summary row is pointed at
-    this.mapTint = 0;                        // 0 … 1 toward that family's trace colour
-    this.tintInk = null;                     // the last family colour, kept while it fades
+    this.tintShown = null;                   // per region, 0 … 1 toward its family's hue
     this.flowTime = 0;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
     this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
@@ -287,7 +286,7 @@ class AnatomySculpture {
 
     const defs = "#define REGIONS " + m.regions.length + "\n#define SEAM_MAX " +
                  m.seamMax.toFixed(3) + "\n";
-    this.shade = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_FRAGMENT);
+    this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
     this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     // Shape frames use area-weighted samples, retained across context recovery.
     this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
@@ -338,6 +337,17 @@ class AnatomySculpture {
     }
     s.ty *= this.scale; s.d *= this.scale;
     return s;
+  }
+
+  /**
+   * How much larger the body shows now than on Targets. The traces grow
+   * with it, half in count and half in weight, so a closer camera keeps
+   * Targets' balance of line and gap instead of spreading thin lines apart.
+   */
+  traceScale() {
+    const now = this.live(), ref = this.shotParams("targets-front");
+    const span = s => s.d * Math.tan(s.fov * Math.PI / 360);
+    return Math.min(2.5, Math.max(0.7, span(ref) / span(now)));
   }
 
   /** The camera now: the shot, turned by any drag. */
@@ -659,8 +669,12 @@ class AnatomySculpture {
     gl.uniform3fv(u.uSelected, c.selected);
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
     gl.uniform3fv(u.uInk, c.ink);
-    const tint = this.tintInk ? this.mapTint : 0;
-    gl.uniform3fv(u.uMapInk, tint ? c.mapInk.map((v, i) => v + (this.tintInk[i] - v) * tint) : c.mapInk);
+    gl.uniform3fv(u.uMapInk, c.mapInk);
+    gl.uniform3fv(u.uRegionInk, c.regionInk);
+    gl.uniform1fv(u.uMapTint, this.tintShown || this.tintTargets());
+    gl.uniform1f(u.uTraceVivid, c.vivid);
+    gl.uniform1f(u.uBorder, this.interactive ? 1 : 0);
+    gl.uniform1f(u.uTraceScale, this.traceScale());
     gl.uniform4fv(u.uFlowCenters, this.flowFrames.centers);
     gl.uniform4fv(u.uFlowAxes, this.flowFrames.axes);
     gl.uniform3fv(u.uMapState, this.shown || this.targets());
@@ -745,9 +759,9 @@ class AnatomySculpture {
   /**
    * Where each region is heading, as [selected, pointed at, lit] triples:
    * selected is 1 for a selected muscle, pointed at is 1 for the muscle
-   * under the pointer or keyboard focus and for the muscles the page
-   * highlights (a session pointed at reads exactly as a group hovered on
-   * Targets), lit is 1 for a muscle a program pointed at would work. While a program is pointed at, selected
+   * under the pointer or keyboard focus, both are 1 for the muscles the
+   * page highlights (a session pointed at reads as a selected group hovered
+   * on Targets), lit is 1 for a muscle a program pointed at would work. While a program is pointed at, selected
    * muscles outside it are set aside. Off Targets only the highlight shows.
    */
   targets() {
@@ -764,10 +778,28 @@ class AnatomySculpture {
           if (this.previewFamily) pointed = shown; else lit = shown;
         } else pointed = id === this.hovered ? 1 : 0;
       }
-      if (id && this.highlighting && this.highlighting.has(id)) pointed = 1;
+      // A session reads as a selected group hovered on Targets: still traces
+      // under the moving ones (the border is Targets' alone, uBorder).
+      if (id && this.highlighting && this.highlighting.has(id)) selected = pointed = 1;
       out[r * 3] = selected;
       out[r * 3 + 1] = pointed;
       out[r * 3 + 2] = lit;
+    }
+    return out;
+  }
+
+  /**
+   * Per region, 1 where its traces take its family's hue: a family row in
+   * the summary, or a session the page highlights, each muscle in its own
+   * family's hue (a mixed session shows its families side by side).
+   */
+  tintTargets() {
+    const n = this.model.regions.length;
+    const out = this.tintBuffer || (this.tintBuffer = new Float32Array(n));
+    for (let r = 0; r < n; r++) {
+      const id = this.muscleOf[r];
+      out[r] = id && ((this.interactive && this.previewFamily && this.previewing.has(id)) ||
+        (this.highlighting && this.highlighting.has(id))) ? 1 : 0;
     }
     return out;
   }
@@ -795,8 +827,13 @@ class AnatomySculpture {
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
     if (this.pointer) for (let i = 0; i < 2; i++)
       this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
-    if (this.tintInk) this.mapTint = follow(this.mapTint, this.previewFamily ? 1 : 0,
-      this.previewFamily ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut, 0.005);
+    if (this.tintTargets) {                // the hue comes and goes with the hover
+      const tint = this.tintTargets();
+      if (!this.tintShown) this.tintShown = Float32Array.from(tint);
+      for (let r = 0; r < tint.length; r++) if (this.tintShown[r] !== tint[r])
+        this.tintShown[r] = follow(this.tintShown[r], tint[r],
+          tint[r] > this.tintShown[r] ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut, 0.005);
+    }
     if (this.litReveal < 1) {
       this.litReveal = instant ? 1 : Math.min(1, this.litReveal + dt / SCULPTURE_EASE.reveal);
       if (this.litReveal < 1) moving = true;
@@ -852,9 +889,15 @@ class AnatomySculpture {
     this.colors = {
       form: read("--sculpt-form"), muscle: read("--sculpt-muscle"),
       selected: read("--sculpt-selected"), ink: read("--ink"), mapInk: read("--cartography-ink"),
-      families: Object.fromEntries(SCULPTURE_TINTED.map(f => [f, read("--" + f + "-trace")]))
+      // Each region's family hue, or the map ink where it has none.
+      regionInk: new Float32Array(this.muscleOf.length * 3),
+      vivid: parseFloat(getComputedStyle(this.container).getPropertyValue("--trace-vivid")) || 0
     };
-    if (this.previewFamily) this.tintInk = this.colors.families[this.previewFamily];
+    const families = Object.fromEntries(SCULPTURE_TINTED.map(f => [f, read("--" + f + "-trace")]));
+    this.muscleOf.forEach((id, r) => {
+      const muscle = id && MUSCLE_BY_ID.get(id);
+      this.colors.regionInk.set((muscle && families[muscle.family]) || this.colors.mapInk, r * 3);
+    });
     probe.remove();
   }
 
@@ -1184,13 +1227,12 @@ class AnatomySculpture {
    */
   preview(ids, family = null) {
     const next = ids ? new Set(ids) : null;
-    const tinted = next && this.colors && this.colors.families[family] ? family : null;
+    const tinted = next && SCULPTURE_TINTED.includes(family) ? family : null;
     // pointerover repeats within one row
     if (sameMuscleSet(next, this.previewing) && tinted === this.previewFamily) return;
     this.previewing = next;
     this.previewFamily = tinted;
-    if (tinted) this.tintInk = this.colors.families[tinted];
-    else if (next) this.litReveal = 0;
+    if (next && !tinted) this.litReveal = 0;
     this.schedule();
   }
 
@@ -1273,6 +1315,11 @@ flat in float vFocus;
 flat in float vRegionId;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
+uniform vec3 uRegionInk[REGIONS];        // each region's family hue (sRGB), or uMapInk
+uniform float uMapTint[REGIONS];         // how far each region's traces are in that hue
+uniform float uTraceVivid;               // 1 where tinted lines need help to keep their hue (light theme)
+uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
+uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
 uniform vec2 uMapPointer, uMapSize;
 uniform float uMapPointerActive, uMapInfluence, uLitReveal, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
@@ -1323,7 +1370,7 @@ void main() {
   float warp = 0.22 * sin(along * 2.4) + hover * 0.32 *
     (sin(along * 2.4 - uFlowTime * 0.48) - sin(along * 2.4));
   warp += hover * 0.08 * sin(along * 5.2 - uFlowTime * 0.32);
-  float phase = angle * 3.2 + warp;
+  float phase = angle * 3.2 * sqrt(uTraceScale) + warp;
   // Pull the existing curves gently toward the pointer. Derivatives give
   // their local direction on screen; only that direction is used, never its
   // product with the distance, so the 2×2 steps in screen derivatives stay
@@ -1339,7 +1386,7 @@ void main() {
   // Engraved weight: lines swell in shadow and thin in the light, so the
   // traces model the form instead of laying a pattern over it.
   float dark = 1.0 - smoothstep(0.35, 0.95, shade);
-  float weight = mix(0.75, 1.35, dark);
+  float weight = mix(0.75, 1.35, dark) * max(1.0, sqrt(uTraceScale));
   float trace = 1.0 - smoothstep(0.25 * uDpr * weight, 0.85 * uDpr * weight, linePx);
   // Tapered accents travel together along the field. They reveal short arcs
   // instead of drawing a fixed set of stripes across the entire muscle.
@@ -1359,14 +1406,20 @@ void main() {
     selected * mix(0.07, 0.26, dark) +
     lit * (drawn * mix(0.24, 0.5, dark) + head * 0.3) +
     pointed * drift * 0.48);
-  c = mix(c, toLinear(uMapInk) * clamp(shade, 0.45, 1.0), etched);
+  // A family's hue keeps its chroma: on a light sculpture it darkens less in
+  // shadow and draws a little stronger, so it reads as colour, not as grey.
+  int region = int(vRegionId + 0.5);
+  float tint = uMapTint[region], vivid = tint * uTraceVivid;
+  vec3 ink = toLinear(mix(uMapInk, uRegionInk[region], tint)) *
+             clamp(shade, mix(0.45, 0.8, vivid), 1.0);
+  c = mix(c, ink, min(1.0, etched * (1.0 + 0.35 * vivid)));
 
   // Chosen muscles keep a fine border just inside their seams, as a map
   // draws a territory's edge; hover alone has none, so the two never read alike.
   float border = (1.0 - smoothstep(0.4 * uLineWidth, 0.4 * uLineWidth + 0.8,
                                    abs(px - 3.0 * uLineWidth))) *
-                 (1.0 - smoothstep(0.3, 0.6, vSeam)) * facing * (1.0 - vFocus);
-  c = mix(c, toLinear(uMapInk) * clamp(shade, 0.45, 1.0),
+                 (1.0 - smoothstep(0.3, 0.6, vSeam)) * facing * (1.0 - vFocus) * uBorder;
+  c = mix(c, ink,
           border * max(selected * 0.32, lit * mix(0.3, 0.6, drawn)));
 
   // Keyboard focus keeps a strong edge independent of point density.
