@@ -24,10 +24,21 @@ matches the page; the light theme uses the sculpture's original cool grey.
   summary draws its muscles as a hover (the moving traces, no draw-in) in
   the family's hue, `--<family>-trace`: a deeper shade of the family's dot
   colour (lighter in the dark theme) so fine lines hold up on the lit
-  sculpture. The hue eases in and out with the hover.
-- A session pointed at on the week stage draws its training groups exactly
-  as a group hovered on Targets: the same moving traces, no border and no
-  draw-in, so it never outlines individual authored regions.
+  sculpture. The hue eases in and out with the hover. In the light theme
+  (`--trace-vivid: 1`) tinted lines darken less in shadow and draw a little
+  stronger, so they keep their colour on the pale sculpture.
+- A session pointed at on the week stage draws its training groups as a
+  selected group hovered on Targets: still engraved traces under the moving
+  ones, with no border (borders are drawn only on Targets) and no draw-in,
+  so it never outlines individual authored regions. Each muscle takes its
+  own family's hue, so a mixed session (several dots on its card) shows its
+  families side by side. Colours meet at seams without blending; a blend
+  would need each region's neighbours baked into the model.
+- Traces scale with the body's size on screen against Targets
+  (`traceScale`): a closer camera, as on the week stage, gets more and
+  heavier lines, half each, keeping Targets' balance of line and gap. Hues are per region (`uRegionInk`, `uMapTint` in the fragment
+  shader, where uniform room remains; the vertex shader is near WebGL2's
+  minimum).
 - Moving the pointer gently draws nearby hovered and selected traces toward
   it. Only the direction to the pointer bends them, by at most a third of a
   line, so lines far from the pointer stay whole. The response eases away

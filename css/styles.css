@@ -34,6 +34,7 @@
      summary): deeper than the dot here, lighter in the dark theme. */
   --push-trace: #965f00;  --pull-trace: #1d5bb0;
   --legs-trace: #006409;  --core-trace: #b02f66;
+  --trace-vivid: 1;   /* dark hues on light grey: darken less in shadow, draw stronger */
   --legs:  #008300;  --legs-bg:  #cce5c7;
   --core:  #e87ba4;  --core-bg:  #fae3e8;
   --meal:  #7a828a;  --meal-bg:  #e6e9ec;
@@ -83,6 +84,7 @@
   --pull:  #3987e5;  --pull-bg:  #2c405b;
   --push-trace: #f4c35c;  --pull-trace: #9cc6fb;
   --legs-trace: #86d880;  --core-trace: #f3a4c3;
+  --trace-vivid: 0;
   --legs:  #008300;  --legs-bg:  #1b3f16;
   --core:  #d55181;  --core-bg:  #5a303d;
   --meal:  #8f979f;  --meal-bg:  #3a4148;
