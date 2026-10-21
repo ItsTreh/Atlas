@@ -138,3 +138,29 @@ test("lit muscles draw in once, and repeating the same preview does not restart 
   AnatomySculpture.prototype.ease.call(r, 16);
   expect(r.litReveal).toBe(1);
 });
+
+test("a tinted family preview draws as a hover in the family's hue, flowing, then fades back", () => {
+  const S = AnatomySculpture.prototype;
+  const r = { model: { regions: ["a", "b"] }, muscleOf: ["lats", "chest"], interactive: true,
+    selection: { has: () => true }, hovered: null, highlighting: null, previewing: null,
+    previewFamily: null, mapTint: 0, tintInk: null, litReveal: 1, schedule() {},
+    colors: { families: { pull: [0, 0, 1] } } };
+  S.preview.call(r, ["lats"], "pull");
+  expect(r.previewFamily).toBe("pull");
+  expect(r.litReveal).toBe(1);                                // no draw-in
+  expect([...S.targets.call(r)]).toEqual([1, 1, 0, 0, 0, 0]);
+  const flow = () => S.flowing.call({ ...r, ready: true, pointer: null,
+    reducedMotion: { matches: false }, calm: () => true }, true);
+  expect(flow()).toBe(true);
+  Object.assign(r, { targets: () => S.targets.call(r), reducedMotion: { matches: false },
+    calm: () => true, pointer: null, regionAt: () => -1, mapPresence: 0, mapPointer: [0, 0], mapInfluence: 0 });
+  for (let i = 0; i < 100; i++) S.ease.call(r, 16);
+  expect(r.mapTint).toBe(1);
+  S.preview.call(r, null);
+  for (let i = 0; i < 100; i++) S.ease.call(r, 16);
+  expect(r.mapTint).toBe(0);
+  expect(flow()).toBe(false);
+  S.preview.call(r, ["chest"], "other");                        // no hue: the lit preview
+  expect(r.previewFamily).toBe(null);
+  expect(r.litReveal).toBe(0);
+});
