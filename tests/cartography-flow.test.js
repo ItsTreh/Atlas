@@ -75,3 +75,25 @@ test("continuous flow runs only during visible pointer exploration", () => {
     { reducedMotion: { matches: true } }, { calm: () => false }
   ]) expect(flowing(changes)).toBe(false);
 });
+
+test("pointer deformation responds on selected surfaces and settles after leaving", () => {
+  const r = { targets: () => new Float32Array([1, 0, 0]),
+    shown: new Float32Array([1, 0, 0]), reducedMotion: { matches: false },
+    interactive: true, calm: () => true, pointer: [40, 80], regionAt: () => 0,
+    mapPresence: 0, mapPointer: [40, 80], mapInfluence: 0 };
+  const ease = () => AnatomySculpture.prototype.ease.call(r, 16);
+  ease();
+  expect(r.mapInfluence).toBeGreaterThan(0);
+  expect(r.mapInfluence).toBeLessThan(1);
+  for (let i = 0; i < 100; i++) ease();
+  expect(r.mapInfluence).toBe(1);
+  r.pointer = null;
+  for (let i = 0; i < 100; i++) ease();
+  expect(r.mapInfluence).toBe(0);
+  expect(ease()).toBe(false);
+  r.pointer = [40, 80];
+  r.mapInfluence = 1;
+  r.reducedMotion.matches = true;
+  ease();
+  expect(r.mapInfluence).toBe(0);
+});

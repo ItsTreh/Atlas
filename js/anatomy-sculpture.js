@@ -162,6 +162,7 @@ class AnatomySculpture {
     this.detailMode = !!opts.detailMode;     // training groups by default; precise picking is retained
     this.mapPresence = 0;
     this.mapPointer = [0, 0];
+    this.mapInfluence = 0;
     this.flowTime = 0;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
     this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
@@ -646,6 +647,7 @@ class AnatomySculpture {
     gl.uniform2fv(u.uMapPointer, this.mapPointer);
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
+    gl.uniform1f(u.uMapInfluence, this.mapInfluence);
     gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
     gl.uniform1f(u.uDetailed, this.detailMode ? 1 : 0);
     gl.uniform1f(u.uFlowTime, this.flowTime);
@@ -766,6 +768,8 @@ class AnatomySculpture {
     const onBody = this.interactive && this.calm() &&
       (this.focused || (this.pointer && this.regionAt(...this.pointer) >= 0));
     this.mapPresence = follow(this.mapPresence, onBody ? 1 : 0, 130, 0.005);
+    const responding = onBody && this.pointer && !this.focused && !this.previewing && !instant;
+    this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
     if (this.pointer) for (let i = 0; i < 2; i++)
       this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
     for (let i = 0; i < shown.length; i++) {
@@ -1230,7 +1234,7 @@ flat in float vRegionId;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
 uniform vec2 uMapPointer, uMapSize;
-uniform float uMapPointerActive, uPointedRegion, uDetailed, uFlowTime, uDpr;
+uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
 out vec4 outColor;
@@ -1271,7 +1275,7 @@ void main() {
   float nearby = 1.0 - smoothstep(24.0, 145.0, distance(screen, uMapPointer));
   float exact = 1.0 - step(0.5, abs(vRegionId - uPointedRegion));
   float hover = vMapState.y * mix(1.0, mix(1.0, exact, uMapPointerActive), uDetailed);
-  float pointed = hover * mix(1.0, 0.65 + nearby * 0.35, uMapPointerActive);
+  float pointed = hover * mix(1.0, 0.8 + nearby * 0.2, uMapPointerActive);
   float chosen = max(vMapState.x, vMapState.z * 0.85);
   float angle = atan(vFlow.x, vFlow.y);
   float along = vFlow.z;
@@ -1279,19 +1283,29 @@ void main() {
     (sin(along * 2.4 - uFlowTime * 0.48) - sin(along * 2.4));
   warp += hover * 0.08 * sin(along * 5.2 - uFlowTime * 0.32);
   float phase = angle * 3.2 + warp;
+  // Pull the existing curves gently toward the pointer. Derivatives express
+  // their local direction on screen; the material remains on the actual mesh.
+  // Selected areas respond too, including when the pointer is on a nearby group.
+  vec2 offset = screen - uMapPointer;
+  vec2 gradient = vec2(dFdx(phase), -dFdy(phase)) * uDpr;
+  float reach = exp(-dot(offset, offset) / (105.0 * 105.0));
+  phase += clamp(dot(gradient, offset) * 0.3, -0.4, 0.4) * reach *
+           uMapInfluence * max(hover, chosen);
   float footprint = max(fwidth(phase), 0.0001);
   float linePx = abs(fract(phase + 0.5) - 0.5) / footprint;
-  float trace = 1.0 - smoothstep(0.18 * uDpr, 0.65 * uDpr, linePx);
+  float trace = 1.0 - smoothstep(0.25 * uDpr, 0.85 * uDpr, linePx);
   float coarse = 1.0 - step(0.5, mod(floor(phase + 0.5), 2.0));
   // Tapered accents travel together along the field. They reveal short arcs
   // instead of drawing a fixed set of stripes across the entire muscle.
   float travel = 0.5 + 0.5 * cos(along * 3.6 - uFlowTime * 1.05 + angle * 2.1);
   float current = pow(travel, 3.0);
-  float drift = 0.04 + 0.96 * current;
-  float inset = smoothstep(0.18, 1.4, vSeam);
-  float facing = smoothstep(0.12, 0.65, n.z);
+  float drift = 0.28 + 0.72 * current;
+  float inset = smoothstep(0.08, 0.85, vSeam);
+  float facing = smoothstep(0.08, 0.5, n.z);
   float visible = (1.0 - smoothstep(0.2, 0.5, footprint)) * inset * facing;
-  float etched = trace * visible * (chosen * coarse * 0.065 + pointed * drift * 0.42);
+  // Selection has a persistent, legible backbone even between passing accents.
+  float etched = trace * visible * min(0.72,
+    chosen * mix(0.045, 0.25, coarse) + pointed * drift * 0.48);
   c = mix(c, toLinear(uMapInk) * clamp(shade, 0.45, 1.0), etched);
 
   // Keyboard focus keeps a strong edge independent of point density.

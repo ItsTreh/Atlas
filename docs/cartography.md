@@ -8,10 +8,14 @@ tapered accents that travel together while the pointer hovers. Neutral ink
 matches the page; the light theme uses the sculpture's original cool grey.
 
 - Hover reveals a whole training group, with a little more emphasis near
-  the pointer. The surface stays alive while the pointer rests on a muscle.
-- Selected groups retain a faint, stationary imprint that preserves the
+  the pointer and a visible baseline between traveling accents. The surface
+  stays alive while the pointer rests on a muscle.
+- Selected groups retain clear, alternating-weight traces that preserve the
   sculpture's shading. Program previews and workout highlights use the same
   presentation through the existing selection workflow.
+- Moving the pointer gently draws nearby hovered and selected traces toward
+  it. The response eases away when exploration ends; resting selections stay
+  still. Reduced motion disables this deformation.
 - A serif label beside the body names the group, such as Chest or Shoulders,
   with a fine leader to the surface. Narrow layouts use the caption instead.
 - Keyboard focus has a strong focus edge and a static map. Touch selects
