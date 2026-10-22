@@ -45,4 +45,24 @@ describe("the page's global scope", () => {
     }
     expect(problems).toEqual([]);
   });
+
+  test("no script replaces a function or var another one declared", () => {
+    // Two `function f` (or `var f` then `function f`) raise no error: the
+    // second silently wins, and every caller of the first gets it. Each
+    // global a script defines must still hold its first script's value.
+    const quiet = () => {};
+    const context = vm.createContext({ console: { log: quiet, warn: quiet, error: quiet, info: quiet } });
+    const owner = new Map(), problems = [];
+    for (const file of pageScripts()) {
+      const before = new Map(Object.keys(context).map(k => [k, context[k]]));
+      try { vm.runInContext(fs.readFileSync(path.join(ROOT, file), "utf8"), context, { filename: file }); }
+      catch { /* a view script stops at the page; what it declared stands */ }
+      for (const name of Object.keys(context)) {
+        if (before.has(name) && before.get(name) !== context[name])
+          problems.push(file + " replaces " + name + ", declared in " + owner.get(name));
+        if (!owner.has(name)) owner.set(name, file);
+      }
+    }
+    expect(problems).toEqual([]);
+  });
 });

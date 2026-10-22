@@ -73,11 +73,39 @@ describe("hand-off", () => {
     sel.toggle("abs");
     const snap = sel.snapshot();
     expect(snap).toEqual({ muscleIds: ["chest", "shoulders", "triceps", "abs"],
-                           programId: "push", modified: true, priorities: {} });
+                           programId: "push", modified: true, basedOnId: "push", priorities: {} });
 
     const other = new app.MuscleSelection(app.MUSCLES);
     other.restore({ ...snap, muscleIds: [...snap.muscleIds, "wings"] });
     expect(other.snapshot()).toEqual(snap);
+  });
+});
+
+describe("the program a selection is based on", () => {
+  test("survives a reload when the selection equals a different program", () => {
+    sel.applyProgram(program("push"));
+    sel.toggle("shoulders");                       // now exactly Chest & Triceps
+    expect(sel.source().program.id).toBe("chest-triceps");
+    const other = new app.MuscleSelection(app.MUSCLES);
+    other.restore(JSON.parse(JSON.stringify(sel.snapshot())));
+    sel.toggle("biceps"); other.toggle("biceps");
+    expect(other.source()).toEqual(sel.source());
+    expect(other.source().program.id).toBe("push");
+  });
+
+  test("an old snapshot without basedOnId uses its programId", () => {
+    sel.restore({ muscleIds: ["chest", "shoulders", "triceps", "abs"], programId: "push" });
+    expect(sel.source().kind).toBe("modified");
+    expect(sel.source().program.id).toBe("push");
+  });
+
+  test("a selection built by hand that equals a program reads as edited once changed", () => {
+    sel.toggle("chest"); sel.toggle("triceps");    // Chest & Triceps, by hand
+    sel.toggle("abs");
+    const src = sel.source();
+    expect(src.kind).toBe("modified");
+    expect(src.program.id).toBe("chest-triceps");
+    expect(src.added.map(m => m.id)).toEqual(["abs"]);
   });
 });
 

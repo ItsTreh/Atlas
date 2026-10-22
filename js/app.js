@@ -5,30 +5,35 @@
    than rebuilt, so the hours the user painted survive a trip back to change
    the muscles or the eating plan. */
 
-routine.selection.onChange(() => saveRoutine(routine));
-
 /* ------------------------------- the week -------------------------------- */
 
-/* What the week on screen was generated from, to spot a stale week: the
-   muscles, how many days of what length were asked for, the days off, the
-   preferred window, whether meals go on the calendar, the training days the
-   week can hold, and the meals it placed (time, calories and protein, as
-   the calendar shows them) and kept sessions away from. Painting over a
-   session or removing one is an edit, not a changed input; see weekEdited(). */
+/* What the week on screen was generated from (routine.inputsKey and
+   mealsKey), to spot a stale week. A changed input means the week no longer
+   answers what was asked. Painting over a session or removing one is an
+   edit, not a changed input (see weekEdited()), though it can leave the
+   meals on the calendar out of date: a day fewer to fuel. */
 let generatedFor = null, placedCount = 0;
-function planInputs() {
-  const n = routine.nutrition;
-  return routine.selection.muscles().map(m => m.id).join() + "|" +
-         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" + routine.split + "|" +
-         [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
-         n.showMeals + "|" + routine.plannedSessions() + "|" +
-         (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
-}
+function planInputs() { return { inputs: routine.inputsKey(), meals: routine.mealsKey() }; }
 const days = n => n + (n === 1 ? " day" : " days");
+/** Weekdays as a short list, runs joined: "Mon–Fri", "Mon, Wed and Sun". */
+function dayList(list) {
+  const idx = list.map(d => DayOfWeek.indexOf(d)).sort((a, b) => a - b), runs = [];
+  for (const i of idx) {
+    const run = runs[runs.length - 1];
+    if (run && i === run[1] + 1) run[1] = i; else runs.push([i, i]);
+  }
+  const names = runs.map(([a, b]) => DayOfWeek.label[DayOfWeek.values[a]] +
+    (b > a + 1 ? "–" + DayOfWeek.label[DayOfWeek.values[b]] : b > a ? ", " + DayOfWeek.label[DayOfWeek.values[b]] : ""));
+  return names.length < 2 ? names.join("") : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+}
 
 /** True when the week on screen was generated from inputs that have since changed. */
 function weekIsStale() {
-  return !!generatedFor && routine.sessions.length > 0 && generatedFor !== planInputs();
+  return !!generatedFor && routine.sessions.length > 0 && generatedFor.inputs !== routine.inputsKey();
+}
+/** True when the meals on the calendar no longer match the daily targets. */
+function mealsOutdated() {
+  return !!generatedFor && routine.sessions.length > 0 && generatedFor.meals !== routine.mealsKey();
 }
 
 /**
@@ -40,7 +45,7 @@ function weekEdited() {
   if (!generatedFor || routine.sessions.length === placedCount) return false;
   placedCount = routine.sessions.length;
   setStatus("Your week now has " + days(placedCount) + " of training after your edits." +
-    (generatedFor !== planInputs() ? " Your daily targets changed with it; generate again " +
+    (mealsOutdated() ? " Your daily targets changed with it; generate again " +
       "to update the meals on the calendar." : ""), "warn");
   return true;
 }
@@ -60,9 +65,13 @@ function generateWeek() {
   generatedFor = planInputs();
   placedCount = routine.sessions.length;
 
-  const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
+  // A meal no hour near its time was free for, on some days, is named:
+  // those days carry less than the daily targets on the calendar.
+  const missed = routine.missedMeals.map(m => m.name + " on " + dayList(m.days)).join("; ");
+  const mealNote = (r.meals ? " " + r.meals + " meals added to the week." : "") +
+    (missed ? " No free hour near its time for " + missed + ", so those days show less to eat." : "");
   const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
-  const exNote = exercises ? " with " + exercises + " exercises" : "";
+  const exNote = exercises ? " with " + exercises + (exercises === 1 ? " exercise" : " exercises") : "";
   let text, kind = "";
 
   switch (r.reason) {
@@ -108,7 +117,10 @@ function generateWeek() {
         "Clear some hours or shorten the session."; kind = "err";
       break;
     case "no-blocks":
-      text = "Every hour is blocked. Free some days or clear some hours and try again."; kind = "err";
+      text = routine.offDays.size === DayOfWeek.values.length
+        ? "Every day is marked off. Turn a day back on and try again."
+        : "Every hour is blocked. Free some days or clear some hours and try again.";
+      kind = "err";
       break;
     default:
       text = "Nothing could be placed without breaking a recovery window. " +
@@ -179,6 +191,13 @@ if (restored && routine.sessions.length) {
   generatedFor = planInputs();
   placedCount = routine.sessions.length;
 }
+/* Saving follows the selection only from here on. Restoring the selection
+   tells its listeners, and a save at that point would store the routine
+   half restored: the muscles, with every other setting still at its
+   default. Saving once now also replaces any stored value restore() had to
+   drop. */
+routine.selection.onChange(() => saveRoutine(routine));
+if (restored) saveRoutine(routine);
 
 paintThemeButton();
 Stages.start(restored && routine.sessions.length ? "plan"

@@ -7,9 +7,9 @@
    those same inputs — nothing generated is stored directly, so this stays
    correct even if the exercise or food database changes later.
 
-   Manual exercise swaps inside a session are not restored yet: reloading
-   brings back the suggested workout for the same inputs, not a hand-edited
-   one.
+   Edits to a generated week are not restored yet (moved or removed
+   sessions, exercise swaps, adds and removals): reloading brings back the
+   week the same inputs give, not a hand-edited one.
 
    Everything here is wrapped in try/catch: localStorage can throw (private
    browsing, storage disabled by the browser, quota exceeded) and a failed
@@ -20,7 +20,7 @@ const STORAGE_KEY = "atlas.routine.v1";
 
 /** Saves the routine's current inputs. Called after every change that
  *  should survive a reload; see render(), the nutrition stage's `changed()`,
- *  the grid's endStroke(), and the schedule controls in app.js. */
+ *  the grid's endStroke(), the selection (app.js, once booted). */
 function saveRoutine(routine) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(routine.snapshot()));

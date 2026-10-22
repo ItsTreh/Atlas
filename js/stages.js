@@ -6,9 +6,12 @@
    stage runs in three phases, and nothing moves outside them:
 
      out      the stage's interface fades (STAGE_TIMING.out)
-     moving   the new stage is drawn, the sculpture's camera travels to its
-              shot, and the interface comes in group by group as it lands
-     idle     everything is still; the controls are live
+     moving   the new stage is drawn and the sculpture's camera travels to
+              its shot; after STAGE_TIMING.settle the interface comes in
+              group by group (data-shown), on time even when the camera's
+              move runs longer
+     idle     the camera has landed and everything is still; the controls
+              are live and the sculpture can be picked
 
    The same three phases carry a change inside a stage that rearranges the
    screen (opening "A day of eating", "Shape your week", a generated week):
@@ -27,21 +30,25 @@
 const STAGE_ORDER = ["targets", "nutrition", "plan"];
 const STAGE_NAMES = { targets: "Targets", nutrition: "Nutrition", plan: "Week plan" };
 
-/* Phase lengths in ms; with reduced motion, just long enough to swap. */
-const STAGE_TIMING = { out: 300, settle: 1250, outStill: 60, settleStill: 120 };
+/* Phase lengths in ms; with reduced motion, just long enough to swap.
+   `landBy` is the longest a change waits for the camera to land. */
+const STAGE_TIMING = { out: 300, settle: 1250, outStill: 60, settleStill: 120, landBy: 5000 };
 
 /* The wheel: how far (deltaY, summed while the gestures keep coming within
    `gap` ms) counts as meaning it, and how long after a pane scrolled the
    wheel is left to it. */
 const STAGE_WHEEL = { threshold: 260, gap: 450, quiet: 450 };
 
-/* Below this width the sculpture sits in a band above the stage. */
-const STAGE_NARROW = "(max-width: 759px)";
+/* Below this width, or on a portrait tablet (where the rails would leave
+   the body no room between them), the sculpture sits in a band above the
+   stage. css/styles.css uses the same query. */
+const STAGE_NARROW = "(max-width: 759px), (max-width: 999px) and (orientation: portrait)";
 
 const Stages = {
   current: "targets",
   phase: "idle",
   busy: false,
+  queued: null,   // a relayout asked for while busy, run when the change lands
   views: {},
 
   /**
@@ -75,6 +82,7 @@ const Stages = {
     this.call("enter");
     this.phase = "idle";
     this.root.dataset.phase = "idle";
+    this.root.dataset.shown = "";
     this.refresh();
   },
 
@@ -84,12 +92,17 @@ const Stages = {
     if (name === this.current) { if (before) { before(); this.refresh(); } return; }
     this.run(() => {
       if (before) before();
-      this.current = name;
+      // What allowed the move may have changed on the way (the selection
+      // cleared): then the stage stays where it is.
+      if (this.can(name)) this.current = name;
       this.paintStage();
       this.call("arrive");
       this.call("enter");
       this.toTop();
-    }, STAGE_TIMING.settle, () => this.landed());
+    }, STAGE_TIMING.settle, () => {
+      this.landed();
+      announce(STAGE_NAMES[this.current] + ", step " + (STAGE_ORDER.indexOf(this.current) + 1) + " of " + STAGE_ORDER.length);
+    });
   },
 
   /**
@@ -98,22 +111,47 @@ const Stages = {
    * the camera is given.
    */
   relayout(change, settle = 900) {
-    if (this.busy) return;
+    if (this.busy) {
+      // Asked mid-change (Generate pressed from the keyboard during a move):
+      // done once the change lands, never dropped. If the stage it was asked
+      // on has gone by then, only its state changes, for its next visit.
+      const stage = this.current;
+      this.queued = () => stage === this.current ? this.relayout(change, settle) : change();
+      return;
+    }
     this.run(() => { change(); this.call("enter"); this.toTop(); }, settle, () => this.landed());
   },
 
   run(change, settle, done) {
     this.busy = true;
     const still = this.still;
+    delete this.root.dataset.shown;
     this.setPhase("out");
     setTimeout(() => {
-      change();
-      this.setPhase("moving");
-      setTimeout(() => {
-        this.busy = false;
-        this.setPhase("idle");
-        done();
-      }, still ? STAGE_TIMING.settleStill : settle);
+      // A stage that throws while drawing still lets the change finish, so
+      // navigation never stays busy. The error is still reported.
+      try { change(); }
+      finally {
+        this.setPhase("moving");
+        // Still within a stage: the phase turns idle once the camera has
+        // landed too, however far round the body it had to go and however
+        // slowly frames come. A camera that stops being drawn (a hidden tab,
+        // a lost context) holds it STAGE_TIMING.landBy at most. The
+        // interface doesn't wait for that: it comes in after `settle`, and
+        // only becomes usable at idle.
+        const until = performance.now() + STAGE_TIMING.landBy;
+        const landed = () => {
+          const left = typeof figure === "object" && figure.moveRemaining ? figure.moveRemaining() : 0;
+          if (left > 0 && performance.now() < until) { setTimeout(landed, Math.min(left, 100)); return; }
+          this.busy = false;
+          this.setPhase("idle");
+          done();
+          const next = this.queued;
+          this.queued = null;
+          if (next) next();
+        };
+        setTimeout(() => { this.root.dataset.shown = ""; landed(); }, still ? STAGE_TIMING.settleStill : settle);
+      }
     }, still ? STAGE_TIMING.outStill : STAGE_TIMING.out);
   },
 
@@ -217,9 +255,15 @@ const Stages = {
    * data-scroll) takes the wheel first, and keeps it for a moment after.
    */
   wheel(e) {
-    if (this.busy || this.narrow || this.call("wheel") === false) return;
+    if (this.narrow || this.call("wheel") === false) return;
     if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     const now = performance.now();
+    // One gesture moves one stage. Events closer together than the gap are
+    // one gesture however long it lasts (a trackpad's fling runs on through
+    // the change), so after it has moved a stage the rest of it is spent.
+    if (now - (this.wheelAt || 0) > STAGE_WHEEL.gap) { this.acc = 0; this.spent = false; }
+    this.wheelAt = now;
+    if (this.busy || this.spent) return;
     const pane = e.target && e.target.closest && e.target.closest("[data-scroll]");
     if (pane) {
       const down = e.deltaY > 0;
@@ -227,12 +271,11 @@ const Stages = {
       if (can) { this.acc = 0; this.scrolledAt = now; return; }
     }
     if (now - (this.scrolledAt || 0) < STAGE_WHEEL.quiet) return;
-    if (now - (this.wheelAt || 0) > STAGE_WHEEL.gap) this.acc = 0;
-    this.wheelAt = now;
     this.acc = (this.acc || 0) + e.deltaY;
     if (Math.abs(this.acc) > STAGE_WHEEL.threshold) {
       const down = this.acc > 0;
       this.acc = 0;
+      this.spent = true;
       if (down) this.next(); else this.back();
     }
   },
@@ -240,6 +283,16 @@ const Stages = {
   wire() {
     // The masthead's stages, the phone's numbered dots, and any
     // "Change"-style link to a stage (data-goto) anywhere on the page.
+    // While a change runs, a stage's controls are fading out, not yet in, or
+    // in while the camera lands: the pointer can't reach them
+    // ([data-reveal]), and neither may the keyboard, whose Enter and Space
+    // arrive as clicks. Front and Back (which would turn the camera) too.
+    document.addEventListener("click", e => {
+      if (this.busy && e.target.closest && e.target.closest(".stage, .figure-controls")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
     $("foot-dots").innerHTML = STAGE_ORDER.map((name, i) =>
       '<button type="button" data-goto="' + name + '" aria-label="' + STAGE_NAMES[name] + '">' +
       (i + 1) + '</button>').join("");

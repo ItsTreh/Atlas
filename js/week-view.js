@@ -38,6 +38,7 @@ const WEEK_HEAD = 86;
 /** The week's message (what Generate did, what an edit changed); null to clear. */
 function setStatus(text, kind = "") {
   wk.status = text ? { text, kind } : null;
+  announce(text);
   if (Stages.current === "plan") renderWeek();
 }
 
@@ -104,6 +105,9 @@ const windowWord = () => routine.preferredWindow === "any" ? "Any time of day"
  */
 function fitNote(fit) {
   if (!fit || !routine.selection.size) return null;
+  if (!routine.availableDays().length)
+    return { warn: true, text: "There is no day left to train: every day is marked off or fully busy. " +
+      "Turn a day back on or clear some hours." };
   const h = min => (Math.round(min / 6) / 10) + " h";
   const names = fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
   const fixes = [];
@@ -226,7 +230,7 @@ function configHTML() {
             EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + '.</span>') +
         '</div>' +
       '</div>' +
-      '<div class="wk-notes" aria-live="polite">' +
+      '<div class="wk-notes">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (empty.length ? '<p class="warn">Nothing you selected goes on ' + empty.join(" or ") + ' days.</p>' : '') +
         (short ? '<p class="warn">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
@@ -254,6 +258,12 @@ function shapeHTML() {
   const pv = weekPreview(), [H0, H1] = WEEK_HOURS, rows = H1 - H0;
   const rh = rowHeight(rows, 470, 18, 30);
   const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
+  // Meals as Generate will place them: busy hours keep them, the previewed
+  // sessions move them.
+  const mealPlan = mealsOn ? routine.mealPlan(slot => {
+    const p = pv.byDay.get(slot.day);
+    return !p || slot.hour < p.start || slot.hour >= p.end;
+  }) : { placed: [] };
   const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
   const colW = (planEl.clientWidth - 96 - 44 - 36) / 7;
   const note = fitNote(pv.fit);
@@ -285,12 +295,19 @@ function shapeHTML() {
       return '<div class="plan-ghost' + (tall ? ' tall' : '') + '" style="top:' + px((p.start - H0) * rh + 2) + ';height:' + px(h) + '">' +
         '<span class="plan-ghost-name">' + esc(blockName(p.block)) + '</span><span class="plan-ghost-time">' + hourRange(p.start, p.end) + '</span></div>';
     })() : "";
-    const meals = mealsOn ? n.meals.filter(m => m.hour >= H0 && m.hour < H1).map(m =>
-      '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((m.hour - H0) * rh + rh / 2) + '" ' +
-        'title="' + esc(m.name) + ' · ' + hourLabel(m.hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
+    // Each meal where Generate will put it this day (mealPlan): its usual
+    // hour, over a busy block too, or the nearest one a session leaves.
+    const meals = mealsOn ? mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(({ meal: m, hour }) =>
+      '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((hour - H0) * rh + rh / 2) + '" ' +
+        'title="' + esc(m.name) + ' · ' + hourLabel(hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
         (colW >= 128 ? (m.role === "snack" ? "Snack" : esc(m.name)) : "") + '</span>').join("") : "";
     const cells = Array.from({ length: rows }, (_, k) =>
-      '<div class="paint" data-day="' + d + '" data-hour="' + (H0 + k) + '" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
+      // One hour to paint. The keyboard reaches the grid through one cell
+      // at a time (paint.js): arrows move, Space or Enter toggles busy.
+      '<div class="paint" role="button" data-day="' + d + '" data-hour="' + (H0 + k) + '" data-key="paint-' + d + '-' + (H0 + k) + '" ' +
+        'tabindex="' + (paintCellKey() === "paint-" + d + "-" + (H0 + k) ? 0 : -1) + '" ' +
+        'aria-pressed="' + (routine.slot(d, H0 + k).state === SlotState.BUSY) + '" ' +
+        'aria-label="' + DAY_NAME[d] + ' ' + hourLabel(H0 + k) + ', busy" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
     return '<div class="cal-col' + restCls + '" data-day="' + d + '" aria-label="' + DAY_NAME[d] + (busyRuns(d).length ? ", busy " +
         busyRuns(d).map(([a, b]) => hourRange(a, b)).join(", ") : ", free") + '">' + head +
       '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + bandEl +
@@ -306,6 +323,10 @@ function shapeHTML() {
         '<h1 class="display" id="plan-title" tabindex="-1">Shape your week</h1>' +
         '<p class="status-line' + (warn ? ' warn' : '') + '" aria-live="polite"><i></i><span>' +
           esc(warn ? note.text : okLine + (note ? " " + note.text : "")) + '</span></p>' +
+        // Painting over a generated session takes it out of that week: said
+        // here, where it happened, not only once the user leaves.
+        (wk.status && /^Your week now has/.test(wk.status.text)
+          ? '<p class="warn-line">' + esc(wk.status.text) + '</p>' : '') +
       '</div>' +
       '<button type="button" class="btn primary" id="close-shape" data-key="close-shape">Done</button>' +
     '</div>' +
@@ -346,10 +367,17 @@ function shapeHTML() {
 }
 
 /** A day's busy hours as blocks, labelled where there is room. */
+/** The paint cell the keyboard enters the grid at: the last one it was on, else the first free day's first hour. */
+function paintCellKey() {
+  const day = wk.paintDay && !routine.offDays.has(wk.paintDay) ? wk.paintDay
+    : DayOfWeek.values.find(d => !routine.offDays.has(d));
+  return "paint-" + day + "-" + (wk.paintHour ?? WEEK_HOURS[0]);
+}
+
 function busyHTML(day, rh, [H0, H1]) {
   return busyRuns(day, [H0, H1]).map(([a, b]) =>
     '<div class="busy" style="top:' + px((a - H0) * rh + 3) + ';height:' + px((b - a) * rh - 6) + '">' +
-      (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '') +
+      (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '<span class="visually-hidden">Busy</span>') +
       ((b - a) * rh >= 30 ? '<span class="busy-time">' + hourRange(a, b) + '</span>' : '') + '</div>').join("");
 }
 
@@ -398,7 +426,7 @@ function genHTML() {
     n.isValid() ? "≈ " + n.kcal.toLocaleString("en-US") + " kcal · " + n.protein + " g protein a day" : ""
   ].filter(Boolean);
   const gaps = weekGaps();
-  const stale = weekIsStale();
+  const stale = weekIsStale(), outdated = !stale && mealsOutdated();
   const status = wk.status;
   const detail = routine.sessions.find(s => s.id === wk.sel);
   const focus = routine.sessions.find(s => s.id === (wk.hover || wk.sel));
@@ -408,18 +436,20 @@ function genHTML() {
       '<div class="gen-title">' +
         '<div class="gen-title-text">' +
           '<h1 class="display" id="plan-title" tabindex="-1">Your week</h1>' +
-          '<p class="gen-summary"><i></i><span>' + sessions.length + (sessions.length === 1 ? " session" : " sessions") +
+          '<p class="gen-summary' + (gaps.length || stale || outdated || (status && status.kind) ? ' warn' : '') +
+            '"><i></i><span>' + sessions.length + (sessions.length === 1 ? " session" : " sessions") +
             ' · ≈ ' + hrs + ' h · ' + sets + ' hard sets</span><span class="pill-tag">Estimate</span></p>' +
           '<p class="gen-facts">' + facts.map(esc).join('<span aria-hidden="true">·</span>') + '</p>' +
         '</div>' +
         '<div class="gen-actions">' +
-          (stale ? '<button type="button" class="btn primary" id="regen" data-key="regen">Generate again</button>' : '') +
+          (stale || outdated ? '<button type="button" class="btn primary" id="regen" data-key="regen">Generate again</button>' : '') +
           '<button type="button" class="btn ghost" id="adjust" data-key="adjust">Adjust plan</button>' +
         '</div>' +
       '</div>' +
-      ((status || gaps.length || stale) ? '<div class="gen-notes" aria-live="polite">' +
+      ((status || gaps.length || stale || outdated) ? '<div class="gen-notes">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (stale && !(status && /changed since/.test(status.text)) ? '<p class="warn">Your targets, training or nutrition changed since this week was generated. Generate again to plan for them.</p>' : '') +
+        (outdated && !(status && /generate again/i.test(status.text)) ? '<p class="warn">The meals on the calendar no longer match your daily targets. Generate again to update them.</p>' : '') +
         gaps.map(g => '<p class="warn">' + esc(g) + '</p>').join("") +
       '</div>' : '') +
     '</div>';
@@ -458,7 +488,7 @@ function genHTML() {
     const sess = x ? (() => {
       const h = Math.max(30, (x.endHour() - x.startHour) * rh - 6);
       return '<button type="button" class="session' + (h < 44 ? ' tiny' : h < 58 ? ' short' : '') + (on ? ' on' : '') + (hov ? ' pointed' : '') + '" data-sess="' + x.id + '" ' +
-          'data-key="sess-' + x.id + '" aria-pressed="' + !!on + '" style="top:' + px((x.startHour - H0) * rh + 3) + ';height:' + px(h) + '" ' +
+          'data-key="sess-' + x.id + '" aria-expanded="' + !!on + '" style="top:' + px((x.startHour - H0) * rh + 3) + ';height:' + px(h) + '" ' +
           'aria-label="' + esc(DAY_NAME[d] + ", " + blockName(x.block) + ", " + hourRange(x.startHour, x.endHour()) + ". Open for the exercises.") + '">' +
         '<span class="session-name">' + esc(blockName(x.block)) + '</span>' +
         '<span class="session-time">' + (narrow ? hourLabel(x.startHour) : hourRange(x.startHour, x.endHour()) + ' · ' + sessionMinutes(x) + ' min') + '</span>' +
@@ -469,7 +499,9 @@ function genHTML() {
       '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + busy + meals + sess + '</div></div>';
   }).join("");
 
-  const idle = '<div class="side-idle" data-reveal="2">' +
+  // With the SVG figure (no WebGL) nothing on screen lights up: no hint to point.
+  const flat = $("anatomy-stage").classList.contains("flat");
+  const idle = flat ? "" : '<div class="side-idle" data-reveal="2">' +
       '<span class="eyebrow small">' + (focus ? esc(blockName(focus.block)) + " · " + DayOfWeek.label[focus.day] : "On the sculpture") + '</span>' +
       '<span>' + (focus ? "Trains " + esc(nameList(focus.block.muscles.filter(m => !focus.block.riders.has(m)).map(m => m.name))) +
         ". Click it to see the exercises." : "Point at a session to light up the muscles it trains. Click one for its exercises.") + '</span>' +
@@ -521,15 +553,15 @@ function renderWeek() {
   const focusKey = active && weekEl.contains(active) ? active.dataset.key : null;
   const top = planEl.scrollTop;
   const sideEl = weekEl.querySelector(".side-detail"), sideTop = sideEl ? sideEl.scrollTop : 0;
+  // Once the last session is gone (removed, painted over, its day taken
+  // off) there is no week to show: back to the setup, camera and footer too.
+  if (wk.view === "gen" && !routine.sessions.length) wk.view = "config";
   planEl.dataset.view = wk.view;
-  weekEl.innerHTML = wk.view === "shape" ? shapeHTML() : wk.view === "gen" && routine.sessions.length ? genHTML() : configHTML();
+  weekEl.innerHTML = wk.view === "shape" ? shapeHTML() : wk.view === "gen" ? genHTML() : configHTML();
   planEl.scrollTop = top;
   const side = weekEl.querySelector(".side-detail");
   if (side) side.scrollTop = sideTop;
-  if (focusKey) {
-    const again = weekEl.querySelector('[data-key="' + focusKey + '"]');
-    if (again) again.focus({ preventScroll: true });
-  }
+  if (focusKey) focusAgain(weekEl.querySelector('[data-key="' + focusKey + '"]'));
   Stages.refresh();
 }
 
@@ -556,7 +588,10 @@ weekEl.addEventListener("click", e => {
   if (!b || b.disabled || b.dataset.act) return;      // a session's own controls: workout-view.js
   const d = b.dataset;
   const [lo, hi] = TRAINING_DAYS_RANGE;
-  if (d.daysStep) shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
+  if (d.daysStep) {
+    shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
+    announce(routine.sessionsPerWeek + (routine.sessionsPerWeek === 1 ? " training day" : " training days") + " a week");
+  }
   else if (d.split) shuffled(() => { routine.split = d.split; }, "shuffle");
   else if (d.experience) shuffled(() => { routine.experience = d.experience; }, "shuffle");
   else if (b.id === "open-shape" || d.shape) Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);

@@ -16,7 +16,7 @@ describe("data rows", () => {
     const rows = Object.values(ROWS).sort((a, b) => a - b);
     expect(rows).toEqual(rows.map((_, i) => i));
     expect([ROWS.state, ROWS.map].sort()).toEqual([0, 1]);
-    expect(app.SCULPTURE_DATA_FRAME_ROWS).toBe(2);
+    expect(app.SCULPTURE_DATA_FRAME_ROWS).toBe(3);
   });
 
   test("the shaders read exactly the rows the renderer defines", () => {
@@ -58,7 +58,8 @@ function renderer(regions, guides) {
   const r = Object.create(app.AnatomySculpture.prototype);
   const width = Math.max(regions, guides), rows = Object.keys(ROWS).length;
   Object.assign(r, {
-    gl, uploads, view: { id: "front" },
+    gl, uploads, view: { id: "front" }, muscleOf: new Array(regions).fill(null),
+    litReveal: Float32Array.from({ length: regions }, (_, i) => (i % 5) / 4),
     data: { texture: {}, width, rows, texels: new Float32Array(width * rows * 4), fresh: false },
     source: {
       state: coded(1, regions, 4), shown: coded(2, regions, 3), tint: coded(3, regions, 1),
@@ -91,6 +92,7 @@ describe("uploadData", () => {
       for (let i = 0; i < regions; i++) {
         expect(fetch(i, ROWS.state)).toEqual(item(s.state, i, 4));              // vertex: region
         expect(fetch(i, ROWS.map)).toEqual([...item(s.shown, i, 3), s.tint[i]]); // vMapState, vMapTint
+        expect(fetch(i, ROWS.reveal)[0]).toBeCloseTo(1 - Math.pow(1 - (i % 5) / 4, 3), 6);   // its own draw-in
         expect(fetch(i, ROWS.center)).toEqual(item(s.centers, i, 4));
         expect(fetch(i, ROWS.axis)).toEqual(item(s.axes, i, 4));
         expect(fetch(i, ROWS.ink)).toEqual([...item(s.ink, i, 3), s.slot[i]]);  // ink.rgb, vFlowGuide

@@ -19,7 +19,7 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
   const index = i => wide ? view.getUint32(indexStart + i * 4, true) : view.getUint16(indexStart + i * 2, true);
   const positions = new Float32Array(model.vertexCount * 3);
   const normals = new Float32Array(model.vertexCount * 3);
-  const region = i => view.getUint8(i * stride + 10);
+  const region = i => view.getUint8(i * stride + 10) + view.getUint8(i * stride + 13) * 256;   // low byte, high byte
   for (let i = 0; i < model.vertexCount; i++) {
     for (let k = 0; k < 3; k++) positions[i * 3 + k] = model.bounds.min[k] +
       view.getUint16(i * stride + k * 2, true) / 65535 * (model.bounds.max[k] - model.bounds.min[k]);
@@ -166,11 +166,64 @@ function buildAnatomyFlowFrames(model, samples) {
   return { centers, axes };
 }
 
+/* How a flow guide draws its curves, by name. The fragment shader gets
+ * them as KIND_* defines (flowGuideDefines), so the two sides share names,
+ * never bare numbers. The values only need to be distinct and positive.
+ *   pelvis     a fan rising from the pelvis's mirror plane (gluteus maximus)
+ *   trapezius  broad upper curves that straighten into a narrow lower tail
+ *   scapula    the upper back's shared field round each shoulder blade
+ *   limb       lengthwise along a posed limb (forearm, thigh groups)
+ *   spine      open sweeps across the lower back, with no pole at the spine
+ *   lat        each lat bowing along a direction the torso sets
+ */
+const FLOW_GUIDE_KINDS = Object.freeze({ pelvis: 1, trapezius: 2, scapula: 3, limb: 4, spine: 5, lat: 6 });
+
+/** The kinds as GLSL defines: KIND_PELVIS 1.0, … */
+function flowGuideDefines() {
+  return Object.entries(FLOW_GUIDE_KINDS).map(([name, value]) =>
+    "#define KIND_" + name.toUpperCase() + " " + value.toFixed(1) + "\n").join("");
+}
+
 /* Continuous guides for patches where wrapping each anatomical region creates
  * an extra fold or changes direction at every border. These describe drawing
  * direction only; region IDs, seams and picking still come from the mesh.
  * Shared patches follow the pose; the central lower back has an unfurled guide.
+ * A region belongs to one group at most (tests/cartography-flow.test.js).
  */
+const FLOW_GUIDE_GROUPS = Object.freeze([
+  { names: ['gluteus-maximus'], kind: 'pelvis', spacing: 0.016, paired: false },
+  { names: ['trapezius'], kind: 'trapezius', spacing: 0.014, paired: false },
+  { names: ['infraspinatus', 'teres-major', 'rhomboid-major'], kind: 'scapula', spacing: 0.014, paired: true },
+  { names: ['brachioradialis', 'extensor-carpi-radialis-longus', 'extensor-carpi-radialis-brevis',
+    'pronator-teres', 'flexor-carpi-radialis', 'palmaris-longus', 'flexor-digitorum-superficialis',
+    'flexor-carpi-ulnaris', 'extensor-carpi-ulnaris', 'extensor-digiti-minimi', 'extensor-digitorum',
+    'abductor-pollicis-longus', 'extensor-pollicis-brevis', 'anconeus', 'forearm-flexors', 'forearm-extensors'],
+    kind: 'limb', spacing: 0.01, paired: true },
+  { names: ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius'],
+    kind: 'limb', spacing: 0.013, paired: true },
+  { names: ['adductors', 'gracilis', 'pectineus', 'adductor-longus'],
+    kind: 'limb', spacing: 0.014, paired: true },
+  { names: ['biceps-femoris', 'semitendinosus', 'semimembranosus', 'adductor-magnus'],
+    kind: 'limb', spacing: 0.014, paired: true },
+  { names: ['erector-spinae'], kind: 'spine', spacing: 0.016, central: true },
+  { names: ['latissimus-dorsi'], kind: 'lat', spacing: 0.016, paired: true, torsoSweep: true }
+].map(group => Object.freeze(group)));
+
+/**
+ * Where each group's guides sit in the guide rows: in list order, a paired
+ * group taking two slots (its left side, then its right). The shader finds
+ * a region's guide from the code buildAnatomyFlowGuides gives it: (start + 1),
+ * negative for a paired group, whose right side is the next slot.
+ */
+function flowGuideSlots(groups = FLOW_GUIDE_GROUPS) {
+  let next = 0;
+  return groups.map(group => {
+    const start = next;
+    next += group.paired ? 2 : 1;
+    return { ...group, start, value: FLOW_GUIDE_KINDS[group.kind] };
+  });
+}
+
 function buildAnatomyFlowGuides(model, samples) {
   const regions = new Float32Array(model.regions.length);
   const height = Math.max(1e-4, model.bounds.max[1] - model.bounds.min[1]);
@@ -182,34 +235,12 @@ function buildAnatomyFlowGuides(model, samples) {
     return length > 1e-6 ? a.map(x => x / length) : [...fallback];
   };
   const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
-  const groups = [
-    { names: ['gluteus-maximus'], kind: 1, spacing: 0.016, paired: false },
-    { names: ['trapezius'], kind: 2, spacing: 0.014, paired: false },
-    { names: ['infraspinatus', 'teres-major', 'rhomboid-major'], kind: 3, spacing: 0.014, paired: true },
-    { names: ['brachioradialis', 'extensor-carpi-radialis-longus', 'extensor-carpi-radialis-brevis',
-      'pronator-teres', 'flexor-carpi-radialis', 'palmaris-longus', 'flexor-digitorum-superficialis',
-      'flexor-carpi-ulnaris', 'extensor-carpi-ulnaris', 'extensor-digiti-minimi', 'extensor-digitorum',
-      'abductor-pollicis-longus', 'extensor-pollicis-brevis', 'anconeus', 'forearm-flexors', 'forearm-extensors'],
-      kind: 4, spacing: 0.01, paired: true },
-    { names: ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius'],
-      kind: 4, spacing: 0.013, paired: true },
-    { names: ['adductors', 'gracilis', 'pectineus', 'adductor-longus'],
-      kind: 4, spacing: 0.014, paired: true },
-    { names: ['biceps-femoris', 'semitendinosus', 'semimembranosus', 'adductor-magnus'],
-      kind: 4, spacing: 0.014, paired: true },
-    { names: ['erector-spinae'], kind: 5, spacing: 0.016, central: true },
-    { names: ['latissimus-dorsi'], kind: 6, spacing: 0.016, paired: true, torsoSweep: true }
-  ];
-  // Slots follow the list: a paired group takes two, one for each side.
-  let count = 0;
-  for (const group of groups) {
-    group.start = count;
-    count += group.paired ? 2 : 1;
-  }
+  const groups = flowGuideSlots();
+  const count = groups.reduce((n, group) => n + (group.paired ? 2 : 1), 0);
   const origins = new Float32Array(count * 4), across = new Float32Array(count * 4), along = new Float32Array(count * 4);
   const put = (index, group, origin, transverse, direction, patch) => {
     const variance = patch.reduce((sum, p) => sum + dot(p.map((x,k) => x - origin[k]), direction) ** 2, 0) / Math.max(1, patch.length);
-    origins.set([origin[0] - midX, origin[1], origin[2], group.kind], index * 4);
+    origins.set([origin[0] - midX, origin[1], origin[2], group.value], index * 4);
     across.set([...transverse, height * group.spacing], index * 4);
     along.set([...direction, Math.max(height * 0.02, 2 * Math.sqrt(variance))], index * 4);
   };

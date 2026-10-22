@@ -83,6 +83,8 @@ class WeeklyRoutine {
     }));
     this.sessions = [];
     this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
+    this.plannedFor = new Set(); // ids of the muscles the last generated week was planned for
+    this.missedMeals = [];      // meals placeMeals() found no free hour for: { name, hour, days }
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
@@ -128,13 +130,19 @@ class WeeklyRoutine {
    * experience assumed) and blocks are the ones Generate places.
    */
   weekPlan(experience) {
-    const key = JSON.stringify([experience, this.split, this.sessionsPerWeek, this.sessionMinutes,
-      this.preferredWindow, [...this.offDays].sort(), this.selection.snapshot(),
-      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour),
-      this.nutrition.showMeals && this.nutrition.isValid() ? this.nutrition.mealHours : []]);
+    const key = JSON.stringify(this.planKey(experience));
     if (!this.planCache || this.planCache.key !== key)
       this.planCache = { key, plan: this.computeWeekPlan(experience) };
     return this.planCache.plan;
+  }
+
+  /** Everything weekPlan() reads, as a list; the busy hours come second to last. */
+  planKey(experience) {
+    const sel = this.selection.snapshot();
+    return [experience, this.split, this.sessionsPerWeek, this.sessionMinutes,
+      this.preferredWindow, [...this.offDays].sort(), sel.muscleIds, sel.priorities,
+      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour),
+      this.nutrition.showMeals && this.nutrition.isValid() ? this.nutrition.mealHours : []];
   }
 
   computeWeekPlan(experience) {
@@ -275,19 +283,56 @@ class WeeklyRoutine {
     };
   }
 
+  /**
+   * What a generated week is planned from: the planner's own inputs
+   * (weekPlan's key) without the busy hours, since painting over a session
+   * edits the week rather than asking for another. When it changes, the week
+   * on screen no longer answers what was asked. The meals the calendar shows
+   * are mealsKey().
+   */
+  inputsKey() {
+    const key = this.planKey(this.experience);
+    key.splice(-2, 1);
+    return JSON.stringify(key);
+  }
+
+  /**
+   * The meals as the calendar shows them: time, calories and protein. These
+   * also follow the week itself (a removed session is a day less to fuel),
+   * so after an edit they can change while inputsKey() does not.
+   */
+  mealsKey() {
+    const n = this.nutrition;
+    return n.showMeals && n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "";
+  }
+
   /** Restores a snapshot(): every input, then the week it had, regenerated. */
+  /*
+   * Only values the controls could have set are taken; anything else keeps
+   * the default. Stored data may be old or edited by hand, and a value no
+   * control offers (a split id that is gone, 12 days a week, a busy hour off
+   * the grid) would otherwise break the stages that read it.
+   */
   restore(snap) {
-    if (!snap) return;
+    if (!snap || typeof snap !== "object") return;
+    // A snapshot from a newer version than this one reads its fields its
+    // own way: left alone, the page starts clean rather than half wrong.
+    if (typeof snap.version === "number" && snap.version > 1) return;
+    const list = v => Array.isArray(v) ? v : [];
     this.experience = EXPERIENCE_LEVELS.some(e => e.id === snap.experience) ? snap.experience : null;
-    this.selection.restore(snap.selection || {});
+    this.selection.restore(snap.selection && typeof snap.selection === "object" ? snap.selection : {});
     this.nutrition.restore(snap.nutrition || {});
-    if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;
-    if (snap.sessionMinutes) this.sessionMinutes = snap.sessionMinutes;
-    if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
-    if (SPLITS[snap.split]) this.split = snap.split;
-    this.offDays = new Set(snap.offDays || []);
-    for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
-    if (snap.hadPlan) this.generate();
+    const [lo, hi] = TRAINING_DAYS_RANGE;
+    if (Number.isInteger(snap.sessionsPerWeek) && snap.sessionsPerWeek >= lo && snap.sessionsPerWeek <= hi)
+      this.sessionsPerWeek = snap.sessionsPerWeek;
+    if (SESSION_LENGTH_OPTIONS.includes(snap.sessionMinutes)) this.sessionMinutes = snap.sessionMinutes;
+    if (typeof snap.preferredWindow === "string" && Object.hasOwn(WINDOWS, snap.preferredWindow))
+      this.preferredWindow = snap.preferredWindow;
+    if (typeof snap.split === "string" && Object.hasOwn(SPLITS, snap.split)) this.split = snap.split;
+    this.offDays = new Set(list(snap.offDays).filter(d => DayOfWeek.values.includes(d)));
+    for (const entry of list(snap.busy))
+      if (Array.isArray(entry) && this.slot(entry[0], entry[1])) this.markBusy(entry[0], entry[1]);
+    if (snap.hadPlan === true) this.generate();
   }
 
   slot(day, hour) { return this.slots.get(day + "-" + hour); }
@@ -328,31 +373,26 @@ class WeeklyRoutine {
 
   /* ------------------------------- editing ------------------------------- */
 
+  /* A session is atomic: painting or clearing one of its hours removes the
+     whole session. A meal is left alone either way (TimeSlot.canEat). */
   markBusy(day, hour) {
     const s = this.slot(day, hour); if (!s) return;
-    this.detach(s); s.markBusy();
+    if (s.session) this.removeSession(s.session);
+    s.markBusy();
   }
   clearSlot(day, hour) {
     const s = this.slot(day, hour); if (!s) return;
-    this.detach(s); s.release();
-  }
-  /** A session and a meal are atomic: touching one hour removes the whole thing. */
-  detach(slot) {
-    if (slot.session) this.removeSession(slot.session);
-    if (slot.meal) this.removeMeal(slot.meal);
+    if (s.session) this.removeSession(s.session);
+    s.clear();
   }
   removeSession(session) {
     this.sessions = this.sessions.filter(s => s !== session);
     for (const s of this.allSlots()) if (s.session === session) s.release();
   }
-  removeMeal(meal) {
-    this.plannedMeals = this.plannedMeals.filter(m => m !== meal);
-    for (const s of this.allSlots()) if (s.meal === meal) s.release();
-  }
   clearGenerated() {
     for (const s of this.allSlots())
-      if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
-    this.sessions = []; this.plannedMeals = []; this.leftOut = [];
+      if (s.state === SlotState.WORKOUT) s.release(); else s.dropMeal();
+    this.sessions = []; this.plannedMeals = []; this.leftOut = []; this.plannedFor = new Set(); this.missedMeals = [];
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
@@ -479,9 +519,10 @@ class WeeklyRoutine {
    * that did not fit, or that the user removed, is not fuelled.
    */
   plannedSessions() {
-    const blocks = this.planBlocks().length;
-    const planned = Math.min(this.sessionsPerWeek, this.availableDays().length,
-                             blocks * this.blockUses(blocks));
+    // The days the plan places (weekPlan, what Generate will put on the
+    // calendar): a split's repeats that recovery keeps apart are not counted.
+    const planned = this.selectedMuscles().length
+      ? this.weekPlan(this.experience || DEFAULT_EXPERIENCE).placements.length : 0;
     return this.sessions.length ? Math.min(planned, this.sessions.length) : planned;
   }
 
@@ -522,6 +563,7 @@ class WeeklyRoutine {
     // week is described, rather than leaving its muscles out without a word.
     const withDay = new Set(this.sessions.map(s => s.block));
     this.leftOut = blocks.filter(b => !withDay.has(b));
+    this.plannedFor = new Set(blocks.flatMap(b => b.muscles.map(m => m.id)));
     if (dropped && placed + dropped >= Math.min(requested, this.availableDays().length)) limit = "enough";
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()
@@ -555,9 +597,15 @@ class WeeklyRoutine {
   extraDayFits() {
     const days = Math.max(this.sessionsPerWeek, this.sessions.length) + 1;
     if (days > TRAINING_DAYS_RANGE[1] || this.sessions.length >= this.availableDays().length) return false;
+    // A whole trial week: asked on every redraw of the week, so kept until
+    // the planner's inputs or the sessions change.
+    const key = JSON.stringify(this.planKey(this.experience)) + "|" + this.sessions.length;
+    if (this.extraDayCache && this.extraDayCache.key === key) return this.extraDayCache.fits;
     const trial = new WeeklyRoutine();
     trial.restore({ ...this.snapshot(), sessionsPerWeek: days, hadPlan: false });
-    return trial.generate().placed > this.sessions.length;
+    const fits = trial.generate().placed > this.sessions.length;
+    this.extraDayCache = { key, fits };
+    return fits;
   }
 
   /**
@@ -577,6 +625,8 @@ class WeeklyRoutine {
    *               deadlifts — is not one. Two kinds:
    *     unplanned   no session carries the muscle at all: its block got no
    *                 day (leftOut), or the user removed its session
+   *     removed     a session carries it and was given exercises for it,
+   *                 which the user took out
    *     noTime      a session carries it, but had no time left for it
    *   short       trained, but below the low end of their weekly sets
    *   estimate    estimateTraining() for the same muscles and session length
@@ -596,11 +646,14 @@ class WeeklyRoutine {
       return { muscle: m, sets, times, need: m.weeklySets[0] };
     });
     const untrained = rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle);
+    const carrying = m => this.sessions.filter(s => s.block.muscles.includes(m) && !s.block.riders.has(m));
+    const takenOut = m => carrying(m).some(s => s.workout && s.workout.recommended.some(e => e.muscleId === m.id));
     return {
       rows,
       untrained,
-      unplanned:  untrained.filter(m => !this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
-      noTime:     untrained.filter(m => this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
+      unplanned:  untrained.filter(m => !carrying(m).length),
+      removed:    untrained.filter(m => carrying(m).length && takenOut(m)),
+      noTime:     untrained.filter(m => carrying(m).length && !takenOut(m)),
       short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
       sets: rows.reduce((t, r) => t + r.sets, 0),
       need: rows.reduce((t, r) => t + r.need, 0),
@@ -687,37 +740,65 @@ class WeeklyRoutine {
    * day makes breakfast sit at 7am on the days with no session and 8am on the
    * days where a session covers 7am, and the row ends up ragged for no reason
    * the user can see. A meal is a habit: it belongs on the same line all week.
-   * Days where that hour is genuinely taken simply miss that meal.
+   * Busy hours don't take it (TimeSlot.canEat); a session may, and then that
+   * day eats it near its time (mealPlan).
    */
   placeMeals() {
-    let count = 0;
-    for (const meal of this.nutrition.meals) {
-      const hour = this.bestHourForWeek(meal.hour, 2);
-      if (hour === null) continue;
-      for (const day of DayOfWeek.values) {
-        if (!this.slot(day, hour).isFree()) continue;
-        const planned = new PlannedMeal(this.nextId++, day, hour,
-          meal.name, meal.kcal, meal.protein, meal.focus);
-        this.slot(day, hour).assignMeal(planned);
-        this.plannedMeals.push(planned);
-        count++;
-      }
+    const { placed, missed } = this.mealPlan();
+    for (const { meal, day, hour } of placed) {
+      const planned = new PlannedMeal(this.nextId++, day, hour,
+        meal.name, meal.kcal, meal.protein, meal.focus);
+      this.slot(day, hour).assignMeal(planned);
+      this.plannedMeals.push(planned);
     }
-    return count;
+    this.missedMeals = missed;
+    return placed.length;
+  }
+
+  /**
+   * Where each meal goes on each day, against the hours free now, without
+   * placing anything: { placed: [{ meal, day, hour }], missed: [{ name,
+   * hour, days }] }. A meal is a habit, one hour all week (bestHourForWeek).
+   * Busy hours don't move it: they keep the user from training, not from
+   * eating. A day where a session covers that hour eats it at the nearest
+   * hour within two, still after the day's last meal and before the next
+   * meal's time, rather than losing it; what still finds no hour is listed
+   * in `missed`. `free` says which hours a meal may take. Shape your week
+   * draws its meals from this too, against the sessions it previews.
+   */
+  mealPlan(free = slot => slot.canEat()) {
+    const meals = this.nutrition.meals, placed = [], missed = [];
+    const last = Object.fromEntries(DayOfWeek.values.map(d => [d, -Infinity]));   // each day's latest meal so far
+    const taken = new Set();
+    meals.forEach((meal, i) => {
+      const hour = this.bestHourForWeek(meal.hour, 2, free);
+      const next = i + 1 < meals.length ? meals[i + 1].hour : Infinity;
+      const days = [];
+      for (const day of DayOfWeek.values) {
+        const at = hour === null ? undefined : [0, -1, 1, -2, 2].map(d => hour + d).find(h =>
+          h > last[day] && h < next && !taken.has(day + h) && this.slot(day, h) && free(this.slot(day, h)));
+        if (at === undefined) { days.push(day); continue; }
+        placed.push({ meal, day, hour: at });
+        taken.add(day + at);
+        last[day] = at;
+      }
+      if (days.length) missed.push({ name: meal.name, hour: meal.hour, days });
+    });
+    return { placed, missed };
   }
 
   /**
    * The hour near `target` that is free on the most days. Ties go to the hour
    * closest to the target, and then to the earlier one.
    */
-  bestHourForWeek(target, radius) {
+  bestHourForWeek(target, radius, free = slot => slot.canEat()) {
     let best = null;
     for (let d = 0; d <= radius; d++) {
       for (const h of (d === 0 ? [target] : [target - d, target + d])) {
         if (h < this.firstHour || h > this.lastHour) continue;
-        const free = DayOfWeek.values.filter(day => this.slot(day, h).isFree()).length;
-        if (free === 0) continue;
-        if (!best || free > best.free) best = { hour: h, free };
+        const days = DayOfWeek.values.filter(day => free(this.slot(day, h))).length;
+        if (days === 0) continue;
+        if (!best || days > best.free) best = { hour: h, free: days };
       }
     }
     return best ? best.hour : null;

@@ -23,15 +23,18 @@ function renderer() {
     mount: { clientWidth: 400, clientHeight: 300 }, canvas: {}, reducedMotion: null,
     size: null, cur: null, tween: null, offTween: null, drag: null, off: 0, shotName: "targets-front", view: SCULPTURE_VIEWS[0],
     pickKey: null, resizedAt: -Infinity, pointer: null, focused: null, hovered: null,
-    muscleOf: ["chest"], reads: [], relayouts: [],
+    muscleOf: ["chest"], reads: [], relayouts: [], container: { classList: { toggle() {} } }, groups: [],
     placeHitsSoon() {}, moved() {}, onTurn() {}, unbind() {},
     hover(id) { this.hovered = id; },
     schedule(relayout = false) { this.relayouts.push(relayout); },
     renderIds(s, into) {
       const { cw, ch } = this.size;
-      if (!this.idTarget || this.idTarget.w !== cw || this.idTarget.h !== ch)
+      if (!this.idTarget || this.idTarget.w !== cw || this.idTarget.h !== ch) {
         this.idTarget = { w: cw, h: ch, pixels: {} };
-      this.idTarget.pixels[into] = new Uint8Array(cw * ch * 4).fill(1);
+        this.pickKey = null;
+      }
+      // Region 0 everywhere: red 1 (the id + 1, low byte), green 0 (high byte).
+      this.idTarget.pixels[into] = new Uint8Array(cw * ch * 4).map((_, i) => i % 4 === 0 ? 1 : 0);
       this.reads.push({ into, size: { ...this.size }, camera: s });
       if (into === "live") this.pickKey = this.keyOf(s);
     }
@@ -212,5 +215,54 @@ describe("a stale region buffer selects nothing", () => {
     vi.advanceTimersByTime(QUIET);
     expect(r.muscleAt(100, 100)).toBe("chest");
     expect(r.hovered).toBe("chest");                              // a waiting pointer picks it up
+  });
+});
+
+describe("the live buffer is current only while it really is", () => {
+  test("a buffer rebuilt off Targets at another size is drawn again on the way back", () => {
+    // The phone's band shrinks off Targets and grows back: the views' buffers
+    // are drawn at each size, which rebuilds the target and drops the live one.
+    const r = renderer();
+    r.layout();
+    r.interactive = false;
+    resize(r, 400, 160);
+    r.renderIds(r.shotParams("targets-front"), "front");          // what placing the checkboxes draws
+    vi.advanceTimersByTime(1000);
+    resize(r, 400, 300);
+    r.renderIds(r.shotParams("targets-front"), "front");
+    expect(r.idTarget.pixels.live).toBeUndefined();
+    r.setInteractive(true);
+    expect(r.still()).toBe(true);
+    expect(r.muscleAt(100, 100)).toBe("chest");
+  });
+
+  test("a turn that ends at -180 degrees is the same camera as the shot's 180", () => {
+    const r = renderer();
+    r.layout();
+    r.shotName = "targets-back";
+    r.cur = { ...r.shotParams(), az: -180 };                      // where stepCamera leaves a half turn
+    r.settle();
+    const reads = live(r).length;
+    r.layout();                                                    // takes the shot again, at az 180
+    expect(r.cur.az).toBe(180);
+    expect(r.still()).toBe(true);
+    expect(live(r)).toHaveLength(reads);
+  });
+
+  test("a resize during a move sends the camera to the shot as the new size frames it", () => {
+    const r = renderer();
+    r.mount.clientWidth = 1440; r.mount.clientHeight = 900;
+    r.layout();
+    r.cur = r.shotParams();
+    r.goShot("nutrition");
+    const az = r.tween.to.az;
+    resize(r, 900, 900);
+    const { az: _, ...to } = r.tween.to;
+    const { az: __, ...framed } = r.shotParams("nutrition");
+    expect(to).toEqual(framed);
+    expect(r.tween.to.az).toBe(az);
+    expect(r.moveRemaining()).toBe(r.tween.ms);
+    r.stepCamera(r.tween.ms);
+    expect(r.moveRemaining()).toBe(0);
   });
 });

@@ -113,13 +113,13 @@ Controls carry `data-key`, used to keep focus across redraws.
 ## Known, already tracked
 
 Report these as "known" if you hit them; don't spend time on them:
-- `lab/anatomy-authored.html` doesn't load `js/anatomy-cartography.js`, so
-  its sculpture throws and falls back to SVG.
-- On the Week plan, a "your generated week" link sometimes appears beside
-  Reset. A repro of *when* it appears is welcome.
-- Exercise swaps aren't restored after a reload (`js/storage.js`).
+- A reload regenerates the week from the saved settings, so edits to a
+  generated week (moved or removed sessions, exercise swaps, adds and
+  removals) are not restored (`js/storage.js`).
 - The cartography's look is still being designed. Report bugs in it, not
   taste.
+- Week plan screenshots differ by a few hundred pixels on Metal between
+  three states; only seen on the user's Mac.
 
 ## Reporting
 

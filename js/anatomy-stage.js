@@ -105,6 +105,8 @@ class AnatomyStage {
 
   /** Moves the camera to a named shot (SCULPTURE_SHOTS, or "targets"). */
   setShot(name) { this.state.shot = name; if (this.moves) this.renderer.setShot(name); }
+  /** How long, in ms, the camera's move has left; 0 when still or with no camera. */
+  moveRemaining() { return this.moves && this.renderer.moveRemaining ? this.renderer.moveRemaining() : 0; }
   /** Turns the body to "front" or "back" on Targets. */
   turnTo(view) { if (this.renderer && this.renderer.turnTo) this.renderer.turnTo(view); }
   setInteractive(on) { this.state.interactive = on; if (this.renderer && this.renderer.setInteractive) this.renderer.setInteractive(on); }

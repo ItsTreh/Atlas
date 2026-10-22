@@ -17,8 +17,9 @@
   .lab .lab-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 24px; }
   @media (min-width: 900px) { .lab .lab-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   .lab h2 { font: var(--t-heading); margin: 0 0 10px; color: var(--ink); text-transform: none; letter-spacing: normal; }
-  /* The fragment is wider than tall: a shorter room than the full figure's. */
-  .lab .anatomy-stage { --stage-h: clamp(300px, 44vw, 600px); }
+  /* The app's stage is a layer under the whole screen; here it is a room in
+     the page. The fragment is wider than tall: shorter than the full figure's. */
+  .lab .anatomy-stage { position: relative; height: clamp(300px, 44vw, 600px); z-index: 0; }
   .lab .ids { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; margin: 0; padding: 0; list-style: none; }
   .lab .ids li { padding: 3px 9px; border-radius: 999px; background: var(--raised); color: var(--ink);
                  font-variant-numeric: tabular-nums; }
@@ -51,7 +52,7 @@
       <h2 id="sel-title">Selected ATLAS muscle ids</h2>
       <ul class="ids" id="lab-ids"></ul>
       <p class="pointer" id="lab-pointer"></p>
-      <button type="button" class="act ghost clear" id="lab-clear">Clear selection</button>
+      <button type="button" class="btn ghost clear" id="lab-clear">Clear selection</button>
     </section>
     <section aria-labelledby="map-title">
       <h2 id="map-title">Regions in this model</h2>
@@ -75,6 +76,7 @@
 <script src="../js/anatomy-model-authored.js"></script>
 <script src="../js/anatomy-regions.js"></script>
 <script src="../js/anatomy.js"></script>
+<script src="../js/anatomy-cartography.js"></script>
 <script src="../js/anatomy-sculpture.js"></script>
 <script src="../js/anatomy-stage.js"></script>
 <script>

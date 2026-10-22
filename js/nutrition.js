@@ -178,6 +178,20 @@ const MEAL_FOCUS = {
   snack:     "Protein + fruit or nuts"
 };
 
+/**
+ * Whole parts of `total` in proportion to `shares` (which add up to 1) that
+ * add up to `total` exactly: each part rounded down, then the units left
+ * over to the parts with the largest remainders.
+ */
+function apportion(total, shares) {
+  const exact = shares.map(s => total * s);
+  const parts = exact.map(Math.floor);
+  let left = total - parts.reduce((a, b) => a + b, 0);
+  const order = exact.map((x, i) => [x - parts[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [, i] of order) { if (left <= 0) break; parts[i]++; left--; }
+  return parts;
+}
+
 /** A meal's name from its kind and time of day. */
 function mealName(role, hour) {
   if (role === "snack")
@@ -216,10 +230,17 @@ class NutritionPlan {
   /* Switching unit converts the weight, so 70 kg becomes 154.5 lb, not 70 lb. */
   setUnit(unit) {
     if (unit === this.unit) return;
-    const kg = this.weightKg;
+    const kg = this.weightKg, back = this.unitSwitch;
+    // Switching straight back gives the weight as it was typed, not a
+    // second rounding of the first (80.3 kg -> 177 lb -> 80.3 kg, not 80.5).
+    const typed = back && back.to === this.unit && back.from === unit && back.converted === this.weight ? back.typed : null;
+    const from = this.unit, before = this.weight;
     this.unit = unit;
-    if (this.weight !== null)
-      this.weight = Math.round((unit === "lb" ? kg / KG_PER_LB : kg) * 2) / 2;
+    if (this.weight !== null) {
+      const w = typed ?? Math.round((unit === "lb" ? kg / KG_PER_LB : kg) * 2) / 2;
+      this.weight = Number.isFinite(w) ? w : null;
+    }
+    this.unitSwitch = { from, to: unit, typed: before, converted: this.weight };
   }
 
   /**
@@ -236,12 +257,40 @@ class NutritionPlan {
     };
   }
 
-  /** Restores a snapshot(). Missing fields keep whatever the plan already has. */
+  /**
+   * Restores a snapshot(). Missing fields keep whatever the plan already has,
+   * and so does a value the plan could never have set itself (an id no
+   * longer in GOALS, ACTIVITY_LEVELS or DIETS, a string where a number
+   * belongs): stored data may be old or edited by hand, and one bad field
+   * must not stop the page drawing.
+   */
   restore(snap) {
-    for (const key of ["weight", "unit", "goal", "activity", "burnInput", "adjustInput",
-                        "proteinInput", "mealsPerDay", "firstMeal", "lastMeal", "diet", "showMeals"])
-      if (snap[key] !== undefined) this[key] = snap[key];
-    this.moved = { ...(snap.moved || {}) };
+    if (!snap || typeof snap !== "object") return;
+    const num = v => typeof v === "number" && Number.isFinite(v);
+    const known = (table, id) => typeof id === "string" && Object.hasOwn(table, id);
+    const clamp = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
+    if (snap.unit === "kg" || snap.unit === "lb") this.unit = snap.unit;
+    if (snap.weight === null || num(snap.weight)) this.weight = snap.weight;
+    if (known(GOALS, snap.goal)) this.goal = snap.goal;
+    if (known(ACTIVITY_LEVELS, snap.activity)) this.activity = snap.activity;
+    if (known(DIETS, snap.diet)) this.diet = snap.diet;
+    if (typeof snap.showMeals === "boolean") this.showMeals = snap.showMeals;
+    if (snap.burnInput === null || num(snap.burnInput)) this.burnInput = snap.burnInput && clampBurn(snap.burnInput);
+    if (snap.adjustInput === null || num(snap.adjustInput))
+      this.adjustInput = snap.adjustInput === null ? null : clamp(snap.adjustInput, ADJUST_RANGE);
+    if (snap.proteinInput === null || num(snap.proteinInput))
+      this.proteinInput = snap.proteinInput === null ? null : clamp(snap.proteinInput, PROTEIN_PER_KG_RANGE);
+    if (MEAL_COUNTS.includes(snap.mealsPerDay)) this.mealsPerDay = snap.mealsPerDay;
+    // The window and the moved meals go through the setters, which keep
+    // every meal an hour apart inside the day.
+    this.setWindow(Number.isInteger(snap.firstMeal) ? snap.firstMeal : this.firstMeal,
+                   Number.isInteger(snap.lastMeal) ? snap.lastMeal : this.lastMeal);
+    const moved = snap.moved && typeof snap.moved === "object" ? snap.moved : {};
+    this.moved = Object.fromEntries(Object.entries(moved).filter(([i, hour]) =>
+      /^\d+$/.test(i) && Number(i) < this.mealsPerDay && Number.isInteger(hour)));
+    const h = this.hours;
+    if (h.some((hour, i) => hour < FIRST_HOUR || hour > LAST_HOUR || (i && hour <= h[i - 1])))
+      this.moved = {};
   }
 
   /* ---------------------------- recommendation --------------------------- */
@@ -269,7 +318,11 @@ class NutritionPlan {
   get burn() { return this.burnIsEstimate ? this.estimatedBurn : this.burnInput; }
 
   /** The user's own burn, held to the accepted range. Empty or zero goes back to the estimate. */
-  setBurn(v) { this.burnInput = v ? clampBurn(v) : null; }
+  setBurn(v) {
+    this.burnInput = v ? clampBurn(v) : null;
+    // A number outside the range is held to it; the page says so.
+    this.burnHeld = !!v && (v < BURN_RANGE[0] || v > BURN_RANGE[1]);
+  }
   /** Picking an activity level means using the estimate again. */
   setActivity(activity) { this.activity = activity; this.burnInput = null; }
 
@@ -360,6 +413,11 @@ class NutritionPlan {
     const pattern = MEAL_PATTERNS[this.mealsPerDay] || MEAL_PATTERNS[3];
     const hours = this.hours;
     const used = new Set();
+    // Each meal's share, rounded so the meals still add up to the day
+    // (calories in tens): rounding each on its own could miss by a few.
+    const shares = pattern.map(([, share]) => share);
+    const kcal = apportion(Math.round(this.kcal / 10), shares).map(k => k * 10);
+    const protein = apportion(this.protein, shares);
     return pattern.map(([role, share], i) => {
       const hour = hours[i];
       let name = mealName(role, hour);
@@ -369,8 +427,8 @@ class NutritionPlan {
       return {
         index: i, name, hour, role, kind, share,
         focus:   MEAL_FOCUS[kind],
-        kcal:    Math.round(this.kcal * share / 10) * 10,
-        protein: Math.round(this.protein * share)
+        kcal:    kcal[i],
+        protein: protein[i]
       };
     });
   }

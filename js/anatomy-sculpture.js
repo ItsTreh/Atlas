@@ -115,6 +115,21 @@ const SCULPTURE_RESTORE_MS = 3000;
 // within this time of the last one continues a resize (resizing).
 const SCULPTURE_RESIZE_QUIET_MS = 150;
 
+/* Regions a model may have. A vertex carries its region in two bytes (the
+   low one at offset 10, the high one in what was the spare byte, 13), and
+   the pick buffer in two channels, red then green, +1 so 0 is empty. The
+   data texture is the other bound: one texel per region, and WebGL2
+   guarantees textures 2048 wide. */
+const SCULPTURE_REGION_LIMIT = 65535;
+
+/** The region at byte `o` of a pick buffer read back as RGBA, or -1 for none. */
+const pickedRegion = (pixels, o) => pixels[o] + pixels[o + 1] * 256 - 1;
+
+// How far in from each edge of the canvas the side rails reach on Targets
+// (the page's 48 px padding and a 320 px rail, css/styles.css), plus 4 px
+// of air: the hover label keeps between the body and that line.
+const SCULPTURE_LABEL_CLEAR = 372;
+
 /* Relative strength of the map's contours. The shader leaves only a trace
    of surface tint, so the same material models every state. Program
    previews light muscles (the lit channel) and sessions draw as a hover,
@@ -146,14 +161,15 @@ const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
 const SCULPTURE_DATA_ROWS = {
   state: 0,        // tone, focus edge, form, selected (regionStates); every frame
   map: 1,          // selected, pointed at, lit (shown), then the family tint; every frame
-  center: 2,       // flow field centre, then its scale (buildAnatomyFlowFrames)
-  axis: 3,         // flow field axis, then its length
-  ink: 4,          // the family's hue (sRGB), then the region's guide slot (buildAnatomyFlowGuides)
-  guideOrigin: 5,  // per guide from here on, not per region
-  guideAcross: 6,
-  guideAlong: 7
+  reveal: 2,       // how far a lit region's lines have drawn in, eased (litReveal); every frame
+  center: 3,       // flow field centre, then its scale (buildAnatomyFlowFrames)
+  axis: 4,         // flow field axis, then its length
+  ink: 5,          // the family's hue (sRGB), then the region's guide slot (buildAnatomyFlowGuides)
+  guideOrigin: 6,  // per guide from here on, not per region
+  guideAcross: 7,
+  guideAlong: 8
 };
-const SCULPTURE_DATA_FRAME_ROWS = 2;
+const SCULPTURE_DATA_FRAME_ROWS = 3;
 
 /** The rows as GLSL defines: ROW_STATE, ROW_MAP, … ROW_GUIDE_ALONG. */
 function sculptureDataDefines() {
@@ -215,7 +231,7 @@ class AnatomySculpture {
     this.mapPresence = 0;
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
-    this.litReveal = 1;                      // 0 … 1 as newly lit muscles draw in
+    this.litReveal = null;                   // per region, 0 … 1 as a newly lit muscle draws in
     this.previewFamily = null;               // a tinted family while its summary row is pointed at
     this.tintShown = null;                   // per region, 0 … 1 toward its family's hue
     this.flowTime = 0;
@@ -328,9 +344,13 @@ class AnatomySculpture {
     this.reach = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
 
     // Shape frames use area-weighted samples, retained across context recovery.
-    this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
-    this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, this.mapSamples);
-    this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, this.mapSamples);
+    // The samples only shape the frames and guides, which a restored context
+    // keeps; they are not held after (14,000 samples, about 0.7 MB).
+    if (!this.flowFrames || !this.flowGuides) {
+      const samples = buildAnatomyCartography(m, bytes);
+      this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, samples);
+      this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, samples);
+    }
     // The regions' and guides' data, one texel each per row (SCULPTURE_DATA_ROWS).
     const rows = Object.keys(SCULPTURE_DATA_ROWS).length;
     const width = Math.max(1, m.regions.length, this.flowGuides.origins.length / 4);
@@ -340,7 +360,7 @@ class AnatomySculpture {
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, width, rows);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);   // complete without mipmaps
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    const defs = "#define SEAM_MAX " + m.seamMax.toFixed(3) + "\n" + sculptureDataDefines();
+    const defs = "#define SEAM_MAX " + m.seamMax.toFixed(3) + "\n" + sculptureDataDefines() + flowGuideDefines();
     this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
     this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     gl.bindVertexArray(null);
@@ -497,8 +517,11 @@ class AnatomySculpture {
     if (!W || !H) return;                          // hidden: lay out when shown again
     const resizing = this.resizing(W, H);
     this.size = { cw: W, ch: H };
-    // A side shot depends on the canvas's proportions: re-take it as they change.
+    // A side shot depends on the canvas's proportions: re-take it as they
+    // change. A move under way keeps going, to the shot as this size frames
+    // it (its angle stays the way round the move already took).
     if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
+    else if (this.tween) this.tween.to = { ...this.shotParams(this.shotName), az: this.tween.to.az };
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);
@@ -558,6 +581,7 @@ class AnatomySculpture {
     name = this.resolve(name);
     if (name === this.shotName && !this.offTween && !this.off) return;
     this.goShot(name);
+    if (this.hitsDue && name.startsWith("targets")) this.placeHitsSoon();
   }
 
   /**
@@ -679,8 +703,14 @@ class AnatomySculpture {
     this.moved();
     this.onTurn(this.view.id, Math.abs(this.off) > 0.05);
     if (!this.ready || !this.size || !this.interactive) return;   // nothing to pick off Targets
-    this.renderIds(this.live(), "live");
+    if (!this.still()) this.renderIds(this.live(), "live");      // back where the buffer was drawn: still current
     if (this.pointer && !this.focused) this.hover(this.muscleAt(...this.pointer));
+  }
+
+  /** How long, in ms, until the camera stops: what is left of the move and of a turn. */
+  moveRemaining() {
+    const left = tw => tw ? Math.max(0, tw.ms - tw.t) : 0;
+    return Math.max(left(this.tween), left(this.offTween));
   }
 
   /** True while nothing moves the camera. */
@@ -689,7 +719,15 @@ class AnatomySculpture {
   /** True while the region buffer matches what is drawn, so the pointer can use it. */
   still() { return this.calm() && this.pickKey === this.keyOf(this.live()); }
 
-  keyOf(s) { return s ? [s.az, s.el, s.ty, s.d, s.sx, s.sy, s.fov].map(v => v.toFixed(3)).join() + "@" + (this.size ? this.size.cw + "x" + this.size.ch : "") : ""; }
+  /* The camera that drew a region buffer, and the canvas size. The angle is
+     taken round to −180…180, so a turn that ends at −180° (stepCamera) and
+     the shot's own 180° are one camera, not a second read of the buffer. */
+  keyOf(s) {
+    if (!s) return "";
+    const az = ((s.az % 360) + 540) % 360 - 180;
+    return [az, s.el, s.ty, s.d, s.sx, s.sy, s.fov].map(v => v.toFixed(3)).join() + "@" +
+      (this.size ? this.size.cw + "x" + this.size.ch : "");
+  }
 
   /**
    * How far a drag `offset` degrees off the view turns the body: as far as
@@ -772,7 +810,6 @@ class AnatomySculpture {
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
     gl.uniform1f(u.uMapInfluence, this.mapInfluence);
-    gl.uniform1f(u.uLitReveal, 1 - Math.pow(1 - this.litReveal, 3));
     gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
     gl.uniform1f(u.uDetailed, this.detailMode ? 1 : 0);
     gl.uniform1f(u.uFlowTime, this.flowTime);
@@ -796,7 +833,7 @@ class AnatomySculpture {
     const halfWidth = (bounds.max[0] - bounds.min[0]) * k * 0.5;
     // Only use the space between the sculpture and rails; small screens keep
     // the existing caption instead of putting a floating panel over the body.
-    const width = Math.min(174, (cw - 720) * 0.5 - halfWidth - 24);
+    const width = Math.min(174, cw * 0.5 - SCULPTURE_LABEL_CLEAR - halfWidth - 24);
     const show = muscle && this.interactive && this.calm() && !this.previewing &&
       !this.mobile && width >= 124 && (this.pointer || this.focused);
     root.classList.toggle("visible", !!show);
@@ -807,9 +844,19 @@ class AnatomySculpture {
       if (!hit) { root.classList.remove("visible"); return; }
       anchor = [parseFloat(hit.style.left), parseFloat(hit.style.top)];
     }
-    const center = shot.sx * cw, left = anchor[0] < center;
+    // The side is chosen when a muscle is first pointed at and kept while the
+    // pointer stays on it: crossing the midline of the abs doesn't fling the
+    // label to the other side of the body.
+    const center = shot.sx * cw;
+    if (!this.labelSide || this.labelSide.id !== muscle.id) this.labelSide = { id: muscle.id, left: anchor[0] < center };
+    const left = this.labelSide.left;
     const x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
     const y = Math.max(100, Math.min(ch - 170, anchor[1] - 18));
+    // Drawn with every frame while the traces flow: write only what changed.
+    const drawn = [muscle.id, this.hoveredRegion, this.detailMode, this.selection.has(muscle.id),
+      width, x, y, anchor[0], anchor[1]].join();
+    if (drawn === this.annotationDrawn) return;
+    this.annotationDrawn = drawn;
     const label = root.querySelector(".cartography-label");
     label.style.width = width + "px";
     label.style.transform = "translate(" + x + "px," + y + "px)";
@@ -843,6 +890,7 @@ class AnatomySculpture {
     writeSculptureData(t, w, R.state, this.regionStates(this.view.id), 4);
     writeSculptureData(t, w, R.map, this.shown || this.targets(), 3);
     writeSculptureData(t, w, R.map, this.tintShown || this.tintTargets(), 1, 3);
+    writeSculptureData(t, w, R.reveal, this.revealShown(), 1);
     if (!d.fresh) {
       writeSculptureData(t, w, R.center, this.flowFrames.centers, 4);
       writeSculptureData(t, w, R.axis, this.flowFrames.axes, 4);
@@ -940,8 +988,11 @@ class AnatomySculpture {
     this.mapPresence = follow(this.mapPresence, onBody ? 1 : 0, 130, 0.005);
     const responding = onBody && this.pointer && !this.focused && !this.previewing && !instant;
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
+    // The traces lean toward the pointer only while it responds; otherwise
+    // the point just follows it, without frames of its own.
     if (this.pointer) for (let i = 0; i < 2; i++)
-      this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
+      this.mapPointer[i] = responding || this.mapInfluence > 0
+        ? follow(this.mapPointer[i], this.pointer[i], 45, 0.1) : this.pointer[i];
     if (this.tintTargets) {                // the hue comes and goes with the hover
       const tint = this.tintTargets();
       if (!this.tintShown) this.tintShown = Float32Array.from(tint);
@@ -949,9 +1000,10 @@ class AnatomySculpture {
         this.tintShown[r] = follow(this.tintShown[r], tint[r],
           tint[r] > this.tintShown[r] ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut, 0.005);
     }
-    if (this.litReveal < 1) {
-      this.litReveal = instant ? 1 : Math.min(1, this.litReveal + dt / SCULPTURE_EASE.reveal);
-      if (this.litReveal < 1) moving = true;
+    if (this.litReveal) for (let r = 0; r < this.litReveal.length; r++) {
+      if (this.litReveal[r] >= 1) continue;
+      this.litReveal[r] = instant ? 1 : Math.min(1, this.litReveal[r] + dt / SCULPTURE_EASE.reveal);
+      if (this.litReveal[r] < 1) moving = true;
     }
     for (let i = 0; i < shown.length; i++) {
       const to = target[i], from = shown[i];
@@ -1041,6 +1093,7 @@ class AnatomySculpture {
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, color);
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
       this.idTarget = { fb, color, depth, w: cw, h: ch, pixels: {} };
+      this.pickKey = null;                 // the live buffer went with the old target
     }
     const t = this.idTarget;
     if (!t.pixels[into]) t.pixels[into] = new Uint8Array(cw * ch * 4);
@@ -1071,7 +1124,7 @@ class AnatomySculpture {
     if (!pixels || (from === "live" && !this.still())) return -1;
     const xi = Math.floor(x), yi = Math.floor(y);
     if (xi < 0 || yi < 0 || xi >= t.w || yi >= t.h) return -1;
-    return pixels[((t.h - 1 - yi) * t.w + xi) * 4] - 1;
+    return pickedRegion(pixels, ((t.h - 1 - yi) * t.w + xi) * 4);
   }
 
   muscleAt(x, y, from = "live") {
@@ -1099,13 +1152,27 @@ class AnatomySculpture {
 
   /* ------------------------------ checkboxes ------------------------------ */
 
-  /** Places the checkboxes once a resize settles; it draws and searches both views. */
+  /**
+   * Places the checkboxes once a resize settles; it draws and searches both
+   * views. Off Targets they are inert, so a resize there (the phone's band
+   * changes height with every stage) only marks them due, for when the
+   * camera comes back to Targets (setShot). A size they were placed for
+   * already keeps them.
+   */
   placeHitsSoon() {
     clearTimeout(this.hitTimer);
+    if (this.hits.size && !this.shotName.startsWith("targets")) { this.hitsDue = true; return; }
+    this.hitsDue = false;
     this.hitTimer = setTimeout(() => {
       if (!this.ready || !this.size) return;
+      const key = this.size.cw + "x" + this.size.ch + (this.mobile ? ":mobile" : "");
+      if (this.hits.size && key === this.hitsKey) return;
       SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams("targets-" + view.id), view.id));
       this.placeHits();
+      this.hitsKey = key;
+      // Only placing reads the two views' buffers: no need to hold them.
+      delete this.idTarget.pixels.front;
+      delete this.idTarget.pixels.back;
     }, this.hits.size ? SCULPTURE_RESIZE_QUIET_MS : 0);
   }
 
@@ -1124,7 +1191,7 @@ class AnatomySculpture {
       const pixels = t.pixels[view.id], st = new Map();
       for (let yi = 0; yi < t.h; yi++)
         for (let xi = 0; xi < t.w; xi++) {
-          const r = pixels[((t.h - 1 - yi) * t.w + xi) * 4] - 1;
+          const r = pickedRegion(pixels, ((t.h - 1 - yi) * t.w + xi) * 4);
           const id = r >= 0 ? this.muscleOf[r] : null;
           if (!id) continue;
           let s = st.get(id);
@@ -1252,10 +1319,15 @@ class AnatomySculpture {
           return;
         }
       }
-      const id = this.muscleAt(...this.pointer);
+      const region = this.regionAt(...this.pointer), id = region < 0 ? null : this.muscleOf[region];
       this.canvas.style.cursor = id ? "pointer" : "grab";
       if (this.still()) this.hover(id);
-      this.schedule();                     // density follows motion within a muscle too
+      // Density follows motion within a muscle too. Over the empty canvas
+      // nothing on screen follows the pointer, once the map has eased away;
+      // the map's point still follows it, so it is where the pointer is when
+      // the pointer comes onto the body (not where frames last left it).
+      if (region >= 0 || this.mapPresence > 0 || this.mapInfluence > 0) this.schedule();
+      else this.mapPointer.splice(0, 2, ...this.pointer);
     });
     const release = e => {
       const d = this.drag;
@@ -1286,7 +1358,7 @@ class AnatomySculpture {
       const hit = e.target.closest && e.target.closest(".hit");
       if (!hit || !this.interactive) return;
       e.preventDefault();
-      this.selection.toggle(hit.dataset.muscle);
+      if (!e.repeat) this.selection.toggle(hit.dataset.muscle);   // a held key toggles once
     });
     // Keyboard focus only: a tap would otherwise leave a muscle stuck lit.
     // A muscle on the other side turns the body round to it, and one on
@@ -1347,10 +1419,27 @@ class AnatomySculpture {
     const tinted = next && SCULPTURE_TINTED.includes(family) ? family : null;
     // pointerover repeats within one row
     if (sameMuscleSet(next, this.previewing) && tinted === this.previewFamily) return;
+    // A newly lit muscle draws in; one the last program lit too stays drawn,
+    // so stepping between programs doesn't blank the muscles they share.
+    const wasLit = this.previewFamily ? null : this.previewing;
     this.previewing = next;
     this.previewFamily = tinted;
-    if (next && !tinted) this.litReveal = 0;
+    if (next && !tinted) {
+      const reveal = this.litReveal || new Float32Array(this.muscleOf.length).fill(1);
+      for (let r = 0; r < reveal.length; r++) {
+        const id = this.muscleOf[r];
+        if (!(id && wasLit && wasLit.has(id) && next.has(id))) reveal[r] = 0;
+      }
+      this.litReveal = reveal;
+    }
     this.schedule();
+  }
+
+  /** Each region's draw-in, eased (in fast, settling), for the reveal row; 1 when nothing is drawing in. */
+  revealShown() {
+    const n = this.muscleOf.length, out = new Float32Array(n).fill(1);
+    if (this.litReveal) for (let r = 0; r < n; r++) out[r] = 1 - Math.pow(1 - this.litReveal[r], 3);
+    return out;
   }
 
   /** Redraws from the selection. */
@@ -1396,7 +1485,7 @@ vec3 octDecode(vec2 e) {
 void main() {
   vec3 surface = uMin + aPos * uExt;
   gl_Position = uMatrix * vec4(surface, 1.0);
-  int index = int(aAttr.x + 0.5);
+  int index = int(aAttr.x + aAttr.w * 256.0 + 0.5);   // region: low byte, then high (SCULPTURE_REGION_LIMIT)
   vSurface = vec3(surface.x - uMin.x - uExt.x * 0.5, surface.y, surface.z);
   vec4 map = texelFetch(uData, ivec2(index, ROW_MAP), 0);
   vMapState = map.xyz;
@@ -1410,7 +1499,7 @@ void main() {
   vAlbedo = toLinear(region.z > 0.5 ? uForm : mix(uMuscle, uSelected, tone * 0.07));
   vSelected = region.z > 0.5 ? 0.0 : region.w * 0.08;
   vFocus = region.y;
-  vRegionId = aAttr.x;
+  vRegionId = float(index);
 }`;
 
 /* Light that carves: a raking key from the upper left whose edge between
@@ -1439,7 +1528,7 @@ uniform float uTraceVivid;              // 1 where tinted lines need help to kee
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
 uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
 uniform vec2 uMapPointer, uMapSize;
-uniform float uMapPointerActive, uMapInfluence, uLitReveal, uPointedRegion, uDetailed, uFlowTime, uDpr;
+uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
 out vec4 outColor;
@@ -1451,6 +1540,8 @@ vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 vec4 data(int index, int row) { return texelFetch(uData, ivec2(index, row), 0); }
+/* Whether a guide's stored kind is k (a KIND_* define): whole numbers in a float. */
+bool isKind(float w, float k) { return abs(w - k) < 0.5; }
 
 void main() {
   vec3 n = normalize(vNormal);
@@ -1523,17 +1614,18 @@ void main() {
     float roundWidth = uExt.y * 0.004;
     float folded = sqrt(lateral * lateral + roundWidth * roundWidth);
     float sweep;
-    if (origin.w < 1.5) {
+    // origin.w is the guide's kind (FLOW_GUIDE_KINDS, given as KIND_* defines).
+    if (isKind(origin.w, KIND_PELVIS)) {
       sweep = (vertical - 0.65 * folded - 0.25 * relief) / across.w;
-    } else if (origin.w < 2.5) {
+    } else if (isKind(origin.w, KIND_TRAPEZIUS)) {
       sweep = (folded - 0.32 * vertical) / across.w;
-    } else if (origin.w > 4.5 && origin.w < 5.5) {
+    } else if (isKind(origin.w, KIND_SPINE)) {
       // Open, rounded sweeps across the posed spine. The vertical term stays
       // monotonic: no angular pole or mirrored seam inside the lower back.
       float bendWidth = uExt.y * 0.018;
       float bowl = sqrt(lateral * lateral + bendWidth * bendWidth) - bendWidth;
       sweep = (vertical - 1.15 * bowl - 0.2 * relief) / across.w;
-    } else if (origin.w > 5.5) {
+    } else if (isKind(origin.w, KIND_LAT)) {
       // Each lat bows along its own posed axis, with bounded curvature and
       // no wrap around an origin that could turn the traces back on themselves.
       float t = vertical / lengthwise.w;
@@ -1543,7 +1635,7 @@ void main() {
       sweep = (lateral + 0.15 * relief) / across.w;
     }
     // Keep the broad upper-trap curves; straighten their narrow lower tail.
-    float blend = origin.w > 1.5 && origin.w < 2.5 ?
+    float blend = isKind(origin.w, KIND_TRAPEZIUS) ?
       1.0 - smoothstep(-0.5, 0.15, vertical / lengthwise.w) : 1.0;
     field = mix(field, sweep, blend);
     along = mix(along, vertical / lengthwise.w, blend);
@@ -1580,10 +1672,11 @@ void main() {
   float visible = (1.0 - smoothstep(0.2, 0.5, footprint)) * inset * facing;
   // Lit muscles (a program or session pointed at) draw their lines in along
   // their length once, a slightly darker head leading, then rest fully drawn.
-  float front = mix(-1.5, 2.5, uLitReveal);
+  float reveal = data(region, ROW_REVEAL).x;   // this region's own draw-in
+  float front = mix(-1.5, 2.5, reveal);
   float drawn = 1.0 - smoothstep(front - 0.3, front, along);
   float ahead = (along - front) / 0.22;
-  float head = exp(-ahead * ahead) * (1.0 - uLitReveal);
+  float head = exp(-ahead * ahead) * (1.0 - reveal);
   float etched = trace * visible * min(0.8,
     selected * mix(0.07, 0.26, dark) +
     lit * (drawn * mix(0.24, 0.5, dark) + head * 0.3) +
@@ -1611,13 +1704,16 @@ void main() {
                (1.0 - smoothstep(0.5, 0.8, vSeam)) * vFocus;
   c = mix(c, toLinear(uInk), ring);
   outColor = vec4(toSrgb(c), 1.0);
-}`;
+}
+`;
 
-/* The picking pass: each pixel's region (+1, so 0 is empty). */
+/* The picking pass: each pixel's region, +1 so 0 is empty, in 16 bits:
+   the low byte in red, the high in green (pickedRegion reads it back). */
 const SCULPTURE_PICK = `
 precision highp float;
 flat in float vRegionId;
 out vec4 outColor;
 void main() {
-  outColor = vec4((vRegionId + 1.0) / 255.0, 0.0, 0.0, 1.0);
+  float id = vRegionId + 1.0;
+  outColor = vec4(mod(id, 256.0) / 255.0, floor(id / 256.0) / 255.0, 0.0, 1.0);
 }`;

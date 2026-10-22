@@ -34,6 +34,7 @@ const t0 = Date.now();
 const log = msg => console.log(((Date.now() - t0) / 1000).toFixed(1).padStart(5) + "s  " + msg);
 
 const regions = sculpture();
+if (regions.length > 65535) throw new Error(regions.length + " regions: a vertex holds 65,535 at most (two bytes)");
 const field = new Field(regions, { seamK: 1.0, reach: 2.5, cell: 3, cuts: CUTS });
 const farField = new Field(regions, { seamK: 1.0, reach: 12, cell: 6, cuts: CUTS });
 log(regions.length + " regions, " + field.prims.length + " primitives");
@@ -110,7 +111,8 @@ for (let v = 0; v < vertexCount; v++) {
   const [ox, oy] = octEncode(n);
   view.setInt16(o + 6, Math.round(ox * 32767), true);
   view.setInt16(o + 8, Math.round(oy * 32767), true);
-  view.setUint8(o + 10, split.regions[s]);
+  view.setUint8(o + 10, split.regions[s] & 255);          // region, low byte
+  view.setUint8(o + 13, split.regions[s] >> 8);           // region, high byte (zero below 256 regions)
   view.setUint8(o + 11, Math.round(Math.min(1, Math.max(0, occlusion(p, n))) * 255));
   view.setUint8(o + 12, Math.round(Math.min(1, seam[s] / SEAM_CAP) * 255));
 }
@@ -136,10 +138,10 @@ const js = `/* =================================================================
    (${wide ? "uint32" : "uint16"}). Each vertex is ${VERTEX_BYTES} bytes:
      0  position   3 × uint16, scaled from bounds.min to bounds.max
      6  normal     2 × int16, octahedral
-    10  region     uint8, an index into \`regions\`
+    10  region     uint8, an index into \`regions\`: its low byte
     11  occlusion  uint8, 0 (fully occluded) … 255 (open)
     12  seam       uint8, distance to the nearest region boundary, 255 = seamMax cm
-    13  (spare)
+    13  region     uint8, the index's high byte (0 below 256 regions)
    Every triangle's three vertices share one region.
    ========================================================================= */
 

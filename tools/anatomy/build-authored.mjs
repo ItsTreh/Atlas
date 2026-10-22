@@ -98,6 +98,7 @@ const matrices = worldMatrices(json);
 
 const P = [], Nrm = [], R = [], S = [], idx = [], morphNames = [], morphs = [];
 const sourceIndex = new Map(manifest.regions.map((r, i) => [r.id, i]));   // per vertex: its manifest region
+if (emitted.length > 65535) fail(emitted.length + " regions: a vertex holds 65,535 at most (two bytes)");
 const regionTris = new Array(emitted.length).fill(0), present = new Set();
 (json.nodes || []).forEach((node, ni) => {
   if (node.mesh === undefined) return;
@@ -364,7 +365,8 @@ for (let v = 0; v < unique; v++) {
   const [ox, oy] = octEncode(normals[v * 3], normals[v * 3 + 1], normals[v * 3 + 2]);
   view.setInt16(o + 6, Math.round(ox * 32767), true);
   view.setInt16(o + 8, Math.round(oy * 32767), true);
-  view.setUint8(o + 10, regions[v]);
+  view.setUint8(o + 10, regions[v] & 255);          // region, low byte
+  view.setUint8(o + 13, regions[v] >> 8);           // region, high byte (zero below 256 regions)
   view.setUint8(o + 11, Math.round(Math.min(1, Math.max(0, occlusion[v])) * 255));
   view.setUint8(o + 12, Math.round(Math.min(1, seam[v] / SEAM_CAP) * 255));
 }
@@ -416,8 +418,9 @@ const js = `/* =================================================================
 
    The same shape as ANATOMY_MODEL (js/anatomy-model.js): \`data\` is the
    vertex buffer then the index buffer (${wide ? "uint32" : "uint16"}), 14 bytes a vertex —
-   position 3×uint16 over bounds, normal 2×int16 octahedral, region uint8,
-   occlusion uint8, seam uint8, spare. Every triangle lies in one region.
+   position 3×uint16 over bounds, normal 2×int16 octahedral, region's low
+   byte, occlusion uint8, seam uint8, region's high byte (0 below 256
+   regions). Every triangle lies in one region.
    \`kinds\` is "muscle" for regions ANATOMY_REGIONS lists, "form" otherwise;
    \`structures\` says what each is (muscle, bone, tendon, cut). Also:
      landmarks      points bound to a triangle by barycentric weights, so
