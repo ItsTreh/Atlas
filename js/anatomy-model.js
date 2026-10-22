@@ -10,10 +10,10 @@
    (uint16). Each vertex is 14 bytes:
      0  position   3 × uint16, scaled from bounds.min to bounds.max
      6  normal     2 × int16, octahedral
-    10  region     uint8, an index into `regions`
+    10  region     uint8, an index into `regions`: its low byte
     11  occlusion  uint8, 0 (fully occluded) … 255 (open)
     12  seam       uint8, distance to the nearest region boundary, 255 = seamMax cm
-    13  (spare)
+    13  region     uint8, the index's high byte (0 below 256 regions)
    Every triangle's three vertices share one region.
    ========================================================================= */
 

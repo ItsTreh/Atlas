@@ -10,8 +10,9 @@
 
    The same shape as ANATOMY_MODEL (js/anatomy-model.js): `data` is the
    vertex buffer then the index buffer (uint32), 14 bytes a vertex —
-   position 3×uint16 over bounds, normal 2×int16 octahedral, region uint8,
-   occlusion uint8, seam uint8, spare. Every triangle lies in one region.
+   position 3×uint16 over bounds, normal 2×int16 octahedral, region's low
+   byte, occlusion uint8, seam uint8, region's high byte (0 below 256
+   regions). Every triangle lies in one region.
    `kinds` is "muscle" for regions ANATOMY_REGIONS lists, "form" otherwise;
    `structures` says what each is (muscle, bone, tendon, cut). Also:
      landmarks      points bound to a triangle by barycentric weights, so

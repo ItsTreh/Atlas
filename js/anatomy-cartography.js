@@ -19,7 +19,7 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
   const index = i => wide ? view.getUint32(indexStart + i * 4, true) : view.getUint16(indexStart + i * 2, true);
   const positions = new Float32Array(model.vertexCount * 3);
   const normals = new Float32Array(model.vertexCount * 3);
-  const region = i => view.getUint8(i * stride + 10);
+  const region = i => view.getUint8(i * stride + 10) + view.getUint8(i * stride + 13) * 256;   // low byte, high byte
   for (let i = 0; i < model.vertexCount; i++) {
     for (let k = 0; k < 3; k++) positions[i * 3 + k] = model.bounds.min[k] +
       view.getUint16(i * stride + k * 2, true) / 65535 * (model.bounds.max[k] - model.bounds.min[k]);

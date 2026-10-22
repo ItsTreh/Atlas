@@ -115,6 +115,16 @@ const SCULPTURE_RESTORE_MS = 3000;
 // within this time of the last one continues a resize (resizing).
 const SCULPTURE_RESIZE_QUIET_MS = 150;
 
+/* Regions a model may have. A vertex carries its region in two bytes (the
+   low one at offset 10, the high one in what was the spare byte, 13), and
+   the pick buffer in two channels, red then green, +1 so 0 is empty. The
+   data texture is the other bound: one texel per region, and WebGL2
+   guarantees textures 2048 wide. */
+const SCULPTURE_REGION_LIMIT = 65535;
+
+/** The region at byte `o` of a pick buffer read back as RGBA, or -1 for none. */
+const pickedRegion = (pixels, o) => pixels[o] + pixels[o + 1] * 256 - 1;
+
 // How far in from each edge of the canvas the side rails reach on Targets
 // (the page's 48 px padding and a 320 px rail, css/styles.css), plus 4 px
 // of air: the hover label keeps between the body and that line.
@@ -1107,7 +1117,7 @@ class AnatomySculpture {
     if (!pixels || (from === "live" && !this.still())) return -1;
     const xi = Math.floor(x), yi = Math.floor(y);
     if (xi < 0 || yi < 0 || xi >= t.w || yi >= t.h) return -1;
-    return pixels[((t.h - 1 - yi) * t.w + xi) * 4] - 1;
+    return pickedRegion(pixels, ((t.h - 1 - yi) * t.w + xi) * 4);
   }
 
   muscleAt(x, y, from = "live") {
@@ -1174,7 +1184,7 @@ class AnatomySculpture {
       const pixels = t.pixels[view.id], st = new Map();
       for (let yi = 0; yi < t.h; yi++)
         for (let xi = 0; xi < t.w; xi++) {
-          const r = pixels[((t.h - 1 - yi) * t.w + xi) * 4] - 1;
+          const r = pickedRegion(pixels, ((t.h - 1 - yi) * t.w + xi) * 4);
           const id = r >= 0 ? this.muscleOf[r] : null;
           if (!id) continue;
           let s = st.get(id);
@@ -1448,7 +1458,7 @@ vec3 octDecode(vec2 e) {
 void main() {
   vec3 surface = uMin + aPos * uExt;
   gl_Position = uMatrix * vec4(surface, 1.0);
-  int index = int(aAttr.x + 0.5);
+  int index = int(aAttr.x + aAttr.w * 256.0 + 0.5);   // region: low byte, then high (SCULPTURE_REGION_LIMIT)
   vSurface = vec3(surface.x - uMin.x - uExt.x * 0.5, surface.y, surface.z);
   vec4 map = texelFetch(uData, ivec2(index, ROW_MAP), 0);
   vMapState = map.xyz;
@@ -1462,7 +1472,7 @@ void main() {
   vAlbedo = toLinear(region.z > 0.5 ? uForm : mix(uMuscle, uSelected, tone * 0.07));
   vSelected = region.z > 0.5 ? 0.0 : region.w * 0.08;
   vFocus = region.y;
-  vRegionId = aAttr.x;
+  vRegionId = float(index);
 }`;
 
 /* Light that carves: a raking key from the upper left whose edge between
@@ -1669,11 +1679,13 @@ void main() {
 }
 `;
 
-/* The picking pass: each pixel's region (+1, so 0 is empty). */
+/* The picking pass: each pixel's region, +1 so 0 is empty, in 16 bits:
+   the low byte in red, the high in green (pickedRegion reads it back). */
 const SCULPTURE_PICK = `
 precision highp float;
 flat in float vRegionId;
 out vec4 outColor;
 void main() {
-  outColor = vec4((vRegionId + 1.0) / 255.0, 0.0, 0.0, 1.0);
+  float id = vRegionId + 1.0;
+  outColor = vec4(mod(id, 256.0) / 255.0, floor(id / 256.0) / 255.0, 0.0, 1.0);
 }`;

@@ -33,7 +33,8 @@ function renderer() {
         this.idTarget = { w: cw, h: ch, pixels: {} };
         this.pickKey = null;
       }
-      this.idTarget.pixels[into] = new Uint8Array(cw * ch * 4).fill(1);
+      // Region 0 everywhere: red 1 (the id + 1, low byte), green 0 (high byte).
+      this.idTarget.pixels[into] = new Uint8Array(cw * ch * 4).map((_, i) => i % 4 === 0 ? 1 : 0);
       this.reads.push({ into, size: { ...this.size }, camera: s });
       if (into === "live") this.pickKey = this.keyOf(s);
     }
