@@ -1,9 +1,8 @@
 /* The Male_Body sculpture's anatomy: the regions painted on
-   assets/anatomy/Male_Body.blend (tools/anatomy/authored/male_body_regions.py),
-   and, for the muscles not authored yet, regions borrowed from the procedural
-   figure at export (tools/anatomy/authored/male_body.py), as the manifest names them, carried through the GLB into the model the app
-   draws by default. The drawing itself is checked in
-   a browser. */
+   assets/anatomy/Male_Body.blend and read at export
+   (tools/anatomy/authored/male_body.py), as the manifest names them, carried
+   through the GLB into the model the app draws by default. The drawing itself
+   is checked in a browser. */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -17,9 +16,7 @@ const app = loadApp({ extra: ["js/anatomy-model-male-body.js"],
                       exports: ["ANATOMY_MODEL_MALE_BODY", "validateAnatomyModel"] });
 const MODEL = app.ANATOMY_MODEL_MALE_BODY, REGIONS = app.ANATOMY_REGIONS;
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "assets/anatomy/male-body.manifest.json"), "utf8"));
-const authored = manifest.regions.filter(r => r.structure !== "form");     // muscles, painted or borrowed
-const borrowed = authored.filter(r => r.source === "borrowed");
-const painted = authored.filter(r => r.source !== "borrowed");
+const painted = manifest.regions.filter(r => r.structure !== "form");     // every muscle region is painted
 // Muscles painted on the sculpture but deliberately not selectable yet: they
 // map to no app muscle until a zoomed anatomy view shows them on their own
 // (docs/anatomy-levels.md). Only these may map to nothing.
@@ -32,7 +29,7 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 // the adductor magnus and the gracilis, on the inner thigh where the thighs
 // nearly meet (about 1 cm left of x = 0, so the right adductor longus and
 // adductor magnus centre near x = -1 and the gracilis, the innermost, at x = -2
-// and +1), and any borrowed region may hug it.
+// and +1).
 // So may the rhomboids: the sculpture's spine runs about 4 cm right of x = 0 at
 // shoulder-blade height, so the left one, ~5 cm from the spine like the right,
 // lies only ~1 cm left of x = 0.
@@ -42,7 +39,7 @@ const ONE_SIDED = new Map([["coracobrachialis", "left"]]);
 const ZERO_MARGIN = new Set(["adductor-longus", "adductor-magnus", "gracilis", "rhomboid-major", "soleus", "soleus-lower"]);
 // The quadriceps on Male_Body: its surface muscles (the vastus intermedius lies underneath).
 const QUADRICEPS = ["rectus-femoris", "vastus-medialis", "vastus-lateralis"];
-const margin = r => r.source === "borrowed" || ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
+const margin = r => ZERO_MARGIN.has(r.atlasRegion) ? 0 : 3;
 const glbBytes = fs.readFileSync(path.join(ROOT, manifest.glb));
 
 const bytes = Buffer.from(MODEL.data, "base64");
@@ -76,11 +73,11 @@ function glbRegions() {
 }
 const PRIMS = glbRegions();
 
-describe("the manifest's authored regions", () => {
+describe("the manifest's painted regions", () => {
   test("name each region once, with a structure and, for a muscle, its side in its id", () => {
     const ids = manifest.regions.map(r => r.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const r of authored) {
+    for (const r of painted) {
       expect(r.structure, r.id).toBe("muscle");
       expect(["left", "right", "midline"], r.id).toContain(r.side);
       const suffix = r.id.match(/\.(L|R)$/)?.[1];
@@ -89,7 +86,7 @@ describe("the manifest's authored regions", () => {
   });
 
   test("each names an ATLAS region that reaches one of the app's muscles", () => {
-    for (const r of authored) {
+    for (const r of painted) {
       expect(REGIONS, r.id).toHaveProperty(r.atlasRegion);
       if (HIDDEN.has(r.atlasRegion)) expect(REGIONS[r.atlasRegion], r.id).toBe(null);
       else expect(app.MUSCLE_BY_ID.has(REGIONS[r.atlasRegion]), r.id + " → " + REGIONS[r.atlasRegion]).toBe(true);
@@ -105,14 +102,7 @@ describe("the manifest's authored regions", () => {
     }
   });
 
-  test("a borrowed region stands in only for an anatomical region nobody painted", () => {
-    // Per ATLAS region, not per app muscle: a group such as the forearm is painted one muscle at
-    // a time, its other muscles borrowed until their turn.
-    const paintedRegions = new Set(painted.map(r => r.atlasRegion));
-    for (const r of borrowed) expect(paintedRegions.has(r.atlasRegion), r.id).toBe(false);
-  });
-
-  test("everything not authored is one unselectable body", () => {
+  test("everything unpainted is one unselectable body", () => {
     const forms = manifest.regions.filter(r => r.structure === "form");
     expect(forms.map(r => r.id)).toEqual(["body"]);
     expect(forms[0].atlasRegion).toBe(null);
@@ -125,7 +115,7 @@ describe("the exported sculpture", () => {
   });
 
   test("keeps each side's region on that side of the figure (+x is its left)", () => {
-    for (const r of authored.filter(r => r.side !== "midline")) {
+    for (const r of painted.filter(r => r.side !== "midline")) {
       const x = PRIMS.find(p => p.material === r.id).centroid[0];
       if (r.side === "left") expect(x, r.id).toBeGreaterThan(margin(r));
       else expect(x, r.id).toBeLessThan(-margin(r));
@@ -133,7 +123,7 @@ describe("the exported sculpture", () => {
   });
 
   test("the midline region straddles the midline", () => {
-    for (const r of authored.filter(r => r.side === "midline"))
+    for (const r of painted.filter(r => r.side === "midline"))
       expect(Math.abs(PRIMS.find(p => p.material === r.id).centroid[0]), r.id).toBeLessThan(3);
   });
 });
@@ -183,8 +173,8 @@ describe("the model the app draws", () => {
     MODEL.regions.forEach((name, r) => expect(count[r], name).toBeGreaterThanOrEqual(manifest.minTriangles));
   });
 
-  test("places each region's anchors on its authored sides", () => {
-    for (const r of authored) {
+  test("places each region's anchors on its painted sides", () => {
+    for (const r of painted) {
       const anchors = MODEL.regionAnchors[r.atlasRegion];
       if (r.side === "midline") expect(Math.abs(anchors.centre.centroid[0]), r.id).toBeLessThan(3);
       else if (r.side === "left") expect(anchors.left.centroid[0], r.id).toBeGreaterThan(margin(r));
@@ -192,7 +182,7 @@ describe("the model the app draws", () => {
     }
   });
 
-  test("selects every one of the app's muscles: painted, or borrowed until it is painted", () => {
+  test("selects every one of the app's muscles, all painted", () => {
     const reached = new Set(MODEL.regions.map(n => REGIONS[n]).filter(Boolean));
     expect([...reached].sort()).toEqual(app.MUSCLES.map(m => m.id).sort());
     const byPaint = new Set(painted.filter(r => !HIDDEN.has(r.atlasRegion)).map(r => REGIONS[r.atlasRegion]));
@@ -260,7 +250,7 @@ describe("the model the app draws", () => {
     }
   });
 
-  test("the hands select nothing (the borrowed map gave them to the quads)", () => {
+  test("the hands select nothing", () => {
     const body = MODEL.regions.indexOf("body");
     let hand = 0;
     for (let v = 0; v < MODEL.vertexCount; v++) {

@@ -1,7 +1,7 @@
 {
   "asset": "male-body",
   "version": 1,
-  "description": "The Male_Body sculpture (assets/anatomy/Male_Body.blend), the candidate anatomical base, at full resolution, as refined by tools/anatomy/authored/refine_male_body.py. Most of its regions are authored on the sculpture itself (tools/anatomy/authored/male_body_regions.py) and follow the forms this mesh shows. The muscles not authored yet are borrowed from the procedural figure by nearest surface (tools/anatomy/authored/male_body.py; \"source\": \"borrowed\"): provisional stand-ins whose borders do not follow this sculpture, each replaced when that muscle is authored.",
+  "description": "The Male_Body sculpture (assets/anatomy/Male_Body.blend), the app's anatomical base, at full resolution. Every region is painted by hand (Male_Body.paint.png, keyed by Male_Body.paint.json) and read at export by tools/anatomy/authored/male_body.py; everything unpainted is the body.",
   "source": "assets/anatomy/Male_Body.blend",
   "importer": "tools/anatomy/authored/male_body.py",
   "glb": "assets/anatomy/male-body.glb",
@@ -15,11 +15,11 @@
   "mirror": {
     "axis": "none",
     "authored": "the whole figure (contrapposto, not symmetric)",
-    "regions": "each side is its own region (.L the figure's left, .R its right); a midline region has one; a borrowed region may have one side only (the procedural figure's pose puts the teres major on the sculpture's left only)",
+    "regions": "each side is its own region (.L the figure's left, .R its right); a midline region has one",
     "landmarks": "none yet"
   },
-  "regionSource": "hybrid",
-  "representation": "One material per region on Mesh_0; the material's name is the region id below. Faces still on the sculpture's own material (atlas-stone) are the body, exported as \"body\" by tools/anatomy/authored/male_body.py. Borrowed regions are not in the .blend: male_body.py labels them at export, on faces no authored region claims.",
+  "regionSource": "painted",
+  "representation": "One region per painted colour (Male_Body.paint.json), read from the paint image at export by tools/anatomy/authored/male_body.py; the id below is the region's. Faces no paint names are exported as \"body\".",
   "minTriangles": 100,
   "targetTriangles": 0,
   "simplifyError": 0.0004,
@@ -29,7 +29,7 @@
       "id": "body",
       "structure": "form",
       "atlasRegion": null,
-      "note": "everything not authored: bone, tendon, hands, feet, the neck's break, and the muscles this pass leaves unmapped"
+      "note": "everything unpainted: bone, tendon, hands, feet, the neck's break"
     },
     {
       "id": "pectoralis-major.R",

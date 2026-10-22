@@ -31,7 +31,7 @@ Shrink every failure to the fewest steps before reporting it. Say how often it r
 - Edit a workout (replace, remove all, add), then regenerate, then Reset.
 
 **Environment:**
-- Resize across 760, 1180 and 1240 px mid-transition. Phone portrait to landscape. Very small (320×480) and very large (2560×1440) viewports.
+- Resize across 760, 1000 (portrait), 1180 and 1240 px mid-transition. Phone portrait to landscape. Very small (320×480) and very large (2560×1440) viewports.
 - `localStorage`: corrupt JSON in `atlas.routine.v1`, a valid shape with wrong types, unknown muscle ids, an old snapshot, storage throwing (stub `setItem` to throw quota errors), and two tabs writing at once.
 - WebGL: `--disable-webgl` (SVG fallback), and losing the context mid-use (`WEBGL_lose_context`), both restored within `SCULPTURE_RESTORE_MS` and not. Selection must survive the switch to the fallback.
 - `?anatomy=procedural`, and the Male_Body script failing to load (block `anatomy-model-male-body.js` with `page.route`).

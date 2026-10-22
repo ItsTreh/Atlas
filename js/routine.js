@@ -254,12 +254,6 @@ class WeeklyRoutine {
     };
   }
 
-  /** Weekly hard-set target per selected muscle id, after fitting the time, or null until experience is known. */
-  weeklyTargets() {
-    const fit = this.weekFit();
-    return fit && fit.targets;
-  }
-
   /**
    * A plain object describing every setting the user chose, safe to store:
    * the muscle selection, the nutrition inputs, the schedule preferences,
