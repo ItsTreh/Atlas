@@ -220,24 +220,29 @@ function buildAnatomyFlowGuides(model, samples) {
   };
   const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
   const groups = [
-    { names: ['gluteus-maximus'], start: 0, kind: 1, spacing: 0.016, paired: false },
-    { names: ['trapezius'], start: 1, kind: 2, spacing: 0.014, paired: false },
-    { names: ['infraspinatus', 'teres-major', 'rhomboid-major'], start: 2, kind: 3, spacing: 0.014, paired: true },
+    { names: ['gluteus-maximus'], kind: 1, spacing: 0.016, paired: false },
+    { names: ['trapezius'], kind: 2, spacing: 0.014, paired: false },
+    { names: ['infraspinatus', 'teres-major', 'rhomboid-major'], kind: 3, spacing: 0.014, paired: true },
     { names: ['brachioradialis', 'extensor-carpi-radialis-longus', 'extensor-carpi-radialis-brevis',
       'pronator-teres', 'flexor-carpi-radialis', 'palmaris-longus', 'flexor-digitorum-superficialis',
       'flexor-carpi-ulnaris', 'extensor-carpi-ulnaris', 'extensor-digiti-minimi', 'extensor-digitorum',
       'abductor-pollicis-longus', 'extensor-pollicis-brevis', 'anconeus', 'forearm-flexors', 'forearm-extensors'],
-      start: 4, kind: 4, spacing: 0.01, paired: true },
+      kind: 4, spacing: 0.01, paired: true },
     { names: ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius'],
-      start: 6, kind: 4, spacing: 0.013, paired: true },
+      kind: 4, spacing: 0.013, paired: true },
     { names: ['adductors', 'gracilis', 'pectineus', 'adductor-longus'],
-      start: 8, kind: 4, spacing: 0.014, paired: true },
+      kind: 4, spacing: 0.014, paired: true },
     { names: ['biceps-femoris', 'semitendinosus', 'semimembranosus', 'adductor-magnus'],
-      start: 10, kind: 4, spacing: 0.014, paired: true },
-    { names: ['erector-spinae'], start: 12, kind: 5, spacing: 0.016, central: true },
-    { names: ['latissimus-dorsi'], start: 13, kind: 6, spacing: 0.016, paired: true, torsoSweep: true }
+      kind: 4, spacing: 0.014, paired: true },
+    { names: ['erector-spinae'], kind: 5, spacing: 0.016, central: true },
+    { names: ['latissimus-dorsi'], kind: 6, spacing: 0.016, paired: true, torsoSweep: true }
   ];
-  const count = Math.max(...groups.map(g => g.start + (g.paired ? 2 : 1)));
+  // Slots follow the list: a paired group takes two, one for each side.
+  let count = 0;
+  for (const group of groups) {
+    group.start = count;
+    count += group.paired ? 2 : 1;
+  }
   const origins = new Float32Array(count * 4), across = new Float32Array(count * 4), along = new Float32Array(count * 4);
   const put = (index, group, origin, transverse, direction, patch) => {
     const variance = patch.reduce((sum, p) => sum + dot(p.map((x,k) => x - origin[k]), direction) ** 2, 0) / Math.max(1, patch.length);
