@@ -49,6 +49,10 @@ Keep the recommendation logic separate from the UI.
 
 Do not modify the anatomy visualization unless necessary for integration.
 
+## In a sweep
+
+**Read `docs/agents.md` first** for the lanes, the browser setup, the page map, file ownership and the report format. Check the rules below against the running code: write `tests/load-app.js` scripts (in your scratch directory, not `tests/`) that run the logic over many inputs (every program, 1–7 days, every session length, busy patterns, goals, diets), and check the result in the browser as well. A rule that holds in the logic but shows wrongly on the page is a finding too. The views were redesigned in PRs #72–#74, so facts below about which view shows what may be stale; the code wins.
+
 ## How the training system is built
 
 These were true when this agent was created. Verify them in the code before relying on them — the code wins.
