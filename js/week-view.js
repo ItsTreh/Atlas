@@ -297,7 +297,12 @@ function shapeHTML() {
         'title="' + esc(m.name) + ' · ' + hourLabel(hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
         (colW >= 128 ? (m.role === "snack" ? "Snack" : esc(m.name)) : "") + '</span>').join("") : "";
     const cells = Array.from({ length: rows }, (_, k) =>
-      '<div class="paint" data-day="' + d + '" data-hour="' + (H0 + k) + '" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
+      // One hour to paint. The keyboard reaches the grid through one cell
+      // at a time (paint.js): arrows move, Space or Enter toggles busy.
+      '<div class="paint" role="button" data-day="' + d + '" data-hour="' + (H0 + k) + '" data-key="paint-' + d + '-' + (H0 + k) + '" ' +
+        'tabindex="' + (paintCellKey() === "paint-" + d + "-" + (H0 + k) ? 0 : -1) + '" ' +
+        'aria-pressed="' + (routine.slot(d, H0 + k).state === SlotState.BUSY) + '" ' +
+        'aria-label="' + DAY_NAME[d] + ' ' + hourLabel(H0 + k) + ', busy" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
     return '<div class="cal-col' + restCls + '" data-day="' + d + '" aria-label="' + DAY_NAME[d] + (busyRuns(d).length ? ", busy " +
         busyRuns(d).map(([a, b]) => hourRange(a, b)).join(", ") : ", free") + '">' + head +
       '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + bandEl +
@@ -357,10 +362,17 @@ function shapeHTML() {
 }
 
 /** A day's busy hours as blocks, labelled where there is room. */
+/** The paint cell the keyboard enters the grid at: the last one it was on, else the first free day's first hour. */
+function paintCellKey() {
+  const day = wk.paintDay && !routine.offDays.has(wk.paintDay) ? wk.paintDay
+    : DayOfWeek.values.find(d => !routine.offDays.has(d));
+  return "paint-" + day + "-" + (wk.paintHour ?? WEEK_HOURS[0]);
+}
+
 function busyHTML(day, rh, [H0, H1]) {
   return busyRuns(day, [H0, H1]).map(([a, b]) =>
     '<div class="busy" style="top:' + px((a - H0) * rh + 3) + ';height:' + px((b - a) * rh - 6) + '">' +
-      (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '') +
+      (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '<span class="visually-hidden">Busy</span>') +
       ((b - a) * rh >= 30 ? '<span class="busy-time">' + hourRange(a, b) + '</span>' : '') + '</div>').join("");
 }
 

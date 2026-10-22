@@ -318,7 +318,8 @@ function focusHTML() {
     const names = ms.map(m => {
       const p = selection.priority(m.id);
       return '<span class="fam-m" data-level="' + p + '">' + esc(m.name) +
-        (PRIORITY_MARK[p] ? '<span class="mark" aria-hidden="true">' + PRIORITY_MARK[p] + '</span>' : '') + '</span>';
+        (PRIORITY_MARK[p] ? '<span class="mark" aria-hidden="true">' + PRIORITY_MARK[p] + '</span>' +
+          '<span class="visually-hidden">, ' + p + '</span>' : '') + '</span>';
     }).join("");
     const rows = ms.map(m => {
       const now = selection.priority(m.id);

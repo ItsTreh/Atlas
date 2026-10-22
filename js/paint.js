@@ -128,3 +128,31 @@ weekEl.addEventListener("click", e => {
   beginStroke(cell);
   endStroke();
 });
+
+/* The keyboard: the arrows move between hours and days (one cell takes Tab,
+   the one last on), Space or Enter marks the hour busy or frees it, as a
+   click does. */
+weekEl.addEventListener("keydown", e => {
+  const cell = cellOf(e.target);
+  if (!cell) return;
+  if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    if (e.repeat) return;
+    beginStroke(cell);
+    endStroke();
+    return;
+  }
+  const step = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const days = DayOfWeek.values.filter(d => !routine.offDays.has(d));
+  const day = days[days.indexOf(cell.dataset.day) + step[0]] || cell.dataset.day;
+  const next = weekEl.querySelector('.paint[data-day="' + day + '"][data-hour="' + (Number(cell.dataset.hour) + step[1]) + '"]');
+  if (!next) return;
+  cell.tabIndex = -1; next.tabIndex = 0;
+  next.focus();
+});
+weekEl.addEventListener("focusin", e => {
+  const cell = cellOf(e.target);
+  if (cell) { wk.paintDay = cell.dataset.day; wk.paintHour = Number(cell.dataset.hour); }
+});

@@ -35,6 +35,21 @@ function announce(text) {
   requestAnimationFrame(() => { el.textContent = text; });
 }
 
+/* In any radio group, the arrow keys move to the next or previous choice
+   and choose it, as the ARIA radio pattern expects. */
+document.addEventListener("keydown", e => {
+  const radio = e.target.closest && e.target.closest('[role="radio"]');
+  const group = radio && radio.closest('[role="radiogroup"]');
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!group || !step) return;
+  const radios = [...group.querySelectorAll('[role="radio"]:not(:disabled)')];
+  const to = radios[(radios.indexOf(radio) + step + radios.length) % radios.length];
+  if (!to || to === radio) return;
+  e.preventDefault();
+  to.focus();
+  to.click();
+});
+
 function hourLabel(h) {
   h = h % 24;                   // a session ending at midnight ends at 12am
   const s = h < 12 ? "am" : "pm";

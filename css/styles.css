@@ -255,6 +255,9 @@ h1:focus-visible { outline: none; }
 /* Only the footer's controls catch the pointer: its columns are wide and
    sit over the figure's own controls. */
 .stage-foot button { pointer-events: auto; }
+/* The footer's quiet links can sit over the figure (Nutrition's hand): a
+   halo of the ground keeps them legible on it. */
+.stage-foot .quiet-btn { text-shadow: 0 0 3px var(--bg), 0 0 8px var(--bg), 0 0 14px var(--bg); }
 .foot-start { grid-column: 1; display: flex; align-items: center; }
 .foot-dots { grid-column: 2; }
 .foot-end { grid-column: 3; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
@@ -996,6 +999,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 .shape-cal .meal-pill { z-index: 3; }
 .paint { position: absolute; left: 0; right: 0; z-index: 4; cursor: cell; }
 .paint:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.paint:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; border-radius: 3px; }
 
 .session {
   position: absolute; left: 6px; right: 6px; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;

@@ -95,7 +95,10 @@ const Stages = {
       this.call("arrive");
       this.call("enter");
       this.toTop();
-    }, STAGE_TIMING.settle, () => this.landed());
+    }, STAGE_TIMING.settle, () => {
+      this.landed();
+      announce(STAGE_NAMES[this.current] + ", step " + (STAGE_ORDER.indexOf(this.current) + 1) + " of " + STAGE_ORDER.length);
+    });
   },
 
   /**
