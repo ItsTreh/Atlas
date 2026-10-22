@@ -471,26 +471,64 @@ describe("found in the 2026-10-22 sweep", () => {
     for (const d of days) for (let h = from; h < to; h++) routine.markBusy(d, h);
   };
 
-  test("a meal whose usual hour is busy on a day moves to a free hour near it that day", () => {
+  // Busy hours keep the user from training, not from eating (the user's
+  // call, 2026-10-22): a working day still has its lunch. These two tests
+  // replace ones that moved a meal off a busy hour or named it as missed.
+  test("a meal keeps its usual hour on a busy day, and the hour stays busy", () => {
     const routine = new app.WeeklyRoutine();
     routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
-    busyDays(routine, 9, 14);                         // lunch's 2pm is free, 12-1 is not
-    routine.nutrition.setWindow(8, 18);               // breakfast 8, lunch 13, dinner 18
+    busyDays(routine, 9, 17);                         // "Weekdays 9-5"
     routine.generate();
-    for (const d of app.DayOfWeek.values)
-      expect(routine.plannedMeals.filter(m => m.day === d)).toHaveLength(routine.nutrition.mealsPerDay);
-    for (const m of routine.plannedMeals) expect(routine.slot(m.day, m.hour).state).toBe(SlotState.MEAL);
+    const lunch = routine.nutrition.meals.find(m => m.name === "Lunch");
+    expect(lunch.hour).toBeGreaterThanOrEqual(9);
+    expect(lunch.hour).toBeLessThan(17);              // inside the busy hours
+    for (const d of app.DayOfWeek.values) {
+      const meals = routine.plannedMeals.filter(m => m.day === d);
+      expect(meals).toHaveLength(routine.nutrition.mealsPerDay);
+      expect(meals.find(m => m.name === "Lunch").hour).toBe(lunch.hour);
+    }
+    for (const d of ["MON", "TUE", "WED", "THU", "FRI"]) {
+      const slot = routine.slot(d, lunch.hour);
+      expect(slot.state).toBe(SlotState.BUSY);
+      expect(slot.meal.name).toBe("Lunch");
+    }
     expect(routine.missedMeals).toEqual([]);
   });
 
-  test("a meal no hour near its time is free for is named, not dropped silently", () => {
+  test("painting busy over a meal, or clearing it again, leaves the meal", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 2 });
+    const meal = routine.plannedMeals.find(m => !routine.sessions.some(s => s.day === m.day));
+    routine.markBusy(meal.day, meal.hour);
+    expect(routine.plannedMeals).toContain(meal);
+    expect(routine.slot(meal.day, meal.hour).state).toBe(SlotState.BUSY);
+    expect(routine.slot(meal.day, meal.hour).meal).toBe(meal);
+    routine.clearSlot(meal.day, meal.hour);
+    expect(routine.slot(meal.day, meal.hour).state).toBe(SlotState.MEAL);
+    expect(routine.slot(meal.day, meal.hour).meal).toBe(meal);
+    routine.markBusy(meal.day, meal.hour);
+    routine.generate();                               // a meal on a busy hour is not kept twice
+    expect(routine.plannedMeals.filter(m => m.day === meal.day && m.hour === meal.hour)).toHaveLength(1);
+    expect(routine.slot(meal.day, meal.hour).state).toBe(SlotState.BUSY);
+  });
+
+  test("a session over a meal's hour moves that day's meal to the nearest hour", () => {
     const routine = new app.WeeklyRoutine();
     routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
-    busyDays(routine, 9, 17);                         // "Weekdays 9-5": lunch at 2pm has nowhere to go
+    routine.sessionMinutes = 90;                      // two hours on the grid
+    const lunch = routine.nutrition.meals.find(m => m.name === "Lunch").hour;
+    // Only lunch's hour and the one before are free for training.
+    busyDays(routine, app.FIRST_HOUR, lunch - 1, app.DayOfWeek.values);
+    busyDays(routine, lunch + 1, app.LAST_HOUR + 1, app.DayOfWeek.values);
     routine.generate();
-    const lunch = routine.missedMeals.find(m => m.name === "Lunch");
-    expect(lunch.days).toEqual(["MON", "TUE", "WED", "THU", "FRI"]);
-    expect(routine.plannedMeals.filter(m => m.day === "SAT")).toHaveLength(routine.nutrition.mealsPerDay);
+    const days = routine.sessions.filter(s => s.startHour <= lunch && lunch < s.endHour()).map(s => s.day);
+    expect(days.length).toBeGreaterThan(0);
+    const taken = new Set(sessionHours(routine));
+    for (const d of days) {
+      const meal = routine.plannedMeals.find(m => m.day === d && m.name === "Lunch");
+      expect(taken.has(d + "-" + meal.hour)).toBe(false);
+      expect(Math.abs(meal.hour - lunch)).toBeLessThanOrEqual(2);
+    }
+    expect(routine.missedMeals).toEqual([]);
   });
 
   test("meals on one day keep their order", () => {

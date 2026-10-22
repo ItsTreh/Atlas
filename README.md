@@ -28,7 +28,7 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 ### 03 · Week plan — fit it into your life
 - **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days, how the week is split and how long you have trained. Notes say what fits and what won't (an estimate).
 - **Shape your week.** A full-width calendar: drag down a day to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and whether meals go on the calendar.
-- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts and busy hours. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet.
+- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts; busy hours block training, not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet.
 
 Every calorie, protein and progress figure is labelled an **estimate**, shows how it was worked out, and never promises a physique by a date.
 

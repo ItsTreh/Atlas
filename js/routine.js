@@ -373,30 +373,25 @@ class WeeklyRoutine {
 
   /* ------------------------------- editing ------------------------------- */
 
+  /* A session is atomic: painting or clearing one of its hours removes the
+     whole session. A meal is left alone either way (TimeSlot.canEat). */
   markBusy(day, hour) {
     const s = this.slot(day, hour); if (!s) return;
-    this.detach(s); s.markBusy();
+    if (s.session) this.removeSession(s.session);
+    s.markBusy();
   }
   clearSlot(day, hour) {
     const s = this.slot(day, hour); if (!s) return;
-    this.detach(s); s.release();
-  }
-  /** A session and a meal are atomic: touching one hour removes the whole thing. */
-  detach(slot) {
-    if (slot.session) this.removeSession(slot.session);
-    if (slot.meal) this.removeMeal(slot.meal);
+    if (s.session) this.removeSession(s.session);
+    s.clear();
   }
   removeSession(session) {
     this.sessions = this.sessions.filter(s => s !== session);
     for (const s of this.allSlots()) if (s.session === session) s.release();
   }
-  removeMeal(meal) {
-    this.plannedMeals = this.plannedMeals.filter(m => m !== meal);
-    for (const s of this.allSlots()) if (s.meal === meal) s.release();
-  }
   clearGenerated() {
     for (const s of this.allSlots())
-      if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
+      if (s.state === SlotState.WORKOUT) s.release(); else s.dropMeal();
     this.sessions = []; this.plannedMeals = []; this.leftOut = []; this.plannedFor = new Set(); this.missedMeals = [];
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
@@ -745,7 +740,8 @@ class WeeklyRoutine {
    * day makes breakfast sit at 7am on the days with no session and 8am on the
    * days where a session covers 7am, and the row ends up ragged for no reason
    * the user can see. A meal is a habit: it belongs on the same line all week.
-   * Days where that hour is genuinely taken simply miss that meal.
+   * Busy hours don't take it (TimeSlot.canEat); a session may, and then that
+   * day eats it near its time (mealPlan).
    */
   placeMeals() {
     const { placed, missed } = this.mealPlan();
@@ -763,13 +759,14 @@ class WeeklyRoutine {
    * Where each meal goes on each day, against the hours free now, without
    * placing anything: { placed: [{ meal, day, hour }], missed: [{ name,
    * hour, days }] }. A meal is a habit, one hour all week (bestHourForWeek).
-   * A day where that hour is taken (busy, a session) eats it at the nearest
-   * free hour within two, still after the day's last meal and before the
-   * next meal's time, rather than losing it; what still finds no hour is
-   * listed in `missed`. `free` says which hours a meal may take. Shape your
-   * week draws its meals from this too, against the busy hours alone.
+   * Busy hours don't move it: they keep the user from training, not from
+   * eating. A day where a session covers that hour eats it at the nearest
+   * hour within two, still after the day's last meal and before the next
+   * meal's time, rather than losing it; what still finds no hour is listed
+   * in `missed`. `free` says which hours a meal may take. Shape your week
+   * draws its meals from this too, against the sessions it previews.
    */
-  mealPlan(free = slot => slot.isFree()) {
+  mealPlan(free = slot => slot.canEat()) {
     const meals = this.nutrition.meals, placed = [], missed = [];
     const last = Object.fromEntries(DayOfWeek.values.map(d => [d, -Infinity]));   // each day's latest meal so far
     const taken = new Set();
@@ -794,7 +791,7 @@ class WeeklyRoutine {
    * The hour near `target` that is free on the most days. Ties go to the hour
    * closest to the target, and then to the earlier one.
    */
-  bestHourForWeek(target, radius, free = slot => slot.isFree()) {
+  bestHourForWeek(target, radius, free = slot => slot.canEat()) {
     let best = null;
     for (let d = 0; d <= radius; d++) {
       for (const h of (d === 0 ? [target] : [target - d, target + d])) {

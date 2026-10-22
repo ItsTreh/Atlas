@@ -122,10 +122,20 @@ class TimeSlot {
     this.state = SlotState.FREE; this.session = null; this.meal = null;
   }
   isFree() { return this.state === SlotState.FREE; }
-  markBusy() { this.session = null; this.meal = null; this.state = SlotState.BUSY; }
+  /* Busy hours keep the user from training, not from eating: a busy hour
+     can hold a meal and stays busy, and painting busy or clearing it leaves
+     the meal where it is. Only a session takes an hour from a meal. */
+  canEat()   { return !this.session && !this.meal; }
+  markBusy() { this.session = null; this.state = SlotState.BUSY; }
+  /** Frees the hour from busy paint or a session; a meal on it stays. */
+  clear()    { this.session = null; this.state = this.meal ? SlotState.MEAL : SlotState.FREE; }
   release()  { this.session = null; this.meal = null; this.state = SlotState.FREE; }
+  dropMeal() { this.meal = null; if (this.state === SlotState.MEAL) this.state = SlotState.FREE; }
   assignTo(session) { this.meal = null; this.session = session; this.state = SlotState.WORKOUT; }
-  assignMeal(meal)  { this.session = null; this.meal = meal; this.state = SlotState.MEAL; }
+  assignMeal(meal)  {
+    this.session = null; this.meal = meal;
+    if (this.state !== SlotState.BUSY) this.state = SlotState.MEAL;
+  }
 }
 
 class WorkoutSession {

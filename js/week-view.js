@@ -258,7 +258,12 @@ function shapeHTML() {
   const pv = weekPreview(), [H0, H1] = WEEK_HOURS, rows = H1 - H0;
   const rh = rowHeight(rows, 470, 18, 30);
   const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
-  const mealPlan = mealsOn ? routine.mealPlan(slot => slot.state !== SlotState.BUSY) : { placed: [] };
+  // Meals as Generate will place them: busy hours keep them, the previewed
+  // sessions move them.
+  const mealPlan = mealsOn ? routine.mealPlan(slot => {
+    const p = pv.byDay.get(slot.day);
+    return !p || slot.hour < p.start || slot.hour >= p.end;
+  }) : { placed: [] };
   const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
   const colW = (planEl.clientWidth - 96 - 44 - 36) / 7;
   const note = fitNote(pv.fit);
@@ -291,7 +296,7 @@ function shapeHTML() {
         '<span class="plan-ghost-name">' + esc(blockName(p.block)) + '</span><span class="plan-ghost-time">' + hourRange(p.start, p.end) + '</span></div>';
     })() : "";
     // Each meal where Generate will put it this day (mealPlan): its usual
-    // hour, or the nearest free one; none in a busy block.
+    // hour, over a busy block too, or the nearest one a session leaves.
     const meals = mealsOn ? mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(({ meal: m, hour }) =>
       '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((hour - H0) * rh + rh / 2) + '" ' +
         'title="' + esc(m.name) + ' · ' + hourLabel(hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
