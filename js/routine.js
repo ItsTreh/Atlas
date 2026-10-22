@@ -83,6 +83,7 @@ class WeeklyRoutine {
     }));
     this.sessions = [];
     this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
+    this.plannedFor = new Set(); // ids of the muscles the last generated week was planned for
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
@@ -128,13 +129,19 @@ class WeeklyRoutine {
    * experience assumed) and blocks are the ones Generate places.
    */
   weekPlan(experience) {
-    const key = JSON.stringify([experience, this.split, this.sessionsPerWeek, this.sessionMinutes,
-      this.preferredWindow, [...this.offDays].sort(), this.selection.snapshot(),
-      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour),
-      this.nutrition.showMeals && this.nutrition.isValid() ? this.nutrition.mealHours : []]);
+    const key = JSON.stringify(this.planKey(experience));
     if (!this.planCache || this.planCache.key !== key)
       this.planCache = { key, plan: this.computeWeekPlan(experience) };
     return this.planCache.plan;
+  }
+
+  /** Everything weekPlan() reads, as a list; the busy hours come second to last. */
+  planKey(experience) {
+    const sel = this.selection.snapshot();
+    return [experience, this.split, this.sessionsPerWeek, this.sessionMinutes,
+      this.preferredWindow, [...this.offDays].sort(), sel.muscleIds, sel.priorities,
+      this.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + s.hour),
+      this.nutrition.showMeals && this.nutrition.isValid() ? this.nutrition.mealHours : []];
   }
 
   computeWeekPlan(experience) {
@@ -275,6 +282,29 @@ class WeeklyRoutine {
     };
   }
 
+  /**
+   * What a generated week is planned from: the planner's own inputs
+   * (weekPlan's key) without the busy hours, since painting over a session
+   * edits the week rather than asking for another. When it changes, the week
+   * on screen no longer answers what was asked. The meals the calendar shows
+   * are mealsKey().
+   */
+  inputsKey() {
+    const key = this.planKey(this.experience);
+    key.splice(-2, 1);
+    return JSON.stringify(key);
+  }
+
+  /**
+   * The meals as the calendar shows them: time, calories and protein. These
+   * also follow the week itself (a removed session is a day less to fuel),
+   * so after an edit they can change while inputsKey() does not.
+   */
+  mealsKey() {
+    const n = this.nutrition;
+    return n.showMeals && n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "";
+  }
+
   /** Restores a snapshot(): every input, then the week it had, regenerated. */
   /*
    * Only values the controls could have set are taken; anything else keeps
@@ -363,7 +393,7 @@ class WeeklyRoutine {
   clearGenerated() {
     for (const s of this.allSlots())
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
-    this.sessions = []; this.plannedMeals = []; this.leftOut = [];
+    this.sessions = []; this.plannedMeals = []; this.leftOut = []; this.plannedFor = new Set();
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
@@ -533,6 +563,7 @@ class WeeklyRoutine {
     // week is described, rather than leaving its muscles out without a word.
     const withDay = new Set(this.sessions.map(s => s.block));
     this.leftOut = blocks.filter(b => !withDay.has(b));
+    this.plannedFor = new Set(blocks.flatMap(b => b.muscles.map(m => m.id)));
     if (dropped && placed + dropped >= Math.min(requested, this.availableDays().length)) limit = "enough";
 
     const meals = this.nutrition.showMeals && this.nutrition.isValid()

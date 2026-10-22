@@ -104,6 +104,9 @@ const windowWord = () => routine.preferredWindow === "any" ? "Any time of day"
  */
 function fitNote(fit) {
   if (!fit || !routine.selection.size) return null;
+  if (!routine.availableDays().length)
+    return { warn: true, text: "There is no day left to train: every day is marked off or fully busy. " +
+      "Turn a day back on or clear some hours." };
   const h = min => (Math.round(min / 6) / 10) + " h";
   const names = fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
   const fixes = [];
@@ -398,7 +401,7 @@ function genHTML() {
     n.isValid() ? "≈ " + n.kcal.toLocaleString("en-US") + " kcal · " + n.protein + " g protein a day" : ""
   ].filter(Boolean);
   const gaps = weekGaps();
-  const stale = weekIsStale();
+  const stale = weekIsStale(), outdated = !stale && mealsOutdated();
   const status = wk.status;
   const detail = routine.sessions.find(s => s.id === wk.sel);
   const focus = routine.sessions.find(s => s.id === (wk.hover || wk.sel));
@@ -413,13 +416,14 @@ function genHTML() {
           '<p class="gen-facts">' + facts.map(esc).join('<span aria-hidden="true">·</span>') + '</p>' +
         '</div>' +
         '<div class="gen-actions">' +
-          (stale ? '<button type="button" class="btn primary" id="regen" data-key="regen">Generate again</button>' : '') +
+          (stale || outdated ? '<button type="button" class="btn primary" id="regen" data-key="regen">Generate again</button>' : '') +
           '<button type="button" class="btn ghost" id="adjust" data-key="adjust">Adjust plan</button>' +
         '</div>' +
       '</div>' +
-      ((status || gaps.length || stale) ? '<div class="gen-notes" aria-live="polite">' +
+      ((status || gaps.length || stale || outdated) ? '<div class="gen-notes" aria-live="polite">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (stale && !(status && /changed since/.test(status.text)) ? '<p class="warn">Your targets, training or nutrition changed since this week was generated. Generate again to plan for them.</p>' : '') +
+        (outdated && !(status && /generate again/i.test(status.text)) ? '<p class="warn">The meals on the calendar no longer match your daily targets. Generate again to update them.</p>' : '') +
         gaps.map(g => '<p class="warn">' + esc(g) + '</p>').join("") +
       '</div>' : '') +
     '</div>';
@@ -521,8 +525,11 @@ function renderWeek() {
   const focusKey = active && weekEl.contains(active) ? active.dataset.key : null;
   const top = planEl.scrollTop;
   const sideEl = weekEl.querySelector(".side-detail"), sideTop = sideEl ? sideEl.scrollTop : 0;
+  // Once the last session is gone (removed, painted over, its day taken
+  // off) there is no week to show: back to the setup, camera and footer too.
+  if (wk.view === "gen" && !routine.sessions.length) wk.view = "config";
   planEl.dataset.view = wk.view;
-  weekEl.innerHTML = wk.view === "shape" ? shapeHTML() : wk.view === "gen" && routine.sessions.length ? genHTML() : configHTML();
+  weekEl.innerHTML = wk.view === "shape" ? shapeHTML() : wk.view === "gen" ? genHTML() : configHTML();
   planEl.scrollTop = top;
   const side = weekEl.querySelector(".side-detail");
   if (side) side.scrollTop = sideTop;

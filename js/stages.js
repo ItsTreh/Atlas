@@ -42,6 +42,7 @@ const Stages = {
   current: "targets",
   phase: "idle",
   busy: false,
+  queued: null,   // a relayout asked for while busy, run when the change lands
   views: {},
 
   /**
@@ -98,7 +99,14 @@ const Stages = {
    * the camera is given.
    */
   relayout(change, settle = 900) {
-    if (this.busy) return;
+    if (this.busy) {
+      // Asked mid-change (Generate pressed from the keyboard during a move):
+      // done once the change lands, never dropped. If the stage it was asked
+      // on has gone by then, only its state changes, for its next visit.
+      const stage = this.current;
+      this.queued = () => stage === this.current ? this.relayout(change, settle) : change();
+      return;
+    }
     this.run(() => { change(); this.call("enter"); this.toTop(); }, settle, () => this.landed());
   },
 
@@ -116,6 +124,9 @@ const Stages = {
           this.busy = false;
           this.setPhase("idle");
           done();
+          const next = this.queued;
+          this.queued = null;
+          if (next) next();
         }, still ? STAGE_TIMING.settleStill : settle);
       }
     }, still ? STAGE_TIMING.outStill : STAGE_TIMING.out);

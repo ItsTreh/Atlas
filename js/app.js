@@ -7,26 +7,22 @@
 
 /* ------------------------------- the week -------------------------------- */
 
-/* What the week on screen was generated from, to spot a stale week: the
-   muscles, how many days of what length were asked for, the days off, the
-   preferred window, whether meals go on the calendar, the training days the
-   week can hold, and the meals it placed (time, calories and protein, as
-   the calendar shows them) and kept sessions away from. Painting over a
-   session or removing one is an edit, not a changed input; see weekEdited(). */
+/* What the week on screen was generated from (routine.inputsKey and
+   mealsKey), to spot a stale week. A changed input means the week no longer
+   answers what was asked. Painting over a session or removing one is an
+   edit, not a changed input (see weekEdited()), though it can leave the
+   meals on the calendar out of date: a day fewer to fuel. */
 let generatedFor = null, placedCount = 0;
-function planInputs() {
-  const n = routine.nutrition;
-  return routine.selection.muscles().map(m => m.id).join() + "|" +
-         routine.sessionsPerWeek + "x" + routine.sessionMinutes + "|" + routine.split + "|" +
-         [...routine.offDays].sort().join() + "|" + routine.preferredWindow + "|" +
-         n.showMeals + "|" + routine.plannedSessions() + "|" +
-         (n.isValid() ? n.meals.map(m => m.hour + ":" + m.kcal + ":" + m.protein).join() : "");
-}
+function planInputs() { return { inputs: routine.inputsKey(), meals: routine.mealsKey() }; }
 const days = n => n + (n === 1 ? " day" : " days");
 
 /** True when the week on screen was generated from inputs that have since changed. */
 function weekIsStale() {
-  return !!generatedFor && routine.sessions.length > 0 && generatedFor !== planInputs();
+  return !!generatedFor && routine.sessions.length > 0 && generatedFor.inputs !== routine.inputsKey();
+}
+/** True when the meals on the calendar no longer match the daily targets. */
+function mealsOutdated() {
+  return !!generatedFor && routine.sessions.length > 0 && generatedFor.meals !== routine.mealsKey();
 }
 
 /**
@@ -38,7 +34,7 @@ function weekEdited() {
   if (!generatedFor || routine.sessions.length === placedCount) return false;
   placedCount = routine.sessions.length;
   setStatus("Your week now has " + days(placedCount) + " of training after your edits." +
-    (generatedFor !== planInputs() ? " Your daily targets changed with it; generate again " +
+    (mealsOutdated() ? " Your daily targets changed with it; generate again " +
       "to update the meals on the calendar." : ""), "warn");
   return true;
 }
@@ -106,7 +102,10 @@ function generateWeek() {
         "Clear some hours or shorten the session."; kind = "err";
       break;
     case "no-blocks":
-      text = "Every hour is blocked. Free some days or clear some hours and try again."; kind = "err";
+      text = routine.offDays.size === DayOfWeek.values.length
+        ? "Every day is marked off. Turn a day back on and try again."
+        : "Every hour is blocked. Free some days or clear some hours and try again.";
+      kind = "err";
       break;
     default:
       text = "Nothing could be placed without breaking a recovery window. " +
