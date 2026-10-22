@@ -119,7 +119,8 @@ overrun fails only on low-end devices. Uniform arrays sized by the figure used
 to spend that budget per region (Male_Body reached 212 of 224 and 212 of 256).
 Everything the shaders know per region or per guide is now a row of one
 RGBA32F data texture (`SCULPTURE_DATA_ROWS`), one texel per region or guide,
-read with `texelFetch`: the state and map rows every frame; the flow fields,
+read with `texelFetch`: the state, map and reveal rows every frame (each lit
+region draws in on its own, so muscles two programs share stay drawn); the flow fields,
 guide frames and hues after a context restore or a theme change
 (`uploadData`). The shaders keep 13 vertex and 18 fragment uniform vectors
 whatever the figure, so finer zoom sub-regions cost texels; WebGL2 guarantees
