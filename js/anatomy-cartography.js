@@ -206,11 +206,10 @@ function buildAnatomyFlowFrames(model, samples) {
 /* Continuous guides for patches where wrapping each anatomical region creates
  * an extra fold or changes direction at every border. These describe drawing
  * direction only; region IDs, seams and picking still come from the mesh.
- * Six guides: pelvis, lower traps, left/right scapula, left/right forearm.
+ * Shared patches follow the pose; the central lower back has an unfurled guide.
  */
 function buildAnatomyFlowGuides(model, samples) {
   const regions = new Float32Array(model.regions.length);
-  const origins = new Float32Array(24), across = new Float32Array(24), along = new Float32Array(24);
   const height = Math.max(1e-4, model.bounds.max[1] - model.bounds.min[1]);
   const midX = (model.bounds.min[0] + model.bounds.max[0]) * 0.5;
   const dot = (a, b) => a.reduce((sum, x, k) => sum + x * b[k], 0);
@@ -228,10 +227,47 @@ function buildAnatomyFlowGuides(model, samples) {
       'pronator-teres', 'flexor-carpi-radialis', 'palmaris-longus', 'flexor-digitorum-superficialis',
       'flexor-carpi-ulnaris', 'extensor-carpi-ulnaris', 'extensor-digiti-minimi', 'extensor-digitorum',
       'abductor-pollicis-longus', 'extensor-pollicis-brevis', 'anconeus', 'forearm-flexors', 'forearm-extensors'],
-      start: 4, kind: 4, spacing: 0.01, paired: true }
+      start: 4, kind: 4, spacing: 0.01, paired: true },
+    { names: ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius'],
+      start: 6, kind: 4, spacing: 0.013, paired: true },
+    { names: ['adductors', 'gracilis', 'pectineus', 'adductor-longus'],
+      start: 8, kind: 4, spacing: 0.014, paired: true },
+    { names: ['biceps-femoris', 'semitendinosus', 'semimembranosus', 'adductor-magnus'],
+      start: 10, kind: 4, spacing: 0.014, paired: true },
+    { names: ['erector-spinae'], start: 12, kind: 5, spacing: 0.014, central: true }
   ];
+  const count = Math.max(...groups.map(g => g.start + (g.paired ? 2 : 1)));
+  const origins = new Float32Array(count * 4), across = new Float32Array(count * 4), along = new Float32Array(count * 4);
+  const put = (index, group, origin, transverse, direction, patch) => {
+    const variance = patch.reduce((sum, p) => sum + dot(p.map((x,k) => x - origin[k]), direction) ** 2, 0) / Math.max(1, patch.length);
+    origins.set([origin[0] - midX, origin[1], origin[2], group.kind], index * 4);
+    across.set([...transverse, height * group.spacing], index * 4);
+    along.set([...direction, Math.max(height * 0.02, 2 * Math.sqrt(variance))], index * 4);
+  };
+  const pairedCenter = name => {
+    const entry = model.regionAnchors && model.regionAnchors[name];
+    return valid(entry?.left?.centroid) && valid(entry?.right?.centroid) ?
+      entry.left.centroid.map((x, k) => (x + entry.right.centroid[k]) * 0.5) : null;
+  };
   for (const group of groups) {
     const ids = model.regions.map((name, i) => group.names.includes(name) ? i : -1).filter(i => i >= 0);
+    if (group.central) {
+      const at = model.regionAnchors && model.regionAnchors[group.names[0]]?.centre;
+      if (!ids.length || !valid(at?.centroid) || !valid(at?.axis) || !(at.area > 0) || !Number.isFinite(at.area)) continue;
+      // The lower back is one central region. Follow the torso's posed
+      // midline, rather than mirroring two fans inside that single surface.
+      const pelvis = pairedCenter('gluteus-maximus'), shoulders = pairedCenter('trapezius');
+      let direction = unit(pelvis && shoulders ? shoulders.map((x,k) => x - pelvis[k]) : at.axis);
+      if (direction[1] < 0) direction = direction.map(x => -x);
+      const patch = [];
+      for (let i = 0; i < samples.count; i++) {
+        const offset = i * samples.stride;
+        if (ids.includes(samples.data[offset + 9])) patch.push([0, 1, 2].map(k => samples.data[offset + 3 + k]));
+      }
+      put(group.start, group, at.centroid, unit(cross(direction, [0, 0, 1]), [1, 0, 0]), direction, patch);
+      for (const id of ids) regions[id] = group.start + 1;
+      continue;
+    }
     const anchors = [[], []];
     for (const id of ids) {
       const entry = model.regionAnchors && model.regionAnchors[model.regions[id]];
@@ -263,7 +299,7 @@ function buildAnatomyFlowGuides(model, samples) {
       let direction;
       if (group.paired) {
         // A common longitudinal axis for the whole patch, keeping each posed
-        // arm independent. Align principal-axis signs before averaging.
+        // limb independent. Align principal-axis signs before averaging.
         direction = unit([0, 1, 2].map(k => anchors[side].reduce((sum, at) =>
           sum + at.axis[k] * (at.axis[1] < 0 ? -1 : 1) * at.area, 0)));
       } else {
@@ -271,10 +307,7 @@ function buildAnatomyFlowGuides(model, samples) {
       }
       const transverse = group.paired ? unit(cross(direction, [0, 0, side === 0 ? 1 : -1]), lateral) : lateral;
       const patch = group.paired ? points[side] : points.flat();
-      const variance = patch.reduce((sum, p) => sum + dot(p.map((x,k) => x - origin[k]), direction) ** 2, 0) / Math.max(1, patch.length);
-      origins.set([origin[0] - midX, origin[1], origin[2], group.kind], index * 4);
-      across.set([...transverse, height * group.spacing], index * 4);
-      along.set([...direction, Math.max(height * 0.02, 2 * Math.sqrt(variance))], index * 4);
+      put(index, group, origin, transverse, direction, patch);
     }
     for (const id of ids) regions[id] = (group.start + 1) * (group.paired ? -1 : 1);
   }

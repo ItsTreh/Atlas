@@ -93,16 +93,20 @@ width relative to body height, giving inner thighs and forearms more space.
 These adjustments affect the drawn curves, not authored borders or picking.
 
 `buildAnatomyFlowGuides` provides continuous drawing guides for the gluteus
-maximus, lower trapezius, upper-back regions and forearms. The pelvic and
+maximus, lower trapezius, upper-back regions, forearms, quads, adductors,
+hamstrings and lower back. The pelvic and
 spinal mirror planes follow the paired authored landmarks and their tilt.
-Each forearm and scapular patch gets its own posed direction, shared by its
+Each limb and scapular patch gets its own posed direction, shared by its
 small anatomical regions so the curves and pulse do not restart at every
 border. Linear depth relief lets the curves follow the surface without
 reversing around an angular axis. The broad upper-trap field blends into its
 narrow lower guide; the chest, shoulders, abs and obliques retain their
-existing fields. Models without bilateral landmarks retain their original
-surface frames. Forearm and upper-back inset borders are quieter in overview
-and retain their full weight in detail mode.
+existing fields. The central lower back uses one continuous guide aligned
+between the pelvic and upper-back landmarks, with its own authored axis as
+a fallback. Inner thighs have more space between lines. Regions without
+suitable landmarks retain their original surface frames. Inset borders
+inside shared guides are quieter in overview and retain their full weight
+in detail mode. Shader guide capacity comes from the generated guide data.
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the

@@ -112,6 +112,42 @@ describe("continuous surface guides", () => {
     expect([...g.regions]).toEqual([0, 0]);
     expect([...g.origins, ...g.across, ...g.along].every(Number.isFinite)).toBe(true);
   });
+
+  test("each thigh group shares a continuous guide without mixing neighbouring training areas", () => {
+    const regions = ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius',
+      'gracilis', 'pectineus', 'adductor-longus', 'biceps-femoris', 'semitendinosus',
+      'semimembranosus', 'adductor-magnus', 'gastrocnemius'];
+    const pair = { left: anchor([10, 75, 5], [0.1, 0.99, 0]),
+      right: anchor([-10, 72, 8], [-0.2, 0.96, 0.2]) };
+    const g = buildAnatomyFlowGuides({ bounds, regions,
+      regionAnchors: Object.fromEntries(regions.map(name => [name, pair])) }, samples([]));
+    expect([...g.regions]).toEqual([-7, -7, -7, -7, -9, -9, -9, -11, -11, -11, -11, 0]);
+    // Both posed sides are allocated for every shared field.
+    for (const id of [-7, -9, -11]) for (const offset of [0, 1]) {
+      const base = (Math.abs(id) - 1 + offset) * 4;
+      expect(g.across[base + 3]).toBeGreaterThan(0);
+      expect(g.along[base + 3]).toBeGreaterThan(0);
+      expect(Math.hypot(...g.along.slice(base, base + 3))).toBeCloseTo(1, 6);
+    }
+  });
+
+  test("the central lower back follows the posed torso without creating a second mirrored patch", () => {
+    const model = { bounds, regions: ['erector-spinae'], regionAnchors: {
+      'erector-spinae': { centre: anchor([2, 110, -6], [0.4, 0.9, 0.1]) },
+      'gluteus-maximus': { left: anchor([12, 96, -5]), right: anchor([-8, 94, -5]) },
+      trapezius: { left: anchor([5, 148, -10]), right: anchor([-9, 146, -10]) }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect(g.regions[0]).toBeGreaterThan(0);         // single continuous patch
+    const base = (g.regions[0] - 1) * 4;
+    expect([...g.origins.slice(base, base + 3)]).toEqual([2, 110, -6]);
+    const direction = [-4, 52, -5], length = Math.hypot(...direction);
+    direction.forEach((v, k) => expect(g.along[base + k]).toBeCloseTo(v / length, 6));
+    delete model.regionAnchors['gluteus-maximus'];
+    const fallback = buildAnatomyFlowGuides(model, samples([]));
+    expect(fallback.regions[0]).toBe(g.regions[0]);
+    expect([...fallback.along].every(Number.isFinite)).toBe(true);
+  });
 });
 
 test("continuous flow runs only during visible pointer exploration", () => {

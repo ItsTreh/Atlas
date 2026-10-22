@@ -284,14 +284,14 @@ class AnatomySculpture {
     this.scale = this.height / SCULPTURE_SHOT_HEIGHT;
     this.reach = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
 
-    const defs = "#define REGIONS " + m.regions.length + "\n#define SEAM_MAX " +
-                 m.seamMax.toFixed(3) + "\n";
-    this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
-    this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     // Shape frames use area-weighted samples, retained across context recovery.
     this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
     this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, this.mapSamples);
     this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, this.mapSamples);
+    const defs = "#define REGIONS " + m.regions.length + "\n#define SEAM_MAX " +
+                 m.seamMax.toFixed(3) + "\n#define GUIDES " + this.flowGuides.origins.length / 4 + "\n";
+    this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
+    this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     gl.bindVertexArray(null);
     this.idTarget = null;
     this.ready = true;
@@ -1324,7 +1324,7 @@ uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
 uniform vec3 uExt;
 uniform vec4 uFlowCenters[REGIONS], uFlowAxes[REGIONS];
-uniform vec4 uGuideOrigins[6], uGuideAcross[6], uGuideAlong[6];
+uniform vec4 uGuideOrigins[GUIDES], uGuideAcross[GUIDES], uGuideAlong[GUIDES];
 uniform vec3 uRegionInk[REGIONS];        // each region's family hue (sRGB), or uMapInk
 uniform float uTraceVivid;               // 1 where tinted lines need help to keep their hue (light theme)
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
