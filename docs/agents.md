@@ -40,7 +40,7 @@ under **Seen in passing** and don't investigate it.
 | `training` | Are the workouts right: exercise choice, tiers, sets, minutes, movements, edits? | Placement in the week |
 | `nutrition` | Are the figures right and honest: calories, protein, meals, ideas, units, floor? | The view's look |
 | `schedule` | Is the week right: busy hours, days off, recovery, frequency, moves, meals on the grid, stale warning? | Exercise choice |
-| `architect` | Code health: duplicated state, logic in views, globals, dead code, docs that no longer match the code. | Runtime bugs |
+| `architect` | Code health: duplicated state, logic in views, globals, dead code, docs that no longer match the code. Cost outside the renderer: redraws, generation, startup, memory. Readiness for stored user data. | Runtime bugs; the sculpture's frame cost (`anatomy-implementation`) |
 
 ## File ownership (fix mode)
 
