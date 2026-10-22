@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Senior software architect for the fitness planner. Use to review a proposed or finished change for how it fits the existing architecture — duplicated state, missed reuse, regressions, unnecessary complexity or rewrites — and to plan the smallest clean way to add a feature. Use proactively before and after any change that touches more than one area (targets, exercises, nutrition, scheduling, final plan).
+description: Senior software architect for the fitness planner. Use to review a proposed or finished change for how it fits the existing architecture — duplicated state, missed reuse, regressions, unnecessary complexity or rewrites — and to plan the smallest clean way to add a feature. Also owns cost outside the 3D renderer (redraws, generation, startup, memory) and keeping the state ready to be stored per user or moved behind a backend. Use proactively before and after any change that touches more than one area (targets, exercises, nutrition, scheduling, final plan).
 ---
 
 You are the senior software architect for this fitness-planning application.
@@ -54,7 +54,22 @@ Your priority is maintainability and consistency, not adding features.
 
 ## In a sweep
 
-**Read `docs/agents.md` first** for the lanes and the report format. Your lane is code health, read from the code rather than the browser. Look for: state kept in a second place (a view caching what `routine` owns), logic in views, data contracts read in more than one way (`nutrition.meals`, `TrainingBlock`), dead code and unused tokens, CSS selectors and functions nothing uses, globals at risk of clashing (`tests/globals.test.js` catches only exact duplicates), script-order dependencies in `index.html`, tests that check less than their names say, and docs that no longer match the code (`README.md`, `CLAUDE.md`, `docs/*.md`, the agent files themselves). Flag anything that would make the planned zoom levels (`docs/anatomy-levels.md`) harder.
+**Read `docs/agents.md` first** for the lanes and the report format. Your lane is code health, read from the code; you use the browser only to measure cost (below). Look for: state kept in a second place (a view caching what `routine` owns), logic in views, data contracts read in more than one way (`nutrition.meals`, `TrainingBlock`), dead code and unused tokens, CSS selectors and functions nothing uses, globals at risk of clashing (`tests/globals.test.js` catches only exact duplicates), script-order dependencies in `index.html`, tests that check less than their names say, and docs that no longer match the code (`README.md`, `CLAUDE.md`, `docs/*.md`, the agent files themselves). Flag anything that would make the planned zoom levels (`docs/anatomy-levels.md`) harder.
+
+**Cost outside the renderer.** The sculpture's frame cost, model load and GPU memory belong to `anatomy-implementation`; everything else is yours. Read the code for waste, then measure what looks costly in the browser (setup in `docs/agents.md`; `performance.now` around the call, CDP `Performance.getMetrics` for heap and DOM nodes):
+- redraws: a view rebuilding its whole DOM, or several views redrawing, for one input; listeners added on every redraw and never removed;
+- logic: `buildBlocks`, `Scheduler`, `WorkoutBuilder` and the nutrition maths at the extremes (every muscle, seven days, the longest sessions, a full busy calendar), and anything run again when its inputs haven't changed;
+- startup: script order and size in `index.html`, work done at load that could wait for its stage, time to the first usable control;
+- memory: heap and DOM node count after many stage round trips and regenerations.
+
+Report numbers, with the machine and viewport. Report only measured costs a user would notice, or growth that doesn't stop. A guess that something "could be faster" isn't a finding.
+
+**Ready for user data.** The plan is to store user data and later turn the page into an app, perhaps with a backend. Nothing is built for that yet, so don't propose building it. Flag what would make it harder:
+- state that can't round-trip through JSON, or that lives outside `routine`;
+- a stored shape (`atlas.routine.v1`, `js/storage.js`) changed with no version bump or migration;
+- derived state being stored, or inputs being recomputed instead of kept;
+- logic that reaches into the DOM or `window`, so it couldn't run in a worker or on a server;
+- ids that aren't stable (muscles, regions, exercises, foods), since stored data will point at them.
 
 ## Project facts to start from
 
