@@ -37,7 +37,8 @@ matches the page; the light theme uses the sculpture's original cool grey.
 - Traces scale with the body's size on screen against Targets
   (`traceScale`): a closer camera, as on the week stage, gets more and
   heavier lines, half each, keeping Targets' balance of line and gap. Hues
-  are per region (`uRegionInk`, `uMapTint` in the fragment shader).
+  are per region (`uRegionInk` in the fragment shader, `uMapTint` passed
+  from the vertex shader).
 - Moving the pointer gently draws nearby hovered and selected traces toward
   it. Only the direction to the pointer bends them, by at most a third of a
   line, so lines far from the pointer stay whole. The response eases away
@@ -90,6 +91,18 @@ curves open where a region's axis approaches the skin, avoiding pinched fans
 and tiny rings. Narrow regions receive fewer traces in proportion to their
 width relative to body height, giving inner thighs and forearms more space.
 These adjustments affect the drawn curves, not authored borders or picking.
+
+`buildAnatomyFlowGuides` provides continuous drawing guides for the gluteus
+maximus, lower trapezius, upper-back regions and forearms. The pelvic and
+spinal mirror planes follow the paired authored landmarks and their tilt.
+Each forearm and scapular patch gets its own posed direction, shared by its
+small anatomical regions so the curves and pulse do not restart at every
+border. Linear depth relief lets the curves follow the surface without
+reversing around an angular axis. The broad upper-trap field blends into its
+narrow lower guide; the chest, shoulders, abs and obliques retain their
+existing fields. Models without bilateral landmarks retain their original
+surface frames. Forearm and upper-back inset borders are quieter in overview
+and retain their full weight in detail mode.
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the

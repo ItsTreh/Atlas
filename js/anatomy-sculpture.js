@@ -291,6 +291,7 @@ class AnatomySculpture {
     // Shape frames use area-weighted samples, retained across context recovery.
     this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
     this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, this.mapSamples);
+    this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, this.mapSamples);
     gl.bindVertexArray(null);
     this.idTarget = null;
     this.ready = true;
@@ -677,6 +678,10 @@ class AnatomySculpture {
     gl.uniform1f(u.uTraceScale, this.traceScale());
     gl.uniform4fv(u.uFlowCenters, this.flowFrames.centers);
     gl.uniform4fv(u.uFlowAxes, this.flowFrames.axes);
+    gl.uniform1fv(u.uFlowGuide, this.flowGuides.regions);
+    gl.uniform4fv(u.uGuideOrigins, this.flowGuides.origins);
+    gl.uniform4fv(u.uGuideAcross, this.flowGuides.across);
+    gl.uniform4fv(u.uGuideAlong, this.flowGuides.along);
     gl.uniform3fv(u.uMapState, this.shown || this.targets());
     gl.uniform2fv(u.uMapPointer, this.mapPointer);
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
@@ -1254,6 +1259,7 @@ uniform mat4 uMatrix;
 uniform mat3 uNormal;
 uniform vec4 uRegion[REGIONS];            // tone, focus edge, form, selected (regionStates)
 uniform vec3 uMapState[REGIONS];
+uniform float uMapTint[REGIONS], uFlowGuide[REGIONS];
 uniform vec3 uForm, uMuscle, uSelected;   // surfaces before light, sRGB
 out vec3 vNormal;
 out float vOcclusion;
@@ -1264,6 +1270,8 @@ flat out vec3 vAlbedo;                    // linear
 flat out float vSelected;
 flat out float vFocus;
 flat out float vRegionId;
+flat out float vMapTint;
+flat out float vFlowGuide;
 
 vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
@@ -1281,6 +1289,8 @@ void main() {
   int index = int(aAttr.x + 0.5);
   vSurface = vec3(surface.x - uMin.x - uExt.x * 0.5, surface.y, surface.z);
   vMapState = uMapState[index];
+  vMapTint = uMapTint[index];
+  vFlowGuide = uFlowGuide[index];
   vNormal = uNormal * octDecode(aOct);
   vOcclusion = aAttr.y / 255.0;
   vSeam = aAttr.z / 255.0 * SEAM_MAX;
@@ -1308,12 +1318,14 @@ flat in vec3 vAlbedo;
 flat in float vSelected;
 flat in float vFocus;
 flat in float vRegionId;
+flat in float vMapTint;
+flat in float vFlowGuide;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
 uniform vec3 uExt;
 uniform vec4 uFlowCenters[REGIONS], uFlowAxes[REGIONS];
+uniform vec4 uGuideOrigins[6], uGuideAcross[6], uGuideAlong[6];
 uniform vec3 uRegionInk[REGIONS];        // each region's family hue (sRGB), or uMapInk
-uniform float uMapTint[REGIONS];         // how far each region's traces are in that hue
 uniform float uTraceVivid;               // 1 where tinted lines need help to keep their hue (light theme)
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
 uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
@@ -1375,13 +1387,40 @@ void main() {
   // shoulder, thigh and forearm traces into rings or crowded fans.
   float angle = atan(flow.x, sqrt(flow.y * flow.y + 0.65 * 0.65));
   float along = flow.z;
+  float density = clamp(center.w / max(uExt.y * 0.028, 1e-4), 0.55, 1.0);
+  float field = angle * 3.2 * density;
+  if (abs(vFlowGuide) > 0.5) {
+    int guide = int(abs(vFlowGuide) + 0.5) - 1;
+    if (vFlowGuide < 0.0) {
+      vec3 left = uGuideOrigins[guide].xyz, right = uGuideOrigins[guide + 1].xyz;
+      if (dot(vSurface - (left + right) * 0.5, left - right) < 0.0) guide++;
+    }
+    vec4 origin = uGuideOrigins[guide], across = uGuideAcross[guide], lengthwise = uGuideAlong[guide];
+    vec3 relative = vSurface - origin.xyz;
+    float lateral = dot(relative, across.xyz);
+    float vertical = dot(relative, lengthwise.xyz);
+    float relief = dot(relative, cross(across.xyz, lengthwise.xyz));
+    float roundWidth = uExt.y * 0.004;
+    float folded = sqrt(lateral * lateral + roundWidth * roundWidth);
+    float sweep;
+    if (origin.w < 1.5) {
+      sweep = (vertical - 0.65 * folded - 0.25 * relief) / across.w;
+    } else if (origin.w < 2.5) {
+      sweep = (folded - 0.32 * vertical) / across.w;
+    } else {
+      sweep = (lateral + 0.15 * relief) / across.w;
+    }
+    // Keep the broad upper-trap curves; straighten their narrow lower tail.
+    float blend = origin.w > 1.5 && origin.w < 2.5 ?
+      1.0 - smoothstep(-0.5, 0.15, vertical / lengthwise.w) : 1.0;
+    field = mix(field, sweep, blend);
+    along = mix(along, vertical / lengthwise.w, blend);
+    angle = mix(angle, sweep / 3.2, blend);
+  }
   float warp = 0.22 * sin(along * 2.4) + hover * 0.32 *
     (sin(along * 2.4 - uFlowTime * 0.48) - sin(along * 2.4));
   warp += hover * 0.08 * sin(along * 5.2 - uFlowTime * 0.32);
-  // Slender authored patches get fewer traces, leaving room between the
-  // several small muscles that share an inner thigh or forearm.
-  float density = clamp(center.w / max(uExt.y * 0.028, 1e-4), 0.55, 1.0);
-  float phase = angle * 3.2 * density * sqrt(uTraceScale) + warp;
+  float phase = field * sqrt(uTraceScale) + warp;
   // Pull the existing curves gently toward the pointer. Derivatives give
   // their local direction on screen; only that direction is used, never its
   // product with the distance, so the 2×2 steps in screen derivatives stay
@@ -1419,7 +1458,7 @@ void main() {
     pointed * drift * 0.48);
   // A family's hue keeps its chroma: on a light sculpture it darkens less in
   // shadow and draws a little stronger, so it reads as colour, not as grey.
-  float tint = uMapTint[region], vivid = tint * uTraceVivid;
+  float tint = vMapTint, vivid = tint * uTraceVivid;
   vec3 ink = toLinear(mix(uMapInk, uRegionInk[region], tint)) *
              clamp(shade, mix(0.45, 0.8, vivid), 1.0);
   c = mix(c, ink, min(1.0, etched * (1.0 + 0.35 * vivid)));
@@ -1429,6 +1468,9 @@ void main() {
   float border = (1.0 - smoothstep(0.4 * uLineWidth, 0.4 * uLineWidth + 0.8,
                                    abs(px - 3.0 * uLineWidth))) *
                  (1.0 - smoothstep(0.3, 0.6, vSeam)) * facing * (1.0 - vFocus) * uBorder;
+  // These guides span several small regions. Their individual inset borders
+  // compete with the shared curves in overview; retain them in detail mode.
+  border *= vFlowGuide < 0.0 ? mix(0.2, 1.0, uDetailed) : 1.0;
   c = mix(c, ink,
           border * max(selected * 0.32, lit * mix(0.3, 0.6, drawn)));
 
