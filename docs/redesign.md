@@ -59,7 +59,7 @@ A change of stage runs in three phases, and nothing moves outside them:
 | Phase | What happens |
 |---|---|
 | `out` (300 ms) | the stage's interface fades |
-| `moving` (1250 ms) | the new stage is drawn, the camera travels to its shot, the interface comes in group by group (`data-reveal="0/1/2"`) |
+| `moving` (1250 ms, or until the camera lands if its move is longer) | the new stage is drawn, the camera travels to its shot, the interface comes in group by group (`data-reveal="0/1/2"`) |
 | `idle` | still; the controls are live, the sculpture can be picked (Targets) |
 
 `Stages.relayout()` runs the same phases for a change inside a stage that

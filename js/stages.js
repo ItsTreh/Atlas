@@ -27,8 +27,9 @@
 const STAGE_ORDER = ["targets", "nutrition", "plan"];
 const STAGE_NAMES = { targets: "Targets", nutrition: "Nutrition", plan: "Week plan" };
 
-/* Phase lengths in ms; with reduced motion, just long enough to swap. */
-const STAGE_TIMING = { out: 300, settle: 1250, outStill: 60, settleStill: 120 };
+/* Phase lengths in ms; with reduced motion, just long enough to swap.
+   `landBy` is the longest a change waits for the camera to land. */
+const STAGE_TIMING = { out: 300, settle: 1250, outStill: 60, settleStill: 120, landBy: 5000 };
 
 /* The wheel: how far (deltaY, summed while the gestures keep coming within
    `gap` ms) counts as meaning it, and how long after a pane scrolled the
@@ -120,14 +121,22 @@ const Stages = {
       try { change(); }
       finally {
         this.setPhase("moving");
-        setTimeout(() => {
+        // Still within a stage: the phase turns idle once the camera has
+        // landed too, however far round the body it had to go and however
+        // slowly frames come. A camera that stops being drawn (a hidden tab,
+        // a lost context) holds it STAGE_TIMING.landBy at most.
+        const until = performance.now() + STAGE_TIMING.landBy;
+        const landed = () => {
+          const left = typeof figure === "object" && figure.moveRemaining ? figure.moveRemaining() : 0;
+          if (left > 0 && performance.now() < until) { setTimeout(landed, Math.min(left, 100)); return; }
           this.busy = false;
           this.setPhase("idle");
           done();
           const next = this.queued;
           this.queued = null;
           if (next) next();
-        }, still ? STAGE_TIMING.settleStill : settle);
+        };
+        setTimeout(landed, still ? STAGE_TIMING.settleStill : settle);
       }
     }, still ? STAGE_TIMING.outStill : STAGE_TIMING.out);
   },

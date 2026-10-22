@@ -115,6 +115,11 @@ const SCULPTURE_RESTORE_MS = 3000;
 // within this time of the last one continues a resize (resizing).
 const SCULPTURE_RESIZE_QUIET_MS = 150;
 
+// How far in from each edge of the canvas the side rails reach on Targets
+// (the page's 48 px padding and a 320 px rail, css/styles.css), plus 4 px
+// of air: the hover label keeps between the body and that line.
+const SCULPTURE_LABEL_CLEAR = 372;
+
 /* Relative strength of the map's contours. The shader leaves only a trace
    of surface tint, so the same material models every state. Program
    previews light muscles (the lit channel) and sessions draw as a hover,
@@ -328,9 +333,13 @@ class AnatomySculpture {
     this.reach = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
 
     // Shape frames use area-weighted samples, retained across context recovery.
-    this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
-    this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, this.mapSamples);
-    this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, this.mapSamples);
+    // The samples only shape the frames and guides, which a restored context
+    // keeps; they are not held after (14,000 samples, about 0.7 MB).
+    if (!this.flowFrames || !this.flowGuides) {
+      const samples = buildAnatomyCartography(m, bytes);
+      this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, samples);
+      this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, samples);
+    }
     // The regions' and guides' data, one texel each per row (SCULPTURE_DATA_ROWS).
     const rows = Object.keys(SCULPTURE_DATA_ROWS).length;
     const width = Math.max(1, m.regions.length, this.flowGuides.origins.length / 4);
@@ -497,8 +506,11 @@ class AnatomySculpture {
     if (!W || !H) return;                          // hidden: lay out when shown again
     const resizing = this.resizing(W, H);
     this.size = { cw: W, ch: H };
-    // A side shot depends on the canvas's proportions: re-take it as they change.
+    // A side shot depends on the canvas's proportions: re-take it as they
+    // change. A move under way keeps going, to the shot as this size frames
+    // it (its angle stays the way round the move already took).
     if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
+    else if (this.tween) this.tween.to = { ...this.shotParams(this.shotName), az: this.tween.to.az };
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);
@@ -558,6 +570,7 @@ class AnatomySculpture {
     name = this.resolve(name);
     if (name === this.shotName && !this.offTween && !this.off) return;
     this.goShot(name);
+    if (this.hitsDue && name.startsWith("targets")) this.placeHitsSoon();
   }
 
   /**
@@ -679,8 +692,14 @@ class AnatomySculpture {
     this.moved();
     this.onTurn(this.view.id, Math.abs(this.off) > 0.05);
     if (!this.ready || !this.size || !this.interactive) return;   // nothing to pick off Targets
-    this.renderIds(this.live(), "live");
+    if (!this.still()) this.renderIds(this.live(), "live");      // back where the buffer was drawn: still current
     if (this.pointer && !this.focused) this.hover(this.muscleAt(...this.pointer));
+  }
+
+  /** How long, in ms, until the camera stops: what is left of the move and of a turn. */
+  moveRemaining() {
+    const left = tw => tw ? Math.max(0, tw.ms - tw.t) : 0;
+    return Math.max(left(this.tween), left(this.offTween));
   }
 
   /** True while nothing moves the camera. */
@@ -689,7 +708,15 @@ class AnatomySculpture {
   /** True while the region buffer matches what is drawn, so the pointer can use it. */
   still() { return this.calm() && this.pickKey === this.keyOf(this.live()); }
 
-  keyOf(s) { return s ? [s.az, s.el, s.ty, s.d, s.sx, s.sy, s.fov].map(v => v.toFixed(3)).join() + "@" + (this.size ? this.size.cw + "x" + this.size.ch : "") : ""; }
+  /* The camera that drew a region buffer, and the canvas size. The angle is
+     taken round to −180…180, so a turn that ends at −180° (stepCamera) and
+     the shot's own 180° are one camera, not a second read of the buffer. */
+  keyOf(s) {
+    if (!s) return "";
+    const az = ((s.az % 360) + 540) % 360 - 180;
+    return [az, s.el, s.ty, s.d, s.sx, s.sy, s.fov].map(v => v.toFixed(3)).join() + "@" +
+      (this.size ? this.size.cw + "x" + this.size.ch : "");
+  }
 
   /**
    * How far a drag `offset` degrees off the view turns the body: as far as
@@ -796,7 +823,7 @@ class AnatomySculpture {
     const halfWidth = (bounds.max[0] - bounds.min[0]) * k * 0.5;
     // Only use the space between the sculpture and rails; small screens keep
     // the existing caption instead of putting a floating panel over the body.
-    const width = Math.min(174, (cw - 720) * 0.5 - halfWidth - 24);
+    const width = Math.min(174, cw * 0.5 - SCULPTURE_LABEL_CLEAR - halfWidth - 24);
     const show = muscle && this.interactive && this.calm() && !this.previewing &&
       !this.mobile && width >= 124 && (this.pointer || this.focused);
     root.classList.toggle("visible", !!show);
@@ -810,6 +837,11 @@ class AnatomySculpture {
     const center = shot.sx * cw, left = anchor[0] < center;
     const x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
     const y = Math.max(100, Math.min(ch - 170, anchor[1] - 18));
+    // Drawn with every frame while the traces flow: write only what changed.
+    const drawn = [muscle.id, this.hoveredRegion, this.detailMode, this.selection.has(muscle.id),
+      width, x, y, anchor[0], anchor[1]].join();
+    if (drawn === this.annotationDrawn) return;
+    this.annotationDrawn = drawn;
     const label = root.querySelector(".cartography-label");
     label.style.width = width + "px";
     label.style.transform = "translate(" + x + "px," + y + "px)";
@@ -940,8 +972,11 @@ class AnatomySculpture {
     this.mapPresence = follow(this.mapPresence, onBody ? 1 : 0, 130, 0.005);
     const responding = onBody && this.pointer && !this.focused && !this.previewing && !instant;
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
+    // The traces lean toward the pointer only while it responds; otherwise
+    // the point just follows it, without frames of its own.
     if (this.pointer) for (let i = 0; i < 2; i++)
-      this.mapPointer[i] = follow(this.mapPointer[i], this.pointer[i], 45, 0.1);
+      this.mapPointer[i] = responding || this.mapInfluence > 0
+        ? follow(this.mapPointer[i], this.pointer[i], 45, 0.1) : this.pointer[i];
     if (this.tintTargets) {                // the hue comes and goes with the hover
       const tint = this.tintTargets();
       if (!this.tintShown) this.tintShown = Float32Array.from(tint);
@@ -1041,6 +1076,7 @@ class AnatomySculpture {
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, color);
       gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
       this.idTarget = { fb, color, depth, w: cw, h: ch, pixels: {} };
+      this.pickKey = null;                 // the live buffer went with the old target
     }
     const t = this.idTarget;
     if (!t.pixels[into]) t.pixels[into] = new Uint8Array(cw * ch * 4);
@@ -1099,13 +1135,27 @@ class AnatomySculpture {
 
   /* ------------------------------ checkboxes ------------------------------ */
 
-  /** Places the checkboxes once a resize settles; it draws and searches both views. */
+  /**
+   * Places the checkboxes once a resize settles; it draws and searches both
+   * views. Off Targets they are inert, so a resize there (the phone's band
+   * changes height with every stage) only marks them due, for when the
+   * camera comes back to Targets (setShot). A size they were placed for
+   * already keeps them.
+   */
   placeHitsSoon() {
     clearTimeout(this.hitTimer);
+    if (this.hits.size && !this.shotName.startsWith("targets")) { this.hitsDue = true; return; }
+    this.hitsDue = false;
     this.hitTimer = setTimeout(() => {
       if (!this.ready || !this.size) return;
+      const key = this.size.cw + "x" + this.size.ch + (this.mobile ? ":mobile" : "");
+      if (this.hits.size && key === this.hitsKey) return;
       SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams("targets-" + view.id), view.id));
       this.placeHits();
+      this.hitsKey = key;
+      // Only placing reads the two views' buffers: no need to hold them.
+      delete this.idTarget.pixels.front;
+      delete this.idTarget.pixels.back;
     }, this.hits.size ? SCULPTURE_RESIZE_QUIET_MS : 0);
   }
 
@@ -1252,10 +1302,12 @@ class AnatomySculpture {
           return;
         }
       }
-      const id = this.muscleAt(...this.pointer);
+      const region = this.regionAt(...this.pointer), id = region < 0 ? null : this.muscleOf[region];
       this.canvas.style.cursor = id ? "pointer" : "grab";
       if (this.still()) this.hover(id);
-      this.schedule();                     // density follows motion within a muscle too
+      // Density follows motion within a muscle too. Over the empty canvas
+      // nothing on screen follows the pointer, once the map has eased away.
+      if (region >= 0 || this.mapPresence > 0 || this.mapInfluence > 0) this.schedule();
     });
     const release = e => {
       const d = this.drag;
