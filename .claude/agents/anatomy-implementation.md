@@ -152,26 +152,29 @@ Do not let short-term convenience permanently lock ATLAS into a static mesh if a
 
 # Current Technical Context
 
-The current application already has an anatomy implementation using:
+The hybrid architecture was chosen and is live (see `CLAUDE.md`, which wins over this file):
 
-- a procedural anatomy recipe;
-- generated mesh data;
-- WebGL2 rendering;
-- anatomical region IDs;
-- `js/anatomy-regions.js`;
-- application muscle IDs;
-- WebGL picking;
-- existing selection state;
-- accessibility controls;
-- SVG fallback.
+- **Male_Body**, an authored Blender sculpture painted one region per muscle, is the visible body (`assets/anatomy/` → `tools/anatomy/authored/male_body.py` → `male-body.glb` → `build-authored.mjs` → `js/anatomy-model-male-body.js`, about 8 MB, loaded as a classic script);
+- the procedural figure (`tools/anatomy/sculpture.mjs` → `js/anatomy-model.js`) is the fallback, and `?anatomy=procedural` shows it;
+- one WebGL2 renderer, `js/anatomy-sculpture.js`, with a perspective camera moving between named shots (`SCULPTURE_SHOTS`, `SCULPTURE_MOBILE`, `SCULPTURE_MOVE`), Front/Back and a ±25° drag orbit (`SCULPTURE_TURN`), an offscreen region buffer for picking, and context-loss recovery (`SCULPTURE_RESTORE_MS`, then `onFail()` to the SVG figure);
+- the anatomical cartography (`js/anatomy-cartography.js`, `docs/cartography.md`): surface traces in the shader for hover and selection, with `setDetailMode` as the hook for future zoom. Its look is still being designed, so change it only when asked;
+- `ANATOMY_REGIONS`, `MuscleSelection`, the `.hit` checkboxes and the SVG fallback all unchanged;
+- guards in `tests/`: `shader-budget.test.js` (uniform budget), `anatomy-male-body.test.js` (sizes, triangles, regions: never loosen silently), `globals.test.js`.
 
-The current procedural sculpture is functional but visually limited.
+Recent work (PRs #84–#85) cut the cartography's sampling and the GPU frame cost.
 
-It currently has a somewhat inflated/mannequin-like appearance and does not yet achieve the intended sculptural quality.
+---
 
-Do not assume that the current procedural approach must be retained.
+# In a sweep
 
-At the same time, do not throw away working architecture without investigation.
+**Read `docs/agents.md` first** for the lanes, the browser setup, the page map and the report format. Your lane is rendering. Which muscle a region should be belongs to `anatomy` and the user.
+
+Check:
+- every shot on every stage and at the phone band, and every move between them, including Front ↔ Back and the orbit. The body is never clipped, cut through or off-frame, and it is still once the phase is `idle`, with no frames drawn while nothing changes (count `requestAnimationFrame` draws);
+- the cartography on hover, selection, program preview and session highlight, in both themes. Traces sit on the surface with no z-fighting, no leaks across creases and no stale traces after a change;
+- picking stays right after a resize, a theme change, a stage round trip and a context restore;
+- context loss, restored and not, and the fallback taking over with the state intact;
+- cost: load time of the 8 MB model from `file://`, time to first frame, frame time during a move and while hovering (CDP `Performance.getMetrics` or `performance.now` around draws), and memory after many stage round trips (leaks: buffers, listeners, textures not freed on `destroy`).
 
 ---
 

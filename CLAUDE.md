@@ -102,7 +102,7 @@ Don't build toward it unprompted, but flag any change that would make it harder.
 
 - **Only start work when explicitly asked.** An answer to a question is information, not a go-ahead. Propose the next step, then stop.
 - **Small, restrained prototypes stop at the first version that answers the question.** Report a weak result instead of building more.
-- **Agents:** spawn exactly the ones the user lists, and treat a combined line ("Training/Nutrition/Schedule") as one agent. The user asks for `.claude/agents/anatomy-implementation` by name for asset, converter and renderer work.
+- **Agents:** spawn exactly the ones the user lists, and treat a combined line ("Training/Nutrition/Schedule") as one agent. The user asks for `.claude/agents/anatomy-implementation` by name for asset, converter and renderer work. Sweeps (lanes, review against fix mode, file ownership, browser setup, report format) follow `docs/agents.md`.
 - **Load the `frontend-design:frontend-design` skill before any visual or UI work.**
 - **Git:**
   - feature branches only, with PRs into `main`;
