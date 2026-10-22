@@ -2,153 +2,156 @@
 
 The sculpture is the body. The cartography is how the body communicates.
 
-The WebGL sculpture reveals fine, curved traces within its material. Their
-direction follows each authored region's shape, with gentle bending and
-tapered accents that travel together while the pointer hovers. Neutral ink
-matches the page; the light theme uses the sculpture's original cool grey.
+Fine, curved traces in the sculpture's own material show which training
+groups are pointed at and chosen, with a serif label beside the body. They
+follow each authored region's shape and add no anatomy: what can be selected
+still comes only from the mesh and `ANATOMY_REGIONS`. The look is still being
+designed; change it only when asked.
 
-- Hover reveals a whole training group, with a little more emphasis near
-  the pointer and a visible baseline between traveling accents. The surface
-  stays alive while the pointer rests on a muscle.
-- Lines are engraved: they swell in shadow and thin in the light, so the
-  traces model the form rather than lie over it.
-- Selected groups keep still, engraved traces and a fine border just inside
-  their seams, as a map draws a territory's edge. Hover alone has no border,
-  so pointing and choosing never read alike.
-- Lit groups, the muscles a program or family pointed at would work, are
-  the strongest state: darker traces and border, drawn in once along each
-  muscle's length (about 0.7 s, a darker head leading) and then still.
-  While a program or family is pointed at, selected muscles outside it are
-  set aside. Reduced motion shows them fully drawn at once.
-- Pointing at a family row (Push, Pull, Legs, Core) in the selection
-  summary draws its muscles as a hover (the moving traces, no draw-in) in
-  the family's hue, `--<family>-trace`: a deeper shade of the family's dot
-  colour (lighter in the dark theme) so fine lines hold up on the lit
-  sculpture. The hue eases in and out with the hover. In the light theme
-  (`--trace-vivid: 1`) tinted lines darken less in shadow and draw a little
-  stronger, so they keep their colour on the pale sculpture.
-- A session pointed at on the week stage draws its training groups as a
-  selected group hovered on Targets: still engraved traces under the moving
-  ones, with no border (borders are drawn only on Targets) and no draw-in,
-  so it never outlines individual authored regions. Each muscle takes its
-  own family's hue, so a mixed session (several dots on its card) shows its
-  families side by side. Colours meet at seams without blending; a blend
-  would need each region's neighbours baked into the model.
-- Traces scale with the body's size on screen against Targets
-  (`traceScale`): a closer camera, as on the week stage, gets more and
-  heavier lines, half each, keeping Targets' balance of line and gap. Hues
-  are per region (the data texture's `ink` row in the fragment shader, the
-  tint in its `map` row passed from the vertex shader).
-- Moving the pointer gently draws nearby hovered and selected traces toward
-  it. Only the direction to the pointer bends them, by at most a third of a
-  line, so lines far from the pointer stay whole. The response eases away
-  when exploration ends; resting selections stay still. Reduced motion
-  disables this deformation.
-- A serif label beside the body names the group, such as Chest or Shoulders,
-  with a fine leader to the surface. Narrow layouts use the caption instead.
-- Keyboard focus has a strong focus edge and a static map. Touch selects
-  directly. Reduced motion keeps the traces still and applies state changes
-  immediately. Ongoing flow pauses when the document is hidden, the camera
-  moves, or a program preview is active; off Targets it runs only while a
-  session is pointed at.
+## What it shows
 
-## Overview and detailed presentation
+Neutral ink matches the page; the light theme uses the sculpture's original
+cool grey. Lines are engraved: they swell in shadow and thin in the light, so
+the traces model the form rather than lie over it.
 
-The overview responds to all authored regions belonging to the pointed
-training group. Picking still records the precise region under the pointer.
-The renderer's `setDetailMode(true)` method exposes exact anatomical names
-and a response limited to that region for a future detailed view. There is
-no page control for this mode; `setDetailMode(false)` restores the overview.
-Selection uses shared training groups in either mode.
+| State | How it draws |
+|---|---|
+| **Hover** (Targets) | The whole training group, a little stronger near the pointer, with a visible baseline between accents that travel along it. The surface stays alive while the pointer rests on a muscle. No border, so pointing and choosing never read alike. |
+| **Selected** (Targets) | Still, engraved traces and a fine border just inside the group's seams, as a map draws a territory's edge. |
+| **Lit** (a program or family pointed at) | The strongest state: darker traces and border, drawn in once along each muscle's length (`SCULPTURE_EASE.reveal`, 0.72 s, a darker head leading), then still. Selected muscles outside it are set aside meanwhile. Reduced motion shows it fully drawn at once. |
+| **Family row** (Targets summary) | The family's muscles as a hover (moving traces, no draw-in) in its hue, `--<family>-trace`: a deeper shade of its dot (lighter in the dark theme), easing in and out with the hover. In the light theme `--trace-vivid: 1` keeps tinted lines from darkening as much in shadow, so they hold their colour on the pale sculpture. |
+| **Session** (Week plan) | Its training groups as a selected group being hovered: still traces under moving ones, no border (borders are Targets only), no draw-in. Each muscle takes its family's hue, so a mixed session shows its families side by side; colours meet at seams without blending (a blend would need each region's neighbours baked into the model). |
+| **Keyboard focus** | A strong focus edge and a still map. |
+
+Also:
+
+- **Scale.** Traces follow the body's size on screen against Targets
+  (`traceScale`): a closer camera, as on the Week plan, gets more and
+  heavier lines, half each, keeping Targets' balance of line and gap.
+- **The pointer's pull.** Moving the pointer bends nearby hovered and
+  selected traces toward it, by at most a third of a line and only in the
+  direction of the pointer, so lines far from it stay whole. The pull eases
+  away when exploration ends. Reduced motion turns it off.
+- **The label.** A serif label beside the body names the group (Chest,
+  Shoulders), with a fine leader to the surface. It keeps between the body
+  and the rails (`SCULPTURE_LABEL_CLEAR`); where there is no room, and on
+  narrow layouts, the caption says it instead.
+- **Touch** selects directly.
+- **When it moves.** Ongoing flow runs only during visible pointer
+  exploration on Targets, or while a session is pointed at on the Week
+  plan, with normal motion. It pauses when the document is hidden, the
+  camera moves, or a program preview is shown. Resting selections are still.
+
+### Overview and detail
+
+The overview responds to every authored region of the pointed training
+group; picking still records the exact region under the pointer.
+`setDetailMode(true)` on the renderer gives exact anatomical names and a
+response limited to that region, for a future zoom level; there is no page
+control for it yet, and `setDetailMode(false)` restores the overview.
+Selection uses training groups in either mode.
 
 ## Anatomical limits
 
-The authored mesh and `ANATOMY_REGIONS` determine selectable anatomy. The
-flow field describes surface shape, **not muscle fibres, new anatomical
-divisions, or functional relationships**. It does not improve the accuracy
-of the authored boundaries.
+The authored mesh and `ANATOMY_REGIONS` decide what can be selected. The flow
+field describes surface shape, **not muscle fibres, new anatomical divisions
+or functional relationships**, and it does not make the authored borders any
+more accurate.
 
-Traces are evaluated in the sculpture's material shader and therefore stay
-on its visible surface. They cannot float above it, bridge empty space, or
-draw through the body. The baked seam distance softens their ends near
-region boundaries. Bone, tendon, and other nonselectable regions never gain
-a muscle's hover or selected map. A touch on such a region cannot borrow a
-nearby muscle; touch tolerance applies only outside the silhouette.
+Traces are worked out in the sculpture's material shader, so they stay on its
+visible surface: they cannot float above it, bridge empty space or draw
+through the body. The baked seam distance softens their ends near region
+borders. Bone, tendon and other regions that can't be selected never take a
+muscle's hover or selected map, and a touch on one cannot borrow a nearby
+muscle: touch tolerance applies only outside the silhouette.
 
-## Implementation and checks
+## How it is built
 
-`js/anatomy-cartography.js` retains deterministic, area-weighted surface
-sampling. `buildAnatomyFlowFrames` uses those samples to derive each region's
-scale and centre, together with the shape axes in `model.regionAnchors`.
-Regions without valid anchors use an axis estimated from their sample
-positions. Paired regions share a direction by folding coordinates around
-the body's upright plane. These frames guide the material traces; samples
-are not rendered as particles or a separate graph.
+**Sampling** (`js/anatomy-cartography.js`). `buildAnatomyCartography` takes
+deterministic, area-weighted samples of the surface, each on one triangle of
+one region. Its random sequence is fixed and part of the output: each sample
+still makes two draws for a retired particle's resting point before the two
+that place it, and removing them as dead code would move every sample, and so
+every curve. `tests/cartography.test.js` pins the samples. The samples are not
+drawn and are not kept once the frames and guides below are built.
 
-The sampler's random sequence is fixed and is part of its output. Each
-sample still takes two draws for a retired particle's resting point before
-the two that place it. Removing those draws as dead code would move every
-sample, and so every flow frame and curve; `tests/cartography.test.js` pins
-the sample positions and fails if the sequence changes.
+**Per-region frames.** `buildAnatomyFlowFrames` derives each region's scale,
+centre and axis from the samples and the shape axes in
+`model.regionAnchors`; a region without usable anchors takes an axis from its
+samples. Paired regions share a direction by folding coordinates about the
+body's upright plane. In the shader, positions are folded after
+interpolation, so triangles across the midline don't kink the abdominal
+traces; a rounded angular field keeps curves open where a region's axis nears
+the skin (no pinched fans or tiny rings); and narrow regions get fewer traces
+in proportion to their width, giving inner thighs and forearms more room.
 
-The shader folds surface positions after interpolation, so triangles across
-the midline do not kink the abdominal traces. A rounded angular field keeps
-curves open where a region's axis approaches the skin, avoiding pinched fans
-and tiny rings. Narrow regions receive fewer traces in proportion to their
-width relative to body height, giving inner thighs and forearms more space.
-These adjustments affect the drawn curves, not authored borders or picking.
-
-`buildAnatomyFlowGuides` gives some patches one continuous guide, so the
-curves and pulse do not restart at every small region's border:
+**Continuous guides.** `buildAnatomyFlowGuides` gives some patches one guide,
+so the curves and the pulse don't restart at every small region's border.
+`FLOW_GUIDE_GROUPS` is the one list of them:
 
 - shared per side: the forearm, quads, adductors, hamstrings and the upper
   back (infraspinatus, teres major, rhomboid major);
-- one guide each: the gluteus maximus, the trapezius (the broad upper field
+- one guide each: the gluteus maximus, the trapezius (its broad upper field
   blends into a straight lower tail), the lower back, and each lat.
 
 Guides follow the posed sculpture. Paired guides take their direction from
-the authored landmarks of each limb or scapula; the pelvic and spinal mirror
-planes follow the landmarks' tilt. The lower back runs between the pelvic
-and upper-back landmarks (its own axis is the fallback), in rounded open
-sweeps with no pole or mirrored join at the spine. Each lat bows along a
-direction set by the torso, so unequal painted axes cannot make one side
+the authored landmarks of each limb or shoulder blade; the pelvic and spinal
+mirror planes follow the landmarks' tilt. The lower back runs between the
+pelvic and upper-back landmarks (its own axis is the fallback), in rounded
+open sweeps with no pole or mirrored join at the spine. Each lat bows along a
+direction the torso sets, so unequal painted axes cannot make one side
 horizontal and the other diagonal. Depth enters linearly, so curves follow
-the surface without turning back on themselves. The chest, shoulders, abs
-and obliques keep their per-region fields, as does any region without
-usable landmarks. Inset borders inside a shared guide are quieter in
-overview and full weight in detail mode. Guide slots follow the group list
-(two per paired group), one texel each in the data texture's guide rows.
+the surface without turning back on themselves. The chest, shoulders, abs and
+obliques keep their per-region fields, as does any region without usable
+landmarks. Inset borders inside a shared guide are quieter in the overview and
+full weight in detail mode.
 
-**Per-region data and the uniform budget.** WebGL2 guarantees only 224
-uniform vectors to a fragment shader (256 to a vertex shader); desktop GPUs
-offer more, so overruns fail only on low-end devices. Uniform arrays per
-region used to spend that budget per region (Male_Body reached 212 of 224
-and 212 of 256). Everything the shaders know per region or per guide is now
-a row of one RGBA32F data texture (`SCULPTURE_DATA_ROWS`), one texel per
-region or guide, read with `texelFetch`: the state and map rows every frame,
-the flow fields, guide frames and hues after a context restore or a theme
-change (`uploadData`). The shaders keep 13 vertex and 18 fragment uniform
-vectors whatever the figure, so finer zoom sub-regions cost texels; WebGL2
-guarantees textures 2048 wide. `tests/shader-budget.test.js` fails if a
-uniform array sized by the figure comes back, or either shader passes the
-minimum; `tests/sculpture-data.test.js` checks each value lands on the
-texel the shaders read for it. The pick buffer's 8-bit region id is a
-separate limit (254 regions).
+How a guide draws is its kind, named in `FLOW_GUIDE_KINDS` (pelvis,
+trapezius, scapula, limb, spine, lat) and given to the shader as `KIND_*`
+defines, so neither side holds a bare number. `flowGuideSlots()` lays the
+groups out in the guide rows in list order, two slots for a paired group
+(left, then right); each region gets the code `(start + 1)`, negative for a
+paired group, and the shader takes the next slot for the right side.
 
-`js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
-picking, presentation mode, camera, and context restoration. It advances the
-clock only during visible pointer exploration, or while a session is
-highlighted, with normal motion enabled.
-A lit group's draw-in (program and family previews only) is a single eased reveal (`SCULPTURE_EASE.reveal`),
-not the clock; it restarts only when the lit set changes. Resting
-selections remain still. `MuscleSelection` is the only source of
-selection state. Classic scripts and the SVG fallback remain available;
-no asset export or build step is needed.
+**Data texture and uniforms.** WebGL2 guarantees only 224 uniform vectors to
+a fragment shader (256 to a vertex shader); desktop GPUs offer more, so an
+overrun fails only on low-end devices. Uniform arrays sized by the figure used
+to spend that budget per region (Male_Body reached 212 of 224 and 212 of 256).
+Everything the shaders know per region or per guide is now a row of one
+RGBA32F data texture (`SCULPTURE_DATA_ROWS`), one texel per region or guide,
+read with `texelFetch`: the state and map rows every frame; the flow fields,
+guide frames and hues after a context restore or a theme change
+(`uploadData`). The shaders keep 13 vertex and 18 fragment uniform vectors
+whatever the figure, so finer zoom sub-regions cost texels; WebGL2 guarantees
+textures 2048 wide.
 
-Run `npm test -- --maxWorkers=3`. Check sampling and frame validity, precise
-picking, touch boundaries, overview/detail switching, and motion gating.
-Browser validation should cover both themes, hover over time, the stationary
-selected state, keyboard and reduced motion, front/back and drag, narrow
-layouts, program/session previews, context restoration, and both fallbacks.
-Confirm there are no WebGL errors and that continuous drawing stops when
-pointer exploration ends or the document becomes hidden.
+**Region ids.** A vertex carries its region in two bytes (the low one, and the
+high one in what was the spare byte), and the pick buffer in two channels (red,
+then green), so picking reaches `SCULPTURE_REGION_LIMIT` (65,535) regions; the
+data texture's width is the nearer bound.
+
+**The renderer** (`js/anatomy-sculpture.js`) owns the surface shader, the hover
+clock, state easing, picking, detail mode, the camera and context
+restoration. A lit group's draw-in is a single eased reveal, not the clock, and
+restarts only when the lit set changes. `MuscleSelection` is the only source of
+selection state. Classic scripts and the SVG fallback remain; no asset export
+or build step is needed for any of this.
+
+## Checks
+
+`npm test` covers the cartography with:
+
+| Test | What it holds |
+|---|---|
+| `tests/cartography.test.js` | the samples (positions pinned, reproducible, never across a border); the shader's early exit; a touch on bone or tendon borrowing no muscle; animations settling; reduced motion |
+| `tests/cartography-flow.test.js` | frame validity; each guide's direction; motion gating; the pointer's pull; lit, family and session previews; trace scale |
+| `tests/cartography-guides.test.js` | guide slots never collide; each region's code leads to its own group's slots and kind; no kind compared by a bare number in the shader |
+| `tests/shader-budget.test.js` | no uniform array sized by the figure; both shaders within the minimum |
+| `tests/sculpture-data.test.js` | each value lands on the texel the shaders read |
+| `tests/pick-ids.test.js` | region ids past 255, in the vertices and the pick buffer |
+
+In a browser, check both themes; hover over time; the still selected state;
+keyboard and reduced motion; Front/Back and the drag; narrow layouts; program
+and session previews; context restoration; both fallbacks (`?anatomy=procedural`
+and no WebGL). There should be no WebGL errors, and continuous drawing should
+stop when pointer exploration ends or the document is hidden.
