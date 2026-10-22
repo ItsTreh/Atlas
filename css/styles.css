@@ -144,7 +144,7 @@ button, input, select { font: inherit; }
 button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
-h1:focus-visible { outline: none; }
+h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on after a move: no ring */
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -191,7 +191,7 @@ h1:focus-visible { outline: none; }
   position: absolute; left: 0; right: 0; top: 0; height: var(--bar); z-index: 6;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   padding: 0 var(--pad); pointer-events: none;
-  transition: background .3s ease;
+  transition: background .3s ease, opacity .8s ease .2s;
 }
 .masthead :is(button, a) { pointer-events: auto; }
 /* Over a screen that fills the page (Shape your week, Your week), the
@@ -240,6 +240,7 @@ h1:focus-visible { outline: none; }
   position: absolute; z-index: 6; left: var(--pad); right: var(--pad); bottom: 26px; height: 52px;
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   pointer-events: none;
+  transition: opacity .8s ease .2s;
 }
 /* Only the footer's controls catch the pointer: its columns are wide and
    sit over the figure's own controls. */
@@ -339,7 +340,7 @@ h1:focus-visible { outline: none; }
 .anatomy-stage {
   position: absolute; left: 0; right: 0; top: 0; height: 100%; z-index: 1;
   isolation: isolate;
-  transition: height .9s var(--ease-move);
+  transition: top .9s var(--ease-move), height .9s var(--ease-move);
 }
 .anatomy-viewport { position: absolute; inset: 0; container-type: size; }
 
@@ -1126,6 +1127,137 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 }
 @media (max-width: 1179px) {
   .goals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ------------------------------ start screen ------------------------------ */
+
+/* One of five openings before the stage (start.js). The camera is the
+   sculpture's own; the stage's interface waits, out of sight, under
+   data-opening until the start screen hands over. What lies under the body
+   (the carved ground's ink, the monument's letters) is .start-ground, in
+   the anatomy stage beneath its viewport; the words, the veil and the
+   controls are .start, over everything. --start-p is how far the move into
+   the stage has gone, 0 … 1. */
+.atlas[data-opening] :is(.masthead, .stage-foot, .stage) { opacity: 0; visibility: hidden; transition: none; }
+.start-ground { position: absolute; inset: 0; pointer-events: none; display: none; }
+.atlas[data-opening] .start-ground { display: block; }
+.start-ink { position: absolute; inset: 0; background: var(--ink); display: none; }
+.atlas[data-opening="carved"] .start-ink { display: block; }
+.start-letters {
+  position: absolute; left: 0; right: 0; top: 50%; display: none; justify-content: space-between;
+  padding: 0 3.5vw; transform: translateY(-58%);
+  font: 400 min(26vw, 50vh)/.8 var(--serif); color: var(--ink); user-select: none;
+  opacity: 0; transition: opacity .22s ease;
+}
+.atlas[data-opening="monument"] .start-letters { display: flex; }
+.atlas:has(#start[data-phase="idle"]) .start-letters {
+  opacity: max(0, 1 - var(--start-p, 0) * 1.8);
+  transition: opacity .8s ease .06s;
+}
+.atlas:has(#start[data-phase="idle"][data-live]) .start-letters { transition: opacity .1s linear; }
+
+.start { position: absolute; inset: 0; z-index: 7; color: var(--ink); }
+.start[hidden] { display: none; }
+.start-veil { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+.start[data-variant="carved"] .start-veil { display: block; }
+.start-veil-ground { fill: var(--bg); }
+.start-carve-letters { font: 700 380px var(--serif); text-anchor: middle; }
+.start-hit { position: absolute; inset: 0; touch-action: none; user-select: none; -webkit-user-select: none; outline: none; }
+.start[data-variant="detail"] .start-hit { cursor: grab; }
+.start[data-variant="detail"][data-dragging] .start-hit { cursor: grabbing; }
+.start:is([data-variant="carved"], [data-variant="monument"]) .start-hit { cursor: pointer; }
+
+/* The words come in as the camera settles, fade as the move begins, and go
+   fast when the stage takes over; until then (idle) nothing can be used. */
+.start [data-in] {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .22s ease, transform .22s ease;
+}
+.start[data-phase="idle"] [data-in] {
+  --d: .06s;
+  opacity: max(0, 1 - var(--start-p, 0) * 1.8); transform: none;
+  transition: opacity .8s ease var(--d), transform 1.1s var(--ease-out) var(--d);
+}
+.start[data-phase="idle"] [data-in="late"] { --d: .32s; }
+.start[data-phase="idle"][data-live] [data-in] { transition: opacity .1s linear, transform .3s ease; }
+.start:not([data-phase="idle"]) :is(button, .start-hit) { pointer-events: none; }
+
+.start-copy { position: absolute; display: flex; flex-direction: column; pointer-events: none; }
+.start-copy button { pointer-events: auto; }
+.start-eyebrow {
+  margin: 0; font: var(--t-label); letter-spacing: var(--track-label);
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.start-title { margin: 0; font-family: var(--serif); font-weight: 400; color: var(--ink); }
+.start-begin {
+  display: none; align-items: center; gap: 18px; width: 100%; margin-top: 6px; padding: 10px 0;
+  background: none; border: 0; color: var(--ink); cursor: pointer;
+}
+.start-begin .start-rule { flex: 1; width: auto; }
+.start-begin-label { font: italic 500 24px/1 var(--serif); }
+.start-rule { position: relative; display: block; width: 56px; height: 1px; background: var(--line); overflow: hidden; }
+.start-rule > span {
+  position: absolute; inset: 0; background: var(--ink);
+  transform-origin: left; transform: scaleX(var(--start-p, 0));
+}
+.start-begin .start-rule > span { transition: transform .5s var(--ease-out); }
+.start-begin:is(:hover, :focus-visible) .start-rule > span { transform: scaleX(1); }
+.start-cue {
+  position: absolute; z-index: 1; right: var(--pad); bottom: 44px;
+  display: flex; align-items: center; gap: 14px; padding: 8px 0;
+  background: none; border: 0; cursor: pointer;
+}
+.start-cue-label { font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-faint); }
+.start[data-variant="detail"] .start-cue { right: auto; left: var(--pad); flex-direction: row-reverse; }
+
+/* Cinematic: the figure from below, on the left; the name and Begin beside it. */
+.start[data-variant="cinematic"] .start-copy {
+  left: 55%; top: 50%; transform: translateY(-50%);
+  width: max-content; max-width: calc(45% - var(--pad)); gap: 22px;
+}
+.start[data-variant="cinematic"] .start-title {
+  margin-left: -.04em; font-size: clamp(96px, 12.5vw, 210px); line-height: .84; letter-spacing: .04em;
+}
+.start[data-variant="cinematic"] .start-begin { display: flex; }
+/* Torso: the chest rising out of the bottom edge, the name above it. */
+.start[data-variant="torso"] .start-copy {
+  left: 0; right: 0; top: 0; height: 50%; padding: 0 32px;
+  align-items: center; justify-content: flex-end; gap: 24px; text-align: center;
+}
+.start[data-variant="torso"] .start-title {
+  padding-left: .2em; font-size: clamp(112px, 16vw, 260px); line-height: .82; letter-spacing: .2em;
+}
+/* Carved and monument: the letters are the veil's, or stand behind the body. */
+.start[data-variant="carved"] .start-copy { left: 0; right: 0; top: 17%; align-items: center; }
+.start:is([data-variant="carved"], [data-variant="monument"]) .start-title {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+.start[data-variant="monument"] .start-eyebrow { display: none; }
+/* Detail: the back of the shoulder, close; the name low on the left. */
+.start[data-variant="detail"] .start-copy { left: 44px; bottom: 96px; gap: 26px; }
+.start[data-variant="detail"] .start-eyebrow { margin-left: 4px; }
+.start[data-variant="detail"] .start-title {
+  font-size: clamp(130px, 19vw, 320px); line-height: .78; letter-spacing: .01em;
+}
+
+@media (max-width: 759px), (max-width: 999px) and (orientation: portrait) {   /* STAGE_NARROW in stages.js */
+  /* The sculpture has the whole screen until the stage takes it into its band. */
+  #atlas[data-opening] #anatomy-stage { top: 0; height: 100%; }
+  .start-cue { bottom: 28px; }
+  .start[data-variant="cinematic"] .start-copy {
+    left: var(--pad); right: var(--pad); top: auto; bottom: 96px;
+    transform: none; width: auto; max-width: none; gap: 16px;
+  }
+  .start[data-variant="cinematic"] .start-title { font-size: clamp(72px, 24vw, 150px); }
+  .start[data-variant="torso"] .start-copy { height: 46%; padding: 0 var(--pad); gap: 18px; }
+  .start[data-variant="torso"] .start-title { font-size: clamp(48px, 15vw, 150px); }
+  .start[data-variant="detail"] .start-copy { left: var(--pad); bottom: 96px; gap: 18px; }
+  .start[data-variant="detail"] .start-title { font-size: clamp(88px, 26vw, 220px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start [data-in], .start[data-phase="idle"] [data-in] { transform: none; }
+  .start[data-phase="idle"] [data-in], .atlas:has(#start[data-phase="idle"]) .start-letters { transition: opacity .25s ease; }
 }
 
 /* --------------------------------- phones --------------------------------- */

@@ -8,14 +8,16 @@
      from disk without a connection) they fall back to Georgia. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&amp;display=swap">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <!-- One screen, three stages. The sculpture is a single element behind
      them all; moving between stages moves its camera (stages.js), and each
      stage's interface settles around it. -->
-<div class="atlas" id="atlas" data-stage="targets" data-phase="idle">
+<!-- data-opening keeps the stage's interface out of sight until start.js
+     has decided whether the start screen plays. -->
+<div class="atlas" id="atlas" data-stage="targets" data-phase="idle" data-opening>
   <!-- Says what changed, for a screen reader: one region that stays put,
        since the panels are redrawn and a new live region is not read. -->
   <p class="visually-hidden" id="announce" aria-live="polite"></p>
@@ -57,6 +59,11 @@
        talks to AnatomyStage; the renderer it mounts into the viewport
        draws everything inside it. -->
   <div class="anatomy-stage" id="anatomy-stage">
+    <!-- What the start screen draws under the body (start.js). -->
+    <div class="start-ground" aria-hidden="true">
+      <div class="start-ink"></div>
+      <div class="start-letters"><span>A</span><span>T</span><span>L</span><span>A</span><span>S</span></div>
+    </div>
     <div class="anatomy-viewport" data-anatomy-mount></div>
     <div class="figure-controls">
       <p class="anatomy-caption" id="anatomy-caption"></p>
@@ -95,6 +102,37 @@
       <button type="button" class="btn primary" id="foot-next" aria-describedby="foot-hint" hidden></button>
     </div>
   </footer>
+
+  <!-- ============================== Start screen ========================== -->
+  <!-- Over everything until it hands the page to the stage (start.js). Each
+       variant lays out the same parts (css/styles.css, "start screen"). -->
+  <div class="start" id="start" hidden>
+    <svg class="start-veil" id="start-veil" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <!-- The mask and the ground cover what the screen shows of the veil,
+             and no more (start.js, fitVeil). -->
+        <mask id="start-carve" maskUnits="userSpaceOnUse" x="0" y="0" width="1600" height="1000">
+          <rect x="0" y="0" width="1600" height="1000" fill="#fff"></rect>
+          <g id="start-carve-letters" class="start-carve-letters" fill="#000">
+            <text x="262" y="660">A</text><text x="530" y="660">T</text><text x="790" y="660">L</text>
+            <text x="1060" y="660">A</text><text x="1330" y="660">S</text>
+          </g>
+        </mask>
+      </defs>
+      <rect class="start-veil-ground" x="0" y="0" width="1600" height="1000" mask="url(#start-carve)"></rect>
+    </svg>
+    <div class="start-hit" id="start-hit"></div>
+    <div class="start-copy">
+      <p class="start-eyebrow" data-in>A weekly training planner</p>
+      <h1 class="start-title" data-in>ATLAS</h1>
+      <button type="button" class="start-begin" id="start-begin" data-in="late">
+        <span class="start-rule" aria-hidden="true"><span></span></span><span class="start-begin-label">Begin</span>
+      </button>
+    </div>
+    <button type="button" class="start-cue" id="start-cue" data-in="late">
+      <span class="start-cue-label" id="start-cue-label"></span><span class="start-rule" aria-hidden="true"><span></span></span>
+    </button>
+  </div>
 </div>
 
 <!-- Classic scripts, loaded in dependency order. They share the global scope,
@@ -134,6 +172,7 @@
 <script src="js/nutrition-view.js"></script>
 <script src="js/week-view.js"></script>
 <script src="js/paint.js"></script>
+<script src="js/start.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

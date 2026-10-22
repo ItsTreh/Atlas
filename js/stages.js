@@ -25,6 +25,10 @@
    The user moves with the navigation in the masthead, the footer's
    Continue, or an intentional scroll: a firm wheel gesture over anything
    that is not itself scrolling.
+
+   The page can open held (start(name, true)): the stage is drawn but its
+   interface stays out and the camera is the start screen's (start.js),
+   until open() brings the stage in, as at the end of a change.
    ========================================================================= */
 
 const STAGE_ORDER = ["targets", "nutrition", "plan"];
@@ -48,6 +52,7 @@ const Stages = {
   current: "targets",
   phase: "idle",
   busy: false,
+  opening: false, // while the start screen holds the page (start.js)
   queued: null,   // a relayout asked for while busy, run when the change lands
   views: {},
 
@@ -73,18 +78,42 @@ const Stages = {
   /** Week plan opens only once something is selected. */
   can(name) { return name !== "plan" || !routine.selection.isEmpty(); },
 
-  /** Shows a stage at once, with no motion: where the page opens. */
-  start(name) {
+  /**
+   * Shows a stage at once, with no motion: where the page opens. `held`
+   * leaves its interface out for the start screen, until open().
+   */
+  start(name, held = false) {
     if (!this.can(name)) name = "targets";
     this.current = name;
+    this.opening = held;
     this.paintStage();
     this.call("arrive");
     this.call("enter");
-    this.phase = "idle";
-    this.root.dataset.phase = "idle";
-    this.root.dataset.shown = "";
+    this.phase = held ? "out" : "idle";
+    this.root.dataset.phase = this.phase;
+    if (held) delete this.root.dataset.shown;
+    else { this.root.dataset.shown = ""; delete this.root.dataset.opening; }
     this.refresh();
   },
+
+  /**
+   * The start screen hands the page over: the camera goes on to the stage's
+   * shot from wherever the start screen left it, and the interface comes in
+   * after `settle`, as at the end of a change.
+   */
+  open(settle = STAGE_TIMING.settle) {
+    if (!this.opening) return;
+    this.opening = false;
+    delete this.root.dataset.opening;
+    // The wheel gesture that finished the start screen may still be
+    // running: it is spent, so it doesn't carry on to the next stage.
+    this.wheelAt = performance.now();
+    this.spent = true;
+    this.run(() => {}, settle, () => this.landed());
+  },
+
+  /** The current stage's shot (SCULPTURE_SHOTS, or "targets"). */
+  shot() { return this.call("shot") || this.current; },
 
   /** Moves to a stage: out, then the new one drawn while the camera travels, then still. */
   go(name, before) {
@@ -213,11 +242,14 @@ const Stages = {
     const idle = this.phase === "idle";
     if (typeof figure === "object") {
       figure.setLayout(this.narrow ? "mobile" : "desktop");
-      figure.setShot(this.call("shot") || this.current);
-      const dim = this.call("dim");
-      figure.setDim(dim === undefined ? 1 : dim);
       figure.setInteractive(this.current === "targets" && idle);
-      figure.setHighlight(this.call("highlight") || null);
+      // While the start screen holds the page, the camera is its own.
+      if (!this.opening) {
+        figure.setShot(this.shot());
+        const dim = this.call("dim");
+        figure.setDim(dim === undefined ? 1 : dim);
+        figure.setHighlight(this.call("highlight") || null);
+      }
     }
     this.root.dataset.layout = this.narrow ? "mobile" : "desktop";
     this.paintNav();
@@ -255,7 +287,7 @@ const Stages = {
    * data-scroll) takes the wheel first, and keeps it for a moment after.
    */
   wheel(e) {
-    if (this.narrow || this.call("wheel") === false) return;
+    if (this.opening || this.narrow || this.call("wheel") === false) return;
     if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     const now = performance.now();
     // One gesture moves one stage. Events closer together than the gap are
