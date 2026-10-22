@@ -96,7 +96,7 @@ Next:
 **Future plans, not to build yet:**
 - zooming into a muscle group reveals finer selectable parts (e.g. the heads of the chest). The cartography's detail mode is the hook for it.
 
-Don't build toward it unprompted, but flag any change that would make it harder. `lab/anatomy-cartography.*` is an untracked experiment, so leave it alone.
+Don't build toward it unprompted, but flag any change that would make it harder.
 
 ## How to work with this user
 

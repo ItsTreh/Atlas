@@ -36,9 +36,9 @@ matches the page; the light theme uses the sculpture's original cool grey.
   would need each region's neighbours baked into the model.
 - Traces scale with the body's size on screen against Targets
   (`traceScale`): a closer camera, as on the week stage, gets more and
-  heavier lines, half each, keeping Targets' balance of line and gap. Hues are per region (`uRegionInk`, `uMapTint` in the fragment
-  shader, where uniform room remains; the vertex shader is near WebGL2's
-  minimum).
+  heavier lines, half each, keeping Targets' balance of line and gap. Hues
+  are per region (`uRegionInk` in the fragment shader, `uMapTint` passed
+  from the vertex shader).
 - Moving the pointer gently draws nearby hovered and selected traces toward
   it. Only the direction to the pointer bends them, by at most a third of a
   line, so lines far from the pointer stay whole. The response eases away
@@ -84,6 +84,43 @@ Regions without valid anchors use an axis estimated from their sample
 positions. Paired regions share a direction by folding coordinates around
 the body's upright plane. These frames guide the material traces; samples
 are not rendered as particles or a separate graph.
+
+The shader folds surface positions after interpolation, so triangles across
+the midline do not kink the abdominal traces. A rounded angular field keeps
+curves open where a region's axis approaches the skin, avoiding pinched fans
+and tiny rings. Narrow regions receive fewer traces in proportion to their
+width relative to body height, giving inner thighs and forearms more space.
+These adjustments affect the drawn curves, not authored borders or picking.
+
+`buildAnatomyFlowGuides` gives some patches one continuous guide, so the
+curves and pulse do not restart at every small region's border:
+
+- shared per side: the forearm, quads, adductors, hamstrings and the upper
+  back (infraspinatus, teres major, rhomboid major);
+- one guide each: the gluteus maximus, the trapezius (the broad upper field
+  blends into a straight lower tail), the lower back, and each lat.
+
+Guides follow the posed sculpture. Paired guides take their direction from
+the authored landmarks of each limb or scapula; the pelvic and spinal mirror
+planes follow the landmarks' tilt. The lower back runs between the pelvic
+and upper-back landmarks (its own axis is the fallback), in rounded open
+sweeps with no pole or mirrored join at the spine. Each lat bows along a
+direction set by the torso, so unequal painted axes cannot make one side
+horizontal and the other diagonal. Depth enters linearly, so curves follow
+the surface without turning back on themselves. The chest, shoulders, abs
+and obliques keep their per-region fields, as does any region without
+usable landmarks. Inset borders inside a shared guide are quieter in
+overview and full weight in detail mode. Guide slots follow the group list
+(two per paired group), and the shader's `GUIDES` comes from the result.
+
+**Uniform budget.** WebGL2 guarantees only 224 uniform vectors to a fragment
+shader (256 to a vertex shader); desktop GPUs offer more, so overruns fail
+only on low-end devices. Every region costs three fragment vectors
+(`uRegionInk`, `uFlowCenters`, `uFlowAxes`) and four vertex vectors; every
+guide costs three fragment vectors. Male_Body uses 212 of 224 and 212 of
+256, so about four more regions fit. Finer zoom sub-regions will need the
+per-region data moved into a texture. `tests/shader-budget.test.js` fails
+once either shader passes the minimum.
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the

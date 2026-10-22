@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
 import { loadApp } from "./load-app.js";
 
-const { buildAnatomyFlowFrames, AnatomySculpture } = loadApp({
-  extra: ["js/anatomy-sculpture.js"], exports: ["buildAnatomyFlowFrames", "AnatomySculpture"] });
+const { buildAnatomyFlowFrames, buildAnatomyFlowGuides, AnatomySculpture } = loadApp({
+  extra: ["js/anatomy-sculpture.js"], exports: ["buildAnatomyFlowFrames", "buildAnatomyFlowGuides", "AnatomySculpture"] });
 
 function samples(points) {
   const data = new Float32Array(points.length * 12);
@@ -59,6 +59,116 @@ describe("surface flow frames", () => {
         expect(axes[r * 4 + 3]).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("continuous surface guides", () => {
+  const bounds = { min: [-30, 0, -20], max: [30, 160, 20] };
+  const anchor = (centroid, axis = [0, 1, 0], area = 10) => ({ centroid, axis, area });
+
+  test("the pelvis mirror follows tilted landmarks, independent of unequal painted areas", () => {
+    const model = { bounds, regions: ["gluteus-maximus"], regionAnchors: {
+      "gluteus-maximus": {
+        left: anchor([12, 98, -6], undefined, 100),
+        right: anchor([-8, 92, -4], undefined, 200)
+      }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect([...g.origins.slice(0, 3)]).toEqual([2, 95, -5]);
+    const x = [...g.across.slice(0, 3)], y = [...g.along.slice(0, 3)];
+    expect(x[1]).toBeGreaterThan(0);                 // a tilted pelvis, not world x = 0
+    expect(x.reduce((sum, v, k) => sum + v * y[k], 0)).toBeCloseTo(0, 6);
+    expect(Math.hypot(...x)).toBeCloseTo(1, 6);
+  });
+
+  test("neighbouring forearm regions share a field while each arm keeps its own direction", () => {
+    const pair = { left: anchor([24, 100, -3], [0.2, 0.98, 0]),
+      right: anchor([-27, 105, 3], [-0.4, 0.85, -0.3]) };
+    const model = { bounds, regions: ["brachioradialis", "flexor-carpi-radialis", "extensor-digitorum"],
+      regionAnchors: { "brachioradialis": pair, "flexor-carpi-radialis": pair, "extensor-digitorum": pair } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect([...g.regions]).toEqual([-5, -5, -5]);
+    expect(g.along[16]).toBeGreaterThan(0);
+    expect(g.along[20]).toBeLessThan(0);
+    expect([...g.origins.slice(16, 19)]).toEqual([24, 100, -3]);
+    expect([...g.origins.slice(20, 23)]).toEqual([-27, 105, 3]);
+  });
+
+  test("upper-back regions share a guide without changing the accepted front fields", () => {
+    const regions = ["infraspinatus", "teres-major", "rhomboid-major", "pectoralis-major",
+      "deltoid", "rectus-abdominis", "external-oblique"];
+    const pair = { left: anchor([8, 138, -15]), right: anchor([-14, 140, -13]) };
+    const g = buildAnatomyFlowGuides({ bounds, regions,
+      regionAnchors: Object.fromEntries(regions.map(name => [name, pair])) }, samples([]));
+    expect([...g.regions]).toEqual([-3, -3, -3, 0, 0, 0, 0]);
+  });
+
+  test("missing or invalid bilateral landmarks keep the existing field", () => {
+    const model = { bounds, regions: ["gluteus-maximus", "trapezius"], regionAnchors: {
+      "gluteus-maximus": { left: anchor([10, 95, -6]) },
+      "trapezius": { left: anchor([6, 140, -10]), right: anchor([NaN, 140, -10]) }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect([...g.regions]).toEqual([0, 0]);
+    expect([...g.origins, ...g.across, ...g.along].every(Number.isFinite)).toBe(true);
+  });
+
+  test("each thigh group shares a continuous guide without mixing neighbouring training areas", () => {
+    const regions = ['rectus-femoris', 'vastus-lateralis', 'vastus-medialis', 'sartorius',
+      'gracilis', 'pectineus', 'adductor-longus', 'biceps-femoris', 'semitendinosus',
+      'semimembranosus', 'adductor-magnus', 'gastrocnemius'];
+    const pair = { left: anchor([10, 75, 5], [0.1, 0.99, 0]),
+      right: anchor([-10, 72, 8], [-0.2, 0.96, 0.2]) };
+    const g = buildAnatomyFlowGuides({ bounds, regions,
+      regionAnchors: Object.fromEntries(regions.map(name => [name, pair])) }, samples([]));
+    expect([...g.regions]).toEqual([-7, -7, -7, -7, -9, -9, -9, -11, -11, -11, -11, 0]);
+    // Both posed sides are allocated for every shared field.
+    for (const id of [-7, -9, -11]) for (const offset of [0, 1]) {
+      const base = (Math.abs(id) - 1 + offset) * 4;
+      expect(g.across[base + 3]).toBeGreaterThan(0);
+      expect(g.along[base + 3]).toBeGreaterThan(0);
+      expect(Math.hypot(...g.along.slice(base, base + 3))).toBeCloseTo(1, 6);
+    }
+  });
+
+  test("the central lower back follows the posed torso without creating a second mirrored patch", () => {
+    const model = { bounds, regions: ['erector-spinae'], regionAnchors: {
+      'erector-spinae': { centre: anchor([2, 110, -6], [0.4, 0.9, 0.1]) },
+      'gluteus-maximus': { left: anchor([12, 96, -5]), right: anchor([-8, 94, -5]) },
+      trapezius: { left: anchor([5, 148, -10]), right: anchor([-9, 146, -10]) }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect(g.regions[0]).toBeGreaterThan(0);         // single continuous patch
+    const base = (g.regions[0] - 1) * 4;
+    expect([...g.origins.slice(base, base + 3)]).toEqual([2, 110, -6]);
+    const direction = [-4, 52, -5], length = Math.hypot(...direction);
+    direction.forEach((v, k) => expect(g.along[base + k]).toBeCloseTo(v / length, 6));
+    delete model.regionAnchors['gluteus-maximus'];
+    const fallback = buildAnatomyFlowGuides(model, samples([]));
+    expect(fallback.regions[0]).toBe(g.regions[0]);
+    expect([...fallback.along].every(Number.isFinite)).toBe(true);
+  });
+
+  test("lat sweeps follow the posed torso despite conflicting painted principal axes", () => {
+    const model = { bounds, regions: ['latissimus-dorsi', 'external-oblique'], regionAnchors: {
+      'latissimus-dorsi': { left: anchor([12, 125, -10], [0.99, 0.1, 0]),
+        right: anchor([-12, 125, -10], [-0.3, 0.95, 0]) },
+      'gluteus-maximus': { left: anchor([10, 95, -5]), right: anchor([-10, 95, -5]) },
+      trapezius: { left: anchor([8, 147, -10]), right: anchor([-8, 147, -10]) }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect(g.regions[0]).toBeLessThan(0);
+    expect(g.regions[1]).toBe(0);
+    const base = (Math.abs(g.regions[0]) - 1) * 4;
+    expect(g.along[base]).toBeCloseTo(-g.along[base + 4], 6);
+    expect(g.along[base + 1]).toBeCloseTo(g.along[base + 5], 6);
+    expect(g.along[base + 2]).toBeCloseTo(g.along[base + 6], 6);
+    expect(g.along[base + 2]).toBeLessThan(0); // follows the torso's backward lean
+    delete model.regionAnchors.trapezius;
+    const fallback = buildAnatomyFlowGuides(model, samples([]));
+    expect(fallback.regions[0]).toBe(g.regions[0]);
+    expect([...fallback.along].every(Number.isFinite)).toBe(true);
+    expect(fallback.along[base + 1]).toBeLessThan(fallback.along[base + 5]);
   });
 });
 
