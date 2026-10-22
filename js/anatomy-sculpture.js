@@ -349,7 +349,7 @@ class AnatomySculpture {
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, width, rows);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);   // complete without mipmaps
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    const defs = "#define SEAM_MAX " + m.seamMax.toFixed(3) + "\n" + sculptureDataDefines();
+    const defs = "#define SEAM_MAX " + m.seamMax.toFixed(3) + "\n" + sculptureDataDefines() + flowGuideDefines();
     this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
     this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     gl.bindVertexArray(null);
@@ -1503,6 +1503,8 @@ vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 vec4 data(int index, int row) { return texelFetch(uData, ivec2(index, row), 0); }
+/* Whether a guide's stored kind is k (a KIND_* define): whole numbers in a float. */
+bool isKind(float w, float k) { return abs(w - k) < 0.5; }
 
 void main() {
   vec3 n = normalize(vNormal);
@@ -1575,17 +1577,18 @@ void main() {
     float roundWidth = uExt.y * 0.004;
     float folded = sqrt(lateral * lateral + roundWidth * roundWidth);
     float sweep;
-    if (origin.w < 1.5) {
+    // origin.w is the guide's kind (FLOW_GUIDE_KINDS, given as KIND_* defines).
+    if (isKind(origin.w, KIND_PELVIS)) {
       sweep = (vertical - 0.65 * folded - 0.25 * relief) / across.w;
-    } else if (origin.w < 2.5) {
+    } else if (isKind(origin.w, KIND_TRAPEZIUS)) {
       sweep = (folded - 0.32 * vertical) / across.w;
-    } else if (origin.w > 4.5 && origin.w < 5.5) {
+    } else if (isKind(origin.w, KIND_SPINE)) {
       // Open, rounded sweeps across the posed spine. The vertical term stays
       // monotonic: no angular pole or mirrored seam inside the lower back.
       float bendWidth = uExt.y * 0.018;
       float bowl = sqrt(lateral * lateral + bendWidth * bendWidth) - bendWidth;
       sweep = (vertical - 1.15 * bowl - 0.2 * relief) / across.w;
-    } else if (origin.w > 5.5) {
+    } else if (isKind(origin.w, KIND_LAT)) {
       // Each lat bows along its own posed axis, with bounded curvature and
       // no wrap around an origin that could turn the traces back on themselves.
       float t = vertical / lengthwise.w;
@@ -1595,7 +1598,7 @@ void main() {
       sweep = (lateral + 0.15 * relief) / across.w;
     }
     // Keep the broad upper-trap curves; straighten their narrow lower tail.
-    float blend = origin.w > 1.5 && origin.w < 2.5 ?
+    float blend = isKind(origin.w, KIND_TRAPEZIUS) ?
       1.0 - smoothstep(-0.5, 0.15, vertical / lengthwise.w) : 1.0;
     field = mix(field, sweep, blend);
     along = mix(along, vertical / lengthwise.w, blend);
@@ -1663,7 +1666,8 @@ void main() {
                (1.0 - smoothstep(0.5, 0.8, vSeam)) * vFocus;
   c = mix(c, toLinear(uInk), ring);
   outColor = vec4(toSrgb(c), 1.0);
-}`;
+}
+`;
 
 /* The picking pass: each pixel's region (+1, so 0 is empty). */
 const SCULPTURE_PICK = `

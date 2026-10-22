@@ -1,8 +1,16 @@
 import { describe, expect, test } from "vitest";
 import { loadApp } from "./load-app.js";
 
-const { buildAnatomyFlowFrames, buildAnatomyFlowGuides, AnatomySculpture } = loadApp({
-  extra: ["js/anatomy-sculpture.js"], exports: ["buildAnatomyFlowFrames", "buildAnatomyFlowGuides", "AnatomySculpture"] });
+const { buildAnatomyFlowFrames, buildAnatomyFlowGuides, AnatomySculpture, flowGuideSlots, FLOW_GUIDE_KINDS } = loadApp({
+  extra: ["js/anatomy-sculpture.js"],
+  exports: ["buildAnatomyFlowFrames", "buildAnatomyFlowGuides", "AnatomySculpture", "flowGuideSlots", "FLOW_GUIDE_KINDS"] });
+
+/* A region's guide, as the layout places it: never a slot number written
+   here, so the tests follow the group list. `code` is what the region gets
+   in buildAnatomyFlowGuides' `regions` (negative for a paired group). */
+const groupOf = name => flowGuideSlots().find(g => g.names.includes(name));
+const code = name => { const g = groupOf(name); return (g.start + 1) * (g.paired ? -1 : 1); };
+const at = (slot, k = 0) => slot * 4 + k;          // a slot's first float in a guide row
 
 function samples(points) {
   const data = new Float32Array(points.length * 12);
@@ -74,8 +82,9 @@ describe("continuous surface guides", () => {
       }
     } };
     const g = buildAnatomyFlowGuides(model, samples([]));
-    expect([...g.origins.slice(0, 3)]).toEqual([2, 95, -5]);
-    const x = [...g.across.slice(0, 3)], y = [...g.along.slice(0, 3)];
+    const s = groupOf("gluteus-maximus").start;
+    expect([...g.origins.slice(at(s), at(s, 3))]).toEqual([2, 95, -5]);
+    const x = [...g.across.slice(at(s), at(s, 3))], y = [...g.along.slice(at(s), at(s, 3))];
     expect(x[1]).toBeGreaterThan(0);                 // a tilted pelvis, not world x = 0
     expect(x.reduce((sum, v, k) => sum + v * y[k], 0)).toBeCloseTo(0, 6);
     expect(Math.hypot(...x)).toBeCloseTo(1, 6);
@@ -87,11 +96,12 @@ describe("continuous surface guides", () => {
     const model = { bounds, regions: ["brachioradialis", "flexor-carpi-radialis", "extensor-digitorum"],
       regionAnchors: { "brachioradialis": pair, "flexor-carpi-radialis": pair, "extensor-digitorum": pair } };
     const g = buildAnatomyFlowGuides(model, samples([]));
-    expect([...g.regions]).toEqual([-5, -5, -5]);
-    expect(g.along[16]).toBeGreaterThan(0);
-    expect(g.along[20]).toBeLessThan(0);
-    expect([...g.origins.slice(16, 19)]).toEqual([24, 100, -3]);
-    expect([...g.origins.slice(20, 23)]).toEqual([-27, 105, 3]);
+    const c = code("brachioradialis"), left = groupOf("brachioradialis").start, right = left + 1;
+    expect([...g.regions]).toEqual([c, c, c]);
+    expect(g.along[at(left)]).toBeGreaterThan(0);
+    expect(g.along[at(right)]).toBeLessThan(0);
+    expect([...g.origins.slice(at(left), at(left, 3))]).toEqual([24, 100, -3]);
+    expect([...g.origins.slice(at(right), at(right, 3))]).toEqual([-27, 105, 3]);
   });
 
   test("upper-back regions share a guide without changing the accepted front fields", () => {
@@ -100,7 +110,8 @@ describe("continuous surface guides", () => {
     const pair = { left: anchor([8, 138, -15]), right: anchor([-14, 140, -13]) };
     const g = buildAnatomyFlowGuides({ bounds, regions,
       regionAnchors: Object.fromEntries(regions.map(name => [name, pair])) }, samples([]));
-    expect([...g.regions]).toEqual([-3, -3, -3, 0, 0, 0, 0]);
+    const c = code("infraspinatus");
+    expect([...g.regions]).toEqual([c, c, c, 0, 0, 0, 0]);
   });
 
   test("missing or invalid bilateral landmarks keep the existing field", () => {
@@ -121,9 +132,12 @@ describe("continuous surface guides", () => {
       right: anchor([-10, 72, 8], [-0.2, 0.96, 0.2]) };
     const g = buildAnatomyFlowGuides({ bounds, regions,
       regionAnchors: Object.fromEntries(regions.map(name => [name, pair])) }, samples([]));
-    expect([...g.regions]).toEqual([-7, -7, -7, -7, -9, -9, -9, -11, -11, -11, -11, 0]);
+    const quads = code("rectus-femoris"), adductors = code("gracilis"), hamstrings = code("biceps-femoris");
+    expect([...g.regions]).toEqual([quads, quads, quads, quads, adductors, adductors, adductors,
+                                    hamstrings, hamstrings, hamstrings, hamstrings, 0]);
+    expect(new Set([quads, adductors, hamstrings]).size).toBe(3);
     // Both posed sides are allocated for every shared field.
-    for (const id of [-7, -9, -11]) for (const offset of [0, 1]) {
+    for (const id of [quads, adductors, hamstrings]) for (const offset of [0, 1]) {
       const base = (Math.abs(id) - 1 + offset) * 4;
       expect(g.across[base + 3]).toBeGreaterThan(0);
       expect(g.along[base + 3]).toBeGreaterThan(0);
