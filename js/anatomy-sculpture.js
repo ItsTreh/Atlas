@@ -1286,7 +1286,7 @@ class AnatomySculpture {
       const hit = e.target.closest && e.target.closest(".hit");
       if (!hit || !this.interactive) return;
       e.preventDefault();
-      this.selection.toggle(hit.dataset.muscle);
+      if (!e.repeat) this.selection.toggle(hit.dataset.muscle);   // a held key toggles once
     });
     // Keyboard focus only: a tap would otherwise leave a muscle stuck lit.
     // A muscle on the other side turns the body round to it, and one on

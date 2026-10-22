@@ -117,7 +117,7 @@ function buildPrograms() {
           '<button type="button" class="round-btn" data-step="1">→</button>' +
         '</div>' +
       '</div>' +
-      '<div class="program" id="program" aria-live="polite">' +
+      '<div class="program" id="program" tabindex="-1" aria-live="polite">' +
         '<span class="program-title"><span class="program-name" id="program-name"></span>' +
           '<span class="program-edited" id="program-edited" hidden>edited</span></span>' +
         '<span class="program-count" id="program-count"></span>' +
@@ -138,14 +138,15 @@ function paintPrograms() {
   const shown = rail.program, list = inGroup(), i = list.indexOf(shown);
   const prev = list[i - 1], next = list[i + 1];
 
-  for (const tab of programsEl.querySelectorAll("[data-group]")) {
+  for (const tab of programsEl.querySelectorAll(".tab[data-group]")) {
     const on = tab.dataset.group === shown.group;
     tab.setAttribute("aria-selected", on ? "true" : "false");
     tab.tabIndex = on ? 0 : -1;
   }
   const pips = $("program-pips");
-  if (pips.dataset.group !== shown.group) {
-    pips.dataset.group = shown.group;
+  // The pips' own family attribute: data-group would make them read as a tab.
+  if (pips.dataset.family !== shown.group) {
+    pips.dataset.family = shown.group;
     pips.innerHTML = list.map(p =>
       '<button type="button" class="pip" data-program="' + p.id + '" aria-label="' + esc(p.name) + '" title="' + esc(p.name) + '">' +
       '<span></span></button>').join("");
@@ -182,11 +183,19 @@ function paintPrograms() {
 function showProgram(program, dir) {
   if (!program || program === rail.program) return;
   const apply = !browsing();
+  const before = new Set(selection.ids);
   const swap = () => {
     rail.program = program;
     rail.out = false;
     $("program").classList.remove("out");
-    if (apply) selection.applyProgram(program); else paintPrograms();
+    if (!apply) { paintPrograms(); return; }
+    // A muscle clicked while the card slid is kept: the program goes on,
+    // then what changed since the click on the arrow goes on top of it.
+    const added = [...selection.ids].filter(id => !before.has(id));
+    const removed = [...before].filter(id => !selection.has(id));
+    selection.applyProgram(program);
+    for (const id of added) selection.set(id, true);
+    for (const id of removed) selection.set(id, false);
   };
   figure.preview(null);
   if (reducedMotion()) { swap(); return; }
@@ -205,7 +214,7 @@ const programAt = el => {
 };
 
 programsEl.addEventListener("click", e => {
-  const tab = e.target.closest("[data-group]");
+  const tab = e.target.closest(".tab[data-group]");
   if (tab) {
     if (tab.dataset.group !== rail.program.group)
       showProgram(PROGRAMS.find(p => p.group === tab.dataset.group), 1);
@@ -216,18 +225,23 @@ programsEl.addEventListener("click", e => {
   if (b.id === "program-action") {
     selection.applyProgram(rail.program);
     figure.preview(null);
+    // The action hides once the program is applied; focus stays on the card.
+    if (b.hidden && document.activeElement === document.body) $("program").focus({ preventScroll: true });
     return;
   }
   const p = programAt(b);
   if (p) showProgram(p, inGroup().indexOf(p) > inGroup().indexOf(rail.program) ? 1 : -1);
 });
 
-/* Arrow keys move along the tabs, as a tab list should. */
+/* Arrow keys move along the tabs, wrapping, and Home and End go to either
+   end, as a tab list should. */
 programsEl.addEventListener("keydown", e => {
-  const tab = e.target.closest("[data-group]");
-  if (!tab || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
-  const tabs = [...programsEl.querySelectorAll("[data-group]")];
-  const to = tabs[(tabs.indexOf(tab) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+  const tab = e.target.closest(".tab[data-group]");
+  if (!tab || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  e.preventDefault();
+  const tabs = [...programsEl.querySelectorAll(".tab[data-group]")], i = tabs.indexOf(tab);
+  const to = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1] :
+    tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
   to.focus();
   to.click();
 });

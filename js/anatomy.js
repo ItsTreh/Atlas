@@ -221,7 +221,7 @@ class AnatomyFigure {
       const id = idOf(e);
       if (!id) return;
       e.preventDefault();
-      this.selection.toggle(id);
+      if (!e.repeat) this.selection.toggle(id);   // a held key toggles once
     });
     // Hover and focus both light the muscle in every view, so pointing at the
     // front delt also shows where the rear delt is.
