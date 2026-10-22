@@ -465,3 +465,54 @@ describe("splits the user chooses", () => {
       .toEqual(routine.sessions.map(s => s.block.name).sort());
   });
 });
+
+describe("found in the 2026-10-22 sweep", () => {
+  const busyDays = (routine, from, to, days = ["MON", "TUE", "WED", "THU", "FRI"]) => {
+    for (const d of days) for (let h = from; h < to; h++) routine.markBusy(d, h);
+  };
+
+  test("a meal whose usual hour is busy on a day moves to a free hour near it that day", () => {
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
+    busyDays(routine, 9, 14);                         // lunch's 2pm is free, 12-1 is not
+    routine.nutrition.setWindow(8, 18);               // breakfast 8, lunch 13, dinner 18
+    routine.generate();
+    for (const d of app.DayOfWeek.values)
+      expect(routine.plannedMeals.filter(m => m.day === d)).toHaveLength(routine.nutrition.mealsPerDay);
+    for (const m of routine.plannedMeals) expect(routine.slot(m.day, m.hour).state).toBe(SlotState.MEAL);
+    expect(routine.missedMeals).toEqual([]);
+  });
+
+  test("a meal no hour near its time is free for is named, not dropped silently", () => {
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
+    busyDays(routine, 9, 17);                         // "Weekdays 9-5": lunch at 2pm has nowhere to go
+    routine.generate();
+    const lunch = routine.missedMeals.find(m => m.name === "Lunch");
+    expect(lunch.days).toEqual(["MON", "TUE", "WED", "THU", "FRI"]);
+    expect(routine.plannedMeals.filter(m => m.day === "SAT")).toHaveLength(routine.nutrition.mealsPerDay);
+  });
+
+  test("meals on one day keep their order", () => {
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("upper"));
+    routine.nutrition.setMealCount(6);
+    busyDays(routine, 9, 13);
+    routine.generate();
+    for (const d of app.DayOfWeek.values) {
+      const hours = routine.plannedMeals.filter(m => m.day === d).map(m => m.hour);
+      expect([...hours].sort((a, b) => a - b)).toEqual(hours);
+    }
+  });
+
+  test("the diet counts the days Generate will place, before it and after", () => {
+    for (const split of ["upper-lower", "push-pull-legs", "full-body", "auto"]) {
+      const routine = new app.WeeklyRoutine();
+      routine.selection.applyProgram(app.PROGRAM_BY_ID.get("upper"));
+      routine.split = split; routine.sessionsPerWeek = 5;
+      const before = routine.plannedSessions();
+      routine.generate();
+      expect(before).toBe(routine.sessions.length);
+    }
+  });
+});

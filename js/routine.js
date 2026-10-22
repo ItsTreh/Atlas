@@ -84,6 +84,7 @@ class WeeklyRoutine {
     this.sessions = [];
     this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
     this.plannedFor = new Set(); // ids of the muscles the last generated week was planned for
+    this.missedMeals = [];      // meals placeMeals() found no free hour for: { name, hour, days }
     this.plannedMeals = [];
     this.offDays = new Set();       // days the user can't train (they still eat)
     this.nextId = 1;
@@ -393,7 +394,7 @@ class WeeklyRoutine {
   clearGenerated() {
     for (const s of this.allSlots())
       if (s.state === SlotState.WORKOUT || s.state === SlotState.MEAL) s.release();
-    this.sessions = []; this.plannedMeals = []; this.leftOut = []; this.plannedFor = new Set();
+    this.sessions = []; this.plannedMeals = []; this.leftOut = []; this.plannedFor = new Set(); this.missedMeals = [];
   }
   /** Clears the week. Targets and nutrition belong to their own stages. */
   reset() {
@@ -520,9 +521,10 @@ class WeeklyRoutine {
    * that did not fit, or that the user removed, is not fuelled.
    */
   plannedSessions() {
-    const blocks = this.planBlocks().length;
-    const planned = Math.min(this.sessionsPerWeek, this.availableDays().length,
-                             blocks * this.blockUses(blocks));
+    // The days the plan places (weekPlan, what Generate will put on the
+    // calendar): a split's repeats that recovery keeps apart are not counted.
+    const planned = this.selectedMuscles().length
+      ? this.weekPlan(this.experience || DEFAULT_EXPERIENCE).placements.length : 0;
     return this.sessions.length ? Math.min(planned, this.sessions.length) : planned;
   }
 
@@ -597,9 +599,15 @@ class WeeklyRoutine {
   extraDayFits() {
     const days = Math.max(this.sessionsPerWeek, this.sessions.length) + 1;
     if (days > TRAINING_DAYS_RANGE[1] || this.sessions.length >= this.availableDays().length) return false;
+    // A whole trial week: asked on every redraw of the week, so kept until
+    // the planner's inputs or the sessions change.
+    const key = JSON.stringify(this.planKey(this.experience)) + "|" + this.sessions.length;
+    if (this.extraDayCache && this.extraDayCache.key === key) return this.extraDayCache.fits;
     const trial = new WeeklyRoutine();
     trial.restore({ ...this.snapshot(), sessionsPerWeek: days, hadPlan: false });
-    return trial.generate().placed > this.sessions.length;
+    const fits = trial.generate().placed > this.sessions.length;
+    this.extraDayCache = { key, fits };
+    return fits;
   }
 
   /**
@@ -737,34 +745,60 @@ class WeeklyRoutine {
    * Days where that hour is genuinely taken simply miss that meal.
    */
   placeMeals() {
-    let count = 0;
-    for (const meal of this.nutrition.meals) {
-      const hour = this.bestHourForWeek(meal.hour, 2);
-      if (hour === null) continue;
-      for (const day of DayOfWeek.values) {
-        if (!this.slot(day, hour).isFree()) continue;
-        const planned = new PlannedMeal(this.nextId++, day, hour,
-          meal.name, meal.kcal, meal.protein, meal.focus);
-        this.slot(day, hour).assignMeal(planned);
-        this.plannedMeals.push(planned);
-        count++;
-      }
+    const { placed, missed } = this.mealPlan();
+    for (const { meal, day, hour } of placed) {
+      const planned = new PlannedMeal(this.nextId++, day, hour,
+        meal.name, meal.kcal, meal.protein, meal.focus);
+      this.slot(day, hour).assignMeal(planned);
+      this.plannedMeals.push(planned);
     }
-    return count;
+    this.missedMeals = missed;
+    return placed.length;
+  }
+
+  /**
+   * Where each meal goes on each day, against the hours free now, without
+   * placing anything: { placed: [{ meal, day, hour }], missed: [{ name,
+   * hour, days }] }. A meal is a habit, one hour all week (bestHourForWeek).
+   * A day where that hour is taken (busy, a session) eats it at the nearest
+   * free hour within two, still after the day's last meal and before the
+   * next meal's time, rather than losing it; what still finds no hour is
+   * listed in `missed`. `free` says which hours a meal may take. Shape your
+   * week draws its meals from this too, against the busy hours alone.
+   */
+  mealPlan(free = slot => slot.isFree()) {
+    const meals = this.nutrition.meals, placed = [], missed = [];
+    const last = Object.fromEntries(DayOfWeek.values.map(d => [d, -Infinity]));   // each day's latest meal so far
+    const taken = new Set();
+    meals.forEach((meal, i) => {
+      const hour = this.bestHourForWeek(meal.hour, 2, free);
+      const next = i + 1 < meals.length ? meals[i + 1].hour : Infinity;
+      const days = [];
+      for (const day of DayOfWeek.values) {
+        const at = hour === null ? undefined : [0, -1, 1, -2, 2].map(d => hour + d).find(h =>
+          h > last[day] && h < next && !taken.has(day + h) && this.slot(day, h) && free(this.slot(day, h)));
+        if (at === undefined) { days.push(day); continue; }
+        placed.push({ meal, day, hour: at });
+        taken.add(day + at);
+        last[day] = at;
+      }
+      if (days.length) missed.push({ name: meal.name, hour: meal.hour, days });
+    });
+    return { placed, missed };
   }
 
   /**
    * The hour near `target` that is free on the most days. Ties go to the hour
    * closest to the target, and then to the earlier one.
    */
-  bestHourForWeek(target, radius) {
+  bestHourForWeek(target, radius, free = slot => slot.isFree()) {
     let best = null;
     for (let d = 0; d <= radius; d++) {
       for (const h of (d === 0 ? [target] : [target - d, target + d])) {
         if (h < this.firstHour || h > this.lastHour) continue;
-        const free = DayOfWeek.values.filter(day => this.slot(day, h).isFree()).length;
-        if (free === 0) continue;
-        if (!best || free > best.free) best = { hour: h, free };
+        const days = DayOfWeek.values.filter(day => free(this.slot(day, h))).length;
+        if (days === 0) continue;
+        if (!best || days > best.free) best = { hour: h, free: days };
       }
     }
     return best ? best.hour : null;

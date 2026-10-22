@@ -257,6 +257,7 @@ function shapeHTML() {
   const pv = weekPreview(), [H0, H1] = WEEK_HOURS, rows = H1 - H0;
   const rh = rowHeight(rows, 470, 18, 30);
   const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
+  const mealPlan = mealsOn ? routine.mealPlan(slot => slot.state !== SlotState.BUSY) : { placed: [] };
   const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
   const colW = (planEl.clientWidth - 96 - 44 - 36) / 7;
   const note = fitNote(pv.fit);
@@ -288,9 +289,11 @@ function shapeHTML() {
       return '<div class="plan-ghost' + (tall ? ' tall' : '') + '" style="top:' + px((p.start - H0) * rh + 2) + ';height:' + px(h) + '">' +
         '<span class="plan-ghost-name">' + esc(blockName(p.block)) + '</span><span class="plan-ghost-time">' + hourRange(p.start, p.end) + '</span></div>';
     })() : "";
-    const meals = mealsOn ? n.meals.filter(m => m.hour >= H0 && m.hour < H1).map(m =>
-      '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((m.hour - H0) * rh + rh / 2) + '" ' +
-        'title="' + esc(m.name) + ' · ' + hourLabel(m.hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
+    // Each meal where Generate will put it this day (mealPlan): its usual
+    // hour, or the nearest free one; none in a busy block.
+    const meals = mealsOn ? mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(({ meal: m, hour }) =>
+      '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((hour - H0) * rh + rh / 2) + '" ' +
+        'title="' + esc(m.name) + ' · ' + hourLabel(hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
         (colW >= 128 ? (m.role === "snack" ? "Snack" : esc(m.name)) : "") + '</span>').join("") : "";
     const cells = Array.from({ length: rows }, (_, k) =>
       '<div class="paint" data-day="' + d + '" data-hour="' + (H0 + k) + '" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
@@ -309,6 +312,10 @@ function shapeHTML() {
         '<h1 class="display" id="plan-title" tabindex="-1">Shape your week</h1>' +
         '<p class="status-line' + (warn ? ' warn' : '') + '" aria-live="polite"><i></i><span>' +
           esc(warn ? note.text : okLine + (note ? " " + note.text : "")) + '</span></p>' +
+        // Painting over a generated session takes it out of that week: said
+        // here, where it happened, not only once the user leaves.
+        (wk.status && /^Your week now has/.test(wk.status.text)
+          ? '<p class="warn-line">' + esc(wk.status.text) + '</p>' : '') +
       '</div>' +
       '<button type="button" class="btn primary" id="close-shape" data-key="close-shape">Done</button>' +
     '</div>' +

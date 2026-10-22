@@ -15,6 +15,17 @@
 let generatedFor = null, placedCount = 0;
 function planInputs() { return { inputs: routine.inputsKey(), meals: routine.mealsKey() }; }
 const days = n => n + (n === 1 ? " day" : " days");
+/** Weekdays as a short list, runs joined: "Mon–Fri", "Mon, Wed and Sun". */
+function dayList(list) {
+  const idx = list.map(d => DayOfWeek.indexOf(d)).sort((a, b) => a - b), runs = [];
+  for (const i of idx) {
+    const run = runs[runs.length - 1];
+    if (run && i === run[1] + 1) run[1] = i; else runs.push([i, i]);
+  }
+  const names = runs.map(([a, b]) => DayOfWeek.label[DayOfWeek.values[a]] +
+    (b > a + 1 ? "–" + DayOfWeek.label[DayOfWeek.values[b]] : b > a ? ", " + DayOfWeek.label[DayOfWeek.values[b]] : ""));
+  return names.length < 2 ? names.join("") : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+}
 
 /** True when the week on screen was generated from inputs that have since changed. */
 function weekIsStale() {
@@ -54,7 +65,11 @@ function generateWeek() {
   generatedFor = planInputs();
   placedCount = routine.sessions.length;
 
-  const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
+  // A meal no hour near its time was free for, on some days, is named:
+  // those days carry less than the daily targets on the calendar.
+  const missed = routine.missedMeals.map(m => m.name + " on " + dayList(m.days)).join("; ");
+  const mealNote = (r.meals ? " " + r.meals + " meals added to the week." : "") +
+    (missed ? " No free hour near its time for " + missed + ", so those days show less to eat." : "");
   const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
   const exNote = exercises ? " with " + exercises + (exercises === 1 ? " exercise" : " exercises") : "";
   let text, kind = "";

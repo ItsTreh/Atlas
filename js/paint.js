@@ -5,6 +5,7 @@
    .paint cell (week-view.js) carrying its day and hour. */
 
 let painting = false, paintMode = null, anchor = null;
+let strokeCells = new Set(), busyBefore = new Set();   // the stroke's rectangle so far, and what was busy when it began
 
 function cellUnder(x, y) {
   const el = document.elementFromPoint(x, y);
@@ -25,14 +26,26 @@ function paintTo(day, hour) {
   if (!anchor) return;
   const [d1, d2] = [DayOfWeek.indexOf(anchor.day), DayOfWeek.indexOf(day)].sort((a, b) => a - b);
   const [h1, h2] = [anchor.hour, hour].sort((a, b) => a - b);
+  const cells = new Set();
   for (let di = d1; di <= d2; di++) {
     const d = DayOfWeek.values[di];
-    if (routine.isDayUnavailable(d) && paintMode === "busy") continue;   // a day off is not painted
+    // A day off is left as it is: its hours are hidden while it is off, so
+    // neither painting nor clearing may change them unseen.
+    if (routine.offDays.has(d)) continue;
     for (let h = h1; h <= h2; h++) {
+      cells.add(d + "|" + h);
       if (paintMode === "busy") routine.markBusy(d, h);
       else if (routine.slot(d, h).state === SlotState.BUSY) routine.clearSlot(d, h);
     }
   }
+  // Dragging back out of hours gives them back as they were before the stroke.
+  for (const key of strokeCells) {
+    if (cells.has(key)) continue;
+    const [d, h] = key.split("|"), was = busyBefore.has(key);
+    if (was && routine.slot(d, Number(h)).state !== SlotState.BUSY) routine.markBusy(d, Number(h));
+    else if (!was && routine.slot(d, Number(h)).state === SlotState.BUSY) routine.clearSlot(d, Number(h));
+  }
+  strokeCells = cells;
   paintBusy();                 // only the busy blocks while the drag is under way
 }
 
@@ -51,12 +64,14 @@ function beginStroke(cell) {
   paintMode = slot.state === SlotState.BUSY ? "clear" : "busy";
   painting = true;
   anchor = { day, hour };
+  strokeCells = new Set();
+  busyBefore = new Set(routine.allSlots().filter(s => s.state === SlotState.BUSY).map(s => s.day + "|" + s.hour));
   paintTo(day, hour);          // the click alone must already do something
 }
 
 function endStroke() {
   if (!painting) return;
-  painting = false; paintMode = null; anchor = null;
+  painting = false; paintMode = null; anchor = null; strokeCells = new Set();
   afterWeekChange();           // the planned days, the fit and the status follow; saved
 }
 
