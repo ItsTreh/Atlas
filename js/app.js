@@ -200,6 +200,9 @@ routine.selection.onChange(() => saveRoutine(routine));
 if (restored) saveRoutine(routine);
 
 paintThemeButton();
+/* The start screen (start.js) plays first when the sculpture can move its
+   camera: the stage is drawn beneath it, held, and comes in as it hands over. */
 Stages.start(restored && routine.sessions.length ? "plan"
            : restored && !routine.selection.isEmpty() ? "nutrition"
-           : "targets");
+           : "targets", StartScreen.plays());
+StartScreen.play();

@@ -11,7 +11,9 @@
    interface, and a single camera moves between named shots
    (SCULPTURE_SHOTS): the whole figure, centred, for Targets; the torso from
    below, on the left, for Nutrition; a three-quarter close-up of the upper
-   body, on the right, for the Week plan. Motion helps the user understand
+   body, on the right, for the Week plan. Before them, the start screen
+   (start.js) opens on one of five shots of its own and carries the camera
+   from there to the stage's shot (scrubShot). Motion helps the user understand
    where they are going and stillness helps them concentrate, so the camera
    moves only when the stage changes, then settles; nothing drifts while the
    user works.
@@ -80,8 +82,20 @@ const SCULPTURE_SHOTS = {
   "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .19, sy: .40,  fov: 20 },
   "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
   "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
-  "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 }
+  "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 },
+  // The start screen's openings (start.js), one per variant.
+  "start-cinematic":   { az: -16, el: -16, ty: 114, d: 310, sx: .30, sy: .50,  fov: 20 },
+  "start-torso":       { az: 6,   el: 4,   ty: 142, d: 230, sx: .50, sy: .86,  fov: 20 },
+  "start-carved":      { az: 0,   el: 2,   ty: 112, d: 205, sx: .50, sy: .50,  fov: 20 },
+  "start-detail":      { az: 140, el: -6,  ty: 128, d: 205, sx: .68, sy: .44,  fov: 20 },
+  "start-monument":    { az: -6,  el: 1,   ty: 82,  d: 500, sx: .50, sy: .52,  fov: 20 }
 };
+/* Each opening also has its approach, a little further off and round, that
+   the camera stands at as the page loads and drifts in from. */
+for (const name of Object.keys(SCULPTURE_SHOTS).filter(n => n.startsWith("start-"))) {
+  const s = SCULPTURE_SHOTS[name];
+  SCULPTURE_SHOTS[name + "-pre"] = { ...s, az: s.az - 16, d: s.d * 1.2, ty: s.ty + 4 };
+}
 const SCULPTURE_SHOT_HEIGHT = 157.683;
 const SCULPTURE_WIDE = 1.6;
 const SCULPTURE_MOBILE = {
@@ -247,6 +261,7 @@ class AnatomySculpture {
     this.off = 0;                            // degrees a drag has turned it round the body
     this.tween = null;                       // { from, to, t, ms, arc } while the camera moves
     this.offTween = null;                    // { from, to, t, ms } while a drag springs back
+    this.between = null;                     // { from, to, t } while held part way between shots (scrubShot)
     this.drag = null;                        // { x, y, from, active } while a press may become a drag
     this.pickKey = null;                     // the camera the region buffer was drawn with
     this.resizedAt = -Infinity;              // when the size last changed (resizing)
@@ -520,7 +535,8 @@ class AnatomySculpture {
     // A side shot depends on the canvas's proportions: re-take it as they
     // change. A move under way keeps going, to the shot as this size frames
     // it (its angle stays the way round the move already took).
-    if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
+    if (this.between) this.cur = this.betweenParams();
+    else if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
     else if (this.tween) this.tween.to = { ...this.shotParams(this.shotName), az: this.tween.to.az };
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(W * this.dpr);
@@ -579,7 +595,7 @@ class AnatomySculpture {
   /** Moves the camera to a shot (SCULPTURE_SHOTS, or "targets"). */
   setShot(name) {
     name = this.resolve(name);
-    if (name === this.shotName && !this.offTween && !this.off) return;
+    if (name === this.shotName && !this.offTween && !this.off && !this.between) return;
     this.goShot(name);
     if (this.hitsDue && name.startsWith("targets")) this.placeHitsSoon();
   }
@@ -591,6 +607,7 @@ class AnatomySculpture {
   goShot(name, dir = 0) {
     const fromName = this.shotName;
     this.shotName = name;
+    this.between = null;
     this.drag = null;
     this.offTween = null;
     if (!this.cur) { this.off = 0; this.schedule(true); return; }
@@ -615,6 +632,34 @@ class AnatomySculpture {
     this.tween = { from, to: { ...to, az: from.az + daz }, t: 0, ms, arc };
     this.moved();
     this.schedule();
+  }
+
+  /**
+   * Holds the camera `t` (0 … 1, eased by the caller) of the way from shot
+   * `from` to shot `to`, straight, as a hand on the wheel or a drag moves
+   * it: the start screen's way into the app. Its shot is `to` throughout, so
+   * at 1 the camera has arrived and setShot(to) leaves it there; before
+   * that, setShot moves on from wherever it stands.
+   */
+  scrubShot(from, to, t) {
+    to = this.resolve(to);
+    this.shotName = to;
+    this.tween = null;
+    this.offTween = null;
+    this.drag = null;
+    this.off = 0;
+    this.between = t < 1 ? { from, to, t: Math.max(0, t) } : null;
+    if (this.size) this.cur = this.between ? this.betweenParams() : this.shotParams();
+    this.moved();
+    this.schedule();
+  }
+
+  /** The camera scrubShot holds, for the size and layout now. */
+  betweenParams() {
+    const { from, to, t } = this.between, a = this.shotParams(from), b = this.shotParams(to);
+    const daz = ((b.az - a.az) % 360 + 540) % 360 - 180, s = {};
+    for (const k of Object.keys(a)) s[k] = a[k] + ((k === "az" ? a.az + daz : b[k]) - a[k]) * t;
+    return s;
   }
 
   /** With reduced motion a new shot fades in rather than travels. */
@@ -747,7 +792,7 @@ class AnatomySculpture {
     if (mobile === this.mobile) return;
     this.mobile = mobile;
     this.tween = null;
-    if (this.cur) this.cur = this.shotParams();
+    if (this.cur) this.cur = this.between ? this.betweenParams() : this.shotParams();
     this.moved();
     this.schedule(true);
   }

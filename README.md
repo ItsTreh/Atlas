@@ -78,6 +78,7 @@ js/
   storage.js        saving the routine in the browser, and restoring it
   anatomy*.js       the anatomy figure, its regions, cartography and camera, and its stage
   stages.js         moving between stages: motion between, stillness within
+  start.js          the start screen: five openings, one per load, that hand over to the stage
   targets.js, nutrition-view.js, week-view.js, workout-view.js
                     the stages; workout-view.js is a session in full
   render.js, paint.js, app.js
