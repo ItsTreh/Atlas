@@ -86,7 +86,9 @@ const Stages = {
     if (name === this.current) { if (before) { before(); this.refresh(); } return; }
     this.run(() => {
       if (before) before();
-      this.current = name;
+      // What allowed the move may have changed on the way (the selection
+      // cleared): then the stage stays where it is.
+      if (this.can(name)) this.current = name;
       this.paintStage();
       this.call("arrive");
       this.call("enter");
@@ -241,9 +243,15 @@ const Stages = {
    * data-scroll) takes the wheel first, and keeps it for a moment after.
    */
   wheel(e) {
-    if (this.busy || this.narrow || this.call("wheel") === false) return;
+    if (this.narrow || this.call("wheel") === false) return;
     if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     const now = performance.now();
+    // One gesture moves one stage. Events closer together than the gap are
+    // one gesture however long it lasts (a trackpad's fling runs on through
+    // the change), so after it has moved a stage the rest of it is spent.
+    if (now - (this.wheelAt || 0) > STAGE_WHEEL.gap) { this.acc = 0; this.spent = false; }
+    this.wheelAt = now;
+    if (this.busy || this.spent) return;
     const pane = e.target && e.target.closest && e.target.closest("[data-scroll]");
     if (pane) {
       const down = e.deltaY > 0;
@@ -251,12 +259,11 @@ const Stages = {
       if (can) { this.acc = 0; this.scrolledAt = now; return; }
     }
     if (now - (this.scrolledAt || 0) < STAGE_WHEEL.quiet) return;
-    if (now - (this.wheelAt || 0) > STAGE_WHEEL.gap) this.acc = 0;
-    this.wheelAt = now;
     this.acc = (this.acc || 0) + e.deltaY;
     if (Math.abs(this.acc) > STAGE_WHEEL.threshold) {
       const down = this.acc > 0;
       this.acc = 0;
+      this.spent = true;
       if (down) this.next(); else this.back();
     }
   },
@@ -264,6 +271,15 @@ const Stages = {
   wire() {
     // The masthead's stages, the phone's numbered dots, and any
     // "Change"-style link to a stage (data-goto) anywhere on the page.
+    // While a change runs, a stage's controls are fading out or not yet in:
+    // the pointer can't reach them ([data-reveal]), and neither may the
+    // keyboard, whose Enter and Space arrive as clicks.
+    document.addEventListener("click", e => {
+      if (this.busy && e.target.closest && e.target.closest(".stage")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
     $("foot-dots").innerHTML = STAGE_ORDER.map((name, i) =>
       '<button type="button" data-goto="' + name + '" aria-label="' + STAGE_NAMES[name] + '">' +
       (i + 1) + '</button>').join("");
