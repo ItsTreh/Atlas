@@ -37,8 +37,8 @@ matches the page; the light theme uses the sculpture's original cool grey.
 - Traces scale with the body's size on screen against Targets
   (`traceScale`): a closer camera, as on the week stage, gets more and
   heavier lines, half each, keeping Targets' balance of line and gap. Hues
-  are per region (`uRegionInk` in the fragment shader, `uMapTint` passed
-  from the vertex shader).
+  are per region (the data texture's `ink` row in the fragment shader, the
+  tint in its `map` row passed from the vertex shader).
 - Moving the pointer gently draws nearby hovered and selected traces toward
   it. Only the direction to the pointer bends them, by at most a third of a
   line, so lines far from the pointer stay whole. The response eases away
@@ -117,16 +117,23 @@ the surface without turning back on themselves. The chest, shoulders, abs
 and obliques keep their per-region fields, as does any region without
 usable landmarks. Inset borders inside a shared guide are quieter in
 overview and full weight in detail mode. Guide slots follow the group list
-(two per paired group), and the shader's `GUIDES` comes from the result.
+(two per paired group), one texel each in the data texture's guide rows.
 
-**Uniform budget.** WebGL2 guarantees only 224 uniform vectors to a fragment
-shader (256 to a vertex shader); desktop GPUs offer more, so overruns fail
-only on low-end devices. Every region costs three fragment vectors
-(`uRegionInk`, `uFlowCenters`, `uFlowAxes`) and four vertex vectors; every
-guide costs three fragment vectors. Male_Body uses 212 of 224 and 212 of
-256, so about four more regions fit. Finer zoom sub-regions will need the
-per-region data moved into a texture. `tests/shader-budget.test.js` fails
-once either shader passes the minimum.
+**Per-region data and the uniform budget.** WebGL2 guarantees only 224
+uniform vectors to a fragment shader (256 to a vertex shader); desktop GPUs
+offer more, so overruns fail only on low-end devices. Uniform arrays per
+region used to spend that budget per region (Male_Body reached 212 of 224
+and 212 of 256). Everything the shaders know per region or per guide is now
+a row of one RGBA32F data texture (`SCULPTURE_DATA_ROWS`), one texel per
+region or guide, read with `texelFetch`: the state and map rows every frame,
+the flow fields, guide frames and hues after a context restore or a theme
+change (`uploadData`). The shaders keep 13 vertex and 18 fragment uniform
+vectors whatever the figure, so finer zoom sub-regions cost texels; WebGL2
+guarantees textures 2048 wide. `tests/shader-budget.test.js` fails if a
+uniform array sized by the figure comes back, or either shader passes the
+minimum; `tests/sculpture-data.test.js` checks each value lands on the
+texel the shaders read for it. The pick buffer's 8-bit region id is a
+separate limit (254 regions).
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the
