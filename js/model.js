@@ -1,11 +1,8 @@
 /* ===========================================================================
-   Weekly Gym Routine Planner — v2
-
-   What changed from v1: sessions are built from SPECIFIC MUSCLES rather than
-   fixed splits. The user picks muscles; the app packs them into blocks that
-   fit the chosen session length, and a block may span more than one hour.
-   Recovery is now per muscle instead of per split. Meals are placed on the
-   same grid.
+   The core data: the week's time slots, the muscles, training blocks (the
+   muscles one session trains) and the sessions and meals placed on the
+   grid. Sessions are built from the muscles the user picks, recovery is per
+   muscle, and a session may span more than one hour.
    ========================================================================= */
 
 const SlotState = Object.freeze({
@@ -93,15 +90,9 @@ class TrainingBlock {
     this.muscles = muscles;
     this.family = muscles[0].family;
     this.riders = new Set();   // along for the ride: named, but no session time
-    this.limit = Infinity;     // the session length; set when blocks are merged to fit the days
+    this.limit = Infinity;     // the session length, once the plan has set it (routine.js)
     this.name = null;          // a split day's name ("Upper", "Push"…), when the user chose a split
     this.plannedSets = null;   // Map muscle id -> sets, when distribution.js planned this day
-  }
-  /** One block training both, when the week has fewer days than blocks. */
-  static merge(host, guest) {
-    const block = new TrainingBlock([...host.muscles, ...guest.muscles]);
-    block.riders = new Set([...host.riders, ...guest.riders]);
-    return block;
   }
   get minutes() {
     if (this.plannedSets) {
@@ -110,8 +101,7 @@ class TrainingBlock {
     }
     return this.muscles.reduce((t, m) => t + (this.riders.has(m) ? 0 : m.minutes), 0);
   }
-  /* A merged block longer than the session keeps the session's length; its
-     sets are scaled down to fit (WorkoutBuilder). */
+  /* A block planned longer than the session keeps the session's length. */
   get sessionMinutes() { return Math.min(this.minutes, this.limit); }
   /* The hours it takes on the calendar. A day of a split the user chose is
      filled to the session's length (WorkoutBuilder doses it by evidence up
@@ -120,16 +110,10 @@ class TrainingBlock {
     const minutes = this.name !== null && !this.plannedSets && Number.isFinite(this.limit) ? this.limit : this.sessionMinutes;
     return Math.max(1, Math.ceil(minutes / 60));
   }
-  /** True when the block trains more than one family (a merged upper-and-legs day). */
-  get mixed() {
-    return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;
-  }
   /** A day of a split the user chose (routine.js, SPLITS): dosed by evidence, not by time. */
   get splitDay() { return this.name !== null || this.plannedSets !== null; }
   get label() { return (this.name ? this.name + ": " : "") + this.muscles.map(m => m.name).join(" · "); }
-  get css() { return FAMILIES[this.family].css; }
   has(muscle) { return this.muscles.includes(muscle); }
-  freeMinutes(limit) { return limit - this.minutes; }
 }
 
 class TimeSlot {

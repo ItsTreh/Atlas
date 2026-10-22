@@ -315,6 +315,9 @@ class WeeklyRoutine {
    */
   restore(snap) {
     if (!snap || typeof snap !== "object") return;
+    // A snapshot from a newer version than this one reads its fields its
+    // own way: left alone, the page starts clean rather than half wrong.
+    if (typeof snap.version === "number" && snap.version > 1) return;
     const list = v => Array.isArray(v) ? v : [];
     this.experience = EXPERIENCE_LEVELS.some(e => e.id === snap.experience) ? snap.experience : null;
     this.selection.restore(snap.selection && typeof snap.selection === "object" ? snap.selection : {});

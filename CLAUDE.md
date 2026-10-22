@@ -89,7 +89,7 @@ In progress:
 - the anatomical cartography (PR #79, `docs/cartography.md`): fine surface traces in the sculpture's material show the pointed and selected training groups, with a serif label beside the body. It is the hover and selection state now. The first version works, but the design is still being polished, so treat its look as unsettled and change it only when asked. It follows the authored borders and adds no anatomy: selectable regions still come only from the mesh and `ANATOMY_REGIONS`. `setDetailMode(true)` on the renderer gives exact anatomical names for the future zoom level and has no page control yet.
 
 Next:
-- a side view (90°) and zoom, a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
+- a side view (90°) and zoom, both added to the same camera (a side view is one more entry in `SCULPTURE_SHOTS`)
 
 **The anatomy architecture is hybrid.** An authored Blender mesh is the visible body. The existing renderer (`js/anatomy-sculpture.js`), picking, region table, `MuscleSelection`, accessibility layer and SVG fallback all stay. The procedural figure stays as the fallback (if the sculpture's file fails to load, or with `?anatomy=procedural`).
 

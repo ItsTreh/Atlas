@@ -16,20 +16,19 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 - **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time with ← and →. Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
 - **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
 - **Explore the surface.** Anatomical cartography draws fine, curved traces in the sculpture's own material. Pointing at a muscle reveals its whole training group, a little stronger near the pointer, and the traces flow while you rest there. Selected groups keep a faint, still imprint. A serif label beside the body names the group. The traces follow the existing authored borders and add no anatomy (see `docs/cartography.md`).
-- **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first), and tell ATLAS how long you have trained.
-- **See what it will take.** A preliminary estimate of weekly hard sets and time a week, with frequency, what consistent training usually brings, and the caveats stated plainly, one click away.
+- **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first).
 
 ### 02 · Nutrition — fuel the training *(optional)*
 - **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for your training.
 - **Targets from your training:** calories are set against your daily burn and protein per kg of body weight, both adjusted to the plan's training load. The figures show the sum that made them, and every reason is one click away. You can fine-tune either.
 - **Your rhythm:** meals a day, first and last meal times, and a diet style (everything, pescatarian, vegetarian, vegan).
-- **A day of eating:** the day as a timeline, one meal open at a time, with its share of the day, how far the targets are met by its end, and an example plate portioned to it.
+- **A day of eating:** the day as a timeline, one meal open at a time, with its share of the day, how far the targets are met by its end, and an example plate in everyday portions near its numbers.
 - **Skip it** if you only want training.
 
 ### 03 · Week plan — fit it into your life
-- **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days and how the week is split. Notes say what fits and what won't (an estimate).
+- **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days, how the week is split and how long you have trained. Notes say what fits and what won't (an estimate).
 - **Shape your week.** A full-width calendar: drag down a day to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and whether meals go on the calendar.
-- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises.
+- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts and busy hours. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet.
 
 Every calorie, protein and progress figure is labelled an **estimate**, shows how it was worked out, and never promises a physique by a date.
 
@@ -67,14 +66,17 @@ js/
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
   programs.js       recommended programs
-  estimate.js       the "what it will take" estimate
+  evidence.js       the planner's figures, each with its source and certainty
+  estimate.js       weekly sets and time, and fitting targets to the time
   exercises.js      exercise catalogue with tier ratings
   workouts.js       builds each session's workout
+  distribution.js   spreads each muscle's weekly sets over the training days
   nutrition.js      calorie and protein targets
   foods.js          foods, diet styles, example meals
-  routine.js        WeeklyRoutine: the shared plan state
-  scheduler.js      places sessions and meals in the week
-  anatomy*.js       the anatomy figure, its camera, and the stage it lives in
+  routine.js        WeeklyRoutine: the shared plan state; places the week and its meals
+  scheduler.js      finds the days and hours for the sessions
+  storage.js        saving the routine in the browser, and restoring it
+  anatomy*.js       the anatomy figure, its regions, cartography and camera, and its stage
   stages.js         moving between stages: motion between, stillness within
   targets.js, nutrition-view.js, week-view.js, workout-view.js
                     the stages; workout-view.js is a session in full
@@ -89,13 +91,11 @@ Data lives apart from the UI and is validated when it loads. Views read from and
 
 ## Where we are
 
-The current work is the anatomy: replacing the procedural figure with **Male_Body**, a sculpted 3D body whose muscles are painted by hand in Blender, one region per colour, then exported to the page. It's the figure the page shows; `index.html?anatomy=procedural` shows the procedural figure it replaced.
-
-- **Painted so far:** the chest, abs, obliques, serratus, deltoids, trapezius and the whole arm (biceps, triceps, brachialis, coracobrachialis and the forearm muscles one by one).
-- **Still to paint:** the rest of the back, the hips and the legs. Until they're painted, those areas use stand-in regions. The order is one muscle at a time, then a single pass to polish all the borders.
-- **Just added:** one body that turns between front and back, with a small drag to look around it. It came early because it makes the painted borders easier to inspect; painting continues next.
+The page shows **Male_Body**, a sculpted 3D body whose muscles are painted by hand in Blender, one region per colour, then exported to the page. Every muscle that matters for training is painted, so it selects all 16 muscle groups; `index.html?anatomy=procedural` shows the procedural figure it replaced. Borders are left as painted, for a single polishing pass later.
 
 Every painted muscle selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap) nothing is selectable. A few painted muscles, such as the shin muscles, are drawn but not selectable yet; they'll become explorable with zoom.
+
+The current work is the anatomical cartography (`docs/cartography.md`): fine traces in the sculpture's material that show what is pointed at and chosen.
 
 ---
 
@@ -106,7 +106,7 @@ ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like int
 - [x] Foundation: light monochrome theme, one type family, fewer surfaces
 - [x] A dedicated, centred stage for the anatomy
 - [x] Front/back controls and rotation: one body that turns, with a limited free orbit
-- [ ] A stylised 3D anatomical sculpture in place of the flat figure *(painting in progress, behind a flag)*
+- [x] A stylised 3D anatomical sculpture in place of the flat figure, painted muscle by muscle
 - [x] One continuous sculpture across the stages, with camera choreography between them
 - [x] Side rails for programs and training focus (Targets, stage 1 of the redesign)
 - [x] Redesigned nutrition stage: the plan beside the sculpture, a day of eating one meal at a time

@@ -78,3 +78,9 @@ describe("restore", () => {
     expect(back.hours).toEqual(n.hours);
   });
 });
+
+test("a snapshot from a newer version is left alone, not read as this one", () => {
+  const r = new app.WeeklyRoutine();
+  r.restore({ version: 2, sessionsPerWeek: 2, selection: { muscleIds: ["chest"] } });
+  expect(r.snapshot()).toEqual(new app.WeeklyRoutine().snapshot());
+});
