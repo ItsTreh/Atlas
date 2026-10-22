@@ -94,7 +94,7 @@ These adjustments affect the drawn curves, not authored borders or picking.
 
 `buildAnatomyFlowGuides` provides continuous drawing guides for the gluteus
 maximus, lower trapezius, upper-back regions, forearms, quads, adductors,
-hamstrings and lower back. The pelvic and
+hamstrings, lower back and lats. The pelvic and
 spinal mirror planes follow the paired authored landmarks and their tilt.
 Each limb and scapular patch gets its own posed direction, shared by its
 small anatomical regions so the curves and pulse do not restart at every
@@ -103,7 +103,12 @@ reversing around an angular axis. The broad upper-trap field blends into its
 narrow lower guide; the chest, shoulders, abs and obliques retain their
 existing fields. The central lower back uses one continuous guide aligned
 between the pelvic and upper-back landmarks, with its own authored axis as
-a fallback. Inner thighs have more space between lines. Regions without
+a fallback. Its rounded, open sweeps cross the spine without an angular
+pole or a sharp mirrored join. Each lat uses an open bow in a separate
+guide; the torso landmarks align their directions so unequal painted
+principal axes do not make one side horizontal and the other diagonal.
+Both curved fields retain the existing pulse and pointer response.
+Inner thighs have more space between lines. Regions without
 suitable landmarks retain their original surface frames. Inset borders
 inside shared guides are quieter in overview and retain their full weight
 in detail mode. Shader guide capacity comes from the generated guide data.

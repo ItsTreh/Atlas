@@ -1407,6 +1407,18 @@ void main() {
       sweep = (vertical - 0.65 * folded - 0.25 * relief) / across.w;
     } else if (origin.w < 2.5) {
       sweep = (folded - 0.32 * vertical) / across.w;
+    } else if (origin.w > 4.5 && origin.w < 5.5) {
+      // Open, rounded sweeps across the posed spine. The vertical term stays
+      // monotonic: no angular pole or mirrored seam inside the lower back.
+      float bendWidth = uExt.y * 0.018;
+      float bowl = sqrt(lateral * lateral + bendWidth * bendWidth) - bendWidth;
+      sweep = (vertical - 1.15 * bowl - 0.2 * relief) / across.w;
+    } else if (origin.w > 5.5) {
+      // Each lat bows along its own posed axis, with bounded curvature and
+      // no wrap around an origin that could turn the traces back on themselves.
+      float t = vertical / lengthwise.w;
+      float bow = lengthwise.w * (sqrt(1.0 + t * t) - 1.0);
+      sweep = (lateral + 0.55 * bow + 0.12 * relief) / across.w;
     } else {
       sweep = (lateral + 0.15 * relief) / across.w;
     }

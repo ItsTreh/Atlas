@@ -148,6 +148,28 @@ describe("continuous surface guides", () => {
     expect(fallback.regions[0]).toBe(g.regions[0]);
     expect([...fallback.along].every(Number.isFinite)).toBe(true);
   });
+
+  test("lat sweeps follow the posed torso despite conflicting painted principal axes", () => {
+    const model = { bounds, regions: ['latissimus-dorsi', 'external-oblique'], regionAnchors: {
+      'latissimus-dorsi': { left: anchor([12, 125, -10], [0.99, 0.1, 0]),
+        right: anchor([-12, 125, -10], [-0.3, 0.95, 0]) },
+      'gluteus-maximus': { left: anchor([10, 95, -5]), right: anchor([-10, 95, -5]) },
+      trapezius: { left: anchor([8, 147, -10]), right: anchor([-8, 147, -10]) }
+    } };
+    const g = buildAnatomyFlowGuides(model, samples([]));
+    expect(g.regions[0]).toBeLessThan(0);
+    expect(g.regions[1]).toBe(0);
+    const base = (Math.abs(g.regions[0]) - 1) * 4;
+    expect(g.along[base]).toBeCloseTo(-g.along[base + 4], 6);
+    expect(g.along[base + 1]).toBeCloseTo(g.along[base + 5], 6);
+    expect(g.along[base + 2]).toBeCloseTo(g.along[base + 6], 6);
+    expect(g.along[base + 2]).toBeLessThan(0); // follows the torso's backward lean
+    delete model.regionAnchors.trapezius;
+    const fallback = buildAnatomyFlowGuides(model, samples([]));
+    expect(fallback.regions[0]).toBe(g.regions[0]);
+    expect([...fallback.along].every(Number.isFinite)).toBe(true);
+    expect(fallback.along[base + 1]).toBeLessThan(fallback.along[base + 5]);
+  });
 });
 
 test("continuous flow runs only during visible pointer exploration", () => {

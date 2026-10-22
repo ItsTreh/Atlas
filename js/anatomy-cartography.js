@@ -234,7 +234,8 @@ function buildAnatomyFlowGuides(model, samples) {
       start: 8, kind: 4, spacing: 0.014, paired: true },
     { names: ['biceps-femoris', 'semitendinosus', 'semimembranosus', 'adductor-magnus'],
       start: 10, kind: 4, spacing: 0.014, paired: true },
-    { names: ['erector-spinae'], start: 12, kind: 5, spacing: 0.014, central: true }
+    { names: ['erector-spinae'], start: 12, kind: 5, spacing: 0.016, central: true },
+    { names: ['latissimus-dorsi'], start: 13, kind: 6, spacing: 0.016, paired: true, torsoSweep: true }
   ];
   const count = Math.max(...groups.map(g => g.start + (g.paired ? 2 : 1)));
   const origins = new Float32Array(count * 4), across = new Float32Array(count * 4), along = new Float32Array(count * 4);
@@ -302,6 +303,17 @@ function buildAnatomyFlowGuides(model, samples) {
         // limb independent. Align principal-axis signs before averaging.
         direction = unit([0, 1, 2].map(k => anchors[side].reduce((sum, at) =>
           sum + at.axis[k] * (at.axis[1] < 0 ? -1 : 1) * at.area, 0)));
+        if (group.torsoSweep) {
+          // Broad painted lats can have very different principal axes. Use
+          // the posed torso to keep both sweeps coherent instead of making
+          // one side horizontal while the other side climbs to the shoulder.
+          const pelvis = pairedCenter('gluteus-maximus'), shoulders = pairedCenter('trapezius');
+          if (pelvis && shoulders) {
+            const spine = shoulders.map((x, k) => x - pelvis[k]);
+            const up = unit(spine.map((x, k) => x - lateral[k] * dot(spine, lateral)));
+            direction = unit(up.map((x, k) => 0.62 * x + 0.78 * lateral[k] * (side === 0 ? 1 : -1)));
+          }
+        }
       } else {
         direction = unit([0, 1, 0].map((x, k) => x - lateral[k] * lateral[1]));
       }
