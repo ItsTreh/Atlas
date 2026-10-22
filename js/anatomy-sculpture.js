@@ -1253,13 +1253,12 @@ uniform vec3 uMin, uExt;
 uniform mat4 uMatrix;
 uniform mat3 uNormal;
 uniform vec4 uRegion[REGIONS];            // tone, focus edge, form, selected (regionStates)
-uniform vec4 uFlowCenters[REGIONS], uFlowAxes[REGIONS];
 uniform vec3 uMapState[REGIONS];
 uniform vec3 uForm, uMuscle, uSelected;   // surfaces before light, sRGB
 out vec3 vNormal;
 out float vOcclusion;
 out float vSeam;
-out vec3 vFlow;
+out vec3 vSurface;
 flat out vec3 vMapState;
 flat out vec3 vAlbedo;                    // linear
 flat out float vSelected;
@@ -1280,11 +1279,7 @@ void main() {
   vec3 surface = uMin + aPos * uExt;
   gl_Position = uMatrix * vec4(surface, 1.0);
   int index = int(aAttr.x + 0.5);
-  vec4 center = uFlowCenters[index], axis = uFlowAxes[index];
-  vec3 side = normalize(cross(axis.xyz, abs(axis.z) < 0.85 ? vec3(0,0,1) : vec3(0,1,0)));
-  vec3 depth = cross(side, axis.xyz);
-  vec3 q = vec3(abs(surface.x - uMin.x - uExt.x * 0.5), surface.y, surface.z) - center.xyz;
-  vFlow = vec3(dot(q, side) / center.w, dot(q, depth) / center.w, dot(q, axis.xyz) / axis.w);
+  vSurface = vec3(surface.x - uMin.x - uExt.x * 0.5, surface.y, surface.z);
   vMapState = uMapState[index];
   vNormal = uNormal * octDecode(aOct);
   vOcclusion = aAttr.y / 255.0;
@@ -1307,7 +1302,7 @@ precision highp float;
 in vec3 vNormal;
 in float vOcclusion;
 in float vSeam;
-in vec3 vFlow;
+in vec3 vSurface;
 flat in vec3 vMapState;
 flat in vec3 vAlbedo;
 flat in float vSelected;
@@ -1315,6 +1310,8 @@ flat in float vFocus;
 flat in float vRegionId;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
+uniform vec3 uExt;
+uniform vec4 uFlowCenters[REGIONS], uFlowAxes[REGIONS];
 uniform vec3 uRegionInk[REGIONS];        // each region's family hue (sRGB), or uMapInk
 uniform float uMapTint[REGIONS];         // how far each region's traces are in that hue
 uniform float uTraceVivid;               // 1 where tinted lines need help to keep their hue (light theme)
@@ -1365,12 +1362,26 @@ void main() {
   float pointed = hover * mix(1.0, 0.8 + nearby * 0.2, uMapPointerActive);
   float selected = vMapState.x, lit = vMapState.z;
   float chosen = max(selected, lit);
-  float angle = atan(vFlow.x, vFlow.y);
-  float along = vFlow.z;
+  int region = int(vRegionId + 0.5);
+  vec4 center = uFlowCenters[region], axis = uFlowAxes[region];
+  vec3 side = normalize(cross(axis.xyz, abs(axis.z) < 0.85 ? vec3(0,0,1) : vec3(0,1,0)));
+  vec3 depth = cross(side, axis.xyz);
+  // Fold on the surface, after interpolation: triangles straddling the
+  // midline must not turn the abdominal field into little zigzags.
+  vec3 q = vec3(abs(vSurface.x), vSurface.yz) - center.xyz;
+  vec3 flow = vec3(dot(q, side) / center.w, dot(q, depth) / center.w, dot(q, axis.xyz) / axis.w);
+  // A rounded depth keeps the field open where its axis reaches the skin.
+  // Unlike a full angular wrap, it has no pole or branch cut to gather
+  // shoulder, thigh and forearm traces into rings or crowded fans.
+  float angle = atan(flow.x, sqrt(flow.y * flow.y + 0.65 * 0.65));
+  float along = flow.z;
   float warp = 0.22 * sin(along * 2.4) + hover * 0.32 *
     (sin(along * 2.4 - uFlowTime * 0.48) - sin(along * 2.4));
   warp += hover * 0.08 * sin(along * 5.2 - uFlowTime * 0.32);
-  float phase = angle * 3.2 * sqrt(uTraceScale) + warp;
+  // Slender authored patches get fewer traces, leaving room between the
+  // several small muscles that share an inner thigh or forearm.
+  float density = clamp(center.w / max(uExt.y * 0.028, 1e-4), 0.55, 1.0);
+  float phase = angle * 3.2 * density * sqrt(uTraceScale) + warp;
   // Pull the existing curves gently toward the pointer. Derivatives give
   // their local direction on screen; only that direction is used, never its
   // product with the distance, so the 2×2 steps in screen derivatives stay
@@ -1408,7 +1419,6 @@ void main() {
     pointed * drift * 0.48);
   // A family's hue keeps its chroma: on a light sculpture it darkens less in
   // shadow and draws a little stronger, so it reads as colour, not as grey.
-  int region = int(vRegionId + 0.5);
   float tint = uMapTint[region], vivid = tint * uTraceVivid;
   vec3 ink = toLinear(mix(uMapInk, uRegionInk[region], tint)) *
              clamp(shade, mix(0.45, 0.8, vivid), 1.0);

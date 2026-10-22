@@ -36,9 +36,8 @@ matches the page; the light theme uses the sculpture's original cool grey.
   would need each region's neighbours baked into the model.
 - Traces scale with the body's size on screen against Targets
   (`traceScale`): a closer camera, as on the week stage, gets more and
-  heavier lines, half each, keeping Targets' balance of line and gap. Hues are per region (`uRegionInk`, `uMapTint` in the fragment
-  shader, where uniform room remains; the vertex shader is near WebGL2's
-  minimum).
+  heavier lines, half each, keeping Targets' balance of line and gap. Hues
+  are per region (`uRegionInk`, `uMapTint` in the fragment shader).
 - Moving the pointer gently draws nearby hovered and selected traces toward
   it. Only the direction to the pointer bends them, by at most a third of a
   line, so lines far from the pointer stay whole. The response eases away
@@ -84,6 +83,13 @@ Regions without valid anchors use an axis estimated from their sample
 positions. Paired regions share a direction by folding coordinates around
 the body's upright plane. These frames guide the material traces; samples
 are not rendered as particles or a separate graph.
+
+The shader folds surface positions after interpolation, so triangles across
+the midline do not kink the abdominal traces. A rounded angular field keeps
+curves open where a region's axis approaches the skin, avoiding pinched fans
+and tiny rings. Narrow regions receive fewer traces in proportion to their
+width relative to body height, giving inner thighs and forearms more space.
+These adjustments affect the drawn curves, not authored borders or picking.
 
 `js/anatomy-sculpture.js` owns the surface shader, hover clock, state easing,
 picking, presentation mode, camera, and context restoration. It advances the
