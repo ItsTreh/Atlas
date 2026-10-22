@@ -46,7 +46,7 @@ const familyDots = fams => fams.map(f => '<span class="fdot" style="background:v
 function sessionDetailHTML(session, inline = false) {
   const w = session.workout;
   const muscles = session.block.muscles.filter(m => !session.block.riders.has(m));
-  const notes = lengthNote(session) + recoveryNote(session) + fuelNote(session);
+  const notes = editNote(session) + lengthNote(session) + recoveryNote(session) + fuelNote(session);
   return '<div class="sd" data-session="' + session.id + '">' +
     (inline ? '' :
       '<div class="sd-head">' +
@@ -57,7 +57,8 @@ function sessionDetailHTML(session, inline = false) {
         '<button type="button" class="close-x" data-act="close" data-key="close-' + session.id + '" aria-label="Close">×</button>' +
       '</div>') +
     (inline ? '<span class="sd-when">' + moveControls(session) + '</span>' : '') +
-    '<div class="sd-meta">' + w.entries.length + ' exercises · ' + w.sets + ' sets · ≈ ' + w.minutes + ' min' +
+    '<div class="sd-meta">' + w.entries.length + (w.entries.length === 1 ? ' exercise · ' : ' exercises · ') +
+      w.sets + ' sets · ≈ ' + w.minutes + ' min' +
       (w.edited ? ' · <button type="button" class="text-link" data-act="restore" data-key="restore-' + session.id +
         '" aria-label="Restore suggested exercises for ' + DAY_NAME[session.day] + '">Restore suggestions</button>' : '') +
       ' · <button type="button" class="text-link" data-act="drop" data-key="drop-' + session.id +
@@ -82,6 +83,25 @@ function sessionDetailHTML(session, inline = false) {
  * length the user chose. Saying so is part of the plan: the time left is a
  * choice, not a gap.
  */
+/**
+ * What the user's own edits did that the planner never would: a session
+ * longer than its time on the calendar, or a muscle past its usual weekly
+ * maximum (MUSCLES weeklySets, the safety limit the planner keeps to).
+ */
+function editNote(session) {
+  const w = session.workout;
+  if (!w.edited) return "";
+  const notes = [];
+  const booked = Math.min(routine.sessionMinutes, session.durationHours * 60);
+  if (w.minutes > booked)
+    notes.push("about " + w.minutes + " min now, longer than the " + booked + " min it has on your calendar");
+  const over = w.muscles.filter(m => weekSets(m) > m.weeklySets[1]);
+  if (over.length)
+    notes.push(nameList(over.map(m => m.name + " (≈" + fmtSets(weekSets(m)) + " of at most " + m.weeklySets[1] + ")")) +
+      " above the usual weekly maximum");
+  return notes.length ? '<span class="warn"><b>Your edits:</b> ' + notes.join("; ") + '.</span>' : "";
+}
+
 function lengthNote(session) {
   const w = session.workout, limit = session.block.limit;
   if (!session.block.splitDay || w.skipped.length || w.minutes > limit - 5) return "";
@@ -180,6 +200,10 @@ function skippedWhere(muscle) {
     : "add an exercise yourself.";
 }
 
+/** A muscle's sets over the whole week, direct and assisting. */
+const weekSets = muscle => routine.sessions.reduce((t, s) =>
+  t + (s.workout ? s.workout.directSets(muscle.id) + s.workout.assistedSets(muscle.id) : 0), 0);
+
 function muscleHTML(session, w, muscle) {
   const entries = w.entriesFor(muscle.id);
   const pool = exercisesFor(muscle.id);
@@ -199,7 +223,12 @@ function muscleHTML(session, w, muscle) {
         ' — ' + skippedWhere(muscle) + '</p>'
       : session.block.splitDay && direct + assisted > 0
       ? '<p class="wm-empty">Covered by the lifts above: an exercise of its own here would ' +
-        'add more than it needs this week.</p>' : '';
+        'add more than it needs this week.</p>'
+      : w.recommended.some(e => e.muscleId === muscle.id)
+      ? '<p class="wm-empty">You took out its exercises here. Add one below, or restore the suggestions.</p>'
+      : weekSets(muscle) > 0
+      ? '<p class="wm-empty">Trained in your other sessions this week (≈' + fmtSets(weekSets(muscle)) +
+        ' sets in all), so no exercise of its own here.</p>' : '';
     body = noRoom + '<ul class="wm-list">' + entries.map(e => entryHTML(session, w, e)).join("") + '</ul>' +
       exerciseSelect(w, muscle.id, null, session.id);
   }
@@ -311,8 +340,11 @@ const someNames = names => names.length <= VOLUME_NOTE_NAMES ? nameList(names)
 function volumeNote(sessions, v = routine.weeklyVolume()) {
   // Muscles with no session at all are named elsewhere (leftOutText, or a
   // removed session); this note is about the sessions the week does have.
-  if (!v.noTime.length && !v.short.length) return "";
-  const parts = [];
+  // Exercises the user took out are theirs to put back, not a lack of time.
+  const removed = v.removed.length ? "You took out every exercise for " + nameList(v.removed.map(m => m.name)) +
+    ": add one back in its session, or restore the suggestions." : "";
+  if (!v.noTime.length && !v.short.length) return removed;
+  const parts = removed ? [removed] : [];
   if (v.noTime.length)
     parts.push("No time this week for " + nameList(v.noTime.map(m => m.name)) + ".");
   if (v.short.length)
@@ -330,7 +362,7 @@ function volumeNote(sessions, v = routine.weeklyVolume()) {
   ways.push("pick fewer muscles");
   parts.push("To close the gap, " + (ways.length < 2 ? ways[0]
     : ways.slice(0, -1).join(", ") + " or " + ways[ways.length - 1]) + ".");
-  return "Below what your targets usually need. " + parts.join(" ");
+  return (removed ? parts.shift() + " " : "") + "Below what your targets usually need. " + parts.join(" ");
 }
 
 /** Every gap the generated week has, as plain sentences, for the notes under its summary. */

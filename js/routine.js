@@ -619,6 +619,8 @@ class WeeklyRoutine {
    *               deadlifts — is not one. Two kinds:
    *     unplanned   no session carries the muscle at all: its block got no
    *                 day (leftOut), or the user removed its session
+   *     removed     a session carries it and was given exercises for it,
+   *                 which the user took out
    *     noTime      a session carries it, but had no time left for it
    *   short       trained, but below the low end of their weekly sets
    *   estimate    estimateTraining() for the same muscles and session length
@@ -638,11 +640,14 @@ class WeeklyRoutine {
       return { muscle: m, sets, times, need: m.weeklySets[0] };
     });
     const untrained = rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle);
+    const carrying = m => this.sessions.filter(s => s.block.muscles.includes(m) && !s.block.riders.has(m));
+    const takenOut = m => carrying(m).some(s => s.workout && s.workout.recommended.some(e => e.muscleId === m.id));
     return {
       rows,
       untrained,
-      unplanned:  untrained.filter(m => !this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
-      noTime:     untrained.filter(m => this.sessions.some(s => s.block.muscles.includes(m) && !s.block.riders.has(m))),
+      unplanned:  untrained.filter(m => !carrying(m).length),
+      removed:    untrained.filter(m => carrying(m).length && takenOut(m)),
+      noTime:     untrained.filter(m => carrying(m).length && !takenOut(m)),
       short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
       sets: rows.reduce((t, r) => t + r.sets, 0),
       need: rows.reduce((t, r) => t + r.need, 0),

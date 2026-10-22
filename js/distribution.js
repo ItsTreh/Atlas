@@ -89,6 +89,24 @@ function splitSets(target, times) {
  *                    allows on the free days (see maxSpread); defaults to `days`
  * @returns { days: [{ muscles: Muscle[], sets: Map id -> sets }], frequency: Map id -> times }
  */
+/**
+ * The most direct sets one session can give a muscle: a session never
+ * repeats a movement, and an exercise stops at WORKOUT.maxSetsPerExercise,
+ * so a muscle with one movement in the catalogue (traps, adductors) gets
+ * at most one exercise's worth however many a session may hold
+ * (WORKOUT.maxSetsPerSession). Planning it more would leave sets the
+ * workout can't give, and the shortfall read as a lack of time.
+ */
+const sessionCapCache = new Map();
+function sessionSetCap(muscleId) {
+  if (!sessionCapCache.has(muscleId)) {
+    const movements = new Set(exercisesFor(muscleId).map(e => e.movement)).size;
+    sessionCapCache.set(muscleId, Math.max(WORKOUT.minDirectSets,
+      Math.min(WORKOUT.maxSetsPerSession, movements * WORKOUT.maxSetsPerExercise)));
+  }
+  return sessionCapCache.get(muscleId);
+}
+
 function planDistribution(muscles, targets, priorities, days, sessionMinutes, timesCap = () => Infinity) {
   const level = m => priorities.get(m.id) || "normal";
   const rank = m => ({ focus: 0, normal: 1, maintain: 2 })[level(m)];
@@ -99,7 +117,7 @@ function planDistribution(muscles, targets, priorities, days, sessionMinutes, ti
 
   // 1. Frequency from the volume each session can hold.
   const frequency = new Map(wanted.map(m => [m.id,
-    Math.min(cap(m), Math.max(1, Math.ceil(target(m) / WORKOUT.maxSetsPerSession)))]));
+    Math.min(cap(m), Math.max(1, Math.ceil(target(m) / sessionSetCap(m.id))))]));
 
   // A muscle only gains a session while each session keeps at least two
   // exercises' worth of direct sets (twice WORKOUT.minDirectSets): a session
@@ -203,7 +221,7 @@ function consolidate(day, frequency, capacity) {
         plan.set(room[0], plan.get(room[0]) + cost); moves.push([m, room[0], s, false]);
       } else {
         const cost = d => muscleSessionMinutes(d.sets.get(m.id) + s) - muscleSessionMinutes(d.sets.get(m.id));
-        const home = sessions.filter(d => d.sets.get(m.id) + s <= WORKOUT.maxSetsPerSession &&
+        const home = sessions.filter(d => d.sets.get(m.id) + s <= sessionSetCap(m.id) &&
                                           plan.get(d) + cost(d) <= capacity)
                              .sort((a, b) => plan.get(a) - plan.get(b))[0];
         if (!home) { ok = false; break; }

@@ -113,7 +113,13 @@ class TrainingBlock {
   /* A merged block longer than the session keeps the session's length; its
      sets are scaled down to fit (WorkoutBuilder). */
   get sessionMinutes() { return Math.min(this.minutes, this.limit); }
-  get durationHours() { return Math.max(1, Math.ceil(this.sessionMinutes / 60)); }
+  /* The hours it takes on the calendar. A day of a split the user chose is
+     filled to the session's length (WorkoutBuilder doses it by evidence up
+     to its limit), so it books that, not its muscles' rough minutes. */
+  get durationHours() {
+    const minutes = this.name !== null && !this.plannedSets && Number.isFinite(this.limit) ? this.limit : this.sessionMinutes;
+    return Math.max(1, Math.ceil(minutes / 60));
+  }
   /** True when the block trains more than one family (a merged upper-and-legs day). */
   get mixed() {
     return new Set(this.muscles.filter(m => !this.riders.has(m)).map(m => m.family)).size > 1;

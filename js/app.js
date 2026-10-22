@@ -56,7 +56,7 @@ function generateWeek() {
 
   const mealNote = r.meals ? " " + r.meals + " meals added to the week." : "";
   const exercises = routine.sessions.reduce((t, s) => t + s.workout.entries.length, 0);
-  const exNote = exercises ? " with " + exercises + " exercises" : "";
+  const exNote = exercises ? " with " + exercises + (exercises === 1 ? " exercise" : " exercises") : "";
   let text, kind = "";
 
   switch (r.reason) {

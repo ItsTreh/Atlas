@@ -342,6 +342,9 @@ class WorkoutBuilder {
    * above its floor). Never drops an exercise: that is takeSet's last resort.
    */
   shedSet(id) {
+    // Never under its own floor: shedding below it would only have addSet
+    // put the set back, and the week end on whichever came last.
+    if (this.weekCredit(id) - 1 < this.floorFor(id)) return false;
     const own = this.sessions.flatMap(s => s.workout.entriesFor(id).map(e => ({ s, e })))
       .filter(({ e }) => e.sets > WORKOUT.minDirectSets && this.sparesOthers(e, -1))
       .sort((a, b) => b.e.sets - a.e.sets);
@@ -350,12 +353,16 @@ class WorkoutBuilder {
     return true;
   }
 
-  /** One set off `id`'s own exercises; or, when each is at its minimum, one exercise. */
-  takeSet(id) {
+  /**
+   * One set off `id`'s own exercises; or, when each is at its minimum and
+   * `drop` allows it, one exercise.
+   */
+  takeSet(id, drop = true) {
     const own = this.sessions.flatMap(s => s.workout.entriesFor(id).map(e => ({ s, e })));
     const trimmable = own.filter(({ e }) => e.sets > WORKOUT.minDirectSets && this.sparesOthers(e, -1))
                          .sort((a, b) => b.e.sets - a.e.sets);
     if (trimmable.length) { trimmable[0].e.sets--; return true; }
+    if (!drop) return false;
     // Dropping a whole exercise must not take the muscle under its floor. A
     // session it leaves empty is taken out of the week (buildWorkouts).
     const droppable = own.filter(({ e }) => this.weekCredit(id) - e.sets >= this.floorFor(id) && this.sparesOthers(e, -e.sets))
@@ -391,20 +398,40 @@ class WorkoutBuilder {
       for (let ex; (ex = this.bestFor(muscle, s.block, w, tried)); ) {
         tried.add(ex);
         const entry = new WorkoutEntry(ex, id, WORKOUT.minDirectSets);
-        if (!this.sparesOthers(entry, WORKOUT.minDirectSets) && !this.makeRoom(entry, WORKOUT.minDirectSets)) continue;
+        // Room made for a lift that is then not taken is given back, so it
+        // can't free time a better lift was turned away for.
+        const before = this.setsNow();
+        if (!this.sparesOthers(entry, WORKOUT.minDirectSets) && !this.makeRoom(entry, WORKOUT.minDirectSets)) {
+          this.restoreSets(before);
+          continue;
+        }
         const last = w.entries.map(x => x.muscleId).lastIndexOf(id);
         w.entries.splice(last < 0 ? w.entries.length : last + 1, 0, entry);
         if (w.minutes <= this.limit) return true;
         w.remove(entry);
+        this.restoreSets(before);
       }
     }
     return false;
   }
 
+  /** Every session's exercises and their sets, to put back with restoreSets(). */
+  setsNow() {
+    return this.sessions.map(s => [s.workout, [...s.workout.entries], s.workout.entries.map(e => e.sets)]);
+  }
+  restoreSets(saved) {
+    for (const [w, entries, sets] of saved) {
+      w.entries = entries;
+      entries.forEach((e, i) => { e.sets = sets[i]; });
+    }
+  }
+
   /**
    * Frees the credit `entry` would need from the muscles it would push past
    * their ceiling, by taking sets off their own exercises (takeSet keeps
-   * each at its floor). Returns whether `entry` then spares every muscle.
+   * each at its floor). It never drops another muscle's exercise for it:
+   * that would leave the muscle trained only by this lift's spill-over.
+   * Returns whether `entry` then spares every muscle.
    */
   makeRoom(entry, sets) {
     const ex = entry.exercise;
@@ -415,7 +442,7 @@ class WorkoutBuilder {
         return after > this.ceilingFor(id);
       });
       if (!blocked) return true;
-      if (!this.takeSet(blocked)) return false;
+      if (!this.takeSet(blocked, false)) return false;
     }
     return this.sparesOthers(entry, sets);
   }

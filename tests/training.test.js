@@ -216,3 +216,48 @@ describe("fitting the weekly targets to the time", () => {
     expect([...r.weeklyTargets()]).toEqual([...fit.targets]);
   });
 });
+
+describe("found in the 2026-10-22 sweep", () => {
+  const plan = ({ program, ids = [], days, minutes, experience = null, split = "auto", priorities = {} }) => {
+    const r = new app.WeeklyRoutine();
+    if (program) r.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
+    for (const id of ids) r.selection.set(id, true);
+    for (const [id, level] of Object.entries(priorities)) r.selection.setPriority(id, level);
+    Object.assign(r, { sessionsPerWeek: days, sessionMinutes: minutes, experience, split });
+    r.generate();
+    return r;
+  };
+  const sets = (r, id) => r.weeklyVolume().rows.find(x => x.muscle.id === id).sets;
+
+  test("a muscle whose assisting credit can't land on its target ends at or above its floor, not below", () => {
+    // Shoulders: 5.5 -> add a set -> 6.5 -> shedding one went back to 5.5, and so on.
+    const r = plan({ program: "push", days: 1, minutes: 90 });
+    expect(r.weeklyVolume().short).toEqual([]);
+    expect(sets(r, "shoulders")).toBeGreaterThanOrEqual(6);
+  });
+
+  test("Focus never gives a one-movement muscle less than Normal", () => {
+    const normal = plan({ program: "pull", days: 5, minutes: 90, experience: "intermediate" });
+    const focus = plan({ program: "pull", days: 5, minutes: 90, experience: "intermediate", priorities: { traps: "focus" } });
+    expect(sets(focus, "traps")).toBeGreaterThanOrEqual(sets(normal, "traps"));
+    const alone = plan({ ids: ["traps"], days: 3, minutes: 60, experience: "advanced", priorities: { traps: "focus" } });
+    expect(sets(alone, "traps")).toBe(alone.plannedWeeklySets().get("traps"));
+  });
+
+  test("a day of a chosen split books the hours its workout takes", () => {
+    for (const split of ["upper-lower", "push-pull-legs", "full-body"])
+      for (const minutes of [75, 90]) {
+        const r = plan({ program: "push", days: 1, minutes, split, experience: "intermediate" });
+        for (const s of r.sessions) expect(s.workout.minutes).toBeLessThanOrEqual(s.durationHours * 60);
+      }
+  });
+
+  test("exercises the user took out are theirs, not a lack of time", () => {
+    const r = plan({ program: "push", days: 2, minutes: 60 });
+    const s = r.sessions.find(x => x.workout.entriesFor("chest").length);
+    for (const e of s.workout.entriesFor("chest")) s.workout.remove(e);
+    const v = r.weeklyVolume();
+    expect(v.removed.map(m => m.id)).toEqual(["chest"]);
+    expect(v.noTime).toEqual([]);
+  });
+});
