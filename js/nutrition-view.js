@@ -29,14 +29,33 @@ const fmtK = n => Math.round(n).toLocaleString("en-US");
 /* What is open: one row at a time; the day view and its meal. */
 const nut = { row: null, day: false, meal: 0, dir: 1, reasons: false };
 
-/* Which example plate each meal shows: an offset into its ranked list. */
-const ideaOffset = {};
+/* The example plate the user asked for on a meal ("Other ideas"), by meal
+   index. Only that meal changes; the others keep the plates suggested. */
+const ideaChosen = {};
+
+/* Under every plan and day of eating: what the numbers are and are not. */
+const CAVEAT = "Estimates to eat against, not a medical or dietetic prescription. Your real burn depends on " +
+  "age, height, sex and body composition: weigh yourself for two or three weeks and adjust by 100–200 kcal " +
+  "if the trend isn't moving the way you want. If you carry a lot of body fat, the low end of the protein " +
+  "range is plenty.";
+
+/* When the plan stops at the floor: for a deficit, going lower; for
+   maintenance or a gain, eating more than the burn entered. */
+const floorText = n => "The maths comes out under " + fmtK(KCAL_FLOOR) + " kcal, so the plan stops there" +
+  (n.adjust < 0 ? ". Going lower is worth doing only with a professional's guidance."
+                : ", above the " + fmtK(n.burn) + " kcal burn. If you really burn that little, check it with a professional.");
+
+/* Protein above about 35% of the day's calories (the top of the usual
+   range for adults, AMDR) leaves little room for anything else. */
+const PROTEIN_SHARE_HIGH = 0.35;
 
 function adjustLabel(adjust) {
   if (!adjust) return "= your burn";
   return (adjust > 0 ? "+" : "−") + Math.round(Math.abs(adjust) * 100) + "%";
 }
 const fmtGkg = v => v.toFixed(1);
+/* The accepted body weight's low (0) or high (1) end in the unit shown. */
+const weightBound = (n, i) => n.unit === "lb" ? Math.round(WEIGHT_KG_RANGE[i] / KG_PER_LB) : WEIGHT_KG_RANGE[i];
 /* What a goal would change for this training, short enough for its card. */
 const goalAdjust = (goal, n) => { const a = recommendTargets(goal, n.load).adjust; return a ? adjustLabel(a) : "= burn"; };
 const trainingHours = h => { const v = Math.round(h * 2) / 2; return v + (v === 1 ? " hour" : " hours"); };
@@ -66,7 +85,8 @@ function rowSummaries(n) {
   return {
     body: n.isValid() ? fmtWeight(n) + " · burns ≈ " + fmtK(n.burn) + " kcal a day" : "Add your body weight",
     training: !load.muscles.length ? "No training counted yet"
-      : routine.sessionsPerWeek + " × " + routine.sessionMinutes + " min a week" +
+      : load.sessionsPerWeek + " × " + load.sessionMinutes + " min a week" +
+        (load.sessionsPerWeek < routine.sessionsPerWeek ? " of " + routine.sessionsPerWeek + " offered" : "") +
         (n.burnIsEstimate && n.isValid() ? " · adds ≈ " + fmtK(load.kcalPerDay) + " kcal a day" : ""),
     targets: adjustLabel(n.adjust) + " calories · " + fmtGkg(n.proteinPerKg) + " g protein per kg",
     rhythm: n.mealsPerDay + " meals · " + hourSpan(n.hours[0], n.hours[n.hours.length - 1]) +
@@ -107,10 +127,7 @@ function planHTML() {
       '<div class="nu-cta">' +
         '<button type="button" class="btn ghost" id="open-day" data-key="open-day"' + (n.isValid() ? '' : ' disabled') + '>' +
           'See a day of eating →</button>' +
-        '<p class="note-rule">Estimates to eat against, not a medical or dietetic prescription. Your real burn depends on ' +
-          'age, height, sex and body composition: weigh yourself for two or three weeks and adjust by 100–200 kcal ' +
-          'if the trend isn\'t moving the way you want. If you carry a lot of body fat, the low end of the protein ' +
-          'range is plenty.</p>' +
+        '<p class="note-rule">' + CAVEAT + '</p>' +
       '</div>' +
     '</div>';
 }
@@ -134,8 +151,10 @@ function figuresHTML(n) {
       '<button type="button" class="text-link" id="nu-reasons" data-key="reasons" aria-expanded="' + nut.reasons + '">' +
         (nut.reasons ? "Hide the reasoning" : "How it's worked out") + '</button>' +
     '</div>' +
-    (n.atFloor ? '<p class="nu-warn">The maths comes out under ' + fmtK(KCAL_FLOOR) + ' kcal, so the plan stops there. ' +
-      'Going lower is worth doing only with a professional\'s guidance.</p>' : '') +
+    (n.atFloor ? '<p class="nu-warn">' + floorText(n) + '</p>' : '') +
+    (n.protein * 4 > n.kcal * PROTEIN_SHARE_HIGH ? '<p class="nu-warn">' + n.protein + ' g of protein is about ' +
+      Math.round(n.protein * 400 / n.kcal) + '% of these calories, above the ' + Math.round(PROTEIN_SHARE_HIGH * 100) +
+      '% that is the top of the usual range. Consider a lower g per kg (Targets), especially with a lot of body fat.</p>' : '') +
     (nut.reasons ? '<ul class="nu-reasons">' + planReasons(n).map(r => '<li>' + r + '</li>').join("") + '</ul>' : '');
 }
 
@@ -155,14 +174,16 @@ function burnNoteHTML(n) {
     return tag(false, "Estimate") + '<span>From ' + fmtWeight(n) + ', ' +
       ACTIVITY_LEVELS[n.activity].label.toLowerCase() + ' outside training' +
       (n.load.kcalPerDay ? ', plus your training' : '') + '. Know your number? Type it in.</span>';
-  return tag(true, "Your number") + '<span>Include your training in it.</span>' +
+  return tag(true, "Your number") + '<span>' + (n.burnHeld ? 'Held to the ' + fmtK(BURN_RANGE[0]) + '–' +
+      fmtK(BURN_RANGE[1]) + ' kcal range. ' : '') + 'Include your training in it.</span>' +
     '<button type="button" class="text-link" id="burn-reset" data-key="burn-reset">Estimate it for me</button>';
 }
 
 const ROW_BODIES = {
   body(n) {
     return '<div class="kv"><label class="kv-label" for="n-weight">Body weight</label>' +
-        '<input id="n-weight" class="serif-input" type="number" min="30" max="550" step="0.5" inputmode="decimal" ' +
+        '<input id="n-weight" class="serif-input" type="number" min="' + weightBound(n, 0) + '" max="' + weightBound(n, 1) +
+          '" step="0.5" inputmode="decimal" ' +
           'value="' + (n.weight ?? "") + '">' +
         segmented("Weight unit", ["kg", "lb"].map(u => segBtn(n.unit === u, "data-unit", u, u)), true) +
       '</div>' +
@@ -284,6 +305,18 @@ function planReasons(n) {
   const pct = v => Math.round(v * 100) + "%";
   const out = [];
 
+  if (n.burnIsEstimate) {
+    const a = ACTIVITY_LEVELS[n.activity], raw = n.baseBurn + load.kcalPerDay;
+    out.push('<b>Burn:</b> ' + Math.round(n.weightKg * 10) / 10 + ' kg × ' + a.kcalPerKg + ' kcal per kg, ' +
+      a.label.toLowerCase() + ' outside training, ≈ ' + fmtK(Math.round(n.baseBurn / 10) * 10) +
+      (load.kcalPerDay ? ', plus ≈ ' + fmtK(load.kcalPerDay) + ' a day for training' : '') +
+      (raw > BURN_RANGE[1] ? ', held at the ' + fmtK(BURN_RANGE[1]) + ' kcal the plan goes up to'
+       : raw < BURN_RANGE[0] ? ', raised to the ' + fmtK(BURN_RANGE[0]) + ' kcal the plan starts from' : '') +
+      '. A rough start: height, age, sex and body composition move it, so your own number is better.');
+  } else {
+    out.push('<b>Burn:</b> your own number, ' + fmtK(n.burn) + ' kcal a day, training included.');
+  }
+
   const selected = routine.selectedMuscles().length;
   const untrained = selected - load.muscles.length;
   if (!load.muscles.length) {
@@ -328,12 +361,27 @@ function planReasons(n) {
 /** The day's meals, each with the example plate it shows (no plate repeated if avoidable). */
 function mealsWithIdeas(n) {
   const shown = new Set();
-  return n.meals.map(m => {
+  const suggested = n.meals.map(m => {
     const ranked = mealIdeasFor(m, n.diet, shown);
-    const pick = ranked.length ? ranked[(ideaOffset[m.index] || 0) % ranked.length] : null;
-    if (pick) shown.add(pick.idea);
-    return { ...m, pick, choices: ranked.length };
+    if (ranked.length) shown.add(ranked[0].idea);
+    return { m, ranked };
   });
+  return suggested.map(({ m, ranked }) => {
+    const own = ideaChosen[m.index] && ranked.find(r => r.idea === ideaChosen[m.index]);
+    return { ...m, pick: own || ranked[0] || null, choices: ranked.length };
+  });
+}
+
+/** The next plate for meal `index`, past the one it shows, not one another meal shows. */
+function nextIdea(index) {
+  const n = nutrition(), meals = mealsWithIdeas(n), cm = meals.find(m => m.index === index);
+  if (!cm || !cm.pick) return;
+  const others = new Set(meals.filter(m => m !== cm && m.pick).map(m => m.pick.idea));
+  const ranked = mealIdeasFor(cm, n.diet);
+  const pool = ranked.filter(r => !others.has(r.idea));
+  const list = pool.length > 1 ? pool : ranked;
+  const i = list.findIndex(r => r.idea === cm.pick.idea);
+  ideaChosen[index] = list[(i + 1) % list.length].idea;
 }
 
 function dayHTML() {
@@ -368,8 +416,10 @@ function dayHTML() {
   return '<div class="day-head" data-reveal="0">' +
       '<button type="button" class="quiet-btn" id="close-day" data-key="close-day">← Your daily plan</button>' +
       '<h1 class="display" id="nutrition-title" tabindex="-1">A day of eating</h1>' +
-      '<p class="nu-lede">Example plates portioned to each meal: ' + fmtK(n.kcal) + ' kcal and ' + n.protein +
-        ' g protein across ' + n.mealsPerDay + ' meals. Swap in foods you like with similar numbers.</p>' +
+      '<p class="nu-lede">' + tag(false, "Estimate") + ' ' + fmtK(n.kcal) + ' kcal and ' + n.protein +
+        ' g protein across ' + n.mealsPerDay + ' meals, with an example plate for each. Plates come in everyday ' +
+        'portions, so they land near a meal\'s numbers rather than on them. Swap in foods you like with similar numbers.</p>' +
+      (n.atFloor ? '<p class="nu-warn">' + floorText(n) + '</p>' : '') +
     '</div>' +
     '<div class="day-body" data-reveal="1">' +
       '<div class="meal-line' + (names ? ' named' : '') + '" role="tablist" aria-label="Meals">' + stops + '</div>' +
@@ -408,14 +458,22 @@ function dayHTML() {
           '<span class="meal-focus">' + esc(cm.focus) + '</span>' +
           (p
             ? '<span class="idea-head"><span class="idea-name">' + esc(p.idea.name) + '</span>' +
-                '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g</span></span>' +
+                '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g' + plateGap(p, cm) + '</span></span>' +
               '<ul class="idea-foods">' + p.foods.map(([id, g]) =>
                 '<li><span>' + esc(FOODS[id].name) + '</span><span>' + amountLabel(id, g) + '</span></li>').join("") + '</ul>' +
               (cm.choices > 1 ? '<button type="button" class="text-link" data-more="' + cm.index + '" data-key="more">Other ideas ↻</button>' : '')
             : '<p class="kv-note flush">No example meals for this diet and meal yet.</p>') +
         '</div>' +
       '</article>' +
+      '<p class="note-rule">' + CAVEAT + '</p>' +
     '</div>';
+}
+
+/* How far a plate is from its meal, when that is more than a little. */
+function plateGap(plate, meal) {
+  const off = (plate.kcal - meal.kcal) / meal.kcal;
+  return Math.abs(off) < 0.15 ? "" : ' <span class="faint">(about ' + Math.round(Math.abs(off) * 100) + '% ' +
+    (off > 0 ? 'more' : 'less') + ' than this meal)</span>';
 }
 
 /** Opens another meal: the card slides out and the next one in. */
@@ -504,7 +562,7 @@ nutritionEl.addEventListener("click", e => {
   else if (b.id === "close-day") Stages.relayout(() => { nut.day = false; }, 500);
   else if (d.meal) pickMeal(Number(d.meal));
   else if (d.mealStep) pickMeal(nut.meal + Number(d.mealStep));
-  else if (d.more) { ideaOffset[d.more] = (ideaOffset[d.more] || 0) + 1; renderNutritionStage(); }
+  else if (d.more) { nextIdea(Number(d.more)); renderNutritionStage(); }
 });
 
 nutritionEl.addEventListener("input", e => {

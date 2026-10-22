@@ -290,3 +290,40 @@ describe("example meals", () => {
     expect(huge.kcal).toBeLessThanOrEqual(base * 2.1);
   });
 });
+
+describe("found in the 2026-10-22 sweep", () => {
+  test("the meals add up to the day exactly, calories and protein", () => {
+    for (const weight of [45, 63.5, 80, 97, 140]) for (const meals of app.MEAL_COUNTS) for (const goal of Object.keys(app.GOALS)) {
+      const n = new app.NutritionPlan();
+      n.weight = weight; n.setGoal(goal); n.setMealCount(meals);
+      expect(n.meals.reduce((t, m) => t + m.kcal, 0)).toBe(n.kcal);
+      expect(n.meals.reduce((t, m) => t + m.protein, 0)).toBe(n.protein);
+      expect(n.meals.every(m => m.kcal % 10 === 0)).toBe(true);
+    }
+  });
+
+  test("switching kg to lb and straight back gives the weight as typed", () => {
+    const n = new app.NutritionPlan();
+    for (const w of [70.3, 82.7, 80.3]) {
+      n.unit = "kg"; n.weight = w;
+      n.setUnit("lb"); n.setUnit("kg");
+      expect(n.weight).toBe(w);
+    }
+  });
+
+  test("a weight too large to convert clears rather than becoming Infinity", () => {
+    const n = new app.NutritionPlan();
+    n.weight = 1e308;
+    n.setUnit("lb");
+    expect(n.weight).toBe(null);
+  });
+
+  test("a typed burn outside the range is held to it, and says so", () => {
+    const n = new app.NutritionPlan();
+    n.setBurn(500);
+    expect(n.burn).toBe(app.BURN_RANGE[0]);
+    expect(n.burnHeld).toBe(true);
+    n.setBurn(2400);
+    expect(n.burnHeld).toBe(false);
+  });
+});

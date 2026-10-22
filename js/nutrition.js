@@ -178,6 +178,20 @@ const MEAL_FOCUS = {
   snack:     "Protein + fruit or nuts"
 };
 
+/**
+ * Whole parts of `total` in proportion to `shares` (which add up to 1) that
+ * add up to `total` exactly: each part rounded down, then the units left
+ * over to the parts with the largest remainders.
+ */
+function apportion(total, shares) {
+  const exact = shares.map(s => total * s);
+  const parts = exact.map(Math.floor);
+  let left = total - parts.reduce((a, b) => a + b, 0);
+  const order = exact.map((x, i) => [x - parts[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  for (const [, i] of order) { if (left <= 0) break; parts[i]++; left--; }
+  return parts;
+}
+
 /** A meal's name from its kind and time of day. */
 function mealName(role, hour) {
   if (role === "snack")
@@ -216,10 +230,17 @@ class NutritionPlan {
   /* Switching unit converts the weight, so 70 kg becomes 154.5 lb, not 70 lb. */
   setUnit(unit) {
     if (unit === this.unit) return;
-    const kg = this.weightKg;
+    const kg = this.weightKg, back = this.unitSwitch;
+    // Switching straight back gives the weight as it was typed, not a
+    // second rounding of the first (80.3 kg -> 177 lb -> 80.3 kg, not 80.5).
+    const typed = back && back.to === this.unit && back.from === unit && back.converted === this.weight ? back.typed : null;
+    const from = this.unit, before = this.weight;
     this.unit = unit;
-    if (this.weight !== null)
-      this.weight = Math.round((unit === "lb" ? kg / KG_PER_LB : kg) * 2) / 2;
+    if (this.weight !== null) {
+      const w = typed ?? Math.round((unit === "lb" ? kg / KG_PER_LB : kg) * 2) / 2;
+      this.weight = Number.isFinite(w) ? w : null;
+    }
+    this.unitSwitch = { from, to: unit, typed: before, converted: this.weight };
   }
 
   /**
@@ -297,7 +318,11 @@ class NutritionPlan {
   get burn() { return this.burnIsEstimate ? this.estimatedBurn : this.burnInput; }
 
   /** The user's own burn, held to the accepted range. Empty or zero goes back to the estimate. */
-  setBurn(v) { this.burnInput = v ? clampBurn(v) : null; }
+  setBurn(v) {
+    this.burnInput = v ? clampBurn(v) : null;
+    // A number outside the range is held to it; the page says so.
+    this.burnHeld = !!v && (v < BURN_RANGE[0] || v > BURN_RANGE[1]);
+  }
   /** Picking an activity level means using the estimate again. */
   setActivity(activity) { this.activity = activity; this.burnInput = null; }
 
@@ -388,6 +413,11 @@ class NutritionPlan {
     const pattern = MEAL_PATTERNS[this.mealsPerDay] || MEAL_PATTERNS[3];
     const hours = this.hours;
     const used = new Set();
+    // Each meal's share, rounded so the meals still add up to the day
+    // (calories in tens): rounding each on its own could miss by a few.
+    const shares = pattern.map(([, share]) => share);
+    const kcal = apportion(Math.round(this.kcal / 10), shares).map(k => k * 10);
+    const protein = apportion(this.protein, shares);
     return pattern.map(([role, share], i) => {
       const hour = hours[i];
       let name = mealName(role, hour);
@@ -397,8 +427,8 @@ class NutritionPlan {
       return {
         index: i, name, hour, role, kind, share,
         focus:   MEAL_FOCUS[kind],
-        kcal:    Math.round(this.kcal * share / 10) * 10,
-        protein: Math.round(this.protein * share)
+        kcal:    kcal[i],
+        protein: protein[i]
       };
     });
   }
