@@ -1,9 +1,17 @@
-/* Surface samples for anatomical cartography. Classic script, no DOM or imports.
+/* Surface samples that shape the cartography's flow (buildAnatomyFlowFrames,
+ * buildAnatomyFlowGuides). Classic script, no DOM or imports.
  *
- * Both ends of a particle's movement are barycentric points on ONE triangle.
- * Gathering cannot cross a painted border, float off the body, or join two
- * unrelated surfaces. Sampling is proportional to area, not mesh density.
- * The map describes the authored anatomy; it does not infer new anatomy.
+ * Each sample is a barycentric point on ONE triangle of one painted region,
+ * so it cannot cross a border or float off the body. Sampling is
+ * proportional to area, not mesh density. The map describes the authored
+ * anatomy; it does not infer new anatomy.
+ *
+ * Per sample, `stride` floats: 3–5 the surface point, 6–8 its face normal,
+ * 9 its region. Slots 0–2, 10 and 11 fed the retired particle renderer and
+ * stay zero, so readers keep their offsets.
+ *
+ * The random sequence is part of the output: seed 1963, four draws per
+ * sample, two of them unused (see the loop). Changing it moves the curves.
  */
 function buildAnatomyCartography(model, bytes, budget = 14000) {
   const stride = model.vertexBytes, view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -36,7 +44,7 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
   }
   const count = area > 0 ? Math.max(0, Math.min(24000, Math.floor(budget))) : 0;
   const particleStride = 12;
-  const data = new Float32Array(count * particleStride), triangles = new Uint32Array(count);
+  const data = new Float32Array(count * particleStride);
   let seed = 1963, triangle = 0;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
   const weights = () => { const u = Math.sqrt(random()), v = random(); return [1 - u, u * (1 - v), u * v]; };
@@ -44,16 +52,19 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
     const at = (i + 0.5) / count * area;
     while (cumulative[triangle] <= at) triangle++;
     const vertices = [index(triangle * 3), index(triangle * 3 + 1), index(triangle * 3 + 2)];
-    const rest = weights(), gathered = weights(), offset = i * particleStride;
+    // Keep these two draws, though nothing reads them. They once placed a
+    // retired particle's resting point; skipping them shifts the random
+    // sequence, which moves every sample and so every flow frame and curve.
+    // tests/cartography.test.js pins the resulting sample positions.
+    random(); random();
+    const barycentric = weights(), offset = i * particleStride;
     for (let k = 0; k < 3; k++) {
       for (let j = 0; j < 3; j++) {
-        data[offset + k] += positions[vertices[j] * 3 + k] * rest[j];
-        data[offset + 3 + k] += positions[vertices[j] * 3 + k] * gathered[j];
-        data[offset + 6 + k] += normals[vertices[j] * 3 + k] * gathered[j];
+        data[offset + 3 + k] += positions[vertices[j] * 3 + k] * barycentric[j];
+        data[offset + 6 + k] += normals[vertices[j] * 3 + k] * barycentric[j];
       }
     }
-    // A marker's depth follows its source face. Using only its center depth
-    // clips circular points into flecks on sloping surfaces.
+    // The source face's own normal, turned to agree with the smooth one.
     const ab = [0, 1, 2].map(k => positions[vertices[1] * 3 + k] - positions[vertices[0] * 3 + k]);
     const ac = [0, 1, 2].map(k => positions[vertices[2] * 3 + k] - positions[vertices[0] * 3 + k]);
     const normal = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
@@ -61,56 +72,8 @@ function buildAnatomyCartography(model, bytes, budget = 14000) {
     const normalLength = Math.hypot(...normal);
     for (let k = 0; k < 3; k++) data[offset + 6 + k] = normal[k] / normalLength * alignment;
     data[offset + 9] = region(vertices[0]);
-    data[offset + 10] = 2; // suppressed until admitted to a spaced level below
-    for (let j = 0; j < 3; j++) data[offset + 11] +=
-      view.getUint8(vertices[j] * stride + 12) / 255 * (model.seamMax || 3) * gathered[j];
-    // Movement is a small surface adjustment, not a jump across a large face.
-    const length = Math.hypot(...[0, 1, 2].map(k => data[offset + k] - data[offset + 3 + k]));
-    const movement = Math.min(1, Math.sqrt(area / Math.max(count, 1)) * 0.18 / (length || 1));
-    for (let k = 0; k < 3; k++) data[offset + k] = data[offset + 3 + k] +
-      (data[offset + k] - data[offset + 3 + k]) * movement;
-    triangles[i] = triangle;
   }
-  // Nested blue-noise levels: coarse landmarks, selected field, close detail.
-  // A random opacity threshold alone made the surface look like visual noise.
-  // Every finer level retains the coarser one and enforces a minimum distance.
-  const order = Uint32Array.from({ length: count }, (_, i) => i);
-  for (let i = count - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  const spacing = Math.sqrt(area / Math.max(count, 1));
-  const radii = [4.4, 2.2, 1.1].map(factor => spacing * factor);
-  radii.forEach((radius, level) => {
-    const grid = new Map(), key = (x, y, z) => x + "," + y + "," + z;
-    const cell = i => [0, 1, 2].map(k => Math.floor(data[i * particleStride + 3 + k] / radius));
-    const insert = i => {
-      const name = key(...cell(i));
-      const bucket = grid.get(name);
-      if (bucket) bucket.push(i); else grid.set(name, [i]);
-    };
-    for (const i of order) if (data[i * particleStride + 10] < 1) insert(i);
-    for (const i of order) {
-      const offset = i * particleStride;
-      if (data[offset + 10] < 1) continue;
-      const [x, y, z] = cell(i);
-      let clear = true;
-      for (let dx = -1; dx <= 1 && clear; dx++)
-        for (let dy = -1; dy <= 1 && clear; dy++)
-          for (let dz = -1; dz <= 1 && clear; dz++)
-            for (const j of grid.get(key(x + dx, y + dy, z + dz)) || []) {
-              const other = j * particleStride;
-              const d2 = [0, 1, 2].reduce((sum, k) => sum +
-                (data[offset + 3 + k] - data[other + 3 + k]) ** 2, 0);
-              if (d2 < radius * radius) { clear = false; break; }
-            }
-      if (clear) {
-        data[offset + 10] = [0.015, 0.2, 0.56][level] + random() * [0.02, 0.08, 0.22][level];
-        insert(i);
-      }
-    }
-  });
-  return { data, triangles, count, stride: particleStride, radii, positions };
+  return { data, count, stride: particleStride };
 }
 
 /* Bilateral surface frames for the flowing material. Coordinates fold around

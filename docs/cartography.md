@@ -85,6 +85,12 @@ positions. Paired regions share a direction by folding coordinates around
 the body's upright plane. These frames guide the material traces; samples
 are not rendered as particles or a separate graph.
 
+The sampler's random sequence is fixed and is part of its output. Each
+sample still takes two draws for a retired particle's resting point before
+the two that place it. Removing those draws as dead code would move every
+sample, and so every flow frame and curve; `tests/cartography.test.js` pins
+the sample positions and fails if the sequence changes.
+
 The shader folds surface positions after interpolation, so triangles across
 the midline do not kink the abdominal traces. A rounded angular field keeps
 curves open where a region's axis approaches the skin, avoiding pinched fans

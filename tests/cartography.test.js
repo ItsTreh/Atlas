@@ -25,23 +25,36 @@ describe("anatomical surface sampling", () => {
     const { model, bytes } = surface(wide);
     const samples = app.buildAnatomyCartography(model, bytes, 1000);
     expect(samples.count).toBe(1000);
-    expect([...samples.triangles].filter(t => t === 0)).toHaveLength(200);
-    expect([...samples.triangles].filter(t => t === 1)).toHaveLength(800);
+    // Each face is its own region here, so regions count the samples per face.
+    const regions = Array.from({ length: samples.count }, (_, i) => samples.data[i * samples.stride + 9]);
+    expect(regions.filter(t => t === 0)).toHaveLength(200);
+    expect(regions.filter(t => t === 1)).toHaveLength(800);
     for (let i = 0; i < samples.count; i++) {
-      const t = samples.triangles[i], offset = i * samples.stride;
-      expect(samples.data[offset + 9]).toBe(t);
-      // Both endpoints and their interpolation stay on the original face.
-      for (const progress of [0, 0.25, 0.5, 0.75, 1]) {
-        const xyz = [0, 1, 2].map(k => samples.data[offset + k] * (1 - progress) +
-          samples.data[offset + 3 + k] * progress);
-        const x = xyz[0] - (t ? 10 : 0), y = xyz[1];
-        expect(x).toBeGreaterThanOrEqual(0);
-        expect(y).toBeGreaterThanOrEqual(0);
-        expect(x / (t ? 4 : 2) + y / (t ? 2 : 1)).toBeLessThanOrEqual(1.00001);
-        expect(xyz[2]).toBe(0);
-      }
+      const t = regions[i], offset = i * samples.stride;
+      // Every sample stays on its own face.
+      const x = samples.data[offset + 3] - (t ? 10 : 0), y = samples.data[offset + 4];
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(x / (t ? 4 : 2) + y / (t ? 2 : 1)).toBeLessThanOrEqual(1.00001);
+      expect(samples.data[offset + 5]).toBe(0);
       expect(samples.data[offset + 8]).toBeCloseTo(1, 6); // +z normal, Float32
     }
+  });
+
+  test("keeps every sample where the flow frames were tuned on", () => {
+    // Points from the sampler before its particle data was retired. The flow
+    // frames and guides, and so every curve, are built from these samples.
+    // A failure after an optimization means the random sequence changed:
+    // buildAnatomyCartography must keep its two unused draws per sample.
+    const { model, bytes } = surface();
+    const samples = app.buildAnatomyCartography(model, bytes, 5);
+    [[1.27067089, 0.31433415, 0], [12.60820198, 0.06618421, 1], [12.64871311, 0.03236435, 1],
+     [10.99518394, 0.42332235, 1], [11.71873856, 0.5616563, 1]].forEach(([x, y, region], i) => {
+      const offset = i * samples.stride;
+      expect(samples.data[offset + 3]).toBeCloseTo(x, 5);
+      expect(samples.data[offset + 4]).toBeCloseTo(y, 5);
+      expect(samples.data[offset + 9]).toBe(region);
+    });
   });
 
   test("is reproducible across redraws and context restoration", () => {
@@ -50,35 +63,16 @@ describe("anatomical surface sampling", () => {
       .toEqual(app.buildAnatomyCartography(model, bytes, 100).data);
   });
 
-  test("each detail level keeps its points separated on the surface", () => {
-    const { model, bytes } = surface();
-    const samples = app.buildAnatomyCartography(model, bytes, 300);
-    let previous = [];
-    [0.04, 0.3, 0.8].forEach((threshold, level) => {
-      const indices = Array.from({ length: samples.count }, (_, i) => i)
-        .filter(i => samples.data[i * samples.stride + 10] < threshold);
-      expect(indices.length).toBeGreaterThan(previous.length);
-      expect(previous.every(i => indices.includes(i))).toBe(true);
-      for (let a = 0; a < indices.length; a++) for (let b = 0; b < a; b++) {
-        const at = indices[a] * samples.stride, bt = indices[b] * samples.stride;
-        const distance = Math.hypot(...[0, 1, 2].map(k => samples.data[at + 3 + k] - samples.data[bt + 3 + k]));
-        expect(distance).toBeGreaterThanOrEqual(samples.radii[level] - 1e-6);
-      }
-      previous = indices;
-    });
-    for (let i = 0; i < samples.count; i++) {
-      const offset = i * samples.stride;
-      const movement = Math.hypot(...[0, 1, 2].map(k => samples.data[offset + k] - samples.data[offset + 3 + k]));
-      expect(movement).toBeLessThanOrEqual(Math.sqrt(5 / 300) * 0.18 + 1e-6);
-    }
-  });
-
   test("omits triangles crossing anatomical regions", () => {
     const { model, bytes } = surface();
     bytes[10] = 2;
     const samples = app.buildAnatomyCartography(model, bytes, 100);
-    expect([...samples.triangles].every(t => t === 1)).toBe(true);
     expect(samples.count).toBe(100);
+    for (let i = 0; i < samples.count; i++) {
+      // All on the second face: the first now mixes regions 2 and 0.
+      expect(samples.data[i * samples.stride + 9]).toBe(1);
+      expect(samples.data[i * samples.stride + 3]).toBeGreaterThanOrEqual(10);
+    }
   });
 
   test("marker depth uses the source face's plane on a sloped surface", () => {
