@@ -161,14 +161,15 @@ const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
 const SCULPTURE_DATA_ROWS = {
   state: 0,        // tone, focus edge, form, selected (regionStates); every frame
   map: 1,          // selected, pointed at, lit (shown), then the family tint; every frame
-  center: 2,       // flow field centre, then its scale (buildAnatomyFlowFrames)
-  axis: 3,         // flow field axis, then its length
-  ink: 4,          // the family's hue (sRGB), then the region's guide slot (buildAnatomyFlowGuides)
-  guideOrigin: 5,  // per guide from here on, not per region
-  guideAcross: 6,
-  guideAlong: 7
+  reveal: 2,       // how far a lit region's lines have drawn in, eased (litReveal); every frame
+  center: 3,       // flow field centre, then its scale (buildAnatomyFlowFrames)
+  axis: 4,         // flow field axis, then its length
+  ink: 5,          // the family's hue (sRGB), then the region's guide slot (buildAnatomyFlowGuides)
+  guideOrigin: 6,  // per guide from here on, not per region
+  guideAcross: 7,
+  guideAlong: 8
 };
-const SCULPTURE_DATA_FRAME_ROWS = 2;
+const SCULPTURE_DATA_FRAME_ROWS = 3;
 
 /** The rows as GLSL defines: ROW_STATE, ROW_MAP, … ROW_GUIDE_ALONG. */
 function sculptureDataDefines() {
@@ -230,7 +231,7 @@ class AnatomySculpture {
     this.mapPresence = 0;
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
-    this.litReveal = 1;                      // 0 … 1 as newly lit muscles draw in
+    this.litReveal = null;                   // per region, 0 … 1 as a newly lit muscle draws in
     this.previewFamily = null;               // a tinted family while its summary row is pointed at
     this.tintShown = null;                   // per region, 0 … 1 toward its family's hue
     this.flowTime = 0;
@@ -809,7 +810,6 @@ class AnatomySculpture {
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
     gl.uniform1f(u.uMapInfluence, this.mapInfluence);
-    gl.uniform1f(u.uLitReveal, 1 - Math.pow(1 - this.litReveal, 3));
     gl.uniform1f(u.uPointedRegion, this.pointedRegionIndex());
     gl.uniform1f(u.uDetailed, this.detailMode ? 1 : 0);
     gl.uniform1f(u.uFlowTime, this.flowTime);
@@ -844,7 +844,12 @@ class AnatomySculpture {
       if (!hit) { root.classList.remove("visible"); return; }
       anchor = [parseFloat(hit.style.left), parseFloat(hit.style.top)];
     }
-    const center = shot.sx * cw, left = anchor[0] < center;
+    // The side is chosen when a muscle is first pointed at and kept while the
+    // pointer stays on it: crossing the midline of the abs doesn't fling the
+    // label to the other side of the body.
+    const center = shot.sx * cw;
+    if (!this.labelSide || this.labelSide.id !== muscle.id) this.labelSide = { id: muscle.id, left: anchor[0] < center };
+    const left = this.labelSide.left;
     const x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
     const y = Math.max(100, Math.min(ch - 170, anchor[1] - 18));
     // Drawn with every frame while the traces flow: write only what changed.
@@ -885,6 +890,7 @@ class AnatomySculpture {
     writeSculptureData(t, w, R.state, this.regionStates(this.view.id), 4);
     writeSculptureData(t, w, R.map, this.shown || this.targets(), 3);
     writeSculptureData(t, w, R.map, this.tintShown || this.tintTargets(), 1, 3);
+    writeSculptureData(t, w, R.reveal, this.revealShown(), 1);
     if (!d.fresh) {
       writeSculptureData(t, w, R.center, this.flowFrames.centers, 4);
       writeSculptureData(t, w, R.axis, this.flowFrames.axes, 4);
@@ -994,9 +1000,10 @@ class AnatomySculpture {
         this.tintShown[r] = follow(this.tintShown[r], tint[r],
           tint[r] > this.tintShown[r] ? SCULPTURE_EASE.hoverIn : SCULPTURE_EASE.hoverOut, 0.005);
     }
-    if (this.litReveal < 1) {
-      this.litReveal = instant ? 1 : Math.min(1, this.litReveal + dt / SCULPTURE_EASE.reveal);
-      if (this.litReveal < 1) moving = true;
+    if (this.litReveal) for (let r = 0; r < this.litReveal.length; r++) {
+      if (this.litReveal[r] >= 1) continue;
+      this.litReveal[r] = instant ? 1 : Math.min(1, this.litReveal[r] + dt / SCULPTURE_EASE.reveal);
+      if (this.litReveal[r] < 1) moving = true;
     }
     for (let i = 0; i < shown.length; i++) {
       const to = target[i], from = shown[i];
@@ -1316,8 +1323,11 @@ class AnatomySculpture {
       this.canvas.style.cursor = id ? "pointer" : "grab";
       if (this.still()) this.hover(id);
       // Density follows motion within a muscle too. Over the empty canvas
-      // nothing on screen follows the pointer, once the map has eased away.
+      // nothing on screen follows the pointer, once the map has eased away;
+      // the map's point still follows it, so it is where the pointer is when
+      // the pointer comes onto the body (not where frames last left it).
       if (region >= 0 || this.mapPresence > 0 || this.mapInfluence > 0) this.schedule();
+      else this.mapPointer.splice(0, 2, ...this.pointer);
     });
     const release = e => {
       const d = this.drag;
@@ -1409,10 +1419,27 @@ class AnatomySculpture {
     const tinted = next && SCULPTURE_TINTED.includes(family) ? family : null;
     // pointerover repeats within one row
     if (sameMuscleSet(next, this.previewing) && tinted === this.previewFamily) return;
+    // A newly lit muscle draws in; one the last program lit too stays drawn,
+    // so stepping between programs doesn't blank the muscles they share.
+    const wasLit = this.previewFamily ? null : this.previewing;
     this.previewing = next;
     this.previewFamily = tinted;
-    if (next && !tinted) this.litReveal = 0;
+    if (next && !tinted) {
+      const reveal = this.litReveal || new Float32Array(this.muscleOf.length).fill(1);
+      for (let r = 0; r < reveal.length; r++) {
+        const id = this.muscleOf[r];
+        if (!(id && wasLit && wasLit.has(id) && next.has(id))) reveal[r] = 0;
+      }
+      this.litReveal = reveal;
+    }
     this.schedule();
+  }
+
+  /** Each region's draw-in, eased (in fast, settling), for the reveal row; 1 when nothing is drawing in. */
+  revealShown() {
+    const n = this.muscleOf.length, out = new Float32Array(n).fill(1);
+    if (this.litReveal) for (let r = 0; r < n; r++) out[r] = 1 - Math.pow(1 - this.litReveal[r], 3);
+    return out;
   }
 
   /** Redraws from the selection. */
@@ -1501,7 +1528,7 @@ uniform float uTraceVivid;              // 1 where tinted lines need help to kee
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
 uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
 uniform vec2 uMapPointer, uMapSize;
-uniform float uMapPointerActive, uMapInfluence, uLitReveal, uPointedRegion, uDetailed, uFlowTime, uDpr;
+uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
 out vec4 outColor;
@@ -1645,10 +1672,11 @@ void main() {
   float visible = (1.0 - smoothstep(0.2, 0.5, footprint)) * inset * facing;
   // Lit muscles (a program or session pointed at) draw their lines in along
   // their length once, a slightly darker head leading, then rest fully drawn.
-  float front = mix(-1.5, 2.5, uLitReveal);
+  float reveal = data(region, ROW_REVEAL).x;   // this region's own draw-in
+  float front = mix(-1.5, 2.5, reveal);
   float drawn = 1.0 - smoothstep(front - 0.3, front, along);
   float ahead = (along - front) / 0.22;
-  float head = exp(-ahead * ahead) * (1.0 - uLitReveal);
+  float head = exp(-ahead * ahead) * (1.0 - reveal);
   float etched = trace * visible * min(0.8,
     selected * mix(0.07, 0.26, dark) +
     lit * (drawn * mix(0.24, 0.5, dark) + head * 0.3) +

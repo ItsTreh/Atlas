@@ -246,31 +246,42 @@ test("a session pointed at off Targets draws as a selected group hovered on Targ
 });
 
 test("lit muscles draw in once, and repeating the same preview does not restart it", () => {
-  const r = { previewing: null, litReveal: 1, schedule() {}, targets: () => new Float32Array(3),
-    shown: new Float32Array(3), reducedMotion: { matches: false }, interactive: true,
+  // Regions 0, 1, 2 are chest, lats and quads; the draw-in is per region.
+  const r = { previewing: null, litReveal: null, muscleOf: ["chest", "lats", "quads"], schedule() {},
+    targets: () => new Float32Array(9), shown: new Float32Array(9), reducedMotion: { matches: false }, interactive: true,
     calm: () => true, pointer: null, regionAt: () => -1, mapPresence: 0, mapPointer: [0, 0], mapInfluence: 0 };
   AnatomySculpture.prototype.preview.call(r, ["chest"]);
-  expect(r.litReveal).toBe(0);
+  expect(r.litReveal[0]).toBe(0);
   expect(AnatomySculpture.prototype.ease.call(r, 360)).toBe(true);
   AnatomySculpture.prototype.preview.call(r, ["chest"]);
-  expect(r.litReveal).toBeGreaterThan(0);
+  expect(r.litReveal[0]).toBeGreaterThan(0);
   AnatomySculpture.prototype.ease.call(r, 400);
-  expect(r.litReveal).toBe(1);
+  expect(r.litReveal[0]).toBe(1);
   expect(AnatomySculpture.prototype.ease.call(r, 16)).toBe(false);
-  AnatomySculpture.prototype.preview.call(r, ["back"]);
+  AnatomySculpture.prototype.preview.call(r, ["lats"]);
   r.reducedMotion.matches = true;
   AnatomySculpture.prototype.ease.call(r, 16);
-  expect(r.litReveal).toBe(1);
+  expect([...r.litReveal]).toEqual([1, 1, 1]);
+});
+
+test("stepping to another program keeps the muscles both light drawn, and draws in only the new ones", () => {
+  const r = { previewing: null, litReveal: null, muscleOf: ["chest", "lats", "quads"], schedule() {},
+    targets: () => new Float32Array(9), shown: new Float32Array(9), reducedMotion: { matches: false }, interactive: true,
+    calm: () => true, pointer: null, regionAt: () => -1, mapPresence: 0, mapPointer: [0, 0], mapInfluence: 0 };
+  AnatomySculpture.prototype.preview.call(r, ["chest", "lats"]);
+  AnatomySculpture.prototype.ease.call(r, 1000);
+  AnatomySculpture.prototype.preview.call(r, ["chest", "quads"]);
+  expect([...r.litReveal]).toEqual([1, 0, 0]);    // chest stays drawn; quads starts; lats is no longer lit
 });
 
 test("a tinted family preview draws as a hover in the family's hue, flowing, then fades back", () => {
   const S = AnatomySculpture.prototype;
   const r = { model: { regions: ["a", "b"] }, muscleOf: ["lats", "chest"], interactive: true,
     selection: { has: () => true }, hovered: null, highlighting: null, previewing: null,
-    previewFamily: null, litReveal: 1, schedule() {} };
+    previewFamily: null, litReveal: null, schedule() {} };
   S.preview.call(r, ["lats"], "pull");
   expect(r.previewFamily).toBe("pull");
-  expect(r.litReveal).toBe(1);                                // no draw-in
+  expect(r.litReveal).toBe(null);                             // no draw-in
   expect([...S.targets.call(r)]).toEqual([1, 1, 0, 0, 0, 0]);
   const flow = () => S.flowing.call({ ...r, ready: true, pointer: null,
     reducedMotion: { matches: false }, calm: () => true }, true);
@@ -289,7 +300,7 @@ test("a tinted family preview draws as a hover in the family's hue, flowing, the
   expect(flow()).toBe(false);
   S.preview.call(r, ["chest"], "other");                        // no hue: the lit preview
   expect(r.previewFamily).toBe(null);
-  expect(r.litReveal).toBe(0);
+  expect(r.litReveal[1]).toBe(0);                               // chest draws in
 });
 
 test("a session tints each of its muscles in its own family hue, mixed sessions side by side", () => {
