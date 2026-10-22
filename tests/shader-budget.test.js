@@ -5,20 +5,25 @@
 
    Each uniform is counted the worst way: one vector per float, vec or array
    element, N per matN. Drivers may pack small uniforms tighter, never looser.
-   Per-region arrays cost one vector per region each, so this test is also the
-   bill for any future sub-regions (docs/anatomy-levels.md). */
+
+   Nothing the shaders know per region or per flow guide is a uniform: it is
+   a row of the data texture (SCULPTURE_DATA_ROWS), so finer sub-regions
+   (docs/anatomy-levels.md) cost texels, not uniform vectors. The counter
+   knows no array sizes, so a uniform array sized by the figure fails here.
+   The texture's own bill is its width: one texel per region or guide, and
+   WebGL2 guarantees textures 2048 wide. */
 import { describe, expect, test } from "vitest";
 import { loadApp } from "./load-app.js";
 
 const app = loadApp({ extra: ["js/anatomy-model-male-body.js", "js/anatomy-sculpture.js"],
   exports: ["ANATOMY_MODEL_MALE_BODY", "buildAnatomyFlowGuides",
-            "SCULPTURE_VERTEX", "SCULPTURE_FRAGMENT", "SCULPTURE_PICK"] });
+            "SCULPTURE_VERTEX", "SCULPTURE_FRAGMENT", "SCULPTURE_PICK", "SCULPTURE_DATA_ROWS"] });
 
-const MIN_VERTEX = 256, MIN_FRAGMENT = 224;
+const MIN_VERTEX = 256, MIN_FRAGMENT = 224, MIN_TEXTURE_SIZE = 2048;
 const ROWS = { float: 1, int: 1, bool: 1, vec2: 1, vec3: 1, vec4: 1, ivec2: 1, ivec3: 1, ivec4: 1,
                mat2: 2, mat3: 3, mat4: 4, sampler2D: 1 };
 
-function uniformVectors(source, sizes) {
+function uniformVectors(source, sizes = {}) {
   let total = 0;
   for (const line of source.replace(/\/\/.*$/gm, "").split("\n")) {
     const m = line.trim().match(/^uniform\s+(?:(?:lowp|mediump|highp)\s+)?(\w+)\s+([^;]+);/);
@@ -35,22 +40,27 @@ function uniformVectors(source, sizes) {
 }
 
 describe("sculpture shader uniform budget", () => {
+  test("the vertex shader fits WebGL2's minimum, whatever the figure", () => {
+    expect(uniformVectors(app.SCULPTURE_VERTEX)).toBeLessThanOrEqual(MIN_VERTEX);
+  });
+
+  test("the surface and pick fragment shaders fit WebGL2's minimum, whatever the figure", () => {
+    expect(uniformVectors(app.SCULPTURE_FRAGMENT)).toBeLessThanOrEqual(MIN_FRAGMENT);
+    expect(uniformVectors(app.SCULPTURE_PICK)).toBeLessThanOrEqual(MIN_FRAGMENT);
+  });
+
   const empty = { count: 0, stride: 12, data: new Float32Array(0) };
   for (const [label, model] of [["Male_Body", app.ANATOMY_MODEL_MALE_BODY], ["procedural", app.ANATOMY_MODEL]]) {
-    const sizes = { REGIONS: model.regions.length,
-                    GUIDES: app.buildAnatomyFlowGuides(model, empty).origins.length / 4 };
-
-    test(`${label}: the vertex shader fits WebGL2's minimum`, () => {
-      expect(uniformVectors(app.SCULPTURE_VERTEX, sizes)).toBeLessThanOrEqual(MIN_VERTEX);
-    });
-
-    test(`${label}: the surface and pick fragment shaders fit WebGL2's minimum`, () => {
-      expect(uniformVectors(app.SCULPTURE_FRAGMENT, sizes)).toBeLessThanOrEqual(MIN_FRAGMENT);
-      expect(uniformVectors(app.SCULPTURE_PICK, sizes)).toBeLessThanOrEqual(MIN_FRAGMENT);
+    test(`${label}: the data texture fits WebGL2's minimum texture size`, () => {
+      const guides = app.buildAnatomyFlowGuides(model, empty).origins.length / 4;
+      expect(Math.max(model.regions.length, guides)).toBeLessThanOrEqual(MIN_TEXTURE_SIZE);
+      expect(Object.keys(app.SCULPTURE_DATA_ROWS).length).toBeLessThanOrEqual(MIN_TEXTURE_SIZE);
     });
   }
 
   test("the counter sees every uniform", () => {
     expect(uniformVectors("uniform vec4 a[N], b;\nuniform mat3 c; // uniform vec4 d;", { N: 3 })).toBe(7);
+    expect(uniformVectors("uniform highp sampler2D uData;")).toBe(1);
+    expect(() => uniformVectors("uniform vec4 uFlowCenters[REGIONS];")).toThrow(/unknown array size/);
   });
 });

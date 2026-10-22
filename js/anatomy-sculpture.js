@@ -136,6 +136,42 @@ const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130, reveal: 720 }
    (`--<family>-trace`), as a hover rather than a lit preview. */
 const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
 
+/* What the shaders know about each region and each flow guide, as rows of a
+   float texture: one RGBA texel per region (or guide) in each row, read with
+   texelFetch(uData, ivec2(index, ROW_…), 0). Not uniform arrays: WebGL2
+   guarantees only 224 uniform vectors to a fragment shader and 256 to a
+   vertex shader, and arrays would spend them per region, so finer regions
+   would stop compiling on low-end GPUs (tests/shader-budget.test.js). The
+   per-frame rows come first, so one upload sends them (uploadData). */
+const SCULPTURE_DATA_ROWS = {
+  state: 0,        // tone, focus edge, form, selected (regionStates); every frame
+  map: 1,          // selected, pointed at, lit (shown), then the family tint; every frame
+  center: 2,       // flow field centre, then its scale (buildAnatomyFlowFrames)
+  axis: 3,         // flow field axis, then its length
+  ink: 4,          // the family's hue (sRGB), then the region's guide slot (buildAnatomyFlowGuides)
+  guideOrigin: 5,  // per guide from here on, not per region
+  guideAcross: 6,
+  guideAlong: 7
+};
+const SCULPTURE_DATA_FRAME_ROWS = 2;
+
+/** The rows as GLSL defines: ROW_STATE, ROW_MAP, … ROW_GUIDE_ALONG. */
+function sculptureDataDefines() {
+  return Object.entries(SCULPTURE_DATA_ROWS).map(([name, row]) =>
+    "#define ROW_" + name.replace(/[A-Z]/g, c => "_" + c).toUpperCase() + " " + row + "\n").join("");
+}
+
+/**
+ * Writes items of `size` floats (1, 3 or 4) from `values` into one row of
+ * the data texture's texels: item i at texel i, from component `at` on.
+ */
+function writeSculptureData(texels, width, row, values, size, at = 0) {
+  const count = values.length / size;
+  if (count > width) throw new Error("Sculpture data row " + row + " holds " + width + " items, not " + count);
+  for (let i = 0; i < count; i++)
+    for (let c = 0; c < size; c++) texels[(row * width + i) * 4 + at + c] = values[i * size + c];
+}
+
 /** True when two Sets of muscle ids (or nulls) hold the same ids. */
 function sameMuscleSet(a, b) {
   return a === b || !!(a && b && a.size === b.size && [...a].every(id => b.has(id)));
@@ -295,8 +331,16 @@ class AnatomySculpture {
     this.mapSamples = this.mapSamples || buildAnatomyCartography(m, bytes);
     this.flowFrames = this.flowFrames || buildAnatomyFlowFrames(m, this.mapSamples);
     this.flowGuides = this.flowGuides || buildAnatomyFlowGuides(m, this.mapSamples);
-    const defs = "#define REGIONS " + m.regions.length + "\n#define SEAM_MAX " +
-                 m.seamMax.toFixed(3) + "\n#define GUIDES " + this.flowGuides.origins.length / 4 + "\n";
+    // The regions' and guides' data, one texel each per row (SCULPTURE_DATA_ROWS).
+    const rows = Object.keys(SCULPTURE_DATA_ROWS).length;
+    const width = Math.max(1, m.regions.length, this.flowGuides.origins.length / 4);
+    if (width > gl.getParameter(gl.MAX_TEXTURE_SIZE)) throw new Error("The figure has more regions than this GPU's textures hold");
+    this.data = { texture: gl.createTexture(), width, rows, texels: new Float32Array(width * rows * 4), fresh: false };
+    gl.bindTexture(gl.TEXTURE_2D, this.data.texture);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA32F, width, rows);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);   // complete without mipmaps
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    const defs = "#define SEAM_MAX " + m.seamMax.toFixed(3) + "\n" + sculptureDataDefines();
     this.shade = this.program(defs + SCULPTURE_VERTEX, defs + SCULPTURE_FRAGMENT);
     this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     gl.bindVertexArray(null);
@@ -720,18 +764,10 @@ class AnatomySculpture {
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
-    gl.uniform3fv(u.uRegionInk, c.regionInk);
-    gl.uniform1fv(u.uMapTint, this.tintShown || this.tintTargets());
     gl.uniform1f(u.uTraceVivid, c.vivid);
     gl.uniform1f(u.uBorder, this.interactive ? 1 : 0);
     gl.uniform1f(u.uTraceScale, this.traceScale());
-    gl.uniform4fv(u.uFlowCenters, this.flowFrames.centers);
-    gl.uniform4fv(u.uFlowAxes, this.flowFrames.axes);
-    gl.uniform1fv(u.uFlowGuide, this.flowGuides.regions);
-    gl.uniform4fv(u.uGuideOrigins, this.flowGuides.origins);
-    gl.uniform4fv(u.uGuideAcross, this.flowGuides.across);
-    gl.uniform4fv(u.uGuideAlong, this.flowGuides.along);
-    gl.uniform3fv(u.uMapState, this.shown || this.targets());
+    this.uploadData();
     gl.uniform2fv(u.uMapPointer, this.mapPointer);
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
@@ -746,7 +782,6 @@ class AnatomySculpture {
     const cam = this.camera(this.live());
     gl.uniformMatrix4fv(u.uMatrix, false, cam.matrix);
     gl.uniformMatrix3fv(u.uNormal, false, cam.normal);
-    gl.uniform4fv(u.uRegion, this.regionStates(this.view.id));
     gl.drawElements(gl.TRIANGLES, this.model.indexCount, this.indexType, 0);
     // Surface traces share the sculpture's material, lighting and exact depth.
     this.drawAnnotation();
@@ -795,6 +830,32 @@ class AnatomySculpture {
     const { min, max } = this.model.bounds;
     this.gl.uniform3fv(u.uMin, min);
     this.gl.uniform3fv(u.uExt, [max[0] - min[0], max[1] - min[1], max[2] - min[2]]);
+  }
+
+  /**
+   * Sends the shaders their per-region and per-guide data (SCULPTURE_DATA_ROWS):
+   * the rows that change with every frame each draw, the flow fields, guides
+   * and hues only after initGL or a theme change (readColors) has marked
+   * them stale.
+   */
+  uploadData() {
+    const gl = this.gl, d = this.data, R = SCULPTURE_DATA_ROWS, w = d.width, t = d.texels;
+    writeSculptureData(t, w, R.state, this.regionStates(this.view.id), 4);
+    writeSculptureData(t, w, R.map, this.shown || this.targets(), 3);
+    writeSculptureData(t, w, R.map, this.tintShown || this.tintTargets(), 1, 3);
+    if (!d.fresh) {
+      writeSculptureData(t, w, R.center, this.flowFrames.centers, 4);
+      writeSculptureData(t, w, R.axis, this.flowFrames.axes, 4);
+      writeSculptureData(t, w, R.ink, this.colors.regionInk, 3);
+      writeSculptureData(t, w, R.ink, this.flowGuides.regions, 1, 3);
+      writeSculptureData(t, w, R.guideOrigin, this.flowGuides.origins, 4);
+      writeSculptureData(t, w, R.guideAcross, this.flowGuides.across, 4);
+      writeSculptureData(t, w, R.guideAlong, this.flowGuides.along, 4);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, d.texture);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, d.fresh ? SCULPTURE_DATA_FRAME_ROWS : d.rows,
+                     gl.RGBA, gl.FLOAT, t, 0);
+    d.fresh = true;
   }
 
   pointedRegionIndex() {
@@ -953,6 +1014,7 @@ class AnatomySculpture {
       this.colors.regionInk.set((muscle && families[muscle.family]) || this.colors.mapInk, r * 3);
     });
     probe.remove();
+    if (this.data) this.data.fresh = false;     // the hues are in the data texture
   }
 
   /* -------------------------------- picking ------------------------------- */
@@ -989,6 +1051,7 @@ class AnatomySculpture {
     gl.enable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     gl.useProgram(this.pick.p);
+    gl.bindTexture(gl.TEXTURE_2D, this.data.texture);   // the shared vertex shader reads it
     this.setModelUniforms(this.pick.u);
     gl.bindVertexArray(this.vao);
     gl.uniformMatrix4fv(this.pick.u.uMatrix, false, this.camera(s).matrix);
@@ -1306,9 +1369,7 @@ layout(location = 2) in vec4 aAttr;       // region, occlusion, seam distance, s
 uniform vec3 uMin, uExt;
 uniform mat4 uMatrix;
 uniform mat3 uNormal;
-uniform vec4 uRegion[REGIONS];            // tone, focus edge, form, selected (regionStates)
-uniform vec3 uMapState[REGIONS];
-uniform float uMapTint[REGIONS], uFlowGuide[REGIONS];
+uniform highp sampler2D uData;            // per region and guide (SCULPTURE_DATA_ROWS)
 uniform vec3 uForm, uMuscle, uSelected;   // surfaces before light, sRGB
 out vec3 vNormal;
 out float vOcclusion;
@@ -1337,13 +1398,14 @@ void main() {
   gl_Position = uMatrix * vec4(surface, 1.0);
   int index = int(aAttr.x + 0.5);
   vSurface = vec3(surface.x - uMin.x - uExt.x * 0.5, surface.y, surface.z);
-  vMapState = uMapState[index];
-  vMapTint = uMapTint[index];
-  vFlowGuide = uFlowGuide[index];
+  vec4 map = texelFetch(uData, ivec2(index, ROW_MAP), 0);
+  vMapState = map.xyz;
+  vMapTint = map.w;
+  vFlowGuide = texelFetch(uData, ivec2(index, ROW_INK), 0).w;
   vNormal = uNormal * octDecode(aOct);
   vOcclusion = aAttr.y / 255.0;
   vSeam = aAttr.z / 255.0 * SEAM_MAX;
-  vec4 region = uRegion[int(aAttr.x + 0.5)];
+  vec4 region = texelFetch(uData, ivec2(index, ROW_STATE), 0);
   float tone = region.z > 0.5 ? 0.0 : region.x;
   vAlbedo = toLinear(region.z > 0.5 ? uForm : mix(uMuscle, uSelected, tone * 0.07));
   vSelected = region.z > 0.5 ? 0.0 : region.w * 0.08;
@@ -1372,10 +1434,8 @@ flat in float vFlowGuide;
 uniform vec3 uInk;                       // sRGB
 uniform vec3 uMapInk;
 uniform vec3 uExt;
-uniform vec4 uFlowCenters[REGIONS], uFlowAxes[REGIONS];
-uniform vec4 uGuideOrigins[GUIDES], uGuideAcross[GUIDES], uGuideAlong[GUIDES];
-uniform vec3 uRegionInk[REGIONS];        // each region's family hue (sRGB), or uMapInk
-uniform float uTraceVivid;               // 1 where tinted lines need help to keep their hue (light theme)
+uniform highp sampler2D uData;           // per region and guide (SCULPTURE_DATA_ROWS)
+uniform float uTraceVivid;              // 1 where tinted lines need help to keep their hue (light theme)
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
 uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
 uniform vec2 uMapPointer, uMapSize;
@@ -1390,6 +1450,7 @@ vec3 toSrgb(vec3 c) {
 vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
+vec4 data(int index, int row) { return texelFetch(uData, ivec2(index, row), 0); }
 
 void main() {
   vec3 n = normalize(vNormal);
@@ -1433,7 +1494,7 @@ void main() {
   float selected = vMapState.x, lit = vMapState.z;
   float chosen = max(selected, lit);
   int region = int(vRegionId + 0.5);
-  vec4 center = uFlowCenters[region], axis = uFlowAxes[region];
+  vec4 center = data(region, ROW_CENTER), axis = data(region, ROW_AXIS);
   vec3 side = normalize(cross(axis.xyz, abs(axis.z) < 0.85 ? vec3(0,0,1) : vec3(0,1,0)));
   vec3 depth = cross(side, axis.xyz);
   // Fold on the surface, after interpolation: triangles straddling the
@@ -1450,10 +1511,11 @@ void main() {
   if (abs(vFlowGuide) > 0.5) {
     int guide = int(abs(vFlowGuide) + 0.5) - 1;
     if (vFlowGuide < 0.0) {
-      vec3 left = uGuideOrigins[guide].xyz, right = uGuideOrigins[guide + 1].xyz;
+      vec3 left = data(guide, ROW_GUIDE_ORIGIN).xyz, right = data(guide + 1, ROW_GUIDE_ORIGIN).xyz;
       if (dot(vSurface - (left + right) * 0.5, left - right) < 0.0) guide++;
     }
-    vec4 origin = uGuideOrigins[guide], across = uGuideAcross[guide], lengthwise = uGuideAlong[guide];
+    vec4 origin = data(guide, ROW_GUIDE_ORIGIN), across = data(guide, ROW_GUIDE_ACROSS),
+         lengthwise = data(guide, ROW_GUIDE_ALONG);
     vec3 relative = vSurface - origin.xyz;
     float lateral = dot(relative, across.xyz);
     float vertical = dot(relative, lengthwise.xyz);
@@ -1529,7 +1591,7 @@ void main() {
   // A family's hue keeps its chroma: on a light sculpture it darkens less in
   // shadow and draws a little stronger, so it reads as colour, not as grey.
   float tint = vMapTint, vivid = tint * uTraceVivid;
-  vec3 ink = toLinear(mix(uMapInk, uRegionInk[region], tint)) *
+  vec3 ink = toLinear(mix(uMapInk, data(region, ROW_INK).rgb, tint)) *
              clamp(shade, mix(0.45, 0.8, vivid), 1.0);
   c = mix(c, ink, min(1.0, etched * (1.0 + 0.35 * vivid)));
 
