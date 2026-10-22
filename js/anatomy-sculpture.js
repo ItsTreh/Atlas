@@ -1365,6 +1365,15 @@ void main() {
   // across a boundary, so it never reads as a panel line.
   c *= 1.0 - mix(0.12, 0.05, smoothstep(0.85, 1.0, vOcclusion)) * seam;
 
+  // A region that is not selected, lit, pointed at or focused draws no
+  // traces, border or focus edge: each would mix in with weight exactly 0,
+  // so it stops here. Both inputs are flat, so every fragment of a triangle,
+  // including the helpers that give the derivatives below, branches alike.
+  if (vMapState == vec3(0.0) && vFocus == 0.0) {
+    outColor = vec4(toSrgb(c), 1.0);
+    return;
+  }
+
   // Slow currents live in the material's surface coordinates. Their shared
   // direction comes from the authored shape; these are not muscle fibres.
   vec2 screen = vec2(gl_FragCoord.x / uDpr, uMapSize.y - gl_FragCoord.y / uDpr);

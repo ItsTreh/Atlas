@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { loadApp } from "./load-app.js";
 
 const app = loadApp({ extra: ["js/anatomy-sculpture.js"],
-  exports: ["buildAnatomyCartography", "AnatomySculpture"] });
+  exports: ["buildAnatomyCartography", "AnatomySculpture", "SCULPTURE_FRAGMENT"] });
 
 // Two planar surfaces, area 1 and 4, with different anatomical region ids.
 function surface(wideIndices = false) {
@@ -95,6 +95,29 @@ describe("anatomical surface sampling", () => {
     expect(app.buildAnatomyCartography(model, bytes, 0).count).toBe(0);
     bytes.fill(0);
     expect(app.buildAnatomyCartography(model, bytes).count).toBe(0);
+  });
+});
+
+describe("surface shader", () => {
+  test("stops early only where the line field provably adds nothing, branching per triangle", () => {
+    const fs = app.SCULPTURE_FRAGMENT;
+    const flat = new Set([...fs.matchAll(/^flat in \w+ (\w+);/gm)].map(m => m[1]));
+    const uniforms = new Set([...fs.matchAll(/^uniform \w+ ([^;]+);/gm)]
+      .flatMap(m => m[1].split(",").map(name => name.trim().replace(/\[.*\]$/, ""))));
+    const exits = [...fs.matchAll(/if \((.+)\) \{\s*outColor = [^;]+;\s*return;/g)].map(m => m[1]);
+    expect(exits).toHaveLength(1);
+    // Derivatives (dFdx, dFdy, fwidth) after the exit are defined only if
+    // each derivative quad branches alike. Flat inputs and uniforms are
+    // constant across a triangle, and its quads never mix triangles, so a
+    // condition on them alone is uniform there. Locals, gl_FragCoord or
+    // smooth inputs could vary within a quad.
+    const allowed = new Set(["vec2", "vec3", "vec4", "x", "y", "z", "w"]);
+    for (const name of exits[0].match(/[A-Za-z_]\w*/g))
+      expect(flat.has(name) || uniforms.has(name) || allowed.has(name), name + " must be flat or uniform").toBe(true);
+    // Selected, pointed at and lit (vMapState) and keyboard focus (vFocus)
+    // weight the traces, border and focus edge: all must be exactly zero.
+    expect(exits[0]).toMatch(/vMapState == vec3\(0\.0\)/);
+    expect(exits[0]).toMatch(/vFocus == 0\.0/);
   });
 });
 
