@@ -136,7 +136,7 @@ function planHTML() {
 function figuresHTML(n) {
   if (!n.isValid())
     return '<div class="nu-big"><span class="nu-fig"><span class="nu-kcal">—</span><span class="nu-unit">kcal a day</span></span></div>' +
-      '<p class="nu-math">Enter a body weight between ' + weightRangeText() + ' to see your plan.</p>';
+      '<p class="nu-math" id="weight-error">Enter a body weight between ' + weightRangeText() + ' to see your plan.</p>';
   const g = GOALS[n.goal];
   const math = n.adjust
     ? fmtK(n.burn) + ' kcal burn ' + (n.adjust > 0 ? '+ ' : '− ') + Math.round(Math.abs(n.adjust) * 100) + '% for ' + g.label.toLowerCase()
@@ -183,7 +183,7 @@ const ROW_BODIES = {
   body(n) {
     return '<div class="kv"><label class="kv-label" for="n-weight">Body weight</label>' +
         '<input id="n-weight" class="serif-input" type="number" min="' + weightBound(n, 0) + '" max="' + weightBound(n, 1) +
-          '" step="0.5" inputmode="decimal" ' +
+          '" step="0.5" inputmode="decimal" aria-describedby="weight-error"' + (n.isValid() ? '' : ' aria-invalid="true"') + ' ' +
           'value="' + (n.weight ?? "") + '">' +
         segmented("Weight unit", ["kg", "lb"].map(u => segBtn(n.unit === u, "data-unit", u, u)), true) +
       '</div>' +
@@ -505,8 +505,7 @@ function renderNutritionStage() {
   const focusKey = active && nutritionEl.contains(active) ? (active.dataset.key || active.id) : null;
   nutritionEl.innerHTML = nut.day && nutrition().isValid() ? dayHTML() : planHTML();
   if (focusKey) {
-    const again = nutritionEl.querySelector('[data-key="' + focusKey + '"]') || $(focusKey);
-    if (again) again.focus({ preventScroll: true });
+    focusAgain(nutritionEl.querySelector('[data-key="' + focusKey + '"]') || $(focusKey));
   }
 }
 
@@ -528,12 +527,16 @@ function paintNutritionFigures() {
   if (burn && document.activeElement !== burn) burn.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
   if ($("burn-note")) $("burn-note").innerHTML = burnNoteHTML(n);
   $("open-day").disabled = !n.isValid();
+  const weight = $("n-weight");
+  if (weight) { if (n.isValid()) weight.removeAttribute("aria-invalid"); else weight.setAttribute("aria-invalid", "true"); }
 }
 
 function changed(fn) {
   fn(nutrition());
   saveRoutine(routine);
   renderNutritionStage();
+  const n = nutrition();
+  if (n.isValid() && !nut.day) announce("Estimate: " + fmtK(n.kcal) + " kcal and " + n.protein + " g protein a day");
 }
 
 nutritionEl.addEventListener("click", e => {

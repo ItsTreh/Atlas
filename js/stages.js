@@ -36,8 +36,10 @@ const STAGE_TIMING = { out: 300, settle: 1250, outStill: 60, settleStill: 120, l
    wheel is left to it. */
 const STAGE_WHEEL = { threshold: 260, gap: 450, quiet: 450 };
 
-/* Below this width the sculpture sits in a band above the stage. */
-const STAGE_NARROW = "(max-width: 759px)";
+/* Below this width, or on a portrait tablet (where the rails would leave
+   the body no room between them), the sculpture sits in a band above the
+   stage. css/styles.css uses the same query. */
+const STAGE_NARROW = "(max-width: 759px), (max-width: 999px) and (orientation: portrait)";
 
 const Stages = {
   current: "targets",

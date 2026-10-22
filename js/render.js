@@ -9,6 +9,32 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
+/**
+ * Puts focus back on a control drawn again under it. One that came back
+ * disabled (a stepper at its end, the last meal's "next") hands focus to
+ * a working neighbour, so it never falls to the page. Returns whether
+ * anything took it.
+ */
+function focusAgain(el) {
+  if (!el) return false;
+  const to = !el.disabled ? el
+    : el.parentElement && el.parentElement.querySelector("button:not(:disabled), select:not(:disabled), input:not(:disabled)");
+  if (to) to.focus({ preventScroll: true });
+  return !!to;
+}
+
+/**
+ * Says `text` to a screen reader through the page's one lasting live region
+ * (#announce). The same words twice are still said: the region is emptied
+ * first, and filled on the next frame.
+ */
+function announce(text) {
+  const el = $("announce");
+  if (!el || !text) return;
+  el.textContent = "";
+  requestAnimationFrame(() => { el.textContent = text; });
+}
+
 function hourLabel(h) {
   h = h % 24;                   // a session ending at midnight ends at 12am
   const s = h < 12 ? "am" : "pm";

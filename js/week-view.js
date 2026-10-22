@@ -38,6 +38,7 @@ const WEEK_HEAD = 86;
 /** The week's message (what Generate did, what an edit changed); null to clear. */
 function setStatus(text, kind = "") {
   wk.status = text ? { text, kind } : null;
+  announce(text);
   if (Stages.current === "plan") renderWeek();
 }
 
@@ -229,7 +230,7 @@ function configHTML() {
             EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + '.</span>') +
         '</div>' +
       '</div>' +
-      '<div class="wk-notes" aria-live="polite">' +
+      '<div class="wk-notes">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (empty.length ? '<p class="warn">Nothing you selected goes on ' + empty.join(" or ") + ' days.</p>' : '') +
         (short ? '<p class="warn">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
@@ -418,7 +419,8 @@ function genHTML() {
       '<div class="gen-title">' +
         '<div class="gen-title-text">' +
           '<h1 class="display" id="plan-title" tabindex="-1">Your week</h1>' +
-          '<p class="gen-summary"><i></i><span>' + sessions.length + (sessions.length === 1 ? " session" : " sessions") +
+          '<p class="gen-summary' + (gaps.length || stale || outdated || (status && status.kind) ? ' warn' : '') +
+            '"><i></i><span>' + sessions.length + (sessions.length === 1 ? " session" : " sessions") +
             ' · ≈ ' + hrs + ' h · ' + sets + ' hard sets</span><span class="pill-tag">Estimate</span></p>' +
           '<p class="gen-facts">' + facts.map(esc).join('<span aria-hidden="true">·</span>') + '</p>' +
         '</div>' +
@@ -427,7 +429,7 @@ function genHTML() {
           '<button type="button" class="btn ghost" id="adjust" data-key="adjust">Adjust plan</button>' +
         '</div>' +
       '</div>' +
-      ((status || gaps.length || stale || outdated) ? '<div class="gen-notes" aria-live="polite">' +
+      ((status || gaps.length || stale || outdated) ? '<div class="gen-notes">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (stale && !(status && /changed since/.test(status.text)) ? '<p class="warn">Your targets, training or nutrition changed since this week was generated. Generate again to plan for them.</p>' : '') +
         (outdated && !(status && /generate again/i.test(status.text)) ? '<p class="warn">The meals on the calendar no longer match your daily targets. Generate again to update them.</p>' : '') +
@@ -469,7 +471,7 @@ function genHTML() {
     const sess = x ? (() => {
       const h = Math.max(30, (x.endHour() - x.startHour) * rh - 6);
       return '<button type="button" class="session' + (h < 44 ? ' tiny' : h < 58 ? ' short' : '') + (on ? ' on' : '') + (hov ? ' pointed' : '') + '" data-sess="' + x.id + '" ' +
-          'data-key="sess-' + x.id + '" aria-pressed="' + !!on + '" style="top:' + px((x.startHour - H0) * rh + 3) + ';height:' + px(h) + '" ' +
+          'data-key="sess-' + x.id + '" aria-expanded="' + !!on + '" style="top:' + px((x.startHour - H0) * rh + 3) + ';height:' + px(h) + '" ' +
           'aria-label="' + esc(DAY_NAME[d] + ", " + blockName(x.block) + ", " + hourRange(x.startHour, x.endHour()) + ". Open for the exercises.") + '">' +
         '<span class="session-name">' + esc(blockName(x.block)) + '</span>' +
         '<span class="session-time">' + (narrow ? hourLabel(x.startHour) : hourRange(x.startHour, x.endHour()) + ' · ' + sessionMinutes(x) + ' min') + '</span>' +
@@ -480,7 +482,9 @@ function genHTML() {
       '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + busy + meals + sess + '</div></div>';
   }).join("");
 
-  const idle = '<div class="side-idle" data-reveal="2">' +
+  // With the SVG figure (no WebGL) nothing on screen lights up: no hint to point.
+  const flat = $("anatomy-stage").classList.contains("flat");
+  const idle = flat ? "" : '<div class="side-idle" data-reveal="2">' +
       '<span class="eyebrow small">' + (focus ? esc(blockName(focus.block)) + " · " + DayOfWeek.label[focus.day] : "On the sculpture") + '</span>' +
       '<span>' + (focus ? "Trains " + esc(nameList(focus.block.muscles.filter(m => !focus.block.riders.has(m)).map(m => m.name))) +
         ". Click it to see the exercises." : "Point at a session to light up the muscles it trains. Click one for its exercises.") + '</span>' +
@@ -540,10 +544,7 @@ function renderWeek() {
   planEl.scrollTop = top;
   const side = weekEl.querySelector(".side-detail");
   if (side) side.scrollTop = sideTop;
-  if (focusKey) {
-    const again = weekEl.querySelector('[data-key="' + focusKey + '"]');
-    if (again) again.focus({ preventScroll: true });
-  }
+  if (focusKey) focusAgain(weekEl.querySelector('[data-key="' + focusKey + '"]'));
   Stages.refresh();
 }
 
@@ -570,7 +571,10 @@ weekEl.addEventListener("click", e => {
   if (!b || b.disabled || b.dataset.act) return;      // a session's own controls: workout-view.js
   const d = b.dataset;
   const [lo, hi] = TRAINING_DAYS_RANGE;
-  if (d.daysStep) shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
+  if (d.daysStep) {
+    shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
+    announce(routine.sessionsPerWeek + (routine.sessionsPerWeek === 1 ? " training day" : " training days") + " a week");
+  }
   else if (d.split) shuffled(() => { routine.split = d.split; }, "shuffle");
   else if (d.experience) shuffled(() => { routine.experience = d.experience; }, "shuffle");
   else if (b.id === "open-shape" || d.shape) Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);

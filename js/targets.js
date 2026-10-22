@@ -465,6 +465,22 @@ function renderTargets() {
 buildPrograms();
 selection.onChange(renderTargets);
 
+/* What a change to the selection did, said once (the rail is redrawn whole
+   and no longer reads itself out). */
+let announcedIds = new Set(selection.ids);
+selection.onChange(() => {
+  const now = new Set(selection.ids);
+  const names = ids => MUSCLES.filter(m => ids.includes(m.id)).map(m => m.name);
+  const added = names([...now].filter(id => !announcedIds.has(id)));
+  const removed = names([...announcedIds].filter(id => !now.has(id)));
+  announcedIds = now;
+  if (document.readyState === "loading") return;     // restoring a saved selection, not a change
+  if (!added.length && !removed.length) return;
+  const list = l => l.length > 3 ? l.length + " muscle groups" : l.join(", ");
+  announce([added.length ? list(added) + " added" : "", removed.length ? list(removed) + " removed" : "",
+            plural(now.size, "muscle group", "muscle groups") + " selected"].filter(Boolean).join(". "));
+});
+
 Stages.register("targets", {
   enter: renderTargets,
   shot: () => "targets",

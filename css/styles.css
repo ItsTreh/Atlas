@@ -322,7 +322,7 @@ h1:focus-visible { outline: none; }
 
 /* A segmented choice: one of a few, as a radio group. */
 .segmented {
-  display: inline-flex; gap: 2px; padding: 3px; width: max-content; max-width: 100%;
+  display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; width: max-content; max-width: 100%;
   background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md);
 }
 .segmented button {
@@ -333,7 +333,8 @@ h1:focus-visible { outline: none; }
 .segmented button:hover { color: var(--ink); }
 .segmented button[aria-checked="true"] {
   color: var(--ink); background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(20,24,28,.04);
+  /* The ring tells the chosen option apart at 3:1 or more (WCAG 1.4.11). */
+  box-shadow: 0 0 0 1px var(--ink-faint), 0 1px 2px rgba(20,24,28,.04);
 }
 .segmented.small { padding: 2px; border-color: var(--line-soft); border-radius: 7px; }
 .segmented.small button { font-size: 11.5px; padding: 4px 8px; border-radius: 5px; }
@@ -708,8 +709,10 @@ h1:focus-visible { outline: none; }
 .kv-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
 .kv-row { display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
 .kv-col { display: flex; flex-direction: column; gap: 7px; }
-.kv-note { margin: 0 0 0 120px; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline;
-           font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); }
+.kv-note { margin: 0 0 0 120px; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); }
+/* Running text: the tag and the links keep their distance, the words none. */
+.kv-note > .pill-tag { margin-right: 8px; }
+.kv-note > :is(.text-link, button) { margin-left: 8px; }
 .kv-note.flush { margin-left: 0; }
 .kv-note b { color: var(--ink); }
 .kv-note .text-link { font-size: 12.5px; }
@@ -894,6 +897,11 @@ h1:focus-visible { outline: none; }
 .text-link.small { font-size: 12.5px; }
 .wk-notes p .text-link { margin-left: 6px; }
 .wk-actions { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; padding-top: 14px; }
+/* The stage's one action stays in view on a short screen: the setup
+   scrolls under it. */
+.stage-plan:not([data-view]) .wk-actions, .stage-plan[data-view="config"] .wk-actions {
+  position: sticky; bottom: 0; z-index: 1; padding-bottom: 6px; background: var(--bg);
+}
 .wk-actions-note { font-size: 12.5px; color: var(--ink-faint); max-width: 36ch; }
 .wk-actions-end { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 
@@ -904,7 +912,7 @@ h1:focus-visible { outline: none; }
 .wide-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 24px; }
 .wide-head .back { grid-column: 1 / -1; justify-self: start; padding: 0; }
 .wide-title, .gen-title-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.status-line { margin: 0; display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink); text-wrap: pretty; }
+.status-line { margin: 0; max-width: 80ch; display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink); text-wrap: pretty; }
 .status-line i, .gen-summary i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--legs); transform: translateY(-1px); }
 .status-line.warn { color: var(--warn); }
 .status-line.warn i { background: var(--warn); }
@@ -975,8 +983,8 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   box-shadow: 0 12px 26px -16px rgba(20,24,28,.6); transition: top .45s var(--ease-out), height .3s ease;
 }
 .plan-ghost.tall { flex-direction: column; align-items: flex-start; padding: 9px 10px; }
-.plan-ghost-name { font: 500 18px/1 var(--serif); white-space: nowrap; }
-.plan-ghost-time { font-size: 11.5px; line-height: 1.1; opacity: .78; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-ghost-name { font: 500 18px/1 var(--serif); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.plan-ghost-time { flex: none; font-size: 11.5px; line-height: 1.1; opacity: .78; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .meal-pill {
   position: absolute; right: 8px; z-index: 1; transform: translateY(-50%);
   display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px 0 6px; border-radius: 999px;
@@ -1024,6 +1032,8 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 .gen-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 24px; }
 .wk-gen:has(.gen-body.with-side) .gen-title { max-width: calc(100% - 388px); }
 .gen-summary { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 13.5px; line-height: 1.5; }
+.gen-summary > span:first-of-type { min-width: 0; flex: 0 1 auto; }   /* wraps beside its dot, not under it */
+.gen-summary.warn i { background: var(--warn); }
 .gen-facts { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 12.5px; color: var(--ink-soft); }
 .gen-facts span { color: var(--ink-faint); }
 .gen-actions { display: flex; gap: 10px; align-items: center; }
@@ -1113,8 +1123,11 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 
 /* ------------------------------ mid widths -------------------------------- */
 
-@media (max-width: 1239px) and (min-width: 760px) {
+@media (max-width: 1239px) and (min-width: 760px) and (orientation: landscape), (min-width: 1000px) and (max-width: 1239px) {
   :root { --pad: 32px; }
+  /* A 280 px rail has no room for a name beside the priority control. */
+  .fam-row { flex-wrap: wrap; }
+  .fam-row-name { flex-basis: 100%; }
   .stage-targets { grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 280px); gap: 24px; }
   .display { font-size: 42px; }
 }
@@ -1127,12 +1140,17 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 /* The sculpture becomes a band under the masthead, its height set by the
    stage, and the stage scrolls beneath it. The footer holds the way on and
    the stages as numbered dots. */
-@media (max-width: 759px) {
+@media (max-width: 759px), (max-width: 999px) and (orientation: portrait) {   /* STAGE_NARROW in stages.js */
   :root { --pad: 20px; --bar: 56px; }
   .masthead { padding: 0 var(--pad); grid-template-columns: 1fr auto; }
+  /* No room for the hint beside the button: the caption under the body
+     already says what to do, and the button must stay on the screen. */
+  .foot-end { min-width: 0; }
+  .foot-hint { display: none; }
+  .rail { align-self: stretch; }
   .mast-stage { display: inline; white-space: nowrap; }
   .stage-nav { display: none; }
-  #theme-label { display: none; }
+  #theme-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }   /* still names the button */
 
   .anatomy-stage { top: var(--bar); height: 52vh; }
   .atlas:not([data-stage="targets"]) .anatomy-stage { height: 28vh; }

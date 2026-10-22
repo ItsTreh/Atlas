@@ -393,10 +393,10 @@ function sessionOf(el) {
 }
 
 /** Redraws the week after an edit and keeps keyboard focus on the same control. */
-function afterEdit(key) {
+function afterEdit(key, fallback) {
   render();
-  const again = key && document.querySelector('#stage-plan [data-key="' + key + '"]');
-  if (again) again.focus({ preventScroll: true });
+  const at = k => k && document.querySelector('#stage-plan [data-key="' + k + '"]');
+  focusAgain(at(key)) || focusAgain(at(fallback));
 }
 
 $("stage-plan").addEventListener("change", e => {
@@ -414,7 +414,8 @@ $("stage-plan").addEventListener("change", e => {
   const w = session.workout, ex = EXERCISE_BY_ID.get(el.value);
   if (el.dataset.act === "replace") w.replace(w.entries[Number(el.dataset.entry)], ex);
   else if (el.dataset.act === "add") w.add(el.dataset.muscle, ex);
-  afterEdit(el.dataset.key);
+  // An add menu goes once its pool is empty: focus stays in the session.
+  afterEdit(el.dataset.key, "close-" + session.id);
 });
 
 $("stage-plan").addEventListener("click", e => {

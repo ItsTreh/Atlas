@@ -16,6 +16,9 @@
      them all; moving between stages moves its camera (stages.js), and each
      stage's interface settles around it. -->
 <div class="atlas" id="atlas" data-stage="targets" data-phase="idle">
+  <!-- Says what changed, for a screen reader: one region that stays put,
+       since the panels are redrawn and a new live region is not read. -->
+  <p class="visually-hidden" id="announce" aria-live="polite"></p>
 
   <header class="masthead">
     <div class="mast-start">
@@ -28,8 +31,8 @@
       <button type="button" data-goto="plan"><span>Week plan</span></button>
     </nav>
     <div class="mast-end">
-      <button type="button" class="theme-btn" id="theme" aria-label="Switch colour theme">
-        <span id="theme-icon" aria-hidden="true">☾</span><span id="theme-label">Dark</span>
+      <button type="button" class="theme-btn" id="theme">
+        <span id="theme-icon" aria-hidden="true">☾</span><span class="visually-hidden">Switch to </span><span id="theme-label">Dark</span><span class="visually-hidden"> theme</span>
       </button>
     </div>
   </header>
@@ -45,7 +48,7 @@
       <div class="programs" id="programs"></div>
     </div>
     <div class="rail-gap" aria-hidden="true"></div>
-    <div class="rail rail-end" id="focus-summary" data-scroll data-reveal="2" aria-live="polite"></div>
+    <div class="rail rail-end" id="focus-summary" data-scroll data-reveal="2"></div>
   </section>
 
   <!-- The body's stage, one layer behind every stage (z-index puts it
@@ -56,7 +59,7 @@
   <div class="anatomy-stage" id="anatomy-stage">
     <div class="anatomy-viewport" data-anatomy-mount></div>
     <div class="figure-controls">
-      <p class="anatomy-caption" id="anatomy-caption" aria-live="polite"></p>
+      <p class="anatomy-caption" id="anatomy-caption"></p>
       <div class="turn" id="turn" role="group" aria-label="Turn the body">
         <button type="button" data-view="front" aria-pressed="true">Front</button>
         <span class="turn-line" aria-hidden="true"></span>
