@@ -55,10 +55,12 @@ export function logicScripts() {
  * state into each other. `errors` collects anything the data files report
  * with console.error while loading. `extra` scripts (not in index.html, such
  * as a lab model) run after the app's, and `exports` names more globals.
+ * `globals` lends the scripts what the page would have (a clock, timers).
  */
-export function loadApp({ extra = [], exports = [] } = {}) {
+export function loadApp({ extra = [], exports = [], globals = {} } = {}) {
   const errors = [];
   const context = vm.createContext({
+    ...globals,
     console: { ...console, error: (...args) => errors.push(args.join(" ")) }
   });
   for (const src of [...logicScripts(), ...extra]) {

@@ -110,6 +110,11 @@ const SCULPTURE_TURN = { turn: 650, settle: 280, orbit: 25, give: 6, perPx: 0.3,
 // the next renderer.
 const SCULPTURE_RESTORE_MS = 3000;
 
+// How long the size must stay put before a resize counts as done: the
+// region buffer and the checkboxes are drawn again only then. A size change
+// within this time of the last one continues a resize (resizing).
+const SCULPTURE_RESIZE_QUIET_MS = 150;
+
 /* Relative strength of the map's contours. The shader leaves only a trace
    of surface tint, so the same material models every state. Program
    previews light muscles (the lit channel) and sessions draw as a hover,
@@ -192,6 +197,7 @@ class AnatomySculpture {
     this.offTween = null;                    // { from, to, t, ms } while a drag springs back
     this.drag = null;                        // { x, y, from, active } while a press may become a drag
     this.pickKey = null;                     // the camera the region buffer was drawn with
+    this.resizedAt = -Infinity;              // when the size last changed (resizing)
     this.dim = "1";                          // how strongly the figure shows (setDim)
 
     this.container = document.createElement("div");
@@ -246,6 +252,7 @@ class AnatomySculpture {
     this.unbind();
     clearTimeout(this.lostTimer);
     clearTimeout(this.hitTimer);
+    clearTimeout(this.pickTimer);
     cancelAnimationFrame(this.frame);
     this.frame = 0;
     this.ready = false;
@@ -294,6 +301,7 @@ class AnatomySculpture {
     this.pick = this.program(defs + SCULPTURE_VERTEX, SCULPTURE_PICK);
     gl.bindVertexArray(null);
     this.idTarget = null;
+    this.pickKey = null;                     // no region buffer, so none matches the camera
     this.ready = true;
   }
 
@@ -443,19 +451,60 @@ class AnatomySculpture {
     if (!this.ready) return;
     const W = this.mount.clientWidth, H = this.mount.clientHeight;
     if (!W || !H) return;                          // hidden: lay out when shown again
+    const resizing = this.resizing(W, H);
     this.size = { cw: W, ch: H };
     // A side shot depends on the canvas's proportions: re-take it as they change.
     if (!this.cur || (!this.tween && !this.offTween)) this.cur = this.shotParams();
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.canvas.width = Math.round(W * this.dpr);
     this.canvas.height = Math.round(H * this.dpr);
-    this.pickKey = null;
-    if (this.calm() && this.interactive) this.renderIds(this.live(), "live");
+    // The region buffer is in CSS px: a layout that keeps the size and the
+    // shot (a zoom, the window's second resize event) leaves it current.
+    if (resizing) this.pickSoon();
+    else if (!this.pickTimer && this.calm() && this.interactive && !this.still()) this.renderIds(this.live(), "live");
     this.placeHitsSoon();
     if (!this.drawnOnce) {
       this.drawnOnce = true;
       requestAnimationFrame(() => { this.canvas.style.opacity = this.dim; });
     }
+  }
+
+  /**
+   * True when a layout of W × H continues a resize: the size changes again
+   * within SCULPTURE_RESIZE_QUIET_MS of its last change. Reading the whole
+   * region buffer back on every step of a dragged window edge drops frames,
+   * so those steps wait (pickSoon). The first change of a resize, and every
+   * layout that keeps the size (the first frame, a zoom, a restored
+   * context, the phone framing), read it at once if it no longer matches,
+   * unless a resize is already waiting: a window resize lays out twice
+   * (ResizeObserver and the window's own event), and the second, at the
+   * size already laid out, joins the wait without restarting it.
+   */
+  resizing(W, H, now = performance.now()) {
+    if (!this.size || (this.size.cw === W && this.size.ch === H)) return false;
+    const going = now - this.resizedAt < SCULPTURE_RESIZE_QUIET_MS;
+    this.resizedAt = now;
+    return going;
+  }
+
+  /**
+   * Draws the region buffer once a resize has been still for
+   * SCULPTURE_RESIZE_QUIET_MS. Each step restarts the wait, so only the
+   * last size is read, through the camera and at the size of that moment,
+   * never those the wait began with. Until then the buffer doesn't match
+   * the canvas (still() is false), so the pointer picks nothing rather than
+   * the wrong muscle. A wait that ends while something else will draw the
+   * buffer anyway (a layout due, the camera moving, off Targets) leaves it
+   * to that.
+   */
+  pickSoon() {
+    clearTimeout(this.pickTimer);
+    this.pickTimer = setTimeout(() => {
+      this.pickTimer = 0;
+      if (!this.ready || !this.size || this.needsLayout || !this.interactive || !this.calm() || this.still()) return;
+      this.renderIds(this.live(), "live");
+      if (this.pointer && !this.focused) this.hover(this.muscleAt(...this.pointer));
+    }, SCULPTURE_RESIZE_QUIET_MS);
   }
 
   /* -------------------------------- moving -------------------------------- */
@@ -994,7 +1043,7 @@ class AnatomySculpture {
       if (!this.ready || !this.size) return;
       SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams("targets-" + view.id), view.id));
       this.placeHits();
-    }, this.hits.size ? 150 : 0);
+    }, this.hits.size ? SCULPTURE_RESIZE_QUIET_MS : 0);
   }
 
   /**
