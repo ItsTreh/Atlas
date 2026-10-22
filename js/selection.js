@@ -79,6 +79,7 @@ class MuscleSelection {
       muscleIds: this.muscles().map(m => m.id),
       programId: src.program ? src.program.id : null,
       modified:  src.kind === "modified",
+      basedOnId: this.basedOn ? this.basedOn.id : null,
       priorities: Object.fromEntries(
         this.muscles().filter(m => this.priorities.has(m.id))
                       .map(m => [m.id, this.priorities.get(m.id)]))
@@ -92,6 +93,9 @@ class MuscleSelection {
   set(id, on) {
     if (!this.catalog.some(m => m.id === id)) throw new Error("Unknown muscle: " + id);
     if (on === this.has(id)) return;
+    // A selection built by hand that equals a program reads as that program,
+    // so changing it reads as an edit of it, as if it had been applied.
+    if (!this.basedOn) this.basedOn = this.matchingProgram();
     if (on) this.ids.add(id); else { this.ids.delete(id); this.priorities.delete(id); }
     if (this.isEmpty()) this.basedOn = null;
     this.emit();
@@ -118,7 +122,11 @@ class MuscleSelection {
   restore(snap) {
     const known = new Set(this.catalog.map(m => m.id));
     this.ids = new Set((snap.muscleIds || []).filter(id => known.has(id)));
-    this.basedOn = (snap.programId && PROGRAM_BY_ID.get(snap.programId)) || null;
+    // The program the selection was based on, which may differ from the one
+    // it equals right now (Push minus Shoulders equals Chest & Triceps).
+    // Older snapshots have only programId.
+    const base = snap.basedOnId !== undefined ? snap.basedOnId : snap.programId;
+    this.basedOn = (typeof base === "string" && PROGRAM_BY_ID.get(base)) || null;
     this.priorities = new Map(Object.entries(snap.priorities || {})
       .filter(([id, level]) => this.ids.has(id) && (level === "maintain" || level === "focus")));
     if (this.isEmpty()) this.basedOn = null;

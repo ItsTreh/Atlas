@@ -5,8 +5,6 @@
    than rebuilt, so the hours the user painted survive a trip back to change
    the muscles or the eating plan. */
 
-routine.selection.onChange(() => saveRoutine(routine));
-
 /* ------------------------------- the week -------------------------------- */
 
 /* What the week on screen was generated from, to spot a stale week: the
@@ -179,6 +177,13 @@ if (restored && routine.sessions.length) {
   generatedFor = planInputs();
   placedCount = routine.sessions.length;
 }
+/* Saving follows the selection only from here on. Restoring the selection
+   tells its listeners, and a save at that point would store the routine
+   half restored: the muscles, with every other setting still at its
+   default. Saving once now also replaces any stored value restore() had to
+   drop. */
+routine.selection.onChange(() => saveRoutine(routine));
+if (restored) saveRoutine(routine);
 
 paintThemeButton();
 Stages.start(restored && routine.sessions.length ? "plan"

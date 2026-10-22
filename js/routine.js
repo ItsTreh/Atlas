@@ -276,18 +276,29 @@ class WeeklyRoutine {
   }
 
   /** Restores a snapshot(): every input, then the week it had, regenerated. */
+  /*
+   * Only values the controls could have set are taken; anything else keeps
+   * the default. Stored data may be old or edited by hand, and a value no
+   * control offers (a split id that is gone, 12 days a week, a busy hour off
+   * the grid) would otherwise break the stages that read it.
+   */
   restore(snap) {
-    if (!snap) return;
+    if (!snap || typeof snap !== "object") return;
+    const list = v => Array.isArray(v) ? v : [];
     this.experience = EXPERIENCE_LEVELS.some(e => e.id === snap.experience) ? snap.experience : null;
-    this.selection.restore(snap.selection || {});
+    this.selection.restore(snap.selection && typeof snap.selection === "object" ? snap.selection : {});
     this.nutrition.restore(snap.nutrition || {});
-    if (snap.sessionsPerWeek) this.sessionsPerWeek = snap.sessionsPerWeek;
-    if (snap.sessionMinutes) this.sessionMinutes = snap.sessionMinutes;
-    if (snap.preferredWindow) this.preferredWindow = snap.preferredWindow;
-    if (SPLITS[snap.split]) this.split = snap.split;
-    this.offDays = new Set(snap.offDays || []);
-    for (const [day, hour] of snap.busy || []) this.markBusy(day, hour);
-    if (snap.hadPlan) this.generate();
+    const [lo, hi] = TRAINING_DAYS_RANGE;
+    if (Number.isInteger(snap.sessionsPerWeek) && snap.sessionsPerWeek >= lo && snap.sessionsPerWeek <= hi)
+      this.sessionsPerWeek = snap.sessionsPerWeek;
+    if (SESSION_LENGTH_OPTIONS.includes(snap.sessionMinutes)) this.sessionMinutes = snap.sessionMinutes;
+    if (typeof snap.preferredWindow === "string" && Object.hasOwn(WINDOWS, snap.preferredWindow))
+      this.preferredWindow = snap.preferredWindow;
+    if (typeof snap.split === "string" && Object.hasOwn(SPLITS, snap.split)) this.split = snap.split;
+    this.offDays = new Set(list(snap.offDays).filter(d => DayOfWeek.values.includes(d)));
+    for (const entry of list(snap.busy))
+      if (Array.isArray(entry) && this.slot(entry[0], entry[1])) this.markBusy(entry[0], entry[1]);
+    if (snap.hadPlan === true) this.generate();
   }
 
   slot(day, hour) { return this.slots.get(day + "-" + hour); }

@@ -107,13 +107,17 @@ const Stages = {
     const still = this.still;
     this.setPhase("out");
     setTimeout(() => {
-      change();
-      this.setPhase("moving");
-      setTimeout(() => {
-        this.busy = false;
-        this.setPhase("idle");
-        done();
-      }, still ? STAGE_TIMING.settleStill : settle);
+      // A stage that throws while drawing still lets the change finish, so
+      // navigation never stays busy. The error is still reported.
+      try { change(); }
+      finally {
+        this.setPhase("moving");
+        setTimeout(() => {
+          this.busy = false;
+          this.setPhase("idle");
+          done();
+        }, still ? STAGE_TIMING.settleStill : settle);
+      }
     }, still ? STAGE_TIMING.outStill : STAGE_TIMING.out);
   },
 

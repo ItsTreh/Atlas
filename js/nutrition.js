@@ -236,12 +236,40 @@ class NutritionPlan {
     };
   }
 
-  /** Restores a snapshot(). Missing fields keep whatever the plan already has. */
+  /**
+   * Restores a snapshot(). Missing fields keep whatever the plan already has,
+   * and so does a value the plan could never have set itself (an id no
+   * longer in GOALS, ACTIVITY_LEVELS or DIETS, a string where a number
+   * belongs): stored data may be old or edited by hand, and one bad field
+   * must not stop the page drawing.
+   */
   restore(snap) {
-    for (const key of ["weight", "unit", "goal", "activity", "burnInput", "adjustInput",
-                        "proteinInput", "mealsPerDay", "firstMeal", "lastMeal", "diet", "showMeals"])
-      if (snap[key] !== undefined) this[key] = snap[key];
-    this.moved = { ...(snap.moved || {}) };
+    if (!snap || typeof snap !== "object") return;
+    const num = v => typeof v === "number" && Number.isFinite(v);
+    const known = (table, id) => typeof id === "string" && Object.hasOwn(table, id);
+    const clamp = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
+    if (snap.unit === "kg" || snap.unit === "lb") this.unit = snap.unit;
+    if (snap.weight === null || num(snap.weight)) this.weight = snap.weight;
+    if (known(GOALS, snap.goal)) this.goal = snap.goal;
+    if (known(ACTIVITY_LEVELS, snap.activity)) this.activity = snap.activity;
+    if (known(DIETS, snap.diet)) this.diet = snap.diet;
+    if (typeof snap.showMeals === "boolean") this.showMeals = snap.showMeals;
+    if (snap.burnInput === null || num(snap.burnInput)) this.burnInput = snap.burnInput && clampBurn(snap.burnInput);
+    if (snap.adjustInput === null || num(snap.adjustInput))
+      this.adjustInput = snap.adjustInput === null ? null : clamp(snap.adjustInput, ADJUST_RANGE);
+    if (snap.proteinInput === null || num(snap.proteinInput))
+      this.proteinInput = snap.proteinInput === null ? null : clamp(snap.proteinInput, PROTEIN_PER_KG_RANGE);
+    if (MEAL_COUNTS.includes(snap.mealsPerDay)) this.mealsPerDay = snap.mealsPerDay;
+    // The window and the moved meals go through the setters, which keep
+    // every meal an hour apart inside the day.
+    this.setWindow(Number.isInteger(snap.firstMeal) ? snap.firstMeal : this.firstMeal,
+                   Number.isInteger(snap.lastMeal) ? snap.lastMeal : this.lastMeal);
+    const moved = snap.moved && typeof snap.moved === "object" ? snap.moved : {};
+    this.moved = Object.fromEntries(Object.entries(moved).filter(([i, hour]) =>
+      /^\d+$/.test(i) && Number(i) < this.mealsPerDay && Number.isInteger(hour)));
+    const h = this.hours;
+    if (h.some((hour, i) => hour < FIRST_HOUR || hour > LAST_HOUR || (i && hour <= h[i - 1])))
+      this.moved = {};
   }
 
   /* ---------------------------- recommendation --------------------------- */
