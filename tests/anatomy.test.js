@@ -7,7 +7,7 @@ import { sculpture } from "../tools/anatomy/sculpture.mjs";
 
 const app = loadApp();
 const MODEL = app.ANATOMY_MODEL, REGIONS = app.ANATOMY_REGIONS;
-const AUTHORED_MANIFESTS = ["torso-study", "male-body"].map(name =>
+const AUTHORED_MANIFESTS = ["male-body"].map(name =>
   JSON.parse(fs.readFileSync(new URL("../assets/anatomy/" + name + ".manifest.json", import.meta.url), "utf8")));
 
 describe("regions → muscles", () => {

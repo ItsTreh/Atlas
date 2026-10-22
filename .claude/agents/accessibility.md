@@ -11,7 +11,7 @@ You are the accessibility auditor for ATLAS. The anatomy sculpture is a canvas, 
 
 **Keyboard only, every stage, both renderers** (WebGL sculpture and `--disable-webgl` SVG):
 - Tab through the whole screen. Is the order logical (masthead, stage, footer), with no traps, nothing unreachable and no invisible focus stops (focusable elements on hidden stages or under a veil)?
-- Every action works without a pointer: programs (tabs, arrows, dots, apply), every muscle in both views, Front/Back, Clear, the family rows and priority, goals, the nutrition rows and their fields, the day of eating, Shape your week (painting busy hours by keyboard?), the stepper, split, experience, Generate, Reset, opening a session, moving it, swapping and removing exercises.
+- Every action works without a pointer: programs (tabs, arrows, dots, apply), every muscle in both views, Front/Back, Clear, the family rows and priority, goals, the nutrition rows and their fields, the day of eating, Shape your week (painting busy hours by keyboard), the stepper, split, experience, Generate, Reset, opening a session, moving it, swapping and removing exercises.
 - Focus after a stage change lands in the new stage when it was on the old one (`focus` in each view). Focus survives redraws (`data-key`) after removing a chip, an exercise or cycling meal ideas, and never drops to `<body>`.
 - Focus is always visible: a 2px `--accent` outline, the dashed stroke on a selected muscle, the ring on a `.hit`. Check both themes, and on top of the sculpture.
 

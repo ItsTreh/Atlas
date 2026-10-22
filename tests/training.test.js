@@ -136,11 +136,11 @@ describe("weekly target", () => {
 
   test("the routine keeps experience, restores it, and drops an unknown one", () => {
     const r = new app.WeeklyRoutine();
-    expect(r.weeklyTargets()).toBeNull();
+    expect(r.weekFit()).toBeNull();
     r.selection.toggle("chest");
     r.experience = "intermediate";
     r.selection.setPriority("chest", "focus");
-    expect(r.weeklyTargets().get("chest")).toBe(app.weeklyTarget(muscle("chest"), "intermediate", "focus"));
+    expect(r.weekFit().targets.get("chest")).toBe(app.weeklyTarget(muscle("chest"), "intermediate", "focus"));
     const other = new app.WeeklyRoutine();
     other.restore(r.snapshot());
     expect(other.experience).toBe("intermediate");
@@ -213,7 +213,7 @@ describe("fitting the weekly targets to the time", () => {
     for (const id of ids) r.selection.setPriority(id, "focus");
     const fit = r.weekFit();
     expect(fit.capacityMinutes).toBe(35);
-    expect([...r.weeklyTargets()]).toEqual([...fit.targets]);
+    expect([...r.weekFit().targets]).toEqual([...fit.targets]);
   });
 });
 

@@ -3,3 +3,5 @@ node_modules/
 *.blend1
 # Personal editor settings
 .vscode/
+# Python bytecode (Blender scripts)
+__pycache__/

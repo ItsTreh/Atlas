@@ -27,7 +27,7 @@ The new walls are unpainted (`body`).
 - The exporter gives the same 96 regions.
 - The paint image `Male_Body.paint.png` fits the rigged file too.
 
-**To export it:** copy the image next to it as `Male_Body_rigged.paint.png` and set `ATLAS_MALE_BODY_SOURCE`. Without the image, the exporter silently falls back to the old Vertex Paint (62 regions).
+**To export it:** copy the image next to it as `Male_Body_rigged.paint.png` and set `ATLAS_MALE_BODY_SOURCE`. Without the image the exporter stops with an error.
 
 The cut vertices are duplicated in place, so Blender's "Merge by distance" would undo the repair.
 
