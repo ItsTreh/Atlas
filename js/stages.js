@@ -6,9 +6,12 @@
    stage runs in three phases, and nothing moves outside them:
 
      out      the stage's interface fades (STAGE_TIMING.out)
-     moving   the new stage is drawn, the sculpture's camera travels to its
-              shot, and the interface comes in group by group as it lands
-     idle     everything is still; the controls are live
+     moving   the new stage is drawn and the sculpture's camera travels to
+              its shot; after STAGE_TIMING.settle the interface comes in
+              group by group (data-shown), on time even when the camera's
+              move runs longer
+     idle     the camera has landed and everything is still; the controls
+              are live and the sculpture can be picked
 
    The same three phases carry a change inside a stage that rearranges the
    screen (opening "A day of eating", "Shape your week", a generated week):
@@ -79,6 +82,7 @@ const Stages = {
     this.call("enter");
     this.phase = "idle";
     this.root.dataset.phase = "idle";
+    this.root.dataset.shown = "";
     this.refresh();
   },
 
@@ -121,6 +125,7 @@ const Stages = {
   run(change, settle, done) {
     this.busy = true;
     const still = this.still;
+    delete this.root.dataset.shown;
     this.setPhase("out");
     setTimeout(() => {
       // A stage that throws while drawing still lets the change finish, so
@@ -131,7 +136,9 @@ const Stages = {
         // Still within a stage: the phase turns idle once the camera has
         // landed too, however far round the body it had to go and however
         // slowly frames come. A camera that stops being drawn (a hidden tab,
-        // a lost context) holds it STAGE_TIMING.landBy at most.
+        // a lost context) holds it STAGE_TIMING.landBy at most. The
+        // interface doesn't wait for that: it comes in after `settle`, and
+        // only becomes usable at idle.
         const until = performance.now() + STAGE_TIMING.landBy;
         const landed = () => {
           const left = typeof figure === "object" && figure.moveRemaining ? figure.moveRemaining() : 0;
@@ -143,7 +150,7 @@ const Stages = {
           this.queued = null;
           if (next) next();
         };
-        setTimeout(landed, still ? STAGE_TIMING.settleStill : settle);
+        setTimeout(() => { this.root.dataset.shown = ""; landed(); }, still ? STAGE_TIMING.settleStill : settle);
       }
     }, still ? STAGE_TIMING.outStill : STAGE_TIMING.out);
   },
@@ -276,11 +283,12 @@ const Stages = {
   wire() {
     // The masthead's stages, the phone's numbered dots, and any
     // "Change"-style link to a stage (data-goto) anywhere on the page.
-    // While a change runs, a stage's controls are fading out or not yet in:
-    // the pointer can't reach them ([data-reveal]), and neither may the
-    // keyboard, whose Enter and Space arrive as clicks.
+    // While a change runs, a stage's controls are fading out, not yet in, or
+    // in while the camera lands: the pointer can't reach them
+    // ([data-reveal]), and neither may the keyboard, whose Enter and Space
+    // arrive as clicks. Front and Back (which would turn the camera) too.
     document.addEventListener("click", e => {
-      if (this.busy && e.target.closest && e.target.closest(".stage")) {
+      if (this.busy && e.target.closest && e.target.closest(".stage, .figure-controls")) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
