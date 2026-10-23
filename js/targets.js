@@ -1,19 +1,24 @@
 /* ===========================================================================
-   Targets stage — define your focus.
+   Targets stage — in three movements.
 
-   The sculpture stands in the centre; the two rails either side of it
-   carry what the user needs while choosing:
+     i    How it works    the figure steps aside, right, and acts out each
+                          stage as it is read: the chapters play in turn,
+                          and the camera goes where that stage will put it
+     ii   Your muscles    the figure in the middle; on the left, where to
+                          start (the program families as tabs, one program
+                          at a time); on the right, what is chosen
+     iii  Training focus  opens once something is chosen: the figure steps
+                          left, and each muscle's priority gets the room
 
-     • left    where to start: the program families as tabs, one program
-               at a time with previous and next, and what applying it does
-     • right   until something is chosen, how ATLAS works; then the
-               training focus, grouped by family, and each muscle's
-               priority (training experience is set on the Week plan)
+   A change of movement is a Stages.relayout, so it moves the way a change
+   of stage does: out, the camera travels to the movement's framing
+   (SCULPTURE_SHOTS "targets-…"), in. The page opens on How it works;
+   coming back from a later stage lands on Training focus.
 
-   Four views of one MuscleSelection (routine.selection): the figure, the
-   programs, the focus summary and the estimate. None of them talk to each
-   other. Each writes to the selection and redraws when it changes, so a
-   new view (or a later stage) only has to subscribe.
+   Every part is a view of one MuscleSelection (routine.selection): the
+   figure, the programs, what is chosen and the training focus. None of
+   them talk to each other. Each writes to the selection and redraws when
+   it changes, so a new view (or a later stage) only has to subscribe.
 
    Browsing never costs the user their work: with nothing chosen, or a
    selection of their own, previous and next only show programs (pointing
@@ -22,22 +27,18 @@
    ========================================================================= */
 
 const selection = routine.selection;
-const programsEl = $("programs"), summaryEl = $("focus-summary"), captionEl = $("anatomy-caption");
+const programsEl = $("programs"), trainList = $("train-list"), captionEl = $("anatomy-caption");
 
 /* The tab names: the families of PROGRAM_GROUPS, shortened to fit. */
 const PROGRAM_TABS = { whole: "Whole body", movement: "Push · Pull · Legs", pairing: "Pairings" };
 const PRIORITY_CHOICES = [["maintain", "Maintain"], ["normal", "Normal"], ["focus", "Focus"]];
-const PRIORITY_MARK = { focus: "▲", maintain: "▼", normal: "" };
-/* "What it will take" (estimateHTML) is hidden from Targets for now and kept
-   for a later stage, likely an end-of-plan summary. Set true to show it here. */
-const SHOW_ESTIMATE = false;
 
 const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* -------------------------------- figure --------------------------------- */
 
-let pointedAt = null, pointedRegion = null, pointedDetailMode = false;
+let pointedAt = null, pointedRegion = null, pointedDetailMode = false, turnedTo = "front";
 
 function paintCaption() {
   const m = pointedAt;
@@ -61,7 +62,8 @@ function paintCaption() {
 }
 
 /** Front and Back: the view shown is underlined; a drag off it fades the line. */
-function paintTurn(view = "front", offView = false) {
+function paintTurn(view = turnedTo, offView = false) {
+  turnedTo = view;
   const turn = $("turn");
   turn.classList.toggle("off-view", offView);
   for (const b of turn.querySelectorAll("[data-view]"))
@@ -83,6 +85,7 @@ const figure = new AnatomyStage($("anatomy-stage"), selection, {
   onHover(muscle, region, detailed = false) {
     pointedAt = muscle; pointedRegion = region || null; pointedDetailMode = detailed;
     paintCaption();
+    markRow(muscle);
   },
   onTurn(view, offView) { paintTurn(view, offView); },
   onChange() { paintCaption(); paintTurn(); }
@@ -262,126 +265,10 @@ programsEl.addEventListener("pointerout", e => {
 programsEl.addEventListener("focusin", e => { if (e.target.matches(":focus-visible")) previewFrom(e.target); });
 programsEl.addEventListener("focusout", () => figure.preview(null));
 
-/* ------------------------- right: training focus ------------------------- */
-
-const focusState = { open: null, estimate: false };
-
-function renderSummary() {
-  // Remember what had focus: the rail is redrawn after every change.
-  const focusKey = document.activeElement && summaryEl.contains(document.activeElement)
-    ? document.activeElement.dataset.key : null;
-  summaryEl.innerHTML = selection.isEmpty() ? introHTML() : focusHTML();
-  if (focusKey) {
-    const again = summaryEl.querySelector('[data-key="' + focusKey + '"]');
-    if (again) again.focus({ preventScroll: true });
-  }
-}
-
-/** Before anything is chosen: what ATLAS does and how to begin. */
-function introHTML() {
-  const steps = [
-    ["Targets", "You are here", "Choose the muscles to build, then set any of them to focus or maintain."],
-    ["Nutrition", "Optional", "Calories and protein to match the training. Skip it if you only want workouts."],
-    ["Week plan", "", "Tell ATLAS when you're busy. It fits the sessions around you and picks the exercises."]
-  ];
-  return '<div class="intro">' +
-      '<span class="eyebrow">How ATLAS works</span>' +
-      '<span class="intro-title">A week of training, built around you.</span>' +
-      '<p>Plan around the muscles you want to build and the time you actually have.</p>' +
-    '</div>' +
-    '<ol class="howto">' + steps.map(([title, tag, text], i) =>
-      '<li' + (i === 0 ? ' class="here"' : '') + '>' +
-        '<span class="howto-head"><span class="howto-title">' + title + '</span>' +
-          '<span class="howto-tag">' + tag + '</span></span>' +
-        '<span class="howto-text">' + text + '</span></li>').join("") + '</ol>' +
-    '<div class="intro-start">' +
-      '<span class="intro-start-title">Start on the left, or on the figure.</span>' +
-      '<span>Apply a program, or click any muscle on the sculpture. Nothing is selected yet.</span>' +
-    '</div>';
-}
-
-/** The weekly hard sets a muscle starts from, for its experience and priority (estimate.js). */
-function startingSets(m) {
-  if (!exercisesFor(m.id).length) return 0;
-  return weeklyTarget(m, routine.experience || DEFAULT_EXPERIENCE, selection.priority(m.id)) || 0;
-}
-
-/** Once something is chosen: the count and the focus by family. */
-function focusHTML() {
-  const muscles = selection.muscles();
-  const families = Object.keys(FAMILIES).map(key => ({ key, muscles: muscles.filter(m => m.family === key) }))
-    .filter(f => f.muscles.length);
-
-  const groups = families.map(({ key, muscles: ms }) => {
-    const open = focusState.open === key;
-    const sets = ms.reduce((t, m) => t + startingSets(m), 0);
-    const names = ms.map(m => {
-      const p = selection.priority(m.id);
-      return '<span class="fam-m" data-level="' + p + '">' + esc(m.name) +
-        (PRIORITY_MARK[p] ? '<span class="mark" aria-hidden="true">' + PRIORITY_MARK[p] + '</span>' +
-          '<span class="visually-hidden">, ' + p + '</span>' : '') + '</span>';
-    }).join("");
-    const rows = ms.map(m => {
-      const now = selection.priority(m.id);
-      return '<div class="fam-row">' +
-        '<span class="fam-row-name">' + esc(m.name) + '</span>' +
-        '<span class="segmented small" role="radiogroup" aria-label="' + esc(m.name) + ' priority">' +
-          PRIORITY_CHOICES.map(([level, label]) =>
-            '<button type="button" role="radio" aria-checked="' + (now === level) + '" ' +
-              'data-priority="' + level + '" data-muscle="' + m.id + '" data-key="pri-' + m.id + '-' + level + '">' +
-              label + '</button>').join("") +
-        '</span>' +
-        '<button type="button" class="row-x" data-remove="' + m.id + '" data-key="rm-' + m.id + '" ' +
-          'aria-label="Remove ' + esc(m.name) + '" title="Remove ' + esc(m.name) + '">×</button>' +
-      '</div>';
-    }).join("");
-    return '<div class="fam" data-family="' + key + '">' +
-      '<button type="button" class="fam-toggle" data-family-toggle="' + key + '" data-key="fam-' + key + '" ' +
-        'aria-expanded="' + open + '">' +
-        '<span class="fam-line">' +
-          '<span class="fam-dot" style="background:var(--' + FAMILIES[key].css + ')"></span>' +
-          '<span class="fam-name">' + FAMILIES[key].name + '</span>' +
-          '<span class="fam-count">' + ms.length + '</span>' +
-          '<span class="fam-sets">' + (sets ? '≈ ' + sets + ' sets' : '') + '</span>' +
-          '<span class="fam-chev" aria-hidden="true">' + (open ? "−" : "+") + '</span>' +
-        '</span>' +
-        (open ? '' : '<span class="fam-names">' + names + '</span>') +
-      '</button>' +
-      (open ? '<div class="fam-rows">' + rows +
-        '<p class="fam-note">Focus gets more weekly sets and days. Maintain keeps the minimum and is trimmed first ' +
-        'when your week is short.</p></div>' : '') +
-    '</div>';
-  }).join("");
-
-  return '<div class="sel-head">' +
-      '<span class="sel-count-wrap"><span class="sel-count">' + muscles.length + '</span>' +
-        '<span class="sel-noun">' + (muscles.length === 1 ? "muscle group" : "muscle groups") + '</span></span>' +
-      '<button type="button" class="quiet-btn" id="clear-sel" data-key="clear">Clear</button>' +
-    '</div>' +
-    '<div class="focus">' +
-      '<div class="focus-head"><span class="eyebrow">Training focus</span>' +
-        '<span class="focus-key"><span>▲</span> focus <span>▼</span> maintain</span></div>' +
-      groups +
-    '</div>' +
-    noExercisesNote(muscles) +
-    (SHOW_ESTIMATE ? estimateHTML(muscles) : "");
-}
-
-/** Says up front which chosen muscles the exercise database cannot fill yet. */
-function noExercisesNote(muscles) {
-  const bare = muscles.filter(m => !exercisesFor(m.id).length);
-  if (!bare.length) return "";
-  const names = bare.map(m => esc(m.name));
-  const list = names.length === 1 ? names[0]
-             : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
-  return '<p class="note-rule">No exercises in the database yet for ' + list + '. ' +
-    (bare.length === muscles.length
-      ? "Sessions for " + (bare.length === 1 ? "it" : "them") + " will be planned without exercises."
-      : (bare.length === 1 ? "It rides" : "They ride") + " along in related sessions, credited " +
-        "with the work other lifts give " + (bare.length === 1 ? "it" : "them") + ".") + '</p>';
-}
-
 /* ------------------------------- estimate -------------------------------- */
+
+/* "What it will take" (estimateHTML) is drawn nowhere for now: kept for a
+   later stage, likely an end-of-plan summary. */
 
 /** "25–40 min", "3.5–6 h" or "45 min – 1.5 h", half hours above an hour. */
 function timeRange(lo, hi) {
@@ -393,10 +280,9 @@ function timeRange(lo, hi) {
 function range(lo, hi) { return lo === hi ? String(lo) : lo + "–" + hi; }
 
 /** What it will take: two figures, and the reasoning behind them on demand. */
-function estimateHTML(muscles) {
+function estimateHTML(muscles, open = false) {
   const e = estimateTraining(muscles, routine.sessionMinutes);
   if (!e) return "";
-  const open = focusState.estimate;
   return '<div class="est">' +
     '<button type="button" class="est-toggle" id="est-toggle" data-key="est" aria-expanded="' + open + '" aria-controls="est-body">' +
       '<span class="est-label"><span class="eyebrow">What it will take</span><span class="est-tag">estimate</span></span>' +
@@ -422,49 +308,279 @@ function estimateHTML(muscles) {
   '</div>';
 }
 
-summaryEl.addEventListener("click", e => {
+/* ------------------------------ the movements ---------------------------- */
+
+const FLOW_SUBS = ["how", "focus", "train"];
+const FLOW_NAMES = { how: "How it works", focus: "Your muscles", train: "Training focus" };
+/* Muscles best seen from behind: dwelling on one in Training focus turns the body round. */
+const FLOW_BACK = new Set(["traps", "upper-back", "lats", "triceps", "hamstrings", "glutes", "calves", "lower-back"]);
+/* How long a change of movement gives the camera, in ms (Stages.relayout),
+   and how long the pointer rests on a chapter before it plays, or on a
+   muscle's row before the body turns to show it. */
+const FLOW_SETTLE = 1000;
+const FLOW_DWELL = { chapter: 220, turn: 480 };
+
+const flow = { sub: "how", chapter: 0, families: new Set(), wasEmpty: true };
+
+/** The way the movements are travelled, for the CSS: 1 forward, −1 back. */
+const setFlowDir = d => Stages.root.style.setProperty("--fdir", d);
+
+function goSub(name) {
+  if (Stages.current !== "targets" || !FLOW_SUBS.includes(name) || name === flow.sub) return;
+  if (name === "train" && selection.isEmpty()) return;
+  setFlowDir(FLOW_SUBS.indexOf(name) > FLOW_SUBS.indexOf(flow.sub) ? 1 : -1);
+  figure.preview(null);
+  Stages.relayout(() => {
+    flow.sub = name;
+    flow.chapter = 0;
+    paintSub();
+  }, FLOW_SETTLE);
+  announce("Targets: " + FLOW_NAMES[name] + ", part " + (FLOW_SUBS.indexOf(name) + 1) + " of " + FLOW_SUBS.length);
+}
+
+function paintSub() {
+  Stages.root.dataset.sub = flow.sub;
+  for (const p of $("stage-targets").querySelectorAll("[data-panel]")) p.classList.toggle("on", p.dataset.panel === flow.sub);
+  trainList.classList.remove("calm");
+  paintChapters();
+}
+
+/* ---------------------------- i: how it works ---------------------------- */
+
+const chaptersEl = $("chapters");
+let chapterDwell = 0;
+
+function paintChapters() {
+  for (const c of chaptersEl.querySelectorAll(".chapter")) {
+    const on = Number(c.dataset.ch) === flow.chapter;
+    c.classList.toggle("on", on);
+    c.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+}
+
+/** Plays chapter `i`: its line fills (css), and the camera goes where that stage will put it. */
+function setChapter(i) {
+  if (i === flow.chapter) return;
+  flow.chapter = i;
+  paintChapters();
+  if (Stages.current === "targets" && flow.sub === "how" && !Stages.opening) figure.setShot(Stages.shot());
+}
+
+chaptersEl.addEventListener("click", e => {
+  const c = e.target.closest(".chapter");
+  if (c) setChapter(Number(c.dataset.ch));
+});
+chaptersEl.addEventListener("pointerover", e => {
+  const c = e.target.closest(".chapter");
+  clearTimeout(chapterDwell);
+  if (c && Stages.phase === "idle") chapterDwell = setTimeout(() => setChapter(Number(c.dataset.ch)), FLOW_DWELL.chapter);
+});
+chaptersEl.addEventListener("pointerleave", () => clearTimeout(chapterDwell));
+chaptersEl.addEventListener("focusin", e => {
+  const c = e.target.closest(".chapter");
+  if (c && e.target.matches(":focus-visible")) setChapter(Number(c.dataset.ch));
+});
+/* A chapter's line fills as it is read; when it has, the next one plays. */
+chaptersEl.addEventListener("animationend", e => {
+  if (e.animationName === "chFill" && flow.sub === "how") setChapter((flow.chapter + 1) % chaptersEl.children.length);
+});
+
+/* -------------------------- ii: what is chosen --------------------------- */
+
+const ledgerEl = $("ledger");
+
+/** Counts `el` up or down to `to`. */
+function countTo(el, to) {
+  const from = Number(el.textContent) || 0;
+  cancelAnimationFrame(el._raf);
+  if (from === to || reducedMotion()) { el.textContent = to; return; }
+  const t0 = performance.now(), ms = 520;
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = Math.round(from + (to - from) * e);
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
+function renderLedger() {
+  const ms = selection.muscles(), n = ms.length, src = selection.source();
+  ledgerEl.toggleAttribute("data-empty", !n);
+  countTo($("lg-n"), n);
+  $("lg-noun").textContent = n === 1 ? "muscle group" : "muscle groups";
+  $("lg-src").innerHTML =
+    src.kind === "empty" ? "Nothing chosen yet. Apply a program, or " + (Stages.narrow ? "tap" : "click") + " a muscle on the sculpture." :
+    src.kind === "program" ? "Exactly <b>" + esc(src.program.name) + "</b>, as the program has it." :
+    src.kind === "modified" ? "<b>" + esc(src.program.name) + "</b>, edited by hand." :
+    "Your own selection, muscle by muscle.";
+
+  const fams = Object.keys(FAMILIES).map(k => ({ k, ms: ms.filter(m => m.family === k) })).filter(f => f.ms.length);
+  for (const span of $("lg-bar").children) {
+    const f = fams.find(x => x.k === span.dataset.f);
+    span.style.flexGrow = f ? f.ms.length : 0;
+  }
+  // A family new to the selection slides in; the others stay put.
+  $("lg-fams").innerHTML = fams.map((f, i) =>
+    '<div class="lf' + (flow.families.has(f.k) ? '' : ' new') + '" data-family="' + f.k + '" style="--i:' + i + '">' +
+      '<span class="lf-top"><span class="dot" style="background:var(--' + FAMILIES[f.k].css + ')"></span>' +
+        '<span class="lf-name">' + FAMILIES[f.k].name + '</span><span class="lf-n">' + f.ms.length + '</span></span>' +
+      '<span class="lf-ms">' + f.ms.map(m => esc(m.name)).join(" · ") + '</span>' +
+    '</div>').join("");
+  flow.families = new Set(fams.map(f => f.k));
+  $("ledger-clear").hidden = !n;
+}
+
+ledgerEl.addEventListener("click", e => {
+  if (e.target.closest("#ledger-clear")) { selection.clear(); $("targets-title").focus(); }
+});
+/* Pointing at a family shows its muscles on the sculpture, in the family's hue. */
+ledgerEl.addEventListener("pointerover", e => {
+  const fam = e.target.closest("[data-family]");
+  if (fam) figure.preview(selection.muscles().filter(m => m.family === fam.dataset.family).map(m => m.id), fam.dataset.family);
+});
+ledgerEl.addEventListener("pointerout", e => {
+  const from = e.target.closest("[data-family]");
+  const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-family]");
+  if (from && to !== from) figure.preview(null);
+});
+
+/* ---------------------------- iii: training focus ------------------------- */
+
+/** The weekly hard sets a muscle starts from, for its experience and priority (estimate.js). */
+function startingSets(m) {
+  if (!exercisesFor(m.id).length) return 0;
+  return weeklyTarget(m, routine.experience || DEFAULT_EXPERIENCE, selection.priority(m.id)) || 0;
+}
+
+/** Says up front which chosen muscles the exercise database cannot fill yet. */
+function noExercisesNote(muscles) {
+  const bare = muscles.filter(m => !exercisesFor(m.id).length);
+  if (!bare.length) return "";
+  const names = bare.map(m => esc(m.name));
+  const list = names.length === 1 ? names[0]
+             : names.slice(0, -1).join(", ") + " and " + names[names.length - 1];
+  return '<p class="note-rule">No exercises in the database yet for ' + list + '. ' +
+    (bare.length === muscles.length
+      ? "Sessions for " + (bare.length === 1 ? "it" : "them") + " will be planned without exercises."
+      : (bare.length === 1 ? "It rides" : "They ride") + " along in related sessions, credited " +
+        "with the work other lifts give " + (bare.length === 1 ? "it" : "them") + ".") + '</p>';
+}
+
+/** The most weekly sets any of `ms` would get on Focus: the sets bars' full length. */
+function maxSets(ms) {
+  const exp = routine.experience || DEFAULT_EXPERIENCE;
+  return Math.max(1, ...ms.map(m => exercisesFor(m.id).length ? weeklyTarget(m, exp, "focus") || 0 : 0));
+}
+
+function renderTrain() {
+  const ms = selection.muscles(), key = ms.map(m => m.id).join();
+  if (trainList.dataset.key !== key) {
+    trainList.dataset.key = key;
+    // The rows come in as the movement opens; redrawn after that, they just appear.
+    trainList.classList.toggle("calm", Stages.phase === "idle");
+    let i = 0;
+    trainList.innerHTML = Object.keys(FAMILIES).map(k => {
+      const fm = ms.filter(m => m.family === k);
+      if (!fm.length) return "";
+      return '<div class="tg" data-family="' + k + '"><span class="dot" style="background:var(--' + FAMILIES[k].css + ')"></span>' +
+          '<span class="tg-name">' + FAMILIES[k].name + '</span><span class="tg-sets" data-tg="' + k + '"></span></div>' +
+        fm.map(m => '<div class="tr" data-muscle="' + m.id + '" data-family="' + k + '" style="--i:' + (i++) + '">' +
+          '<span class="tr-name">' + esc(m.name) + '</span>' +
+          '<span class="dial" role="radiogroup" aria-label="' + esc(m.name) + ' priority">' +
+            '<span class="dial-thumb" aria-hidden="true"></span>' +
+            PRIORITY_CHOICES.map(([level, label]) =>
+              '<button type="button" role="radio" data-priority="' + level + '" data-muscle="' + m.id + '">' + label + '</button>').join("") +
+          '</span>' +
+          '<span class="tr-sets"><span class="tr-bar"><span></span></span><span class="tr-v"></span></span>' +
+          '<button type="button" class="row-x" data-remove="' + m.id + '" aria-label="Remove ' + esc(m.name) + '" title="Remove ' + esc(m.name) + '">×</button>' +
+        '</div>').join("");
+    }).join("");
+  }
+  const top = maxSets(ms), counts = { focus: 0, normal: 0, maintain: 0 }, famSets = {};
+  let total = 0;
+  for (const row of trainList.querySelectorAll(".tr")) {
+    const m = MUSCLE_BY_ID.get(row.dataset.muscle), level = selection.priority(m.id), sets = startingSets(m);
+    counts[level]++; total += sets; famSets[m.family] = (famSets[m.family] || 0) + sets;
+    row.dataset.level = level;
+    for (const b of row.querySelectorAll("[data-priority]")) {
+      const on = b.dataset.priority === level;
+      b.setAttribute("aria-checked", on ? "true" : "false");
+      b.tabIndex = on ? 0 : -1;
+    }
+    row.querySelector(".tr-bar span").style.setProperty("--w", (sets / top).toFixed(3));
+    row.querySelector(".tr-v").innerHTML = sets ? "<b>" + sets + "</b> sets a week" : "No exercises yet";
+  }
+  for (const el of trainList.querySelectorAll("[data-tg]"))
+    el.textContent = famSets[el.dataset.tg] ? "≈ " + famSets[el.dataset.tg] + " sets" : "";
+  $("tt-sets").textContent = total;
+  $("tt-mix").innerHTML = PRIORITY_CHOICES.slice().reverse().map(([level, label]) =>
+    '<span><b>' + counts[level] + '</b> ' + label.toLowerCase() + '</span>').join("");
+  $("train-note").innerHTML = noExercisesNote(ms);
+}
+
+trainList.addEventListener("click", e => {
   const b = e.target.closest("button");
   if (!b) return;
   if (b.dataset.priority) selection.setPriority(b.dataset.muscle, b.dataset.priority);
   else if (b.dataset.remove) {
-    // Keep keyboard focus in the family rather than dropping it on <body>.
-    const row = b.closest(".fam-row"), near = row.nextElementSibling || row.previousElementSibling;
-    const nearId = near && near.querySelector("[data-remove]") && near.querySelector("[data-remove]").dataset.remove;
+    // Keep keyboard focus on the list rather than dropping it on <body>.
+    const rows = [...trainList.querySelectorAll(".tr")], i = rows.indexOf(b.closest(".tr"));
+    const near = rows[i + 1] || rows[i - 1];
     selection.set(b.dataset.remove, false);
-    const to = (nearId && summaryEl.querySelector('[data-remove="' + nearId + '"]')) ||
-               summaryEl.querySelector("[data-family-toggle]") || $("targets-title");
-    to.focus();
+    const to = near && trainList.querySelector('[data-remove="' + near.dataset.muscle + '"]');
+    if (to) to.focus();
+    else if (Stages.current === "targets" && flow.sub === "train") $("train-title").focus();
   }
-  else if (b.dataset.familyToggle) {
-    focusState.open = focusState.open === b.dataset.familyToggle ? null : b.dataset.familyToggle;
-    renderSummary();
-  }
-  else if (b.id === "est-toggle") { focusState.estimate = !focusState.estimate; renderSummary(); }
-  else if (b.id === "clear-sel") { selection.clear(); $("targets-title").focus(); }
 });
 
-/* Pointing at a family shows its muscles on the sculpture, in the family's
-   hue where the sculpture has one for it. */
-summaryEl.addEventListener("pointerover", e => {
-  const fam = e.target.closest("[data-family]"), key = fam && fam.dataset.family;
-  if (fam) figure.preview(selection.muscles().filter(m => m.family === key).map(m => m.id), key);
+/* Pointing at a row lights its muscle; staying on it turns the body to the side that shows it. */
+let pointedRow = null, turnDwell = 0;
+trainList.addEventListener("pointerover", e => {
+  const row = e.target.closest(".tr");
+  if (!row || row === pointedRow) return;
+  pointedRow = row;
+  figure.preview([row.dataset.muscle], row.dataset.family);
+  clearTimeout(turnDwell);
+  turnDwell = setTimeout(() => {
+    const want = FLOW_BACK.has(row.dataset.muscle) ? "back" : "front";
+    if (Stages.phase === "idle" && figure.moves && turnedTo !== want) figure.turnTo(want);
+  }, FLOW_DWELL.turn);
 });
-summaryEl.addEventListener("pointerout", e => {
-  const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-family]");
-  const from = e.target.closest("[data-family]");
-  if (from && to !== from) figure.preview(null);
+trainList.addEventListener("pointerleave", () => {
+  pointedRow = null;
+  clearTimeout(turnDwell);
+  figure.preview(null);
 });
+
+/** Pointing at a muscle on the body marks its row. */
+function markRow(muscle) {
+  for (const row of trainList.querySelectorAll(".tr.pointed")) row.classList.remove("pointed");
+  const row = muscle && Stages.root.dataset.sub === "train" && trainList.querySelector('.tr[data-muscle="' + muscle.id + '"]');
+  if (row) row.classList.add("pointed");
+}
 
 /* --------------------------------- wiring -------------------------------- */
 
 function renderTargets() {
   paintCaption();
   paintPrograms();
-  renderSummary();
+  renderLedger();
+  renderTrain();
 }
 
 buildPrograms();
 selection.onChange(renderTargets);
+
+selection.onChange(() => {
+  const empty = selection.isEmpty();
+  // The first muscle chosen opens Training focus: the way on, now live, says so.
+  if (flow.wasEmpty && !empty && document.readyState !== "loading") {
+    const next = $("foot-next");
+    next.classList.remove("fresh"); void next.offsetWidth; next.classList.add("fresh");
+  }
+  flow.wasEmpty = empty;
+  if (empty && flow.sub === "train" && Stages.current === "targets") goSub("focus");
+});
 
 /* What a change to the selection did, said once (the rail is redrawn whole
    and no longer reads itself out). */
@@ -483,16 +599,40 @@ selection.onChange(() => {
 });
 
 Stages.register("targets", {
-  enter: renderTargets,
-  shot: () => "targets",
-  focus: () => $("targets-title"),
-  footer() {
-    const empty = selection.isEmpty();
-    return {
-      next: Stages.narrow ? "Continue →" : "Continue to nutrition →",
-      nextDisabled: empty,
-      hint: empty ? "Select at least one muscle to continue." : Stages.wide ? "or scroll" : ""
-    };
+  arrive() {
+    // The page opens on How it works; coming back from a later stage
+    // lands on Training focus, unless nothing is chosen any more.
+    const back = !!Stages.from;
+    flow.sub = back && !selection.isEmpty() ? "train" : "how";
+    flow.chapter = 0;
+    setFlowDir(back ? -1 : 1);
+    paintSub();
   },
-  onNext() { if (!selection.isEmpty()) Stages.go("nutrition"); return true; }
+  enter: renderTargets,
+  shot: () => flow.sub === "how" ? "targets-how" + flow.chapter : flow.sub === "train" ? "targets-train" : "targets",
+  // How it works shows the figure; it is not yet the figure to pick on.
+  interactive: () => flow.sub !== "how",
+  focus: () => $({ how: "how-title", focus: "targets-title", train: "train-title" }[flow.sub]),
+  footer() {
+    const empty = selection.isEmpty(), scroll = Stages.wide ? "or scroll" : "";
+    if (flow.sub === "how") return { next: Stages.narrow ? "Continue →" : "Define your focus →", hint: scroll };
+    if (flow.sub === "focus") return {
+      back: "← How it works",
+      next: Stages.narrow ? "Continue →" : "Training focus →",
+      nextDisabled: empty,
+      hint: empty ? "Select at least one muscle to continue." : scroll
+    };
+    return { back: "← Your muscles", next: Stages.narrow ? "Continue →" : "Continue to nutrition →", hint: scroll };
+  },
+  onNext() {
+    if (flow.sub === "how") goSub("focus");
+    else if (flow.sub === "focus") goSub("train");
+    else if (!selection.isEmpty()) Stages.go("nutrition");
+    return true;
+  },
+  onBack() {
+    if (flow.sub === "train") goSub("focus");
+    else if (flow.sub === "focus") goSub("how");
+    return true;
+  }
 });

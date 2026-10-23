@@ -13,10 +13,12 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 ## How it works
 
 ### 01 · Targets — define your focus
+Three movements, each its own framing of the sculpture: **How it works**, where the chapters play in turn and the camera shows what each stage will do; **Your muscles**; and, once something is chosen, **Training focus**. Continue, Back or a scroll moves between them, as between stages.
+
 - **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time with ← and →. Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
 - **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
 - **Explore the surface.** Anatomical cartography draws fine, curved traces in the sculpture's own material. Pointing at a muscle reveals its whole training group, a little stronger near the pointer, and the traces flow while you rest there. Selected groups keep a faint, still imprint. A serif label beside the body names the group. The traces follow the existing authored borders and add no anatomy (see `docs/cartography.md`).
-- **Set the focus.** The selection is grouped by family. Set any muscle to Focus (more sets and days) or Maintain (the minimum, trimmed first).
+- **Set the focus.** Training focus lists the selection by family, each muscle with the weekly sets it starts from. Set any to Focus (more sets and days) or Maintain (the minimum, trimmed first). Resting on a row lights its muscle and turns the body to the side that shows it.
 
 ### 02 · Nutrition — fuel the training *(optional)*
 - **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for your training.
@@ -80,7 +82,7 @@ js/
   stages.js         moving between stages: motion between, stillness within
   start.js          the start screen: five openings, one per load, that hand over to the stage
   targets.js, nutrition-view.js, week-view.js, workout-view.js
-                    the stages; workout-view.js is a session in full
+                    the stages (Targets in three movements); workout-view.js is a session in full
   render.js, paint.js, app.js
                     shared helpers, painting busy hours, generating, boot
 tests/              Vitest suites
@@ -109,7 +111,7 @@ ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like int
 - [x] Front/back controls and rotation: one body that turns, with a limited free orbit
 - [x] A stylised 3D anatomical sculpture in place of the flat figure, painted muscle by muscle
 - [x] One continuous sculpture across the stages, with camera choreography between them
-- [x] Side rails for programs and training focus (Targets, stage 1 of the redesign)
+- [x] Targets in three movements: How it works, Your muscles, Training focus
 - [x] Redesigned nutrition stage: the plan beside the sculpture, a day of eating one meal at a time
 - [x] Redesigned week-plan stage: the week before Generate, Shape your week, and the generated week beside the sculpture (see `docs/redesign.md`)
 - [ ] Refined hover and selection states, a side view and zoom

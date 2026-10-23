@@ -17,7 +17,7 @@
      stage's interface settles around it. -->
 <!-- data-opening keeps the stage's interface out of sight until start.js
      has decided whether the start screen plays. -->
-<div class="atlas" id="atlas" data-stage="targets" data-phase="idle" data-opening>
+<div class="atlas" id="atlas" data-stage="targets" data-sub="how" data-phase="idle" data-opening>
   <!-- Says what changed, for a screen reader: one region that stays put,
        since the panels are redrawn and a new live region is not read. -->
   <p class="visually-hidden" id="announce" aria-live="polite"></p>
@@ -40,25 +40,84 @@
   </header>
 
   <!-- ============================ Stage 1: targets ========================= -->
+  <!-- Three movements of one stage (targets.js): how ATLAS works, the
+       muscles, and once something is chosen, the training focus. -->
   <section class="stage stage-targets" id="stage-targets" aria-labelledby="targets-title">
-    <div class="rail rail-start" data-scroll data-reveal="0">
-      <div class="rail-head">
-        <p class="eyebrow"><span class="n">01</span> / Targets</p>
-        <h1 class="display" id="targets-title" tabindex="-1">Define your focus</h1>
-        <p class="lede">Begin from a program, then refine it on the sculpture.</p>
+
+    <div class="sub sub-how" data-panel="how">
+      <div class="how-copy">
+        <p class="eyebrow" data-reveal="0"><span class="n">01</span> / Targets · How ATLAS works</p>
+        <h1 class="how-title" id="how-title" tabindex="-1" data-reveal="0">A week of training, <em>built around you.</em></h1>
+        <p class="how-lede" data-reveal="1">Plan around the muscles you want to build and the time you actually have. Three stages, one figure.</p>
       </div>
-      <div class="programs" id="programs"></div>
+      <ol class="chapters" id="chapters" data-reveal="2">
+        <li><button type="button" class="chapter on" data-ch="0" aria-pressed="true">
+          <span class="ch-bar" aria-hidden="true"><span></span></span>
+          <span class="ch-n" aria-hidden="true">01</span>
+          <span class="ch-head"><span class="ch-title">Targets</span><span class="ch-tag">You are here</span></span>
+          <span class="ch-text">Choose the muscles to build, then set any of them to focus or maintain.</span>
+        </button></li>
+        <li><button type="button" class="chapter" data-ch="1" aria-pressed="false">
+          <span class="ch-bar" aria-hidden="true"><span></span></span>
+          <span class="ch-n" aria-hidden="true">02</span>
+          <span class="ch-head"><span class="ch-title">Nutrition</span><span class="ch-tag">Optional</span></span>
+          <span class="ch-text">Calories and protein to match the training. Skip it if you only want workouts.</span>
+        </button></li>
+        <li><button type="button" class="chapter" data-ch="2" aria-pressed="false">
+          <span class="ch-bar" aria-hidden="true"><span></span></span>
+          <span class="ch-n" aria-hidden="true">03</span>
+          <span class="ch-head"><span class="ch-title">Week plan</span></span>
+          <span class="ch-text">Tell ATLAS when you're busy. It fits the sessions around you and picks the exercises.</span>
+        </button></li>
+      </ol>
     </div>
-    <div class="rail-gap" aria-hidden="true"></div>
-    <div class="rail rail-end" id="focus-summary" data-scroll data-reveal="2"></div>
+
+    <div class="sub sub-focus" data-panel="focus">
+      <div class="rail rail-start" data-scroll data-reveal="0">
+        <div class="rail-head">
+          <p class="eyebrow"><span class="n">01</span> / Targets · Your muscles</p>
+          <h1 class="display" id="targets-title" tabindex="-1">Define your focus</h1>
+          <p class="lede">Begin from a program, then refine it on the sculpture.</p>
+        </div>
+        <div class="programs" id="programs"></div>
+      </div>
+      <div class="rail rail-end ledger" id="ledger" data-scroll data-reveal="2" data-empty>
+        <span class="eyebrow">Selected</span>
+        <div class="lg-count"><span class="lg-n" id="lg-n">0</span><span class="lg-noun" id="lg-noun">muscle groups</span></div>
+        <p class="lg-src" id="lg-src"></p>
+        <div class="lg-bar" id="lg-bar" aria-hidden="true">
+          <span data-f="push" style="background:var(--push)"></span><span data-f="pull" style="background:var(--pull)"></span><span data-f="legs" style="background:var(--legs)"></span><span data-f="core" style="background:var(--core)"></span>
+        </div>
+        <div class="lg-fams" id="lg-fams"></div>
+        <div class="lg-foot"><button type="button" class="quiet-btn" id="ledger-clear" hidden>Clear selection</button></div>
+      </div>
+    </div>
+
+    <div class="sub sub-train" data-panel="train">
+      <div class="train-head" data-reveal="0">
+        <p class="eyebrow"><span class="n">01</span> / Targets · Training focus</p>
+        <h1 class="train-title" id="train-title" tabindex="-1">Where the <em>work</em> goes.</h1>
+        <p class="train-lede">Focus gets more weekly sets and days. Maintain keeps the minimum and is trimmed first when your week is short.</p>
+      </div>
+      <div class="train-totals" data-reveal="1">
+        <span class="tt-sets">≈ <span id="tt-sets">0</span></span><span class="tt-label">sets a week to start</span>
+        <span class="tt-mix" id="tt-mix"></span>
+      </div>
+      <div class="train-body" data-scroll data-reveal="2">
+        <div class="train-list" id="train-list"></div>
+        <div id="train-note"></div>
+      </div>
+    </div>
   </section>
 
   <!-- The body's stage, one layer behind every stage (z-index puts it
        there; it comes after Targets in the source so the keyboard meets
-       the programs and the focus summary before the muscles). The page
+       the programs and the selection before the muscles). The page
        talks to AnatomyStage; the renderer it mounts into the viewport
        draws everything inside it. -->
   <div class="anatomy-stage" id="anatomy-stage">
+    <!-- The movement's name, very large and very quiet, behind the body. -->
+    <div class="flow-ground" aria-hidden="true"><span data-w="how">Method</span><span data-w="focus">Muscles</span><span data-w="train">Emphasis</span></div>
     <!-- What the start screen draws under the body (start.js). -->
     <div class="start-ground" aria-hidden="true">
       <div class="start-ink"></div>
