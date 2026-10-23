@@ -30,7 +30,7 @@ Three movements, each its own framing of the sculpture: **How it works**, where 
 ### 03 · Week plan — fit it into your life
 - **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days, how the week is split and how long you have trained. Notes say what fits and what won't (an estimate).
 - **Shape your week.** A full-width calendar: drag down a day to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and whether meals go on the calendar.
-- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts; busy hours block training, not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet.
+- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts; busy hours block training, not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet. A reload comes back to the same stage; each new visit opens with a short start screen first, then goes back to where you were.
 
 Every calorie, protein and progress figure is labelled an **estimate**, shows how it was worked out, and never promises a physique by a date.
 
@@ -80,7 +80,7 @@ js/
   storage.js        saving the routine in the browser, and restoring it
   anatomy*.js       the anatomy figure, its regions, cartography and camera, and its stage
   stages.js         moving between stages: motion between, stillness within
-  start.js          the start screen: five openings, one per load, that hand over to the stage
+  start.js          the start screen: five openings, one per visit, that hand over to the stage
   targets.js, nutrition-view.js, week-view.js, workout-view.js
                     the stages (Targets in three movements); workout-view.js is a session in full
   render.js, paint.js, app.js

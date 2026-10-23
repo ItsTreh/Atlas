@@ -12,8 +12,9 @@
 
    A change of movement is a Stages.relayout, so it moves the way a change
    of stage does: out, the camera travels to the movement's framing
-   (SCULPTURE_SHOTS "targets-…"), in. The page opens on How it works;
-   coming back from a later stage lands on Training focus.
+   (SCULPTURE_SHOTS "targets-…"), in. A first visit opens on How it
+   works, a reload where the user was; coming back from a later stage
+   lands on Training focus.
 
    Every part is a view of one MuscleSelection (routine.selection): the
    figure, the programs, what is chosen and the training focus. None of
@@ -600,15 +601,18 @@ selection.onChange(() => {
 
 Stages.register("targets", {
   arrive() {
-    // The page opens on How it works; coming back from a later stage
-    // lands on Training focus, unless nothing is chosen any more.
-    const back = !!Stages.from;
-    flow.sub = back && !selection.isEmpty() ? "train" : "how";
+    // The page opens where the user was (Stages.at), else on How it works;
+    // coming back from a later stage lands on Training focus, unless
+    // nothing is chosen any more.
+    const back = !!Stages.from, empty = selection.isEmpty();
+    const at = FLOW_SUBS.includes(Stages.at) && !(Stages.at === "train" && empty) ? Stages.at : null;
+    flow.sub = at || (back && !empty ? "train" : "how");
     flow.chapter = 0;
     setFlowDir(back ? -1 : 1);
     paintSub();
   },
   enter: renderTargets,
+  place: () => flow.sub,
   shot: () => flow.sub === "how" ? "targets-how" + flow.chapter : flow.sub === "train" ? "targets-train" : "targets",
   // How it works shows the figure; it is not yet the figure to pick on.
   interactive: () => flow.sub !== "how",
