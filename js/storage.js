@@ -41,3 +41,36 @@ function loadRoutine(routine) {
     return false;   // corrupt or foreign data under this key — start clean, not broken
   }
 }
+
+/* Where the user is: the stage, and the view's own place in it (Targets'
+   movement), so a reload opens there. Kept beside the routine, and read
+   only when the routine was restored. */
+const PLACE_KEY = "atlas.place";
+
+function savePlace(place) {
+  try { localStorage.setItem(PLACE_KEY, JSON.stringify(place)); } catch {}
+}
+
+/** The place last saved, { stage, at }, or null. Stages checks it still makes sense. */
+function loadPlace() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PLACE_KEY));
+    return p && typeof p.stage === "string" ? { stage: p.stage, at: typeof p.at === "string" ? p.at : null } : null;
+  } catch {
+    return null;
+  }
+}
+
+/* A new visit or a reload: the tab keeps a mark (sessionStorage) until it
+   is closed. The start screen greets a new visit; a reload goes straight
+   back to where the user was. */
+const VISIT_KEY = "atlas.visit";
+
+/** True on the first load in this tab; marks the tab, so its reloads are not. */
+function newVisit() {
+  try {
+    if (sessionStorage.getItem(VISIT_KEY)) return false;
+    sessionStorage.setItem(VISIT_KEY, "1");
+  } catch {}
+  return true;
+}

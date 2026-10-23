@@ -200,9 +200,11 @@ routine.selection.onChange(() => saveRoutine(routine));
 if (restored) saveRoutine(routine);
 
 paintThemeButton();
-/* The start screen (start.js) plays first when the sculpture can move its
-   camera: the stage is drawn beneath it, held, and comes in as it hands over. */
-Stages.start(restored && routine.sessions.length ? "plan"
-           : restored && !routine.selection.isEmpty() ? "nutrition"
-           : "targets", StartScreen.plays());
+/* The page opens where the user was (storage.js, loadPlace): a first visit
+   on Targets, at How it works. A new visit is greeted by the start screen
+   (start.js) when the sculpture can move its camera: the stage is drawn
+   beneath it, held, and comes in as it hands over. A reload goes straight
+   back. */
+const savedPlace = restored ? loadPlace() : null;
+Stages.start(savedPlace ? savedPlace.stage : "targets", StartScreen.plays(newVisit()), savedPlace && savedPlace.at);
 StartScreen.play();

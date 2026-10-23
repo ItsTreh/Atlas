@@ -55,12 +55,16 @@ const Stages = {
   opening: false, // while the start screen holds the page (start.js)
   queued: null,   // a relayout asked for while busy, run when the change lands
   from: null,     // the stage a change came from, as the new one arrives
+  at: null,       // where in the stage the page opens (a saved place), as it arrives
   views: {},
 
   /**
    * A stage's view:
    *   arrive()      set up for arriving from elsewhere (before enter;
-   *                 Stages.from is where from, null as the page opens)
+   *                 Stages.from is where from, null as the page opens,
+   *                 when Stages.at is the saved place to open on, or null)
+   *   place()       where the user is within the stage, saved so a reload
+   *                 opens there (a string, or nothing)
    *   enter()       draw it, as it is entered or rearranged (before it is shown)
    *   shot()        the sculpture's shot (SCULPTURE_SHOTS), default the stage
    *   dim()         how strongly the sculpture shows, 0–1, default 1
@@ -83,22 +87,26 @@ const Stages = {
   can(name) { return name !== "plan" || !routine.selection.isEmpty(); },
 
   /**
-   * Shows a stage at once, with no motion: where the page opens. `held`
-   * leaves its interface out for the start screen, until open().
+   * Shows a stage at once, with no motion: where the page opens, at `at`
+   * within it (the view's saved place). `held` leaves its interface out for
+   * the start screen, until open().
    */
-  start(name, held = false) {
-    if (!this.can(name)) name = "targets";
+  start(name, held = false, at = null) {
+    if (!STAGE_ORDER.includes(name) || !this.can(name)) name = "targets";
     this.current = name;
     this.opening = held;
     this.from = null;
+    this.at = at;
     this.paintStage();
     this.call("arrive");
+    this.at = null;
     this.call("enter");
     this.phase = held ? "out" : "idle";
     this.root.dataset.phase = this.phase;
     if (held) delete this.root.dataset.shown;
     else { this.root.dataset.shown = ""; delete this.root.dataset.opening; }
     this.refresh();
+    this.remember();
   },
 
   /**
@@ -202,8 +210,18 @@ const Stages = {
     for (const pane of [el, ...el.querySelectorAll("[data-scroll]")]) pane.scrollTop = 0;
   },
 
-  /** Focus follows the user to the new screen when it was left behind on the old one. */
+  /** Saves where the user is, for a reload (storage.js). */
+  remember() {
+    const at = this.call("place");
+    savePlace({ stage: this.current, at: typeof at === "string" ? at : null });
+  },
+
+  /**
+   * The change has landed: it is remembered, and focus follows the user to
+   * the new screen when it was left behind on the old one.
+   */
   landed() {
+    this.remember();
     const active = document.activeElement;
     const lost = !active || active === document.body || !active.isConnected ||
       !!active.closest(".stage:not(.is-current)") || active.offsetParent === null;

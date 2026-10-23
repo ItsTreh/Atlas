@@ -1,10 +1,11 @@
 /* ===========================================================================
    Start screen — the way in.
 
-   Before the first stage, the page opens on the sculpture in one of five
-   ways (START_VARIANTS), a different one each time it loads: the next of a
-   shuffled round, so every variant is seen once before any comes back.
-   index.html?start=<variant> opens on that one; ?start=off skips it.
+   A hello: each new visit (not a reload, storage.js newVisit) opens on the
+   sculpture in one of five ways (START_VARIANTS), a different one each
+   time: the next of a shuffled round, so every variant is seen once before
+   any comes back. index.html?start=<variant> opens on that one, reload or
+   not; ?start=off skips it.
 
      cinematic   the figure from below, left; ATLAS and Begin beside it
      torso       the chest rising out of the bottom edge; ATLAS above it
@@ -63,9 +64,14 @@ const StartScreen = {
   get el() { return $("start"); },
   get still() { return matchMedia("(prefers-reduced-motion: reduce)").matches; },
 
-  /** True when the start screen can play: the sculpture has a camera to move. */
-  plays() {
-    return new URLSearchParams(location.search).get("start") !== "off" &&
+  /**
+   * True when the start screen plays: on a new visit (not a reload), or
+   * when ?start=<variant> asks for one, and only when the sculpture has a
+   * camera to move.
+   */
+  plays(fresh = true) {
+    const asked = new URLSearchParams(location.search).get("start");
+    return asked !== "off" && (fresh || START_VARIANTS.includes(asked)) &&
       typeof figure === "object" && figure.moves;
   },
 
