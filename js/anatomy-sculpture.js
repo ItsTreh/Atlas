@@ -282,7 +282,8 @@ class AnatomySculpture {
     this.mapAnnotation = document.createElement("div");
     this.mapAnnotation.className = "cartography-annotation";
     this.mapAnnotation.setAttribute("aria-hidden", "true"); // the caption announces the same information
-    this.mapAnnotation.innerHTML = '<svg class="cartography-leader"><path/><circle r="2"/></svg>' +
+    this.mapAnnotation.innerHTML = '<svg class="cartography-leader"><path pathLength="1"/>' +
+      '<circle class="cartography-halo" r="7"/><circle class="cartography-pin" r="3"/></svg>' +
       '<div class="cartography-label"><span class="cartography-label-group"></span>' +
       '<span class="cartography-label-name"></span><span class="cartography-label-action"></span></div>';
     this.container.append(this.canvas, this.mapAnnotation, ...this.groups);
@@ -870,52 +871,111 @@ class AnatomySculpture {
     gl.bindVertexArray(null);
   }
 
+  /**
+   * The label beside the body names the muscle pointed at. Its leader is a
+   * straight rule from a still point on the muscle (labelAnchor) that runs
+   * on into the label's own top rule, so it holds still while the pointer
+   * wanders over the muscle and only redraws for the next one. With the
+   * figure stepped aside (Training focus) there is no room beside it: the
+   * label becomes a small tag on the body, over the point (.compact).
+   */
   drawAnnotation() {
     const root = this.mapAnnotation, muscle = MUSCLE_BY_ID.get(this.hovered);
     const shot = this.live(), { cw, ch } = this.size;
     const bounds = this.model.bounds;
     const k = ch / (2 * shot.d * Math.tan(shot.fov * Math.PI / 360));
     const halfWidth = (bounds.max[0] - bounds.min[0]) * k * 0.5;
+    const compact = Math.abs(shot.sx - 0.5) > 0.1;
     // Only use the space between the sculpture and rails; small screens keep
     // the existing caption instead of putting a floating panel over the body.
     const width = Math.min(174, cw * 0.5 - SCULPTURE_LABEL_CLEAR - halfWidth - 24);
     const show = muscle && this.interactive && this.calm() && !this.previewing &&
-      !this.mobile && width >= 124 && (this.pointer || this.focused);
+      !this.mobile && (compact || width >= 124) && (this.pointer || this.focused);
     root.classList.toggle("visible", !!show);
-    if (!show) return;
-    let anchor = this.mapPointer;
+    if (!show) { this.labelSide = null; delete root.dataset.muscle; return; }
+    const center = shot.sx * cw;
+    let anchor;
     if (this.focused) {
       const hit = this.hits.get(this.focused.view + ":" + this.focused.id);
       if (!hit) { root.classList.remove("visible"); return; }
       anchor = [parseFloat(hit.style.left), parseFloat(hit.style.top)];
+      this.labelSide = { id: muscle.id, left: anchor[0] < center, anchor };
+    } else {
+      // The side and the point are chosen when a muscle is first pointed at
+      // and kept while the pointer stays on it: crossing the midline of the
+      // abs doesn't fling the label to the other side of the body.
+      const side = this.labelSide;
+      if (!side || side.id !== muscle.id || !side.anchor) {
+        const left = side && side.id === muscle.id ? side.left : this.pointer[0] < center;
+        this.labelSide = { id: muscle.id, left, anchor: this.labelAnchor(muscle.id, this.pointer, left, center) };
+      }
+      anchor = this.labelSide.anchor || this.pointer;
     }
-    // The side is chosen when a muscle is first pointed at and kept while the
-    // pointer stays on it: crossing the midline of the abs doesn't fling the
-    // label to the other side of the body.
-    const center = shot.sx * cw;
-    if (!this.labelSide || this.labelSide.id !== muscle.id) this.labelSide = { id: muscle.id, left: anchor[0] < center };
     const left = this.labelSide.left;
-    const x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
-    const y = Math.max(100, Math.min(ch - 170, anchor[1] - 18));
+    const [ax, ay] = anchor.map(Math.round);
+    let x, y, d;
+    if (compact) {
+      // Over the point, or under it near the top; kept on the body.
+      const below = ay < 150;
+      x = Math.max(center - halfWidth + 70, Math.min(center + halfWidth - 70, ax));
+      y = below ? ay + 16 : ay - 16;
+      d = "M" + (ax + .5) + " " + ay + " L" + (x + .5) + " " + y;
+    } else {
+      x = left ? center - halfWidth - 24 - width : center + halfWidth + 24;
+      y = Math.max(100, Math.min(ch - 120, ay));
+      const end = left ? x + width : x, knee = end + (left ? 28 : -28);
+      // Level with the point; where the label can't be, it bends just before
+      // it. On the half pixel, so the 1 px rule meets the label's own crisply.
+      d = "M" + ax + " " + (ay + .5) + (y === ay ? " H" + end : " H" + knee + " L" + end + " " + (y + .5));
+    }
     // Drawn with every frame while the traces flow: write only what changed.
-    const drawn = [muscle.id, this.hoveredRegion, this.detailMode, this.selection.has(muscle.id),
-      width, x, y, anchor[0], anchor[1]].join();
+    const selected = this.selection.has(muscle.id), priority = selected ? this.selection.priority(muscle.id) : "";
+    const drawn = [muscle.id, this.hoveredRegion, this.detailMode, selected, priority, compact,
+      width, x, y, ax, ay].join();
     if (drawn === this.annotationDrawn) return;
     this.annotationDrawn = drawn;
+    // The label wears the muscle's family and its priority once one is set;
+    // each new muscle draws its leader and writes itself in (css: .swap).
+    if (root.dataset.muscle !== muscle.id) { root.classList.remove("swap"); void root.offsetWidth; root.classList.add("swap"); }
+    root.dataset.muscle = muscle.id;
+    root.dataset.family = muscle.family;
+    root.dataset.priority = priority;
+    root.dataset.side = compact ? (y > ay ? "below" : "above") : left ? "left" : "right";
+    root.toggleAttribute("data-selected", selected);
+    root.classList.toggle("compact", compact);
     const label = root.querySelector(".cartography-label");
-    label.style.width = width + "px";
-    label.style.transform = "translate(" + x + "px," + y + "px)";
+    label.style.width = compact ? "" : width + "px";
+    label.style.transform = "translate(" + x + "px," + y + "px)" +
+      (compact ? (y > ay ? " translate(-50%, 0)" : " translate(-50%, -100%)") : "");
     const name = this.detailMode && this.hoveredRegion ? this.hoveredRegion.replace(/-/g, " ") : muscle.name;
     root.querySelector(".cartography-label-group").textContent =
       (this.detailMode ? muscle.name + " / " : "") + FAMILIES[muscle.family].name;
     root.querySelector(".cartography-label-name").textContent = name;
-    root.querySelector(".cartography-label-action").textContent = this.selection.has(muscle.id)
+    root.querySelector(".cartography-label-action").textContent = selected
       ? "Selected · click to remove" : "Click to select";
-    const end = left ? x + width : x;
-    root.querySelector("path").setAttribute("d", "M" + anchor[0] + " " + anchor[1] +
-      " L" + (end + (left ? 16 : -16)) + " " + y + " H" + end);
-    const dot = root.querySelector("circle");
-    dot.setAttribute("cx", anchor[0]); dot.setAttribute("cy", anchor[1]);
+    root.querySelector("path").setAttribute("d", d);
+    for (const c of root.querySelectorAll("circle")) { c.setAttribute("cx", ax + (compact ? .5 : 0)); c.setAttribute("cy", ay + (compact ? 0 : .5)); }
+  }
+
+  /**
+   * A still point on muscle `id` for the label's leader: the middle of the
+   * part of it near `pointer` on the label's side of the body, moved well
+   * inside it. Null until the region buffer shows the body as drawn.
+   */
+  labelAnchor(id, pointer, left, center) {
+    const t = this.idTarget, pixels = t && t.pixels.live;
+    if (!pixels || !this.still()) return null;
+    const reach = 220, [px, py] = pointer;
+    let n = 0, sx = 0, sy = 0;
+    for (let y = Math.max(0, Math.round(py - reach)); y < Math.min(t.h, py + reach); y += 2)
+      for (let x = Math.max(0, Math.round(px - reach)); x < Math.min(t.w, px + reach); x += 2) {
+        if ((x < center) !== left) continue;
+        const r = pickedRegion(pixels, ((t.h - 1 - y) * t.w + x) * 4);
+        if (r >= 0 && this.muscleOf[r] === id) { n++; sx += x; sy += y; }
+      }
+    // Nothing of it on that side (a muscle seen on one side only): wherever it is.
+    if (!n) return this.muscleAt(px, py) === id ? this.nearestPixel(id, px, py, "live") : null;
+    return this.nearestPixel(id, sx / n, sy / n, "live");
   }
 
   setModelUniforms(u) {
