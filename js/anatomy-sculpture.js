@@ -29,6 +29,8 @@
    behind it. turnTo() walks it the half circle between them; a sideways
    drag turns it a little either side (SCULPTURE_TURN) and turnTo() on the
    same view turns it back exactly. Every other stage is one fixed shot.
+   Targets has more than one framing (its movements, targets.js): each is
+   a shot with a Front and a Back, and the turn keeps to the framing.
 
      front 0° ─ drag ±25° ─┐            ┌─ drag ±25° ─ back 180°
                            └─ the turn ─┘
@@ -79,6 +81,13 @@ const SCULPTURE_VIEWS = [
 const SCULPTURE_SHOTS = {
   "targets-front":     { az: 0,   el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
   "targets-back":      { az: 180, el: 2,   ty: 79,  d: 615, sx: .50, sy: .475, fov: 20 },
+  // Targets' movements (targets.js). How it works acts out each stage as
+  // its chapter is read, the figure stepped right; Training focus steps it left.
+  "targets-how0":       { az: -24, el: 3,   ty: 80,  d: 640, sx: .76, sy: .50,  fov: 20 },
+  "targets-how1":       { az: -18, el: -24, ty: 120, d: 320, sx: .76, sy: .44,  fov: 20 },
+  "targets-how2":       { az: 36,  el: -6,  ty: 114, d: 330, sx: .76, sy: .50,  fov: 20 },
+  "targets-train-front": { az: 0,  el: 2,   ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
+  "targets-train-back":  { az: 180, el: 2,  ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
   "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .19, sy: .40,  fov: 20 },
   "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
   "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
@@ -254,6 +263,7 @@ class AnatomySculpture {
     this.interactive = true;                 // the selection shows and the pointer picks
     this.focused = null;                     // { view, id } while a muscle has keyboard focus
     this.hits = new Map();                   // "view:id" → its checkbox
+    this.hitsFraming = null;                 // the Targets framing they were placed for
     this.view = SCULPTURE_VIEWS[0];          // the view Targets turns to, or is turning to
     this.mobile = false;                     // the phone framing (setLayout)
     this.shotName = this.resolve(opts.shot || "targets");
@@ -408,8 +418,14 @@ class AnatomySculpture {
 
   /* ------------------------------- camera -------------------------------- */
 
-  /** "targets" is whichever of Front and Back the body is turned to. */
-  resolve(name) { return name === "targets" ? "targets-" + this.view.id : name; }
+  /** A framing ("targets", "targets-train") is whichever of its Front and Back the body is turned to. */
+  resolve(name) { const v = name + "-" + this.view.id; return SCULPTURE_SHOTS[v] ? v : name; }
+
+  /** The framing a shot belongs to, when it has a Front and a Back; null if not. */
+  framing(name = this.shotName) {
+    const f = name.replace(/-(front|back)$/, "");
+    return f !== name && SCULPTURE_SHOTS[f + "-front"] ? f : null;
+  }
 
   /** A shot's camera in this figure's units, framed for the layout. */
   shotParams(name = this.shotName) {
@@ -597,7 +613,9 @@ class AnatomySculpture {
     name = this.resolve(name);
     if (name === this.shotName && !this.offTween && !this.off && !this.between) return;
     this.goShot(name);
-    if (this.hitsDue && name.startsWith("targets")) this.placeHitsSoon();
+    // The checkboxes sit where this framing shows each muscle.
+    const f = this.framing(name);
+    if (f && (this.hitsDue || f !== this.hitsFraming)) this.placeHitsSoon();
   }
 
   /**
@@ -616,7 +634,8 @@ class AnatomySculpture {
     this.off = 0;
     let daz = ((to.az - from.az) % 360 + 540) % 360 - 180;
     if (dir && Math.abs(Math.abs(daz) - 180) < 1e-6) daz = 180 * dir;
-    const viewOnly = fromName.startsWith("targets") && name.startsWith("targets");
+    // Front to Back within a framing is a turn; between framings, a move.
+    const viewOnly = !!this.framing(fromName) && this.framing(fromName) === this.framing(name);
     if (this.reducedMotion && this.reducedMotion.matches) {
       this.tween = null;
       this.cur = to;
@@ -681,7 +700,7 @@ class AnatomySculpture {
     const dir = this.off > 0 ? 1 : -1;
     this.view = view;
     if (!this.shotName.startsWith("targets")) { this.onTurn(view.id, false); return; }
-    if (half) this.goShot(this.resolve("targets"), dir);
+    if (half) this.goShot(this.resolve(this.framing() || "targets"), dir);
     else this.springBack(0);
     this.onTurn(view.id, false);
   }
@@ -735,7 +754,7 @@ class AnatomySculpture {
   moved() {
     const calm = this.calm();
     this.container.classList.toggle("turning", !calm);
-    this.container.classList.toggle("off-view", Math.abs(this.off) > 0.05 || !this.shotName.startsWith("targets"));
+    this.container.classList.toggle("off-view", Math.abs(this.off) > 0.05 || this.framing() !== this.hitsFraming);
     if (!calm && !this.focused) this.hover(null);
   }
 
@@ -1198,22 +1217,25 @@ class AnatomySculpture {
   /* ------------------------------ checkboxes ------------------------------ */
 
   /**
-   * Places the checkboxes once a resize settles; it draws and searches both
-   * views. Off Targets they are inert, so a resize there (the phone's band
-   * changes height with every stage) only marks them due, for when the
-   * camera comes back to Targets (setShot). A size they were placed for
-   * already keeps them.
+   * Places the checkboxes once a resize settles, for the Targets framing
+   * the camera is in; it draws and searches both views. Off Targets they
+   * are inert, so a resize there (the phone's band changes height with
+   * every stage) only marks them due, for when the camera comes back to a
+   * framing (setShot). A size and framing they were placed for keeps them.
    */
   placeHitsSoon() {
     clearTimeout(this.hitTimer);
-    if (this.hits.size && !this.shotName.startsWith("targets")) { this.hitsDue = true; return; }
+    if (this.hits.size && !this.framing()) { this.hitsDue = true; return; }
     this.hitsDue = false;
     this.hitTimer = setTimeout(() => {
       if (!this.ready || !this.size) return;
-      const key = this.size.cw + "x" + this.size.ch + (this.mobile ? ":mobile" : "");
+      const framing = this.framing() || "targets";
+      const key = this.size.cw + "x" + this.size.ch + (this.mobile ? ":mobile" : "") + ":" + framing;
       if (this.hits.size && key === this.hitsKey) return;
-      SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams("targets-" + view.id), view.id));
+      SCULPTURE_VIEWS.forEach(view => this.renderIds(this.shotParams(framing + "-" + view.id), view.id));
+      this.hitsFraming = framing;
       this.placeHits();
+      this.moved();
       this.hitsKey = key;
       // Only placing reads the two views' buffers: no need to hold them.
       delete this.idTarget.pixels.front;
@@ -1230,7 +1252,7 @@ class AnatomySculpture {
    */
   placeHits() {
     const t = this.idTarget, { ch } = this.size;
-    const shot = this.shotParams("targets-front");
+    const shot = this.shotParams(this.hitsFraming + "-front");
     const middle = shot.sx * t.w;
     const stats = SCULPTURE_VIEWS.map(view => {
       const pixels = t.pixels[view.id], st = new Map();

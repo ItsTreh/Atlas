@@ -54,15 +54,19 @@ const Stages = {
   busy: false,
   opening: false, // while the start screen holds the page (start.js)
   queued: null,   // a relayout asked for while busy, run when the change lands
+  from: null,     // the stage a change came from, as the new one arrives
   views: {},
 
   /**
    * A stage's view:
-   *   arrive()      set up for arriving from elsewhere (before enter)
+   *   arrive()      set up for arriving from elsewhere (before enter;
+   *                 Stages.from is where from, null as the page opens)
    *   enter()       draw it, as it is entered or rearranged (before it is shown)
    *   shot()        the sculpture's shot (SCULPTURE_SHOTS), default the stage
    *   dim()         how strongly the sculpture shows, 0–1, default 1
    *   highlight()   muscle ids to light, or null
+   *   interactive() false while the sculpture is only shown, not picked
+   *                 (Targets only; default true)
    *   footer()      { back, next, skip, hint }: each a label, or empty
    *   onBack(), onNext(), onSkip()   what those do, default the stages either side
    *   wheel()       false while the stage needs the wheel for itself
@@ -86,6 +90,7 @@ const Stages = {
     if (!this.can(name)) name = "targets";
     this.current = name;
     this.opening = held;
+    this.from = null;
     this.paintStage();
     this.call("arrive");
     this.call("enter");
@@ -123,6 +128,7 @@ const Stages = {
       if (before) before();
       // What allowed the move may have changed on the way (the selection
       // cleared): then the stage stays where it is.
+      this.from = this.current;
       if (this.can(name)) this.current = name;
       this.paintStage();
       this.call("arrive");
@@ -242,7 +248,7 @@ const Stages = {
     const idle = this.phase === "idle";
     if (typeof figure === "object") {
       figure.setLayout(this.narrow ? "mobile" : "desktop");
-      figure.setInteractive(this.current === "targets" && idle);
+      figure.setInteractive(this.current === "targets" && idle && this.call("interactive") !== false);
       // While the start screen holds the page, the camera is its own.
       if (!this.opening) {
         figure.setShot(this.shot());

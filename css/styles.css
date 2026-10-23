@@ -439,6 +439,14 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 .anatomy-stage.flat .turn { display: none; }
 .atlas:not([data-stage="targets"]) .anatomy-stage.flat { visibility: hidden; }
+/* It steps aside for Targets' movements as the camera would: right of How
+   it works, left of Training focus. */
+.atlas[data-layout="desktop"][data-sub="how"] .anatomy-stage.flat .anatomy-viewport {
+  inset: 124px var(--pad) 104px calc(var(--pad) + min(58vw, 900px) + 32px);
+}
+.atlas[data-layout="desktop"][data-sub="train"] .anatomy-stage.flat .anatomy-viewport {
+  inset: 112px calc(var(--pad) + min(54vw, 780px) + 32px) 110px var(--pad);
+}
 
 /* Each view is 200 × 440, so a pair is (height ÷ 2.2) × 2 ≈ .91 × height
    wide plus the gap; 30px is left under each for its caption. */
@@ -478,13 +486,107 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* -------------------------------- targets --------------------------------- */
 
-/* The figure in the middle and a rail either side of it. The middle lets
-   the pointer through to the sculpture. */
-.stage-targets {
-  left: var(--pad); right: var(--pad); top: 112px; bottom: 100px;
-  display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr) minmax(0, 320px);
-  grid-template-rows: 100%; gap: 32px; pointer-events: none;
+/* Three movements (targets.js): How it works, Your muscles, Training
+   focus, one open at a time (data-sub), each its own framing of the figure.
+   The stage lets the pointer through to the sculpture. */
+.stage-targets { inset: 0; pointer-events: none; }
+.stage-targets .sub { position: absolute; display: none; }
+.stage-targets [hidden] { display: none !important; }
+
+/* The movements come in the way they are travelled (--fdir): forward rises
+   from below and leaves upward, back the other way round. A soft focus
+   pull rides with the fade. */
+.stage-targets [data-reveal] {
+  filter: blur(4px);
+  transition: opacity .24s ease, transform .32s var(--ease-move), filter .24s ease;
 }
+.atlas:not([data-shown]) .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * 34px)); }
+.atlas:not([data-shown])[data-phase="out"] .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * -34px)); }
+.atlas[data-shown] .stage-targets.is-current [data-reveal] {
+  filter: none;
+  transition: opacity .9s ease var(--d), transform 1.25s var(--ease-out) var(--d), filter .9s ease var(--d);
+}
+
+/* One word, very large and very quiet, behind the body: the movement's
+   name, sliding the way the movements are travelled. */
+.flow-ground { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.flow-ground span {
+  position: absolute; top: 50%; white-space: nowrap;
+  font: italic 400 min(23vw, 38vh)/1 var(--serif); letter-spacing: -.02em; color: var(--line-soft);
+  opacity: 0; transform: translate(7vw, -54%);
+  transition: opacity .7s ease, transform 2s var(--ease-move);
+}
+.flow-ground [data-w="how"] { right: 1vw; }
+.flow-ground [data-w="focus"] { left: 0; right: 0; text-align: center; }
+.flow-ground [data-w="train"] { left: 1vw; }
+.atlas[data-sub="focus"] .flow-ground [data-w="how"],
+.atlas[data-sub="train"] .flow-ground :is([data-w="how"], [data-w="focus"]) { transform: translate(-7vw, -54%); }
+.atlas[data-stage="targets"][data-sub="how"] .flow-ground [data-w="how"],
+.atlas[data-stage="targets"][data-sub="focus"] .flow-ground [data-w="focus"],
+.atlas[data-stage="targets"][data-sub="train"] .flow-ground [data-w="train"] {
+  opacity: 1; transform: translate(0, -54%);
+  transition: opacity 1.4s ease .35s, transform 2s var(--ease-move);
+}
+#atlas[data-opening] .flow-ground span { opacity: 0; transition: none; }
+
+/* The figure's own controls follow the figure: away while it only acts. */
+.figure-controls { transition-property: opacity, transform, visibility, left; }
+.atlas[data-sub="how"] .figure-controls { opacity: 0 !important; visibility: hidden !important; }
+/* On Training focus the rows do the pointing and the turning: the caption
+   goes, and Front / Back stand upright at the edge, beside the figure. */
+.atlas[data-sub="train"] .anatomy-caption { display: none; }
+.atlas[data-stage="targets"][data-sub="train"] .figure-controls { left: var(--pad); bottom: 50%; }
+.atlas[data-stage="targets"][data-shown][data-sub="train"] .figure-controls { transform: translate(0, 50%); }
+.atlas[data-sub="train"] .turn { flex-direction: column; align-items: flex-start; gap: 2px; }
+.atlas[data-sub="train"] .turn-line { width: 1px; height: 18px; margin-left: 8px; }
+.atlas[data-sub="train"] .turn button { padding: 8px; }
+
+/* ----- i: how it works. The chapters play in turn: each one's line fills
+   as it is read, and the camera shows where that stage will put it. */
+.sub-how { left: var(--pad); top: 124px; bottom: 104px; width: min(58vw, 900px); }
+.sub-how.on { display: flex; flex-direction: column; justify-content: space-between; gap: 36px; }
+.how-copy { display: flex; flex-direction: column; gap: 24px; }
+.how-title {
+  margin: 0; font: 400 clamp(52px, 6.4vw, 112px)/.9 var(--serif); letter-spacing: -.018em;
+  color: var(--ink); text-wrap: balance;
+}
+.how-title em { font-style: italic; color: var(--ink-soft); }
+.how-lede { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-soft); max-width: 44ch; text-wrap: pretty; }
+
+.chapters { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.chapter {
+  position: relative; width: 100%; display: flex; flex-direction: column; gap: 10px;
+  padding: 22px 0 4px; background: none; border: 0; text-align: left; cursor: pointer;
+  color: var(--ink); font: inherit;
+}
+.ch-bar { position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--line); overflow: hidden; }
+.ch-bar span { position: absolute; inset: 0; background: var(--ink); transform-origin: left; transform: scaleX(0); }
+.atlas[data-shown][data-phase="idle"][data-sub="how"] .chapter.on .ch-bar span { animation: chFill 6.2s linear forwards; }
+.chapters:hover .ch-bar span, .chapters:focus-within .ch-bar span { animation-play-state: paused !important; }
+@keyframes chFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.ch-n {
+  font: 400 clamp(52px, 5vw, 84px)/.85 var(--serif); letter-spacing: -.02em;
+  color: transparent; -webkit-text-stroke: 1px var(--ink-faint); font-variant-numeric: lining-nums;
+  transition: color .6s ease, transform .9s var(--ease-out);
+  transform-origin: left bottom;
+}
+.chapter.on .ch-n { color: var(--ink); -webkit-text-stroke: 1px var(--ink); transform: translateY(-4px); }
+.chapter:hover:not(.on) .ch-n { -webkit-text-stroke-color: var(--ink); }
+.ch-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ch-title { font: 600 15px/1.3 var(--font); }
+.ch-tag { font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-faint); }
+.ch-text { font-size: 13px; line-height: 1.55; color: var(--ink-faint); max-width: 30ch; text-wrap: pretty; transition: color .5s ease; }
+.chapter.on .ch-text { color: var(--ink-soft); }
+
+/* ----- ii: your muscles. The figure in the middle, where to start on the
+   left, and what is chosen on the right. */
+.sub-focus { inset: 112px var(--pad) 100px; pointer-events: none; }
+.sub-focus.on {
+  display: grid; grid-template-columns: minmax(0, 330px) minmax(0, 1fr) minmax(0, 300px);
+  grid-template-rows: 100%; gap: 32px;
+}
+.sub-focus .rail-start { grid-column: 1; }
+.sub-focus .ledger { grid-column: 3; }
 .rail {
   display: flex; flex-direction: column; max-height: 100%; overflow: auto;
   padding-right: 6px; align-self: start;
@@ -535,65 +637,143 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .program-diff[hidden] { display: none; }
 .slider .note-rule { max-width: 36ch; }
 
-/* Before anything is chosen: how ATLAS works. */
-.intro { display: flex; flex-direction: column; gap: 12px; }
-.intro-title { font: 400 32px/1.02 var(--serif); color: var(--ink); text-wrap: balance; }
-.intro p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); text-wrap: pretty; }
-.howto { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.howto li { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 0 0 20px 24px; }
-.howto li::before {
-  content: ""; position: absolute; left: 0; top: 4px; width: 9px; height: 9px; border-radius: 50%;
-  background: var(--bg); border: 1.5px solid var(--ink-faint);
-}
-.howto li.here::before { background: var(--ink); border-color: var(--ink); }
-.howto li:not(:last-child)::after {
-  content: ""; position: absolute; left: 4px; top: 13px; bottom: -4px; width: 1px; background: var(--line);
-}
-.howto-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.howto-title { font: 600 11px/1.4 var(--font); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-soft); }
-.howto li.here .howto-title { color: var(--ink); }
-.howto-tag { font-size: 11.5px; color: var(--ink-faint); }
-.howto-text { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); text-wrap: pretty; }
-.intro-start { display: flex; flex-direction: column; gap: 6px; padding-top: 16px; border-top: 1px solid var(--line);
-               font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); }
-.intro-start-title { font: 500 14px/1.4 var(--font); color: var(--ink); }
-
-/* Once something is chosen: how much, and how it is weighted. */
-.sel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.sel-count-wrap { display: flex; align-items: baseline; gap: 12px; }
-.sel-count { font: 400 76px/.85 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
-.sel-noun { font: 500 14px/1.3 var(--font); color: var(--ink-soft); }
-
-.focus { display: flex; flex-direction: column; }
-.focus-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 8px; }
-.focus-key { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
-.focus-key span { color: var(--ink); }
-.fam { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
-.fam-toggle {
-  display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 12px 0;
-  background: none; border: 0; cursor: pointer; text-align: left; color: var(--ink);
-}
-.fam-line { display: flex; align-items: baseline; gap: 10px; width: 100%; }
-.fam-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; transform: translateY(-1px); }
-.fam-name { font: 400 22px/1 var(--serif); }
-.fam-count { font: italic 500 16px/1 var(--serif); color: var(--ink-faint); }
-.fam-sets { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fam-chev { width: 14px; text-align: right; color: var(--ink-faint); flex: none; }
-.fam-names { display: flex; flex-wrap: wrap; gap: 2px 10px; padding-left: 17px; font-size: 12.5px; line-height: 1.45; }
-.fam-m { color: var(--ink-soft); }
-.fam-m[data-level="focus"] { color: var(--ink); font-weight: 600; }
-.fam-m[data-level="maintain"] { color: var(--ink-faint); }
-.fam-m .mark { font-size: 9.5px; padding-left: 3px; }
-.fam-rows { display: flex; flex-direction: column; padding: 0 0 12px 17px; }
-.fam-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-.fam-row-name { flex: 1; min-width: 0; font-size: 13.5px; color: var(--ink); }
 .row-x {
   flex: none; width: 24px; height: 24px; border-radius: 50%; border: 0; cursor: pointer;
   background: transparent; color: var(--ink-faint); font-size: 15px; line-height: 1;
 }
 .row-x:hover { background: var(--raised); color: var(--ink); }
-.fam-note { margin: 4px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); }
 
+/* What is chosen: how many, where it came from, and the families. */
+.ledger { gap: 20px; }
+/* A long selection scrolls the rail; nothing in it gives up its height (the family bar would shrink to nothing). */
+.ledger > * { flex: none; }
+.lg-count { display: flex; align-items: baseline; gap: 12px; }
+.lg-n {
+  font: 400 120px/.78 var(--serif); letter-spacing: -.035em; color: var(--ink);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.ledger[data-empty] .lg-n { color: transparent; -webkit-text-stroke: 1px var(--ink-faint); }
+.lg-noun { font: italic 400 22px/1.1 var(--serif); color: var(--ink-soft); }
+.lg-src { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); text-wrap: pretty; }
+.lg-src b { color: var(--ink); font-weight: 600; }
+.lg-bar { display: flex; gap: 3px; height: 6px; border-radius: 3px; }
+.ledger[data-empty] .lg-bar { background: var(--line-soft); }
+.lg-bar span { flex: 0 1 0; min-width: 0; border-radius: 3px; transition: flex-grow .9s var(--ease-out); }
+.lg-fams { display: flex; flex-direction: column; }
+.lf {
+  --fam-ink: var(--ink);
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 0; border-top: 1px solid var(--line-soft); cursor: default;
+  transition: padding .4s var(--ease-out);
+}
+.lf[data-family="push"] { --fam-ink: var(--push-trace); }
+.lf[data-family="pull"] { --fam-ink: var(--pull-trace); }
+.lf[data-family="legs"] { --fam-ink: var(--legs-trace); }
+.lf[data-family="core"] { --fam-ink: var(--core-trace); }
+.lf.new { animation: lfIn .7s var(--ease-out) both; animation-delay: calc(var(--i) * 70ms); }
+@keyframes lfIn { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+.lf-top { display: flex; align-items: center; gap: 8px; font: 600 13px/1.3 var(--font); }
+.lf-n { margin-left: auto; font: 400 22px/1 var(--serif); font-variant-numeric: lining-nums; }
+.lf-ms { font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); text-wrap: pretty; transition: color .25s ease; }
+.lf-name, .lf-n { transition: color .25s ease; }
+.lf:hover { padding-left: 6px; }
+.lf:hover :is(.lf-name, .lf-n) { color: var(--fam-ink); }
+.lf:hover .lf-ms { color: var(--ink); }
+.lg-foot { display: flex; justify-content: flex-start; }
+/* Training focus opening: the way on comes alive. */
+#foot-next.fresh { animation: nextOpen 1.2s var(--ease-out); }
+@keyframes nextOpen {
+  0% { transform: scale(.94); box-shadow: 0 0 0 0 var(--ink-faint); }
+  45% { box-shadow: 0 0 0 9px transparent; }
+  100% { transform: none; box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ----- iii: training focus. The figure stepped left, and each muscle's
+   priority on a dial, with the weekly sets it starts from. */
+.sub-train { top: 112px; bottom: 100px; right: var(--pad); width: min(54vw, 780px); }
+.sub-train.on { display: flex; flex-direction: column; gap: 22px; }
+.train-head { display: flex; flex-direction: column; gap: 14px; }
+.train-title { margin: 0; font: 400 clamp(44px, 4.6vw, 76px)/.94 var(--serif); letter-spacing: -.012em; color: var(--ink); }
+.train-title em { font-style: italic; }
+.train-lede { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); max-width: 58ch; text-wrap: pretty; }
+.train-totals {
+  display: flex; align-items: baseline; gap: 12px 24px; flex-wrap: wrap;
+  padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.tt-sets { flex: none; white-space: nowrap; font: 400 46px/1 var(--serif); font-variant-numeric: lining-nums; }
+.tt-label { font-size: 13px; color: var(--ink-soft); }
+.tt-mix { margin-left: auto; display: flex; gap: 18px; font-size: 12.5px; color: var(--ink-soft); }
+.tt-mix b { font: 400 22px/1 var(--serif); color: var(--ink); margin-right: 2px; font-variant-numeric: lining-nums; }
+/* The rows' cards reach 12 px past the text on each side: the scrolling
+   pane leaves them that room rather than cut them off. */
+.train-body {
+  flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 16px;
+  margin: -4px -14px 0; padding: 4px 14px 4px;
+}
+.train-list { display: flex; flex-direction: column; }
+.tg { display: flex; align-items: center; gap: 8px; padding: 18px 0 6px; }
+.tg:first-child { padding-top: 2px; }
+.tg-name { font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-faint); }
+.tg-sets { margin-left: auto; font-size: 12px; color: var(--ink-faint); }
+.tr {
+  --fam: var(--ink-soft); --fam-ink: var(--ink);
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto 140px 24px; align-items: center; gap: 18px;
+  padding: 9px 12px; margin: 0 -12px; border-radius: var(--r-lg); background: transparent;
+  transition: background .3s ease, box-shadow .3s ease;
+}
+.tr[data-family="push"] { --fam: var(--push); --fam-ink: var(--push-trace); }
+.tr[data-family="pull"] { --fam: var(--pull); --fam-ink: var(--pull-trace); }
+.tr[data-family="legs"] { --fam: var(--legs); --fam-ink: var(--legs-trace); }
+.tr[data-family="core"] { --fam: var(--core); --fam-ink: var(--core-trace); }
+/* Pointed at (here or on the body): the row lifts onto a card, its name
+   takes the family's ink and steps aside for the family's mark, and its
+   sets bar runs in the family's hue. */
+.tr:hover, .tr.pointed {
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 6px 18px -10px rgba(20,24,28,.22);
+}
+.tr-name {
+  display: flex; align-items: center; gap: 0; min-width: 0;
+  font: 400 23px/1.1 var(--serif); color: var(--ink);
+  transition: gap .45s var(--ease-out), color .3s ease;
+}
+.tr-name::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--fam);
+  transform: scale(0); margin-right: -8px; transition: transform .45s var(--ease-out), margin .45s var(--ease-out);
+}
+.tr:is(:hover, .pointed) .tr-name { gap: 10px; color: var(--fam-ink); }
+.tr:is(:hover, .pointed) .tr-name::before { transform: scale(1); margin-right: 0; }
+.tr:is(:hover, .pointed) .tr-bar span { background: var(--fam); }
+.tr:is(:hover, .pointed) .tr-v b { color: var(--fam-ink); }
+.atlas[data-shown] .sub-train.on .train-list:not(.calm) .tr { animation: trIn .8s var(--ease-out) both; animation-delay: calc(.4s + var(--i) * 32ms); }
+@keyframes trIn { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+.dial {
+  position: relative; display: grid; grid-template-columns: repeat(3, 78px); padding: 3px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.dial-thumb {
+  position: absolute; top: 3px; bottom: 3px; left: 3px; width: 78px; border-radius: var(--r-sm);
+  background: var(--card); box-shadow: 0 0 0 1px var(--ink-faint), 0 1px 2px rgba(20,24,28,.04);
+  transition: transform .55s var(--ease-out), background .35s ease, box-shadow .35s ease;
+}
+.tr[data-level="normal"] .dial-thumb { transform: translateX(100%); }
+.tr[data-level="focus"] .dial-thumb { transform: translateX(200%); background: var(--accent); box-shadow: none; }
+.dial button {
+  position: relative; z-index: 1; background: none; border: 0; padding: 6px 0; cursor: pointer;
+  font: 600 12px/1.2 var(--font); color: var(--ink-soft); border-radius: var(--r-sm); transition: color .3s ease;
+}
+.dial button:hover, .dial button[aria-checked="true"] { color: var(--ink); }
+.tr[data-level="focus"] .dial [data-priority="focus"] { color: var(--accent-ink); }
+.tr-sets { display: flex; flex-direction: column; gap: 6px; }
+.tr-bar { height: 4px; border-radius: 2px; background: var(--line-soft); overflow: hidden; }
+.tr-bar span {
+  display: block; height: 100%; border-radius: 2px; background: var(--ink-soft);
+  transform-origin: left; transform: scaleX(0); transition: transform .9s var(--ease-out), background .35s ease;
+}
+.atlas[data-shown] .tr-bar span { transform: scaleX(var(--w, 0)); }
+.tr[data-level="focus"] .tr-bar span { background: var(--ink); }
+.tr[data-level="maintain"] .tr-bar span { background: var(--ink-faint); }
+.tr-v { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.tr-v b { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .field-note { font-size: 12px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
 
 /* What it will take: two figures, and the reasoning on demand. */
@@ -1119,11 +1299,30 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 
 @media (max-width: 1239px) and (min-width: 760px) and (orientation: landscape), (min-width: 1000px) and (max-width: 1239px) {
   :root { --pad: 32px; }
-  /* A 280 px rail has no room for a name beside the priority control. */
-  .fam-row { flex-wrap: wrap; }
-  .fam-row-name { flex-basis: 100%; }
-  .stage-targets { grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 280px); gap: 24px; }
   .display { font-size: 42px; }
+  .sub-focus.on { grid-template-columns: minmax(0, 290px) minmax(0, 1fr) minmax(0, 260px); gap: 24px; }
+  .lg-n { font-size: 96px; }
+  /* No room for the sets beside the dial: they go under it. */
+  .tr { grid-template-columns: minmax(0, 1fr) auto 24px; }
+  .tr-sets { grid-column: 1 / -1; grid-row: 2; flex-direction: row; align-items: center; gap: 12px; }
+  .tr-bar { flex: 1; }
+  .chapters { gap: 20px; }
+}
+/* Short screens: the same layout, tighter, so How it works and Training focus fit above the footer. */
+@media (max-height: 760px) and (min-width: 760px) {
+  .sub-how { top: 100px; bottom: 96px; }
+  .sub-how.on { gap: 14px; justify-content: flex-start; overflow: hidden; }
+  .how-lede { font-size: 13.5px; }
+  .how-copy { gap: 14px; }
+  .how-title { font-size: clamp(44px, 5vw, 76px); }
+  .ch-n { font-size: 38px; }
+  .chapter { gap: 5px; padding-top: 12px; }
+  .ch-text { font-size: 12px; line-height: 1.45; }
+  .sub-train, .sub-focus { top: 96px; bottom: 92px; }
+  .sub-train.on { gap: 14px; }
+  .train-title { font-size: 44px; }
+  .train-totals { padding: 10px 0; }
+  .tt-sets { font-size: 36px; }
 }
 @media (max-width: 1179px) {
   .goals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1292,13 +1491,32 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .stage-foot .btn { padding: 11px 16px; }
 
   .stage-targets {
-    left: 0; right: 0; top: calc(var(--bar) + 52vh); bottom: 64px;
-    display: flex; flex-direction: column; gap: 32px;
-    overflow: auto; padding: 20px 20px 32px; pointer-events: auto;
+    inset: auto; left: 0; right: 0; top: calc(var(--bar) + 52vh); bottom: 64px;
+    display: flex; flex-direction: column; gap: 22px;
+    overflow: auto; padding: 16px 20px 32px; pointer-events: auto;
+    transition: top .9s var(--ease-move);
   }
   .rail { max-height: none; overflow: visible; padding-right: 0; }
-  .rail-gap { display: none; }
   .display { font-size: 40px; }
+  /* How it works gives the figure a shorter band and the chapters the room. */
+  .atlas[data-stage="targets"][data-sub="how"] .anatomy-stage { height: 30vh; }
+  .atlas[data-sub="how"] .stage-targets { top: calc(var(--bar) + 30vh); }
+  .stage-targets .sub { position: static; width: auto; inset: auto; }
+  .sub-how.on, .sub-train.on { display: flex; }
+  .sub-focus.on { display: flex; flex-direction: column; gap: 32px; }
+  .chapters { grid-template-columns: 1fr; gap: 18px; }
+  .ch-n { font-size: 44px; }
+  .train-body { overflow: visible; margin: 0; padding: 0; }
+  .tr { grid-template-columns: minmax(0, 1fr) 24px; gap: 10px 12px; }
+  .dial { grid-column: 1 / -1; grid-row: 2; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dial-thumb { width: calc((100% - 6px) / 3); }
+  .tr-sets { grid-column: 1 / -1; grid-row: 3; }
+  .tt-mix { margin-left: 0; }
+  .flow-ground { display: none; }
+  .atlas[data-stage="targets"][data-sub="train"] .figure-controls { left: 50%; bottom: 0; }
+  .atlas[data-stage="targets"][data-shown][data-sub="train"] .figure-controls { transform: translate(-50%, 0); }
+  .atlas[data-sub="train"] .turn { flex-direction: row; align-items: center; }
+  .atlas[data-sub="train"] .turn-line { width: 22px; height: 1px; margin: 0; }
 
   .stage-nutrition {
     left: 0; right: 0; width: auto; top: calc(var(--bar) + 28vh); bottom: 64px;
@@ -1349,4 +1567,9 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .anatomy-stage, .program, .pip span, .tab-line, .stage-nav button::after, .turn button,
   .meal-card, .stop-dot, .meal-segs .seg, .plan-ghost, .session, .tile, .switch, .switch i { transition: none; }
   .tiles.shuffle :is(.tile-name, .tile-dots, .tile-meta) { animation: none; }
+  .stage-targets [data-reveal], .atlas[data-shown] .stage-targets.is-current [data-reveal],
+  .atlas:not([data-shown]) .stage-targets [data-reveal] { transform: none; filter: none; }
+  .chapter.on .ch-bar span { animation: none !important; transform: scaleX(1); }
+  .flow-ground span { transition: opacity .3s ease; }
+  .lf.new, .tr, #foot-next.fresh { animation: none !important; }
 }

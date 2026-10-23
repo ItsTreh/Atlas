@@ -126,17 +126,32 @@ is unchanged.
   it does, what was added or removed if edited, and *Apply X →* or *Reset
   to X*. Pointing at the arrows, a dot or the action previews that program
   on the sculpture.
-- **Nothing selected at first.** The right rail explains how ATLAS works
-  (Targets · Nutrition, optional · Week plan) and how to begin. The
-  sculpture stays blank until a program is pointed at.
-- Once something is selected, the right rail shows:
-  - the count in large serif type, and Clear;
-  - the **training focus grouped by family**, with priority marks (▲ focus,
-    ▼ maintain) and expandable rows that set each muscle's priority;
-  - **What it will take**, collapsed to its two figures, with the reasoning
-    on demand. Hidden for now (`SHOW_ESTIMATE` in `js/targets.js`) and kept
-    for a later stage, likely an end-of-plan summary.
 - Caption and Front / Back under the body, centred and low.
+
+**Three movements (design "Targets in three movements", 2026-10-22).** The
+stage opens in three framings of the figure, one at a time (`data-sub` on
+`#atlas`), and a change between them is a `Stages.relayout`: out, the
+camera travels, in. A very large, quiet word behind the body names each
+(Method, Muscles, Emphasis).
+1. **How it works.** The figure stepped right; the title, and the three
+   chapters (Targets · Nutrition, optional · Week plan). Each chapter's line
+   fills as it is read, then the next plays, and the camera goes where that
+   stage will put it (`targets-how0…2`). Pointing at or focusing a chapter
+   plays it. The figure is shown, not picked (`interactive()` false), and
+   its controls are away. The page opens here when it opens on Targets.
+2. **Your muscles.** The figure in the middle, the programs on the left (as
+   above), and on the right what is chosen: the count, where it came from
+   (a program, edited, or your own), a bar of the families, and each
+   family's muscles; pointing at a family lights it on the body.
+3. **Training focus.** Opens once something is chosen; the figure steps
+   left (`targets-train-front/back`), with Front / Back upright beside it.
+   Every muscle by family with a three-way dial (Maintain · Normal · Focus)
+   and the weekly sets it starts from. Resting on a row lights its muscle
+   and turns the body to the side that shows it; pointing at a muscle on
+   the body marks its row. Coming back from a later stage lands here.
+
+**What it will take** (`estimateHTML` in `js/targets.js`) is drawn nowhere
+for now and kept for a later stage, likely an end-of-plan summary.
 
 **Kept from the app** (the prototype skipped or simplified these):
 - `MuscleSelection` stays the one source of truth, so the program's
@@ -146,12 +161,12 @@ is unchanged.
   a selection of their own (not from a program), ← and → only show programs
   until one is applied. Once the selection follows a program, they switch
   directly, as in the design.
-- Removing a muscle from the summary (× in an expanded family). This is
-  for keyboard users and the SVG fallback, as well as the figure.
+- Removing a muscle from Training focus (× on its row). This is for
+  keyboard users and the SVG fallback, as well as the figure.
 - **Training experience** first lived here, in the right rail, and has since
   moved to the Week plan setup, beside Days a week and Split (your call,
   2026-10-20): it is about how you train, not which muscles. It still sets
-  each muscle's starting weekly sets, which the family rows show
+  each muscle's starting weekly sets, which Training focus shows
   (`weeklyTarget`, before the week fits them to your time).
 - The estimate is the real one (`estimateTraining`): sets, time, sessions,
   how often each muscle trains, the progress phases, and the caveat that it
