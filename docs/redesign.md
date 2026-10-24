@@ -171,6 +171,12 @@ the panels above stay.
   (or a skip). **Once a program is chosen the reel ends at it**
   (the user's call): scrolling on goes straight to Refine, and the programs
   after it are a click away (the ticks, or the next name).
+- *Training focus* (`js/targets-train.js`, framings `targets-tdoc-…`): an
+  opening with the three ways a set is drawn; one section per family, each
+  muscle a ladder of its weekly sets against its range, with its priority
+  (pointing at one shows what it would add or drop); and the week's total,
+  which travels with the page and lands as the closing figure. Every
+  figure is the same estimate as the panels' (`startingSets`), marked ≈.
 
 **What it will take** (`estimateHTML` in `js/targets.js`) is drawn nowhere
 for now and kept for a later stage, likely an end-of-plan summary.
