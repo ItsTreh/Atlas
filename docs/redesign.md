@@ -168,7 +168,9 @@ the panels above stay.
   showing each and its sixteen muscles as bars; Refine (the two sides, and
   what changed from the program); and What you have chosen, in one sentence
   with its mix by family. Down from the programs needs something chosen
-  (or a skip).
+  (or a skip). **Once a program is chosen the reel ends at it**
+  (the user's call): scrolling on goes straight to Refine, and the programs
+  after it are a click away (the ticks, or the next name).
 
 **What it will take** (`estimateHTML` in `js/targets.js`) is drawn nowhere
 for now and kept for a later stage, likely an end-of-plan summary.
