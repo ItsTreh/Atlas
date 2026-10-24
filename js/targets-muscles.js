@@ -14,12 +14,15 @@
      chosen    the figure crosses right; the selection in one sentence and
                its mix by family, the opening's mirror
 
-   Down from the programs needs something chosen (or a skip). Past the end
-   the wheel goes on to Training focus, and the way on only shows there.
+   Down from the programs needs something chosen (or a skip). Once a
+   program is chosen the reel ends at it: scrolling on goes straight to
+   refine, and the programs after it are a click away (the ticks, or the
+   next name on the reel). Past the end the wheel goes on to Training
+   focus, and the way on only shows there.
    ========================================================================= */
 (() => {
   const SECS = ["intro", "programs", "refine", "chosen"];
-  const RKEYS = PROGRAMS.map((p, i) => "p" + i);
+  const RKEYS = PROGRAMS.map((p, i) => "p" + i), LAST = PROGRAMS.length - 1;
   const KEYS = ["intro", ...RKEYS, "refine", "chosen"];
   const SEC_OF = { intro: "intro", refine: "refine", chosen: "chosen" };
   const REFINE_AZ = -14, TURN_MS = 950;
@@ -111,6 +114,8 @@
   /* ------------------------------- geometry ------------------------------- */
   let H = 0, R = 0, max = 0, y = 0, target = 0, cur = null, skipped = false, atEnd = false, owns = false, movedAt = 0;
   let hover = null, hoverM = null, undo = null, rosterP = null;
+  /* The reel ends at `fold`: the program started from, or one gone to past it. */
+  let fold = LAST, foldFor = null;
   let turn = 0, turnFrom = 0, turnGoal = 0, turnAt = 0;
   const keyY = {};
   /* What the body shows when nothing is pointed at: on the reel, the program in view. */
@@ -122,7 +127,7 @@
     R = Math.round(H * .46);
     let at = 0;
     KEYS.forEach((k, i) => {
-      if (i) at += SEC_OF[k] !== SEC_OF[KEYS[i - 1]] ? H : R;
+      if (i) at += SEC_OF[k] !== SEC_OF[KEYS[i - 1]] ? H : RKEYS.indexOf(k) > fold ? 0 : R;
       keyY[k] = at;
     });
     max = keyY.chosen;
@@ -132,6 +137,7 @@
     shots.fit("refine", top - 12, ch - 26);
     shots.fit("chosen", top - 4, ch - 40);
   }
+  /* Programs past the fold share its place: the nearest key is the first at a place. */
   const nearestKey = v => KEYS.reduce((b, k) => Math.abs(keyY[k] - v) < Math.abs(keyY[b] - v) ? k : b, KEYS[0]);
   /** The framings either side of `v`, and how far between them (eased). */
   function around(v) {
@@ -143,6 +149,25 @@
   }
   const limit = () => selection.isEmpty() && !skipped ? keyY[lastKey("programs")] : max;
   function topOf(s) { const a = keyY[firstKey(s)], b = keyY[lastKey(s)]; return y < a ? a - y : y < b ? 0 : b - y; }
+
+  /** Moves the fold, the page staying where it stands. */
+  function setFold(i) {
+    if (i === fold) return;
+    const k = nearestKey(target), off = target - keyY[k], was = y - keyY[k];
+    fold = i;
+    if (!live()) return;
+    measure();
+    target = Math.min(max, keyY[k] + off);
+    y = Math.min(max, keyY[k] + was);
+    render();
+  }
+  /* A new program started from moves the fold to it; none (or your own selection) opens the whole reel. */
+  function syncFold() {
+    const p = applied();
+    if (p === foldFor) return;
+    foldFor = p;
+    setFold(p ? PROGRAMS.indexOf(p) : LAST);
+  }
 
   function render() {
     for (const s of SECS) {
@@ -203,12 +228,12 @@
       say = "Replaced your " + (undo.program ? "edited " + b(undo.program) : "own selection") + '. <button type="button" class="text-link px-undo">Undo</button>';
     else if (hover && hover !== rosterP) say = "Click to go to " + b(hover) + ".";
     else if (!hover && src.kind === "custom") say = "Your own selection is on the body.";
-    else if (!hover && src.kind !== "empty") say = b(on) + (src.kind === "modified" ? ", made yours," : "") + " is on the body.";
+    else if (!hover && src.kind !== "empty") say = b(on) + (src.kind === "modified" ? ", made yours," : "") + " is on the body. Scroll on to make it yours ↓";
     else if (!hover) say = "Scroll through the programs; the body shows each in turn.";
     else if (!(src.kind === "program" && hover === on))
       say = (src.kind === "modified" && hover === on ? "Click to reset to " : "Click to start from ") + b(hover) +
         (src.kind === "empty" || hover === on ? "." : ". It replaces what you have.");
-    else say = b(on) + " is on the body. Scroll down to make it yours ↓";
+    else say = b(on) + " is on the body. Scroll on to make it yours ↓";
     P.querySelector(".px-state").innerHTML = say;
     P.querySelector(".px-skip").hidden = !selection.isEmpty() || skipped;
   }
@@ -241,7 +266,7 @@
      on the body; moving on runs a ripple through the bars, the way the page
      is going. */
   function holdRoster() {
-    const t = Math.max(0, Math.min(RKEYS.length - 1, (y - keyY[RKEYS[0]]) / (R || 1)));
+    const t = Math.max(0, Math.min(fold, (y - keyY[RKEYS[0]]) / (R || 1)));
     const reel = P.querySelector(".pxr-reel"), row = reel.clientHeight * .34;
     for (const el of reel.querySelectorAll(".px-n")) {
       const d = Number(el.dataset.i) - t, aa = Math.abs(d);
@@ -457,7 +482,11 @@
     snapTimer = setTimeout(() => { target = Math.min(limit(), keyY[nearestKey(target)]); wake(); }, 200);
     wake();
   }
-  const goProgram = i => go(keyY[RKEYS[i]]);
+  /* Going to a program past the fold opens the reel as far as it. */
+  function goProgram(i) {
+    if (i > fold) setFold(i);
+    go(keyY[RKEYS[i]]);
+  }
   /* Into the programs lands on the one you started from. */
   const progKey = () => applied() ? RKEYS[PROGRAMS.indexOf(applied())] : firstKey("programs");
   const goKey = k => { if (k === "refine" || k === "chosen") skipped = skipped || !selection.isEmpty(); go(keyY[k === "programs" ? progKey() : k]); };
@@ -481,8 +510,10 @@
     const dir = { PageDown: 1, ArrowDown: 1, PageUp: -1, ArrowUp: -1 }[e.key];
     if (!dir) return;
     e.preventDefault();
-    const i = KEYS.indexOf(nearestKey(target)) + dir;
-    if (KEYS[i]) go(keyY[KEYS[i]]);
+    // A step goes to the next place on the page (the programs past the fold share one).
+    const here = keyY[nearestKey(target)], places = [...new Set(KEYS.map(k => keyY[k]))];
+    const to = dir > 0 ? places.find(v => v > here + .5) : places.reverse().find(v => v < here - .5);
+    if (to !== undefined) go(to);
   });
   // The page is moved by the scroll, never by the browser bringing focus into view.
   doc.addEventListener("scroll", e => { const t = e.target; if (t.scrollTop || t.scrollLeft) { t.scrollTop = 0; t.scrollLeft = 0; } }, true);
@@ -505,6 +536,7 @@
   });
   selection.onChange(() => {
     if (selection.isEmpty()) skipped = false;
+    syncFold();
     paintPrograms(); paintRefine(); renderBoard();
   });
   new ResizeObserver(() => { if (!live()) return; halfW = 0; measure(); render(); settleFigure(); }).observe(view);
@@ -513,6 +545,8 @@
   FLOW_DOCS.focus = {
     enter(from) {
       resetPrograms();
+      foldFor = applied();
+      fold = foldFor ? PROGRAMS.indexOf(foldFor) : LAST;
       measure();
       // From Training focus the page opens at what is chosen; otherwise at the top.
       y = target = keyY[from === "train" ? "chosen" : "intro"];
