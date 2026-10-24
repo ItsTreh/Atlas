@@ -163,6 +163,12 @@ of the label beside the body. The way on only shows at the foot of a page;
 until then the footer says "Scroll down", and past either end the wheel
 moves between movements as before. On a phone, or with the flat SVG figure,
 the panels above stay.
+- *Your muscles* (`js/targets-muscles.js`, framings `targets-doc-…`): an
+  opening; every program on one reel, turned by the scroll, the body
+  showing each and its sixteen muscles as bars; Refine (the two sides, and
+  what changed from the program); and What you have chosen, in one sentence
+  with its mix by family. Down from the programs needs something chosen
+  (or a skip).
 
 **What it will take** (`estimateHTML` in `js/targets.js`) is drawn nowhere
 for now and kept for a later stage, likely an end-of-plan summary.

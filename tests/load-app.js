@@ -21,6 +21,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 /* Scripts that draw or wire up the page. Everything else must run without a DOM. */
 const VIEW_FILES = new Set([
   "anatomy.js", "anatomy-sculpture.js", "anatomy-stage.js", "render.js", "stages.js", "targets.js",
+  "targets-muscles.js",
   "workout-view.js", "nutrition-view.js", "week-view.js", "paint.js", "start.js", "app.js"
 ]);
 
