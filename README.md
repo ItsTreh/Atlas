@@ -13,9 +13,9 @@ It runs entirely in the browser: no account, no server, no build step. Open `ind
 ## How it works
 
 ### 01 · Targets — define your focus
-Three movements, each its own framing of the sculpture: **How it works**, where the chapters play in turn and the camera shows what each stage will do; **Your muscles**; and, once something is chosen, **Training focus**. Continue, Back or a scroll moves between them, as between stages.
+Three movements, each its own framing of the sculpture: **How it works**, where the chapters play in turn and the camera shows what each stage will do; **Your muscles**; and, once something is chosen, **Training focus**. Continue, Back or a scroll moves between them, as between stages. On a wide screen, Your muscles is one page, scrolled: the figure crosses from side to side with the page, and each part gets the screen in turn.
 
-- **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time with ← and →. Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
+- **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time (on a wide screen, a reel turned by the scroll). Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
 - **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
 - **Explore the surface.** Anatomical cartography draws fine, curved traces in the sculpture's own material. Pointing at a muscle reveals its whole training group, a little stronger near the pointer, and the traces flow while you rest there. Selected groups keep a faint, still imprint. A serif label beside the body names the group. The traces follow the existing authored borders and add no anatomy (see `docs/cartography.md`).
 - **Set the focus.** Training focus lists the selection by family, each muscle with the weekly sets it starts from. Set any to Focus (more sets and days) or Maintain (the minimum, trimmed first). Resting on a row lights its muscle and turns the body to the side that shows it.
@@ -83,6 +83,8 @@ js/
   start.js          the start screen: five openings, one per visit, that hand over to the stage
   targets.js, nutrition-view.js, week-view.js, workout-view.js
                     the stages (Targets in three movements); workout-view.js is a session in full
+  targets-muscles.js
+                    Your muscles as a scrolled page, on a wide screen
   render.js, paint.js, app.js
                     shared helpers, painting busy hours, generating, boot
 tests/              Vitest suites

@@ -958,6 +958,197 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .rd-c { transition: none !important; }
 }
 
+/* Your muscles as a page (targets-muscles.js), in place of the two rails. */
+.doc { display: none; }
+.stage-targets .doc { pointer-events: none !important; }
+.atlas[data-doc="focus"] .sub-focus.on { display: block; }
+.atlas[data-doc="focus"] .sub-focus > :is(.rail-start, .ledger) { display: none; }
+.atlas[data-doc="focus"] .sub-focus.on .doc { display: block; position: absolute; inset: 0; }
+/* The movement's word belongs to the page's opening; further down, the
+   ground is left to the names. */
+.atlas[data-doc="focus"]:not([data-doc-at="intro"]) .flow-ground > span { opacity: 0 !important; transition: opacity .5s ease !important; }
+
+/* ----- Your muscles · the programs: every program on one reel, turned by
+   the scroll. The names are cut, not printed: outlined is on offer, the
+   one in view fills with ink, italic is where you started. Under it the
+   body's sixteen muscles stand as bars, risen where it trains them. */
+.ds-programs { display: flex; align-items: center; justify-content: flex-end; }
+.px { width: min(50vw, 660px); display: flex; flex-direction: column; gap: 14px; pointer-events: auto; }
+.px-n { display: inline-flex; align-items: flex-start; gap: 6px; padding: 0; background: none; border: 0; cursor: pointer; text-align: left; }
+.px-n:focus-visible { outline: none; }
+.px-nw {
+  font: 400 var(--pxr-size)/1.05 var(--serif); letter-spacing: -.012em; white-space: nowrap;
+  color: transparent; -webkit-text-stroke: 1px var(--ink-faint);
+  /* Pointing pours ink into the cut letters, left to right; it drains back the same way. */
+  padding: 0 .16em .08em 0; margin: 0 -.16em -.08em 0;
+  background: linear-gradient(90deg, var(--ink) 46%, transparent 54%) 100% 0 / 220% 100% no-repeat;
+  -webkit-background-clip: text; background-clip: text;
+  transition: background-position .6s var(--ease-out), -webkit-text-stroke-color .25s ease;
+}
+.px-nc { font-size: 0; padding-top: .35em; font-weight: 500; color: var(--ink-faint); transition: color .25s ease; }
+.px-nc::after { font-size: 18px; }
+.px-n.on .px-nw { -webkit-text-stroke-color: var(--ink); font-style: italic; }
+.px-n.on .px-nc { color: var(--ink); }
+.px-n.on .px-nc::after { content: " ✓"; }
+.px-n.edited .px-nc::after { content: " ✎"; }
+.px-n:is(.cur, :hover, :focus-visible) .px-nw { background-position: 0 0; -webkit-text-stroke-color: var(--ink); }
+.px-n:is(:hover, :focus-visible) .px-nc { color: var(--ink); }
+.px-why {
+  margin: 0; max-width: 56ch; min-height: 2.7em; font: italic 400 19px/1.35 var(--serif); color: var(--ink); text-wrap: pretty;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+}
+.px-foot { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.px-state { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.px-state b { color: var(--ink); font-weight: 600; }
+.px-state .text-link { margin-left: 4px; font-size: 13px; }
+.px-skip { align-self: flex-start; font-size: 12px; color: var(--ink-soft); }
+.px-foot [hidden] { display: none; }
+.px-foot.nudge .px-state { animation: nudge .5s var(--ease-out); }
+@keyframes nudge { 25% { transform: translateY(-6px); } 60% { transform: translateY(2px); } }
+
+.pxr { display: flex; flex-direction: column; gap: 16px; }
+.pxr-top { display: flex; align-items: center; gap: 18px; }
+.pxr-ticks { display: flex; gap: 12px; }
+.pxr-tg { display: flex; gap: 4px; }
+.pxr-t { position: relative; width: 18px; height: 18px; padding: 0; border: 0; background: none; cursor: pointer; }
+.pxr-t::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 8px; height: 2px; border-radius: 1px; background: var(--line);
+  transition: background .3s ease, transform .45s var(--ease-out);
+}
+.pxr-t:hover::before { background: var(--ink-faint); }
+.pxr-t.cur::before { background: var(--ink); transform: scaleY(2.2); }
+.pxr-t.has::after { content: ""; position: absolute; left: 50%; top: 1px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--ink); }
+.pxr-t.ed::after { background: transparent; box-shadow: inset 0 0 0 1px var(--ink); }
+.pxr-t:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 2px; }
+.pxr-gl { font: 500 11px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; }
+.pxr-gl.swap { animation: pxrIn .6s var(--ease-out) both; }
+@keyframes pxrIn { from { opacity: 0; transform: translateY(6px); } }
+
+.pxr-reel {
+  --pxr-size: clamp(38px, min(4.2vw, 6.6vh), 72px); position: relative; height: calc(var(--pxr-size) * 2.6); margin: -6px 0;
+  mask-image: linear-gradient(transparent, #000 24%, #000 76%, transparent);
+}
+.pxr-reel .px-n { position: absolute; left: 0; top: 50%; transform-origin: 0 50%; will-change: transform, opacity; }
+.pxr-cnt { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+.pxr-cn { display: flex; font: 400 calc(var(--pxr-size) * 1.2)/1 var(--serif); letter-spacing: -.03em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.pxr-cl { font-size: 12px; line-height: 1; color: var(--ink-soft); white-space: nowrap; }
+
+.pxr-ros { display: flex; gap: 14px; }
+.pxr-f { flex: var(--c) 1 0; min-width: 0; display: flex; flex-direction: column; gap: 9px; }
+.pxr-bs { display: flex; gap: 3px; height: 44px; }
+.pxr-b { position: relative; flex: 1 1 0; cursor: crosshair; }
+.pxr-b::before {
+  content: ""; position: absolute; inset: 0; border-radius: 2px; box-shadow: inset 0 0 0 1px var(--line);
+  transform: scaleY(.3); transform-origin: bottom;
+  transition: transform .6s cubic-bezier(.34, 1.56, .64, 1) var(--d, 0ms), background-color .35s ease var(--d, 0ms), box-shadow .35s ease var(--d, 0ms);
+}
+.pxr-b.in::before { transform: none; background: var(--fam); box-shadow: none; }
+.pxr-b.pt::before { transition-delay: 0ms; transform: scaleY(.55); box-shadow: inset 0 0 0 1.5px var(--fam); }
+.pxr-b.in.pt::before { transform: scaleY(1.14); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px var(--fam); }
+.pxr-fl { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 1; color: var(--ink-soft); white-space: nowrap; transition: color .3s ease; }
+.pxr-fc { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink); transition: color .3s ease; }
+.pxr-f[data-none] :is(.pxr-fl, .pxr-fc) { color: var(--ink-faint); }
+.pxr-read { margin: -2px 0 0; min-height: 1.5em; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.pxr-read b { color: var(--ink); font-weight: 600; }
+.pxr-go { margin-top: 0; padding: 2px 0; }
+.pxr-go .ds-cue-line { height: 28px; }
+.pxr-gw b { font-weight: 600; }
+.pxr-go:not(.done) .ds-cue-line::after { animation: none; height: 100%; }
+
+/* Behind the body, the program in view as a band of cut letters, drifting. */
+.pxs-band {
+  position: absolute; left: 0; top: calc(var(--gy, .43) * 100%); width: min(calc(var(--gx, .27) * 200%), 40%);
+  transform: translateY(-50%); overflow: hidden; pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent, #000 16%, #000 72%, transparent 96%);
+  opacity: 0; transition: opacity .6s ease;
+}
+.pxs-band[data-on] { opacity: 1; }
+.flow-ground[data-pointed] .pxs-band { opacity: 0; transition-duration: .25s; }
+.pxs-band-track, .pb-half { display: flex; width: max-content; }
+.pxs-band-track { will-change: transform; }
+.pb-w {
+  padding-right: .45em; white-space: nowrap; letter-spacing: -.02em;
+  font: italic 400 calc(min(var(--gs, 23vw), 36vh) * .72)/1.05 var(--serif);
+  color: transparent; -webkit-text-stroke: 1px color-mix(in srgb, var(--ink) 20%, var(--bg));
+}
+.pb-w:nth-child(even) { color: color-mix(in srgb, var(--ink) 7%, var(--bg)); -webkit-text-stroke-color: transparent; }
+.pb-w i { display: inline-block; font-style: inherit; }
+.pxs-band.swap .pb-w i { animation: bandIn .8s var(--ease-out) both; animation-delay: calc(var(--j) * 22ms); }
+@keyframes bandIn { from { opacity: 0; transform: translateY(.2em); } }
+
+/* ----- Your muscles · refine: the body as the tool, turned a little;
+   beside it what it is for, its two sides (the one shown filled; click the
+   other to turn), and what has changed from the program. */
+.ds-refine { display: flex; align-items: center; }
+.rf-side { display: flex; flex-direction: column; gap: 16px; width: min(32vw, 420px); pointer-events: auto; }
+.rf-faces { display: flex; flex-direction: column; align-items: flex-start; margin: 2px 0 4px; }
+.rf-f { display: flex; align-items: flex-start; gap: 10px; padding: 0; background: none; border: 0; cursor: pointer; text-align: left; }
+.rf-f-w {
+  font: italic 400 clamp(52px, 6.4vw, 108px)/.96 var(--serif); letter-spacing: -.02em; white-space: nowrap;
+  color: transparent; -webkit-text-stroke: 1px var(--ink-faint);
+  transition: color .6s ease, -webkit-text-stroke-color .3s ease;
+}
+.rf-f-n { padding-top: .55em; font: 500 12px/1 var(--mono); color: var(--ink-faint); font-variant-numeric: tabular-nums; transition: color .3s ease; }
+.rf-f:is(:hover, :focus-visible) .rf-f-w { -webkit-text-stroke-color: var(--ink); }
+.rf-f:focus-visible { outline: none; }
+.atlas:not([data-face="back"]) .rf-f[data-face="front"] .rf-f-w,
+.atlas[data-face="back"] .rf-f[data-face="back"] .rf-f-w { color: var(--ink); -webkit-text-stroke-color: var(--ink); }
+.atlas:not([data-face="back"]) .rf-f[data-face="front"] .rf-f-n,
+.atlas[data-face="back"] .rf-f[data-face="back"] .rf-f-n { color: var(--ink); }
+.rf-log { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.rf-from { margin: 0; }
+.rf-from b { color: var(--ink); font-weight: 600; }
+.rf-ds { margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.rf-d { display: flex; gap: 10px; color: var(--ink); }
+.rf-d i { flex: none; width: 10px; font-style: normal; font-weight: 600; }
+.rf-d.cut { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: var(--ink-faint); }
+.rf-d.cut i { text-decoration: none; }
+
+/* ----- Your muscles · chosen: the figure crosses right, the opening's
+   mirror; the selection said in one sentence, and its mix by family. */
+.ds-chosen { display: flex; align-items: center; }
+.cb { width: min(50vw, 660px); display: flex; flex-direction: column; gap: 18px; pointer-events: auto; }
+.cb-say { margin: 0; font: 400 clamp(44px, 5.4vw, 92px)/.95 var(--serif); letter-spacing: -.018em; color: var(--ink); text-wrap: balance; }
+.cb-say em { font-style: italic; color: var(--ink-soft); }
+.cb-of { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: 13px; line-height: 1.5; color: var(--ink-soft); max-width: 52ch; }
+.cb-sets { color: var(--ink); font-weight: 600; }
+.cb-of .text-link { font-size: 12.5px; }
+.cb-mix { display: flex; gap: 4px; margin-top: 10px; }
+.cb[data-empty] .cb-mix { display: none; }
+.cb-seg { flex: 0 1 0; min-width: max-content; display: flex; flex-direction: column; gap: 10px; padding-right: 10px; transition: flex-grow .9s var(--ease-out); }
+.cb-seg[data-none] { display: none; }
+.cb-seg-bar { height: 10px; margin-right: -10px; border-radius: 3px; background: var(--fam); transition: transform .3s var(--ease-out); transform-origin: bottom; }
+.cb-seg:hover .cb-seg-bar { transform: scaleY(1.6); }
+.cb-seg-name { font: 400 28px/1 var(--serif); color: var(--ink); white-space: nowrap; }
+.cb-seg-n { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.cb-end { display: flex; margin-top: 6px; }
+.cb-end .ds-cue { margin-top: 0; }
+.cb-end [hidden] { display: none; }
+
+@media (max-height: 760px) {
+  .px { gap: 10px; }
+  .px-why { font-size: 16px; }
+  .pxr { gap: 12px; }
+  .pxr-bs { height: 34px; }
+  .rf-side { gap: 10px; }
+  .ds-aim { font-size: 26px; }
+  .rf-f-w { font-size: clamp(44px, 5vw, 64px); }
+  .rf-how { display: none; }
+  .cb { gap: 12px; }
+  .cb-say { font-size: clamp(38px, 4.4vw, 60px); }
+  .cb-seg-name { font-size: 22px; }
+}
+@media (max-height: 640px) {
+  .pxr .px-why { display: none; }
+}
+@media (max-width: 1180px) {
+  .cb { width: min(54vw, 560px); }
+  .px { width: min(56vw, 560px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pxs-band.swap .pb-w i { animation: none !important; }
+}
+
 /* ------------------------------- nutrition -------------------------------- */
 
 /* The plan to the right of the sculpture, which looks up at the torso from
