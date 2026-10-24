@@ -152,6 +152,18 @@ camera travels, in. A very large, quiet word behind the body names each
    and turns the body to the side that shows it; pointing at a muscle on
    the body marks its row. Coming back from a later stage lands here.
 
+**Movements as pages** (design "ATLAS Start", 2026-10-24). On a wide screen
+with the sculpture's camera, a movement can be one page, scrolled, in place
+of its panels: a page registers in `FLOW_DOCS` (`js/targets.js`), and
+`data-doc` on `#atlas` names the one open. The scroll itself holds the
+camera between the page's framings, so the figure crosses from side to side
+with the page, and each part of the information gets the screen in turn. A
+very large ghost word behind the figure names what is pointed at, in place
+of the label beside the body. The way on only shows at the foot of a page;
+until then the footer says "Scroll down", and past either end the wheel
+moves between movements as before. On a phone, or with the flat SVG figure,
+the panels above stay.
+
 **What it will take** (`estimateHTML` in `js/targets.js`) is drawn nowhere
 for now and kept for a later stage, likely an end-of-plan summary.
 

@@ -62,6 +62,41 @@ function paintCaption() {
     (selection.has(m.id) ? 'Selected · ' + action + ' to remove' : action + ' to add') + '</span></span>';
 }
 
+/* The ghost word. While a movement is a document (below), nothing labels
+   the body beside it: the muscle pointed at is written very large in the
+   ground behind the figure, in its family's tint, wherever the figure has
+   gone (--gx, --gy). A document can pin a word there for while nothing is
+   pointed at (pinGhost). */
+const ghostEl = document.querySelector(".flow-ground .ghost");
+const ghostWord = ghostEl.querySelector(".ghost-word"), ghostMeta = ghostEl.querySelector(".ghost-meta");
+let ghostShown = null, ghostPinned = null;
+
+function ghost(text, fam, line) {
+  ghostMeta.textContent = line || "";
+  if (text === ghostShown) return;
+  ghostShown = text;
+  ghostEl.parentNode.toggleAttribute("data-pointed", !!text);
+  if (!text) return;                       // the letters stay to fade out
+  ghostEl.dataset.family = fam || "";
+  ghostEl.style.setProperty("--k", Math.min(1, 7.2 / Math.max(7, text.length)).toFixed(3));
+  ghostWord.innerHTML = [...text].map((c, j) =>
+    '<i style="--j:' + j + '">' + (c === " " ? "&nbsp;" : esc(c)) + '</i>').join("");
+  ghostEl.classList.remove("swap"); void ghostEl.offsetWidth; ghostEl.classList.add("swap");
+}
+
+function paintGhost() {
+  const m = pointedAt;
+  if (Stages.current !== "targets" || !flowDoc()) return ghost(null);
+  if (m) {
+    const sel = selection.has(m.id), pr = sel ? selection.priority(m.id) : "";
+    ghost(m.name, m.family, FAMILIES[m.family].name + (sel ? " · selected" + (pr && pr !== "normal" ? " · " + pr : "") : ""));
+  } else if (ghostPinned) ghost(ghostPinned.text, ghostPinned.fam, ghostPinned.line);
+  else ghost(null);
+}
+
+/** Holds `p` ({ text, fam, line }) behind the figure while nothing is pointed at; null to let it go. */
+function pinGhost(p) { ghostPinned = p; paintGhost(); }
+
 /** Front and Back: the view shown is underlined; a drag off it fades the line. */
 function paintTurn(view = turnedTo, offView = false) {
   turnedTo = view;
@@ -86,10 +121,15 @@ const figure = new AnatomyStage($("anatomy-stage"), selection, {
   onHover(muscle, region, detailed = false) {
     pointedAt = muscle; pointedRegion = region || null; pointedDetailMode = detailed;
     paintCaption();
+    paintGhost();
     markRow(muscle);
   },
   onTurn(view, offView) { paintTurn(view, offView); },
-  onChange() { paintCaption(); paintTurn(); }
+  onChange() {
+    paintCaption(); paintTurn();
+    // A renderer taking over later (the SVG figure has no camera) may end the pages.
+    if (Stages.views.targets && Stages.current === "targets") paintDocs();
+  }
 });
 
 $("turn").addEventListener("click", e => {
@@ -321,7 +361,7 @@ const FLOW_BACK = new Set(["traps", "upper-back", "lats", "triceps", "hamstrings
 const FLOW_SETTLE = 1000;
 const FLOW_DWELL = { chapter: 220, turn: 480 };
 
-const flow = { sub: "how", chapter: 0, families: new Set(), wasEmpty: true };
+const flow = { sub: "how", last: null, chapter: 0, families: new Set(), wasEmpty: true };
 
 /** The way the movements are travelled, for the CSS: 1 forward, −1 back. */
 const setFlowDir = d => Stages.root.style.setProperty("--fdir", d);
@@ -340,11 +380,151 @@ function goSub(name) {
 }
 
 function paintSub() {
+  const from = flow.last;
+  flow.last = flow.sub;
   Stages.root.dataset.sub = flow.sub;
   for (const p of $("stage-targets").querySelectorAll("[data-panel]")) p.classList.toggle("on", p.dataset.panel === flow.sub);
   trainList.classList.remove("calm");
   paintChapters();
+  paintDocs(from);
 }
+
+/* ----------------------- the movements as documents ---------------------- */
+
+/* On a wide screen, with the sculpture's camera, Your muscles and Training
+   focus are each one page, scrolled (targets-muscles.js, targets-train.js):
+   the scroll holds the camera between the page's framings, so the figure
+   travels with the page, and each part of it gets the screen in turn. On
+   a phone, or with the flat SVG figure, they stay the panels above. Each
+   registers here as FLOW_DOCS[movement]:
+
+     enter(from)  the movement opens as a page; `from` is the movement
+                  before it (null on a fresh arrival)
+     leave()      it closes, or stops being a page
+     shot()       the framing the camera rests on now
+     owns()       true while the wheel moves the page, not the stages
+     atEnd()      true at the foot of the page: the way on shows there
+     hint()       the footer's hint until then
+     focus()      where focus goes as it opens                          */
+const FLOW_DOCS = {};
+const DOC_FIT = 455;          // the body's height on screen is DOC_FIT / d of the viewport
+const docMount = document.querySelector("[data-anatomy-mount]");
+let docOpen = null, docFace = null;
+
+/** The page the movement `sub` is now, or null while it is a panel (or off stage). */
+function flowDoc(sub = flow.sub) {
+  return Stages.current === "targets" && docOpen === sub && flow.sub === sub ? FLOW_DOCS[sub] : null;
+}
+
+/** Opens the movement's page, after closing the one open, as the movement and the screen allow. */
+function paintDocs(from = null) {
+  const want = !Stages.narrow && figure.moves && FLOW_DOCS[flow.sub] ? flow.sub : null;
+  if (docOpen) {
+    FLOW_DOCS[docOpen].leave();
+    pinGhost(null);
+    figure.preview(null);
+  }
+  docOpen = want;
+  docFace = null;
+  delete Stages.root.dataset.face;
+  if (want) Stages.root.dataset.doc = want; else delete Stages.root.dataset.doc;
+  if (want) FLOW_DOCS[want].enter(from);
+  paintGhost();
+}
+
+/**
+ * A page's framings, each `prefix + key` in SCULPTURE_SHOTS (its Front and
+ * Back alike: the page turns the body itself). set() changes one; fit()
+ * sizes one to the room between `top` and `bottom` (px down the viewport),
+ * so the figure is as large as it can be without anything crossing it.
+ */
+function docShots(prefix) {
+  const shots = {};
+  shots.set = (k, f) => {
+    shots[k] = { ...(shots[k] || {}), ...f };
+    for (const side of ["front", "back"])
+      SCULPTURE_SHOTS[prefix + k + "-" + side] = { ...SCULPTURE_SHOTS["targets-front"], ...shots[k] };
+  };
+  shots.fit = (k, top, bottom) => {
+    const ch = docMount.clientHeight || innerHeight;
+    shots.set(k, { d: Math.max(430, DOC_FIT / Math.max(.3, (bottom - top) / ch)), sy: (top + bottom) / 2 / ch - .009 });
+  };
+  shots.name = k => prefix + k + "-front";
+  return shots;
+}
+
+/**
+ * Holds the camera `e` (eased) of the way from framing `a` to `b`, turning
+ * the body's picking and Front / Back to the side it shows, and tells the
+ * ground where the figure stands (--gx, --gy, --gs) for the ghost word.
+ * Returns true when the side shown changed.
+ */
+function holdFigure(shots, a, b, e, live) {
+  const A = shots[a], B = shots[b];
+  const sx = A.sx + (B.sx - A.sx) * e, sy = A.sy + (B.sy - A.sy) * e;
+  const daz = ((B.az - A.az) % 360 + 540) % 360 - 180, az = A.az + daz * e;
+  const turned = docFaceTo(Math.cos(az * Math.PI / 180) < 0 ? "back" : "front");
+  Stages.root.style.setProperty("--gx", sx.toFixed(4));
+  Stages.root.style.setProperty("--gy", (sy - .07).toFixed(4));
+  Stages.root.style.setProperty("--gs", (2 * Math.min(sx, 1 - sx) * 100 / 3.9).toFixed(2) + "vw");
+  if (!live || Stages.phase !== "idle") return turned;
+  if (a === b || e <= 0) figure.scrubShot(shots.name(a), shots.name(a), 1);
+  else if (e >= 1) figure.scrubShot(shots.name(b), shots.name(b), 1);
+  else figure.scrubShot(shots.name(a), shots.name(b), e);
+  return turned;
+}
+
+function docFaceTo(f) {
+  if (f === docFace) return false;
+  docFace = f;
+  Stages.root.dataset.face = f;
+  const r = figure.renderer;
+  if (r && r.view && r.view.id !== f) r.view = SCULPTURE_VIEWS.find(v => v.id === f);
+  paintTurn(f);
+  return true;
+}
+
+/**
+ * Lets a page reach the foot of the screen, under the footer, and says
+ * where it starts: its top and the viewport's height, in px.
+ */
+function docRoom(sub, doc) {
+  let top = 0;
+  for (let el = sub; el; el = el.offsetParent) top += el.offsetTop;
+  const ch = docMount.clientHeight || innerHeight, foot = Math.max(0, ch - top - sub.offsetHeight);
+  doc.style.bottom = -foot + "px";
+  doc.style.setProperty("--foot", foot + "px");
+  return { top, ch };
+}
+
+/** Once a page is still, the body can be pointed at again where it now stands. */
+function settleFigure() {
+  const r = figure.renderer;
+  if (r) setTimeout(() => { if (r.pickSoon) r.pickSoon(); if (r.placeHitsSoon) r.placeHitsSoon(); }, 0);
+}
+
+/** Runs `step(dt)` every frame from a wake() until it returns false. */
+function docTicker(step) {
+  let last = 0, running = false;
+  const frame = t => {
+    const dt = Math.min(64, t - (last || t));
+    last = t;
+    if (step(dt)) requestAnimationFrame(frame);
+    else { running = false; last = 0; }
+  };
+  return () => { if (!running) { running = true; requestAnimationFrame(frame); } };
+}
+
+/** A wheel event's distance, in px, whichever way it was turned. */
+const wheelDelta = e => (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * (e.deltaMode === 1 ? 32 : 1);
+
+const COUNT_WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
+  "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty", "Twenty-one", "Twenty-two"];
+/** "Seven", for a count written out in a sentence. */
+const countWord = n => COUNT_WORDS[n] || String(n);
+
+/** "A, B and C." */
+const andList = names => names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0] || "";
 
 /* ---------------------------- i: how it works ---------------------------- */
 
@@ -485,7 +665,7 @@ function renderTrain() {
       if (!fm.length) return "";
       return '<div class="tg" data-family="' + k + '"><span class="dot" style="background:var(--' + FAMILIES[k].css + ')"></span>' +
           '<span class="tg-name">' + FAMILIES[k].name + '</span><span class="tg-sets" data-tg="' + k + '"></span></div>' +
-        fm.map(m => '<div class="tr" data-muscle="' + m.id + '" data-family="' + k + '" style="--i:' + (i++) + '">' +
+        fm.map(m => '<div class="tr" data-row="' + m.id + '" data-muscle="' + m.id + '" data-family="' + k + '" style="--i:' + (i++) + '">' +
           '<span class="tr-name">' + esc(m.name) + '</span>' +
           '<span class="dial" role="radiogroup" aria-label="' + esc(m.name) + ' priority">' +
             '<span class="dial-thumb" aria-hidden="true"></span>' +
@@ -553,10 +733,11 @@ trainList.addEventListener("pointerleave", () => {
   figure.preview(null);
 });
 
-/** Pointing at a muscle on the body marks its row. */
+/** Pointing at a muscle on the body marks its row, in the list or the document. */
 function markRow(muscle) {
-  for (const row of trainList.querySelectorAll(".tr.pointed")) row.classList.remove("pointed");
-  const row = muscle && Stages.root.dataset.sub === "train" && trainList.querySelector('.tr[data-muscle="' + muscle.id + '"]');
+  const sub = $("stage-targets").querySelector(".sub-train");
+  for (const row of sub.querySelectorAll(".pointed")) row.classList.remove("pointed");
+  const row = muscle && Stages.root.dataset.sub === "train" && sub.querySelector('[data-row="' + muscle.id + '"]');
   if (row) row.classList.add("pointed");
 }
 
@@ -564,6 +745,7 @@ function markRow(muscle) {
 
 function renderTargets() {
   paintCaption();
+  paintGhost();
   paintPrograms();
   renderLedger();
   renderTrain();
@@ -613,11 +795,26 @@ Stages.register("targets", {
   },
   enter: renderTargets,
   place: () => flow.sub,
-  shot: () => flow.sub === "how" ? "targets-how" + flow.chapter : flow.sub === "train" ? "targets-train" : "targets",
+  shot() {
+    const doc = flowDoc();
+    if (doc) return doc.shot();
+    return flow.sub === "how" ? "targets-how" + flow.chapter : flow.sub === "train" ? "targets-train" : "targets";
+  },
   // How it works shows the figure; it is not yet the figure to pick on.
   interactive: () => flow.sub !== "how",
-  focus: () => $({ how: "how-title", focus: "targets-title", train: "train-title" }[flow.sub]),
+  // A page takes the wheel while it can still move; at either end, the stages have it.
+  wheel: () => { const doc = flowDoc(); return doc && doc.owns() ? false : undefined; },
+  focus() {
+    const doc = flowDoc();
+    return doc ? doc.focus() : $({ how: "how-title", focus: "targets-title", train: "train-title" }[flow.sub]);
+  },
   footer() {
+    const f = this.panelFooter(), doc = flowDoc();
+    // On a page the way on shows at its foot; until then, a hint.
+    if (doc && !doc.atEnd()) { f.next = ""; f.hint = doc.hint(); }
+    return f;
+  },
+  panelFooter() {
     const empty = selection.isEmpty(), scroll = Stages.wide ? "or scroll" : "";
     if (flow.sub === "how") return { next: Stages.narrow ? "Continue →" : "Define your focus →", hint: scroll };
     if (flow.sub === "focus") return {
@@ -640,3 +837,6 @@ Stages.register("targets", {
     return true;
   }
 });
+
+/* Crossing to a phone's layout (or back) turns the pages into panels (or back). */
+matchMedia(STAGE_NARROW).addEventListener("change", () => { if (Stages.current === "targets") paintDocs(); });
