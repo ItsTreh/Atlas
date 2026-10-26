@@ -1355,20 +1355,25 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* The plan to the right of the sculpture, which looks up at the torso from
    its left. Wide enough that the rows read in one line each. */
-/* How strongly the veil shows: a registered property, so it can fade. */
-@property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .stage-nutrition {
   right: var(--pad); width: calc(min(760px, 56vw) + 48px); top: 100px; bottom: 90px;
   overflow: auto; padding: 0 12px 0 48px;
-  /* Where the figure reaches under the text, it recedes behind a veil of
-     the ground, fading in over the panel's margin. The veil comes and goes
-     with the text (data-reveal), so it never covers the figure while the
-     camera is still travelling. */
+}
+/* Where the figure reaches under the text, it recedes behind a veil of the
+   ground, fading in over the panel's margin. The veil is the sculpture's
+   own layer, the screen's full height, so no edge of it crosses the figure
+   (a hand reaching below the panel). It comes and goes with the text
+   (data-shown), so it never covers the figure while the camera travels.
+   How strongly it shows is a registered property, so it can fade. */
+@property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
+.anatomy-stage::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; pointer-events: none;
+  width: calc(min(760px, 56vw) + 48px + var(--pad));
   background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg) var(--veil), transparent) 48px);
   --veil: 0%;
   transition: --veil .22s ease;
 }
-.atlas[data-shown] .stage-nutrition.is-current {
+.atlas[data-shown][data-stage="nutrition"] .anatomy-stage::after {
   --veil: 84%;
   transition: --veil .8s ease .06s;
 }
@@ -2074,8 +2079,9 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 
   .stage-nutrition {
     left: 0; right: 0; width: auto; top: calc(var(--bar) + 28vh); bottom: 64px;
-    padding: 20px 20px 32px; background: none;
+    padding: 20px 20px 32px;
   }
+  .anatomy-stage::after { display: none; }
   .nu-kcal { font-size: 60px; }
   .row-toggle { grid-template-columns: 84px minmax(0, 1fr) auto; }
   .kv > .kv-label { min-width: 100%; }
@@ -2113,7 +2119,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 @media (prefers-reduced-motion: reduce) {
   [data-reveal], .atlas[data-shown] .stage.is-current [data-reveal] { transform: none; }
   .atlas[data-shown] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
-  .atlas[data-shown] .stage-nutrition.is-current { transition: --veil .25s ease; }
+  .atlas[data-shown][data-stage="nutrition"] .anatomy-stage::after { transition: --veil .25s ease; }
   .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
   .atlas[data-stage="targets"][data-shown] .figure-controls {
     transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s;
