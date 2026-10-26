@@ -208,3 +208,4 @@ paintThemeButton();
 const savedPlace = restored ? loadPlace() : null;
 Stages.start(savedPlace ? savedPlace.stage : "targets", StartScreen.plays(newVisit()), savedPlace && savedPlace.at);
 StartScreen.play();
+root.dataset.booted = "";   /* index.html keeps its hidden states from here on, whatever fails later */

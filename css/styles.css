@@ -161,7 +161,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   transition: background .45s ease, color .45s ease;
 }
 .stage { position: absolute; z-index: 2; }
-.stage:not(.is-current) { visibility: hidden; }
+/* Only the current stage shows, once the scripts say which; without them,
+   Targets opens on How it works (its panel is marked on in the markup).
+   Everything hidden until it is revealed waits for the scripts too (.js). */
+.js .stage:not(.is-current) { visibility: hidden; }
 
 [data-scroll] { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 
@@ -169,7 +172,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
    another as its camera lands (data-reveal 0, 1, 2; data-shown, on time
    even when the camera's move runs longer), and go together and fast as it
    leaves; until the camera has landed (idle) they cannot be used. */
-[data-reveal] {
+.js [data-reveal] {
   opacity: 0; transform: translateY(14px); pointer-events: none;
   transition: opacity .22s ease, transform .22s ease;
 }
@@ -467,12 +470,12 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   position: absolute; left: 50%; bottom: 14px; z-index: 3;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
   width: max-content; max-width: min(90vw, 420px);
-  opacity: 0; transform: translate(-50%, 14px); pointer-events: none;
-  /* Hidden, not only transparent, once faded: Front and Back leave the tab
-     order off Targets instead of taking focus where it can't be seen. */
-  visibility: hidden;
+  transform: translate(-50%, 0);
   transition: opacity .22s ease, transform .22s ease, visibility 0s linear .22s;
 }
+/* Hidden, not only transparent, once faded: Front and Back leave the tab
+   order off Targets instead of taking focus where it can't be seen. */
+.js .figure-controls { opacity: 0; transform: translate(-50%, 14px); pointer-events: none; visibility: hidden; }
 .atlas[data-stage="targets"][data-shown] .figure-controls {
   opacity: 1; transform: translate(-50%, 0); visibility: visible;
   transition: opacity .8s ease .19s, transform 1.1s var(--ease-out) .19s, visibility 0s;
@@ -565,12 +568,12 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 /* The movements come in the way they are travelled (--fdir): forward rises
    from below and leaves upward, back the other way round. A soft focus
    pull rides with the fade. */
-.stage-targets [data-reveal] {
+.js .stage-targets [data-reveal] {
   filter: blur(4px);
   transition: opacity .24s ease, transform .32s var(--ease-move), filter .24s ease;
 }
-.atlas:not([data-shown]) .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * 34px)); }
-.atlas:not([data-shown])[data-phase="out"] .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * -34px)); }
+.js .atlas:not([data-shown]) .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * 34px)); }
+.js .atlas:not([data-shown])[data-phase="out"] .stage-targets [data-reveal] { transform: translateY(calc(var(--fdir, 1) * -34px)); }
 .atlas[data-shown] .stage-targets.is-current [data-reveal] {
   filter: none;
   transition: opacity .9s ease var(--d), transform 1.25s var(--ease-out) var(--d), filter .9s ease var(--d);
@@ -582,9 +585,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .flow-ground span {
   position: absolute; top: 50%; white-space: nowrap;
   font: italic 400 min(23vw, 38vh)/1 var(--serif); letter-spacing: -.02em; color: var(--line-soft);
-  opacity: 0; transform: translate(7vw, -54%);
+  transform: translate(7vw, -54%);
   transition: opacity .7s ease, transform 2s var(--ease-move);
 }
+.js .flow-ground span { opacity: 0; }
 .flow-ground [data-w="how"] { right: 1vw; }
 .flow-ground [data-w="focus"] { left: 0; right: 0; text-align: center; }
 .flow-ground [data-w="train"] { left: 1vw; }
@@ -696,7 +700,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   display: flex; flex-direction: column; gap: 10px;
   transition: opacity .16s ease, transform .3s var(--ease-out);
 }
-.program.out { opacity: 0; transform: translateX(calc(var(--dir) * -12px)); }
+.js .program.out { opacity: 0; transform: translateX(calc(var(--dir) * -12px)); }
 .program-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .program-name { font: 400 38px/1 var(--serif); }
 .program-edited { font: italic 500 16px/1 var(--serif); color: var(--ink-soft); }
@@ -884,8 +888,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   position: absolute; left: calc(var(--gx, .5) * 100%); top: calc(var(--gy, .43) * 100%); width: max-content;
   transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center; gap: 2vh;
-  opacity: 0; transition: opacity .5s ease;
+  transition: opacity .5s ease;
 }
+.js .flow-ground .ghost { opacity: 0; }
 .flow-ground .ghost[data-family="push"] { --fam: var(--push); --fam-ink: var(--push-trace); }
 .flow-ground .ghost[data-family="pull"] { --fam: var(--pull); --fam-ink: var(--pull-trace); }
 .flow-ground .ghost[data-family="legs"] { --fam: var(--legs); --fam-ink: var(--legs-trace); }
@@ -1065,8 +1070,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   position: absolute; left: 0; top: calc(var(--gy, .43) * 100%); width: min(calc(var(--gx, .27) * 200%), 40%);
   transform: translateY(-50%); overflow: hidden; pointer-events: none;
   mask-image: linear-gradient(90deg, transparent, #000 16%, #000 72%, transparent 96%);
-  opacity: 0; transition: opacity .6s ease;
+  transition: opacity .6s ease;
 }
+.js .pxs-band { opacity: 0; }
 .pxs-band[data-on] { opacity: 1; }
 .flow-ground[data-pointed] .pxs-band { opacity: 0; transition-duration: .25s; }
 .pxs-band-track, .pb-half { display: flex; width: max-content; }
@@ -1541,7 +1547,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   background: var(--card); border: 1px solid var(--line-soft);
   transition: opacity .18s ease, transform .3s var(--ease-out);
 }
-.meal-card.out { opacity: 0; transform: translateX(calc(var(--dir) * -10px)); }
+.js .meal-card.out { opacity: 0; transform: translateX(calc(var(--dir) * -10px)); }
 .meal-card.instant { transition: none; }
 .meal-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .meal-card-title { display: flex; flex-direction: column; gap: 6px; }
@@ -1896,7 +1902,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
    the anatomy stage beneath its viewport; the words, the veil and the
    controls are .start, over everything. --start-p is how far the move into
    the stage has gone, 0 … 1. */
-.atlas[data-opening] :is(.masthead, .stage-foot, .stage) { opacity: 0; visibility: hidden; transition: none; }
+.js .atlas[data-opening] :is(.masthead, .stage-foot, .stage) { opacity: 0; visibility: hidden; transition: none; }
 .start-ground { position: absolute; inset: 0; pointer-events: none; display: none; }
 .atlas[data-opening] .start-ground { display: block; }
 .start-ink { position: absolute; inset: 0; background: var(--ink); display: none; }
@@ -1905,8 +1911,9 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   position: absolute; left: 0; right: 0; top: 50%; display: none; justify-content: space-between;
   padding: 0 3.5vw; transform: translateY(-58%);
   font: 400 min(26vw, 50vh)/.8 var(--serif); color: var(--ink); user-select: none;
-  opacity: 0; transition: opacity .22s ease;
+  transition: opacity .22s ease;
 }
+.js .start-letters { opacity: 0; }
 .atlas[data-opening="monument"] .start-letters { display: flex; }
 .atlas:has(#start[data-phase="idle"]) .start-letters {
   opacity: max(0, 1 - var(--start-p, 0) * 1.8);
@@ -1927,17 +1934,15 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 
 /* The words come in as the camera settles, fade as the move begins, and go
    fast when the stage takes over; until then (idle) nothing can be used. */
-.start [data-in] {
-  opacity: 0; transform: translateY(14px);
-  transition: opacity .22s ease, transform .22s ease;
-}
-.start[data-phase="idle"] [data-in] {
+.start [data-in] { transition: opacity .22s ease, transform .22s ease; }
+.js .start [data-in] { opacity: 0; transform: translateY(14px); }
+.js .start[data-phase="idle"] [data-in] {
   --d: .06s;
   opacity: max(0, 1 - var(--start-p, 0) * 1.8); transform: none;
   transition: opacity .8s ease var(--d), transform 1.1s var(--ease-out) var(--d);
 }
 .start[data-phase="idle"] [data-in="late"] { --d: .32s; }
-.start[data-phase="idle"][data-live] [data-in] { transition: opacity .1s linear, transform .3s ease; }
+.js .start[data-phase="idle"][data-live] [data-in] { transition: opacity .1s linear, transform .3s ease; }
 .start:not([data-phase="idle"]) :is(button, .start-hit) { pointer-events: none; }
 
 .start-copy { position: absolute; display: flex; flex-direction: column; pointer-events: none; }
@@ -2014,8 +2019,8 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .start [data-in], .start[data-phase="idle"] [data-in] { transform: none; }
-  .start[data-phase="idle"] [data-in], .atlas:has(#start[data-phase="idle"]) .start-letters { transition: opacity .25s ease; }
+  .js .start [data-in], .js .start[data-phase="idle"] [data-in] { transform: none; }
+  .js .start[data-phase="idle"] [data-in], .atlas:has(#start[data-phase="idle"]) .start-letters { transition: opacity .25s ease; }
 }
 
 /* --------------------------------- phones --------------------------------- */
@@ -2120,7 +2125,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   [data-reveal], .atlas[data-shown] .stage.is-current [data-reveal] { transform: none; }
   .atlas[data-shown] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
   .atlas[data-shown][data-stage="nutrition"] .anatomy-stage::after { transition: --veil .25s ease; }
-  .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
+  .figure-controls, .js .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
   .atlas[data-stage="targets"][data-shown] .figure-controls {
     transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s;
   }

@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ATLAS — weekly training planner</title>
+<script>
+  /* The interface hides what it is about to reveal only while its scripts
+     run. An error before the page has started (app.js marks it booted)
+     drops the class, so what is written shows instead of a blank screen. */
+  document.documentElement.classList.add("js");
+  addEventListener("error", function () {
+    if (!document.documentElement.hasAttribute("data-booted")) document.documentElement.classList.remove("js");
+  });
+</script>
 <!-- A classical serif for stage titles and figures only. Offline (opened
      from disk without a connection) they fall back to Georgia. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,7 +53,7 @@
        muscles, and once something is chosen, the training focus. -->
   <section class="stage stage-targets" id="stage-targets" aria-labelledby="targets-title">
 
-    <div class="sub sub-how" data-panel="how">
+    <div class="sub sub-how on" data-panel="how">
       <div class="how-copy">
         <p class="eyebrow" data-reveal="0"><span class="n">01</span> / Targets · How ATLAS works</p>
         <h1 class="how-title" id="how-title" tabindex="-1" data-reveal="0">A week of training, <em>built around you.</em></h1>
