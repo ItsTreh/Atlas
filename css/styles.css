@@ -911,6 +911,11 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 @keyframes ghostMeta { from { opacity: 0; letter-spacing: .5em; } to { opacity: .8; } }
 .flow-ground[data-pointed] .ghost { opacity: 1; transition: opacity .25s ease; }
+/* It names what is pointed at on Targets only, and not while the start
+   screen holds the page (reopening on Training focus pins "Emphasis"
+   there): leaving lets it go, and coming back finds it where it was. */
+.atlas:not([data-stage="targets"]) .flow-ground .ghost { opacity: 0; transition: opacity .3s ease; }
+#atlas[data-opening] .flow-ground .ghost { opacity: 0; transition: none; }
 .atlas .flow-ground[data-pointed] > span { opacity: 0 !important; transition: opacity .3s ease !important; }
 
 /* The page: its sections stacked in one place, moved by the scroll. */
