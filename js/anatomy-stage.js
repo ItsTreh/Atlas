@@ -118,4 +118,6 @@ class AnatomyStage {
   setHighlight(ids) { this.state.highlight = ids; if (this.renderer && this.renderer.setHighlight) this.renderer.setHighlight(ids); }
   setDim(v) { this.state.dim = v; if (this.renderer && this.renderer.setDim) this.renderer.setDim(v); }
   setLayout(mode) { this.state.layout = mode; if (this.renderer && this.renderer.setLayout) this.renderer.setLayout(mode); }
+  /** Moves the sculpture's key light, -1 … 1 across and up; 0, 0 at rest (a flat figure has none). */
+  setLight(x, y) { if (this.renderer && this.renderer.setLight) this.renderer.setLight(x, y); }
 }

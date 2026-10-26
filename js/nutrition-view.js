@@ -117,7 +117,7 @@ function planHTML() {
     '</div>';
   }).join("");
   return '<div class="nu-head" data-reveal="0">' +
-      '<p class="eyebrow"><span><span class="n">02</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
+      '<p class="eyebrow"><span><span class="n">II</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
       '<h1 class="display nu-title" id="nutrition-title" tabindex="-1">Fuel the training</h1>' +
       '<p class="nu-lede" id="nu-fuels">' + esc(fuelsText(n)) + '</p>' +
     '</div>' +

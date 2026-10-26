@@ -170,6 +170,12 @@ const SCULPTURE_SELECTED_GAIN = 1.4;
    along their length once, over `reveal`, then rest. */
 const SCULPTURE_EASE = { hoverIn: 100, hoverOut: 160, select: 130, reveal: 720 };
 
+/* The gallery light (setLight): the key light's direction at rest, toward
+   the viewer's upper left; how far a held lamp moves it across and up; and
+   how slowly it follows, in ms, so it sweeps over the marble rather than
+   jumping. */
+const SCULPTURE_LIGHT = { key: [-0.55, 0.62, 0.56], reach: [0.7, 0.4], tau: 420 };
+
 /* Families whose summary preview draws its traces in the family's hue
    (`--<family>-trace`), as a hover rather than a lit preview. */
 const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
@@ -252,6 +258,8 @@ class AnatomySculpture {
     this.hovered = null;
     this.detailMode = !!opts.detailMode;     // training groups by default; precise picking is retained
     this.mapPresence = 0;
+    this.light = [0, 0];                     // the key light's offset, eased toward lightTo (setLight)
+    this.lightTo = [0, 0];
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
     this.litReveal = null;                   // per region, 0 … 1 as a newly lit muscle draws in
@@ -841,6 +849,25 @@ class AnatomySculpture {
     this.schedule();
   }
 
+  /**
+   * Moves the key light, as a lamp held up to the sculpture: x and y from -1
+   * to 1 (right and up of the rest position), 0 and 0 to bring it back. It
+   * eases there, and the surface (its traces included) is lit from wherever
+   * it has got to.
+   */
+  setLight(x, y) {
+    const to = [Math.max(-1, Math.min(1, x || 0)), Math.max(-1, Math.min(1, y || 0))];
+    if (to[0] === this.lightTo[0] && to[1] === this.lightTo[1]) return;
+    this.lightTo = to;
+    this.schedule();
+  }
+
+  /** The key light's direction, in view space: the rest key moved by the lamp. */
+  keyLight() {
+    const { key, reach } = SCULPTURE_LIGHT;
+    return [key[0] + this.light[0] * reach[0], key[1] + this.light[1] * reach[1], key[2]];
+  }
+
   /** How strongly the figure shows, 0 (gone) to 1, so a busy screen can let it recede. */
   setDim(v) {
     this.dim = String(Math.max(0, Math.min(1, Number(v))));
@@ -865,6 +892,7 @@ class AnatomySculpture {
     gl.uniform3fv(u.uMuscle, c.muscle);
     gl.uniform3fv(u.uSelected, c.selected);
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
+    gl.uniform3fv(u.uKey, this.keyLight());
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
     gl.uniform1f(u.uTraceVivid, c.vivid);
@@ -1114,6 +1142,8 @@ class AnatomySculpture {
     this.mapInfluence = follow(this.mapInfluence || 0, responding ? 1 : 0, 110, 0.005);
     // The traces lean toward the pointer only while it responds; otherwise
     // the point just follows it, without frames of its own.
+    if (this.light) for (let i = 0; i < 2; i++)
+      this.light[i] = follow(this.light[i], this.lightTo[i], SCULPTURE_LIGHT.tau, 0.002);
     if (this.pointer) for (let i = 0; i < 2; i++)
       this.mapPointer[i] = responding || this.mapInfluence > 0
         ? follow(this.mapPointer[i], this.pointer[i], 45, 0.1) : this.pointer[i];
@@ -1632,8 +1662,9 @@ void main() {
 /* Light that carves: a raking key from the upper left whose edge between
    light and shade is firm enough to model every belly and valley, a weak
    fill from the right, a low sky-to-ground ambient, and the baked occlusion
-   for creases and hollows. It follows the viewer. No highlights: the
-   finish is matte, like plaster or stone. */
+   for creases and hollows. It follows the viewer, and the key can be moved
+   like a lamp (uKey, setLight). No highlights: the finish is matte, like
+   plaster or stone. */
 const SCULPTURE_FRAGMENT = `
 precision highp float;
 in vec3 vNormal;
@@ -1658,6 +1689,7 @@ uniform vec2 uMapPointer, uMapSize;
 uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
 uniform float uLineWidth;
+uniform vec3 uKey;                       // the key light, in view space (keyLight)
 out vec4 outColor;
 
 vec3 toSrgb(vec3 c) {
@@ -1672,7 +1704,7 @@ bool isKind(float w, float k) { return abs(w - k) < 0.5; }
 
 void main() {
   vec3 n = normalize(vNormal);
-  vec3 key = normalize(vec3(-0.55, 0.62, 0.56));
+  vec3 key = normalize(uKey);
   vec3 fill = normalize(vec3(0.75, 0.05, 0.62));
   float k = clamp((dot(n, key) + 0.12) / 1.12, 0.0, 1.0);
   k = mix(k, k * k * (3.0 - 2.0 * k), 0.5);

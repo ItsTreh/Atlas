@@ -17,6 +17,7 @@ Three movements, each its own framing of the sculpture: **How it works**, where 
 
 - **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time (on a wide screen, a reel turned by the scroll; once one is chosen, scrolling on moves to refining it). Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
 - **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
+- **Hold the light.** On the start screen and on Targets, the light on the sculpture follows your pointer, like a lamp held up to it.
 - **Explore the surface.** Anatomical cartography draws fine, curved traces in the sculpture's own material. Pointing at a muscle reveals its whole training group, a little stronger near the pointer, and the traces flow while you rest there. Selected groups keep a faint, still imprint. A serif label beside the body names the group. The traces follow the existing authored borders and add no anatomy (see `docs/cartography.md`).
 - **Set the focus.** Training focus lists the selection by family, each muscle with the weekly sets it starts from. Set any to Focus (more sets and days) or Maintain (the minimum, trimmed first). Resting on a row lights its muscle and turns the body to the side that shows it.
 

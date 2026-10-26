@@ -100,6 +100,11 @@ fallback all keep working.
   eases in and out, and pulls back a little while swinging round, so it
   never cuts through the figure. Front ↔ Back is the old 650 ms half-turn,
   in the direction a drag already started.
+- **The gallery light** (`setLight`, `SCULPTURE_LIGHT`). On the start
+  screen and Targets, a mouse or pen moves the key light like a lamp held
+  up to the sculpture; it eases after the pointer and rests where it was
+  left. Nutrition and the Week plan are forms, so there it returns to rest.
+  Touch and reduced motion leave it still.
 - **Only Targets is interactive** (`setInteractive`). There the selection
   shows and the pointer picks. Elsewhere the figure rests unmarked, except
   for muscles the page lights (`setHighlight`, e.g. a session pointed at in
@@ -111,8 +116,9 @@ fallback all keep working.
 
 ### Type
 
-Cormorant Garamond, loaded from Google Fonts, is used for stage titles and
-figures only; the interface stays in the system sans. Opened from disk
+Cormorant Garamond, loaded from Google Fonts, is used for stage titles,
+figures, the stages' Roman numerals (I, II, III) and the ATLAS wordmark
+only; the interface stays in the system sans. Opened from disk
 without a connection, the serif falls back to Georgia and everything else
 is unchanged.
 
