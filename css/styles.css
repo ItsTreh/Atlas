@@ -203,7 +203,8 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   background: var(--bg); right: 12px;
 }
 .mast-start { display: flex; align-items: baseline; gap: 16px; }
-.brand { font: 600 13px/1 var(--font); letter-spacing: .42em; color: var(--ink); }
+/* The wordmark is cut in the serif, as on the start screen: an inscription. */
+.brand { font: 500 19px/1 var(--serif); letter-spacing: .32em; color: var(--ink); }
 .mast-stage { display: none; font: var(--t-label); letter-spacing: var(--track-label);
               text-transform: uppercase; color: var(--ink-faint); }
 /* A stage's number is a Roman numeral, cut in the serif: the nav, the
