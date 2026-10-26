@@ -206,6 +206,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .brand { font: 600 13px/1 var(--font); letter-spacing: .42em; color: var(--ink); }
 .mast-stage { display: none; font: var(--t-label); letter-spacing: var(--track-label);
               text-transform: uppercase; color: var(--ink-faint); }
+/* A stage's number is a Roman numeral, cut in the serif: the nav, the
+   stage labels, the phone's dots and How it works' chapters alike. */
+.mast-stage .n, .eyebrow .n { font: 600 13px/1 var(--serif); letter-spacing: .06em; }
 .mast-stage .n { color: var(--ink); }
 .mast-end { justify-self: end; }
 
@@ -218,6 +221,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 .stage-nav button:hover:not(:disabled) { color: var(--ink); }
 .stage-nav button[aria-current="step"] { color: var(--ink); }
+.stage-nav .sn { margin-right: 8px; font: 500 15px/1 var(--serif); letter-spacing: 0; }
 .stage-nav button:disabled { color: var(--line); cursor: not-allowed; }
 .stage-nav button::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 2px; height: 1px;
@@ -257,7 +261,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .foot-dots { display: none; justify-content: center; gap: 6px; }
 .foot-dots button {
   width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
-  font: italic 500 14px/1 var(--serif); color: var(--ink-soft);
+  font: 500 13px/1 var(--serif); color: var(--ink-soft);
   background: transparent; border: 1px solid var(--line);
 }
 .foot-dots button[aria-current="step"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

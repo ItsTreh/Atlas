@@ -71,7 +71,7 @@
   const doc = $("muscles-doc");
   doc.innerHTML = '<div class="doc-view"><div class="doc-page">' +
     '<section class="ds ds-intro" data-s="intro">' +
-      '<p class="eyebrow" data-r="0"><span class="n">01</span> / Targets · Your muscles</p>' +
+      '<p class="eyebrow" data-r="0"><span class="n">I</span> / Targets · Your muscles</p>' +
       '<h1 class="ds-title" id="doc-title" tabindex="-1" data-r="1">Define your <em>focus.</em></h1>' +
       '<p class="ds-lede" data-r="2">Choose the muscles this plan will build: start from a program, make it yours on the body, then look over what you have. Scroll down; the figure follows.</p>' +
       '<button type="button" class="ds-cue" data-key="programs" data-r="3"><span class="ds-cue-line" aria-hidden="true"></span>Scroll to begin</button>' +

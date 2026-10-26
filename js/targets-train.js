@@ -41,7 +41,7 @@
   const LEGEND = [["maintain", "Maintain", 4], ["normal", "Normal", 5], ["focus", "Focus", 7]];
   const introHTML = () =>
     '<section class="ds ds-intro ds-tintro" data-s="intro">' +
-      '<p class="eyebrow" data-r="0"><span class="n">01</span> / Targets · Training focus</p>' +
+      '<p class="eyebrow" data-r="0"><span class="n">I</span> / Targets · Training focus</p>' +
       '<h1 class="ds-title" id="tdoc-title" tabindex="-1" data-r="1">Where the <em>work</em> goes.</h1>' +
       '<p class="ds-lede" data-r="2">Every block is one hard set a week. Normal starts a muscle inside its range; Focus moves it up the range; Maintain holds it at the floor, and is the first trimmed when your week runs short. One family at a time: the figure turns to show each.</p>' +
       '<div class="tlg" data-r="2" aria-hidden="true">' + LEGEND.map(([lv, name, n]) =>

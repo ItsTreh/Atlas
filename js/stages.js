@@ -33,6 +33,8 @@
 
 const STAGE_ORDER = ["targets", "nutrition", "plan"];
 const STAGE_NAMES = { targets: "Targets", nutrition: "Nutrition", plan: "Week plan" };
+/* The stages are numbered as a gallery numbers its rooms. */
+const STAGE_NUMERALS = { targets: "I", nutrition: "II", plan: "III" };
 
 /* Phase lengths in ms; with reduced motion, just long enough to swap.
    `landBy` is the longest a change waits for the camera to land. */
@@ -257,8 +259,7 @@ const Stages = {
     const root = this.root;
     root.dataset.stage = this.current;
     for (const name of STAGE_ORDER) $("stage-" + name).classList.toggle("is-current", name === this.current);
-    const n = String(STAGE_ORDER.indexOf(this.current) + 1).padStart(2, "0");
-    $("stage-label").innerHTML = '<span class="n">' + n + '</span> / ' + STAGE_NAMES[this.current];
+    $("stage-label").innerHTML = '<span class="n">' + STAGE_NUMERALS[this.current] + '</span> / ' + STAGE_NAMES[this.current];
   },
 
   /** Brings the sculpture, the navigation and the footer in line with the stage and phase. */
@@ -349,9 +350,9 @@ const Stages = {
         e.stopImmediatePropagation();
       }
     }, true);
-    $("foot-dots").innerHTML = STAGE_ORDER.map((name, i) =>
+    $("foot-dots").innerHTML = STAGE_ORDER.map(name =>
       '<button type="button" data-goto="' + name + '" aria-label="' + STAGE_NAMES[name] + '">' +
-      (i + 1) + '</button>').join("");
+      STAGE_NUMERALS[name] + '</button>').join("");
     document.addEventListener("click", e => {
       const b = e.target.closest("[data-goto]");
       if (b && !b.disabled) this.go(b.dataset.goto);
