@@ -85,6 +85,13 @@ const Stages = {
   get wide() { return matchMedia("(min-width: 1240px)").matches; },
   get still() { return matchMedia("(prefers-reduced-motion: reduce)").matches; },
 
+  /**
+   * The gallery light follows the pointer on the start screen and on
+   * Targets, where the body is the thing looked at. Nutrition and the Week
+   * plan are forms: there the light rests, as everything else does.
+   */
+  get lit() { return (this.opening || this.current === "targets") && !this.still; },
+
   /** Week plan opens only once something is selected. */
   can(name) { return name !== "plan" || !routine.selection.isEmpty(); },
 
@@ -269,6 +276,7 @@ const Stages = {
       figure.setLayout(this.narrow ? "mobile" : "desktop");
       figure.setInteractive(this.current === "targets" && idle && this.call("interactive") !== false);
       // While the start screen holds the page, the camera is its own.
+      if (!this.lit) figure.setLight(0, 0);
       if (!this.opening) {
         figure.setShot(this.shot());
         const dim = this.call("dim");
@@ -361,6 +369,14 @@ const Stages = {
     $("foot-next").addEventListener("click", () => this.next());
     $("foot-skip").addEventListener("click", () => { if (this.call("onSkip") === undefined) this.go("plan"); });
     addEventListener("wheel", e => this.wheel(e), { passive: true });
+    // A mouse or a pen holds the lamp; a finger is busy picking and turning.
+    addEventListener("pointermove", e => {
+      if (e.pointerType === "touch" || !this.lit || typeof figure !== "object") return;
+      figure.setLight(e.clientX / innerWidth * 2 - 1, 1 - e.clientY / innerHeight * 2);
+    }, { passive: true });
+    document.documentElement.addEventListener("pointerleave", () => {
+      if (typeof figure === "object") figure.setLight(0, 0);
+    });
     matchMedia(STAGE_NARROW).addEventListener("change", () => this.refresh());
     matchMedia("(min-width: 1240px)").addEventListener("change", () => this.paintFooter());
     routine.selection.onChange(() => { this.paintNav(); this.paintFooter(); });

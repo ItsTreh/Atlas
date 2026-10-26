@@ -11,8 +11,11 @@ designed; change it only when asked.
 ## What it shows
 
 Neutral ink matches the page; the sculpture itself is marble
-(`--sculpt-form`), a shade warmer than the page's cool ground. Lines are engraved: they swell in shadow and thin in the light, so
-the traces model the form rather than lie over it.
+(`--sculpt-form`), a shade warmer than the page's cool ground. Lines are
+engraved: they swell in shadow and thin in the light, so the traces model
+the form rather than lie over it. Where the gallery light moves
+(`setLight`, on the start screen and Targets), the engraving follows the
+light with the surface.
 
 | State | How it draws |
 |---|---|
