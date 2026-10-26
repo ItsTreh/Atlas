@@ -10,8 +10,8 @@ designed; change it only when asked.
 
 ## What it shows
 
-Neutral ink matches the page; the light theme uses the sculpture's original
-cool grey. Lines are engraved: they swell in shadow and thin in the light, so
+Neutral ink matches the page; the sculpture itself is marble
+(`--sculpt-form`), a shade warmer than the page's cool ground. Lines are engraved: they swell in shadow and thin in the light, so
 the traces model the form rather than lie over it.
 
 | State | How it draws |

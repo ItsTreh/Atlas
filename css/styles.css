@@ -51,11 +51,12 @@
   --seam:        #f4f5f6;
   --sel:         #2f3337;
   --sel-hover:   #474c51;
-  /* The sculpture shares the page's cool neutrals. Selection adds only a
-     small material shift; its surface constellation carries the state. */
-  --sculpt-form:     #bfc4ca;
-  --sculpt-muscle:   #bfc4ca;
-  --sculpt-selected: #585e64;
+  /* The sculpture is marble, a shade warmer than the page's cool neutrals,
+     so it reads as stone rather than clay. Selection adds only a small
+     material shift; its surface constellation carries the state. */
+  --sculpt-form:     #cdc8c0;
+  --sculpt-muscle:   #cdc8c0;
+  --sculpt-selected: #5d5953;
   --cartography-ink: var(--ink);
 }
 
@@ -95,9 +96,9 @@
   --seam:        #141618;
   --sel:         #e4e7ea;
   --sel-hover:   #c9cdd0;
-  --sculpt-form:     #858b8d;
-  --sculpt-muscle:   #858b8d;
-  --sculpt-selected: #b6bbc0;
+  --sculpt-form:     #8b8781;
+  --sculpt-muscle:   #8b8781;
+  --sculpt-selected: #bcb7af;
   --cartography-ink: var(--ink);
 }
 
