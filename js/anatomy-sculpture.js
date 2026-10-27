@@ -467,6 +467,27 @@ class AnatomySculpture {
   live() { return this.cur ? { ...this.cur, az: this.cur.az + this.off } : this.shotParams(); }
 
   /**
+   * Where the figure's axis at fraction `t` of its height (0 the soles,
+   * 1 the top) lies on the canvas now, in CSS pixels, and which side of it
+   * holds the leg nearer the eye (1 right, −1 left). The axis is vertical
+   * through the aim point, so it always projects to x = sx; only y needs
+   * the lens. The near leg is on screen right when sin 2az ≥ 0: in front,
+   * a turn to the figure's left brings its left leg (screen right) nearer;
+   * behind, its right leg, now also on screen right.
+   */
+  axisPoint(t) {
+    if (!this.size) return null;
+    const s = this.live(), r = Math.PI / 180, { cw, ch } = this.size;
+    const f = ch / (2 * Math.tan(s.fov * r / 2)), el = (s.el || 0) * r;
+    const dy = s.ty - t * this.height;     // how far below the aim point
+    return {
+      x: s.sx * cw,
+      y: s.sy * ch + f * dy * Math.cos(el) / (s.d + dy * Math.sin(el)),
+      side: Math.sin(2 * s.az * r) >= 0 ? 1 : -1
+    };
+  }
+
+  /**
    * The matrices that show the model through camera `s`: the eye `d` from
    * the aim point at `az` round and `el` up, a perspective lens of `fov`,
    * and the aim point moved to (`sx`, `sy`) on the canvas. Column-major.
