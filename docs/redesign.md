@@ -167,9 +167,9 @@ with the page, and each part of the information gets the screen in turn. A
 very large ghost word behind the figure names what is pointed at, in place
 of the label beside the body. Below the hips it comes round in front of
 the leg nearer the eye and stays behind the other, woven through the figure
-(`js/flow-front.js`, design "ATLAS Start", 2026-10-26). On Your muscles the names stand low,
-at the shins (`--gyl`), so they cross the legs. The way on, an inscription and
-a coin (`FOOT_COIN`, `js/stages.js`), only shows at the foot of a page.
+(`js/flow-front.js`, design "ATLAS Start", 2026-10-26). On both pages the names stand low,
+at the shins (`--gyl`), so they cross the legs. The way on, an inscription and a
+coin (`FOOT_COIN`, `js/stages.js`), only shows at the foot of a page.
 Until then the footer says "Scroll down", and past either end the wheel
 moves between movements as before. On a phone, or with the flat SVG figure,
 the panels above stay.
