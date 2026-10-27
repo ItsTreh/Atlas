@@ -1607,6 +1607,48 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .mz-rule.empty :is(.mzr-head, .mzr-slide) { background: var(--ink-faint); }
 .mz-rule.empty .mzr-n { color: var(--ink-faint); font-style: italic; }
 
+/* ---- mass: the steelyard, hung on threads (js/measure-view.js moves it) ---- */
+.mz-yard {
+  position: relative; height: 132px; margin-top: 2px; touch-action: none; cursor: grab; outline: none;
+  user-select: none; -webkit-user-select: none; --x: 0; --tilt: 0deg; --sw: 0deg;
+}
+.mz-yard.drag { cursor: grabbing; }
+.yard-hang { position: absolute; left: 6%; top: 0; width: 24px; height: 44px; margin-left: -12px; color: var(--ink-soft); }
+:is(.yard-hang, .yard-load) svg { display: block; width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1; }
+.yh-ring { opacity: .45; }
+.yh-beads { stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 0 1; }
+.yh-pin { fill: var(--ink); stroke: none; }
+.yard-arm { position: absolute; left: 0; right: 0; top: 40px; height: 0; transform: rotate(var(--tilt)); transform-origin: 6% 50%; }
+.yard-beam { position: absolute; left: 0; right: 0; top: -1px; height: 2px; border-radius: 1px; background: linear-gradient(90deg, var(--ink) 0 14%, var(--ink-soft) 60%, var(--ink-faint)); }
+.yard-beam::after { content: ""; position: absolute; right: -4px; top: -2.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-soft); }
+.yard-key {
+  position: absolute; left: 0; width: 12.5%; top: -14px; height: 10px; background: var(--ink-faint);
+  -webkit-mask: var(--key) 0 0 / 12px 10px repeat-x; mask: var(--key) 0 0 / 12px 10px repeat-x;
+}
+.yard-load { position: absolute; left: 1.6%; top: 0; width: 20px; height: 40px; margin-left: -10px; color: var(--ink-soft); }
+.yard-load b { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); font: italic 400 15px/1 var(--serif); color: var(--ink-faint); }
+.yard-track { position: absolute; left: 14%; right: 2%; top: 0; height: 0; }
+.yard-ticks i { position: absolute; top: 4px; width: 1px; height: 5px; background: var(--ink-faint); }
+.yard-ticks i.mj { height: 10px; background: var(--ink-soft); }
+.yard-nums span { position: absolute; top: 17px; transform: translateX(-50%); font: 500 10px/1 var(--mono); letter-spacing: .04em; color: var(--ink-faint); }
+.yard-poise { position: absolute; left: calc(var(--x) * 100%); top: 0; width: 0; height: 0; }
+.yp-swing {
+  position: absolute; left: 0; top: -5px; display: flex; flex-direction: column; align-items: center;
+  transform: translateX(-50%) rotate(var(--sw)); transform-origin: 50% 5px; transition: opacity .4s ease;
+}
+.yp-ring { display: block; width: 10px; height: 10px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--bg); }
+.yp-thread { display: block; width: 1px; height: 30px; background: var(--ink); }
+.yp-coin { display: block; width: 46px; height: 46px; margin-top: -2px; overflow: visible; transition: transform .3s var(--ease-out); }
+.ypc-face { fill: var(--ink); }
+.ypc-beads { fill: none; stroke: var(--bg); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 0 1; opacity: .75; }
+.ypc-ring { fill: none; stroke: var(--bg); stroke-width: .8; opacity: .35; }
+.ypc-v { fill: var(--bg); font: 600 15px/1 var(--serif); letter-spacing: .02em; }
+.mz-yard:hover .yp-coin, .mz-yard.drag .yp-coin { transform: scale(1.08); }
+/* Focused, the ring is the coin's, not the whole yard's (the page's [tabindex] ring). */
+.mz-yard:focus-visible { outline: none; }
+.mz-yard:focus-visible .yp-coin { outline: 1px solid var(--ink); outline-offset: 4px; border-radius: 50%; }
+.mz-yard.empty .yp-swing { opacity: .4; }
+
 /* ---- the word behind the body: where the figure stands (--mzx, --mzy), as
    large as the room beside it allows (--mzs), fitted to its length (--k).
    Targets' pages hide the ground's words with !important; on this stage
@@ -1630,12 +1672,15 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-num { font-size: clamp(80px, 8.4vw, 136px); }
   .mz-ix { padding: 8px 0 7px; row-gap: 5px; }
   .mz-ix-w, .mz-ix-v { font-size: 23px; }
+  .mz-yard { height: 112px; }
+  .yp-thread { height: 24px; }
 }
 @media (max-height: 760px) {
   .mz-col { gap: 13px; }
   .mz-title { font-size: clamp(48px, 5.6vw, 92px); }
   .mz-h { font-size: clamp(38px, 4vw, 62px); }
   .mz-num { font-size: clamp(80px, 8vw, 128px); }
+  .mz-yard { height: 118px; }
   .mz-ix { padding: 9px 0 8px; }
   .mz-ix-w { font-size: 23px; }
   .mz-s[data-s="intro"] { padding-top: 16px; }
@@ -1654,6 +1699,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-alt { font-size: 18px; }
   .mz-ix { padding: 7px 0 6px; row-gap: 4px; }
   .mz-ix-w, .mz-ix-v { font-size: 21px; }
+  .mz-yard { height: 104px; }
+  .yp-thread { height: 20px; }
+  .yp-coin { width: 38px; height: 38px; }
   .mz-s { padding-top: 12px; }
   .mz-s[data-s="intro"] .mz-col { gap: 10px; }
   .mz-ix-u { display: none; }
