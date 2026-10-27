@@ -14,6 +14,8 @@
      mass     a steelyard: the poise slides along the beam, which swings
      years    a frieze of decades, a metope each, the years lived filled
      physis   which physiology the resting-burn equation should use
+     label    the seal: everything given, struck, each fact led out to it
+              like a catalogue plate; the figure steps away
 
    On a phone the parts stack in one column under the figure's band.
    ========================================================================= */
@@ -40,14 +42,15 @@
   const root = Stages.root, stage = $("anatomy-stage"), mount = stage.querySelector(".anatomy-viewport");
 
   /* ------------------------------- framings ------------------------------- */
-  const KEYS = ["intro", "stature", "mass", "years", "physis"];
-  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass", years: "Years", physis: "Physiology" };
+  const KEYS = ["intro", "stature", "mass", "years", "physis", "label"];
+  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass", years: "Years", physis: "Physiology", label: "" };
   const shots = docShots("measure-");
   shots.set("intro", { d: 560, sx: .70, sy: .50, az: -14 });
   shots.set("stature", { d: 540, sx: .29, sy: .50, az: 4 });
   shots.set("mass", { d: 540, sx: .71, sy: .50, az: -24 });
   shots.set("years", { d: 540, sx: .29, sy: .50, az: 26 });
   shots.set("physis", { d: 540, sx: .71, sy: .50, az: -40 });
+  shots.set("label", { az: -26, el: -4, ty: 96, d: 640, sx: -.34, sy: .50 });    // the figure steps away; the seal has the room
 
   /* -------------------------------- markup -------------------------------- */
   /* A coin, as the footer's (FOOT_COIN): a beaded rim, a fine ring, the sign struck in the field. */
@@ -59,6 +62,31 @@
   const num = (f, label, ph) => '<input class="mz-num" data-f="' + f + '" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + label + '" placeholder="' + ph + '">';
   const INDEX = [["stature", "I", "Stature", "Resting burn"], ["mass", "II", "Mass", "Resting burn · protein"],
     ["years", "III", "Years", "Resting burn"], ["physis", "IV", "Physiology", "The equation’s constant"]];
+
+  /* The seal: a beaded rim, the facts inscribed round it in Roman numerals,
+     a ring of dentils, and You struck in the field. The ink is uneven, as
+     a real impression is (the filter). */
+  const SEAL = '<svg class="seal-svg" viewBox="0 0 320 320" aria-hidden="true">' +
+    '<defs><filter id="mzInk" x="-4%" y="-4%" width="108%" height="108%">' +
+      '<feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7" result="n"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d"/>' +
+      '<feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -3 2.4" result="m"/>' +
+      '<feComposite in="d" in2="m" operator="in"/></filter>' +
+      '<path id="mzArc" d="M160 160m-121 0a121 121 0 1 1 242 0a121 121 0 1 1-242 0"/></defs>' +
+    '<g class="seal-ink" filter="url(#mzInk)">' +
+      '<circle class="s-rim" cx="160" cy="160" r="153"/><circle class="s-beads" cx="160" cy="160" r="145" pathLength="90"/>' +
+      '<circle class="s-hair" cx="160" cy="160" r="137"/>' +
+      '<text class="s-arc"><textPath href="#mzArc" textLength="748" lengthAdjust="spacing"></textPath></text>' +
+      '<circle class="s-hair" cx="160" cy="160" r="107"/><circle class="s-dent" cx="160" cy="160" r="100" pathLength="144"/>' +
+      '<circle class="s-hair" cx="160" cy="160" r="92"/>' +
+      '<text class="s-top" x="160" y="126" text-anchor="middle">ΜΕΤΡΟΝ</text><path class="s-rule" d="M124 138h72"/>' +
+      '<text class="s-you" x="160" y="183" text-anchor="middle">You</text><path class="s-rule" d="M124 198h72"/>' +
+      '<text class="s-year" x="160" y="219" text-anchor="middle"></text>' +
+    '</g></svg>';
+  const SEAL_SEX = { female: "FEMALE", male: "MALE", unspecified: "NOT SAID" };
+  /* A callout on the plate: a fact, what it is for, and Edit, led by a hairline to the seal's rim. */
+  const anno = (k, u, pos) => '<button type="button" class="pl-line" data-go="' + k + '" data-pos="' + pos + '"><span class="pl-v" data-pl="' + k + '"></span>' +
+    '<span class="pl-u">' + u + '</span><span class="pl-e">Edit</span></button>';
 
   const HTML =
     '<section class="mz-s" data-s="intro" data-side="l"><div class="mz-col">' +
@@ -120,6 +148,25 @@
       '</div>' +
       '<p class="mz-alt" data-r="1" data-alt="physis" aria-live="polite"></p>' +
       '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> The standard resting-burn equations add a different constant for female and male physiology, about 166 kcal a day apart. Only that equation reads it; nothing else in ATLAS changes.</p>' +
+    '</div></section>' +
+
+    '<section class="mz-s" data-s="label" data-side="c"><div class="mz-col mz-end">' +
+      '<p class="eyebrow" data-r="0">The seal · kept in this browser</p>' +
+      '<div class="mz-plate" data-r="1">' +
+        anno("years", "Resting burn", "tl") + anno("physis", "The equation’s constant", "tr") +
+        '<button type="button" class="seal" id="mz-label" data-state="blank">' + SEAL + '</button>' +
+        anno("stature", "Resting burn", "bl") + anno("mass", "Resting burn · protein", "br") +
+      '</div>' +
+      '<p class="pl-credit" data-r="2" data-show="credit"></p>' +
+      '<div class="mz-own" data-r="2">' +
+        '<label class="own-name"><span class="own-l">In the field</span>' +
+          '<input class="own-in" maxlength="' + MEASURE_NAME_MAX + '" placeholder="You" autocomplete="off" spellcheck="false" aria-label="A name for the seal’s field"></label>' +
+        '<div class="own-ink-w"><span class="own-l" aria-hidden="true">The ink</span><div class="own-ink" role="radiogroup" aria-label="The seal’s ink">' +
+          Object.entries(MEASURE_INKS).map(([k, w]) => '<button type="button" role="radio" data-ink="' + k + '" aria-label="' + w + '" title="' + w + '"><i></i></button>').join("") +
+        '</div></div>' +
+        '<button type="button" class="mz-clear">Clear the seal</button>' +
+      '</div>' +
+      '<p class="mz-priv" data-r="3">Nothing here leaves this browser: no account, no upload. Nutrition reads the four facts for its estimates; the name and the ink are only for the seal.</p>' +
     '</div></section>';
 
   const sec = $("stage-measure");
@@ -217,6 +264,18 @@
     q('[data-alt="stature"]').textContent = M.cm
       ? (M.imperial ? Math.round(M.cm) + " cm" : feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″") + ". The rule beside the figure is yours now."
       : "The marble stands 158 cm, as carved. And you?";
+    paintSeal();
+    const PL = {
+      years: M.age ? "Aged " + M.age : "Age not given",
+      physis: M.sex ? (M.sex === "unspecified" ? "Physiology not said" : MEASURE_SEX[M.sex] + " physiology") : "Physiology not given",
+      stature: M.cm ? show.stature() + " tall" : "Height not given",
+      mass: M.kg ? show.mass() : "Weight not given"
+    };
+    for (const el of qa("[data-pl]")) {
+      const k = el.dataset.pl;
+      el.textContent = PL[k];
+      el.classList.toggle("none", !show[k]());
+    }
     q('[data-alt="physis"]').textContent = SEX_NOTE[M.sex || "none"];
     for (const b of qa("[data-sex]")) {
       const on = b.dataset.sex === M.sex;
@@ -252,6 +311,35 @@
     else { frz.removeAttribute("aria-valuenow"); frz.setAttribute("aria-valuetext", "Not given"); }
 
     paintRule();
+  }
+
+  /* The seal: the four facts round the rim, the name in the field, the ink.
+     Struck once all four are given, and struck again on arriving at it. */
+  function paintSeal() {
+    const seal = q(".seal"), n = M.given, sep = "\u00a0\u00a0·\u00a0\u00a0";
+    const h = M.cm ? (M.imperial ? romanNumeral(Math.round(M.cm / 2.54)) + " IN" : romanNumeral(Math.round(M.cm)) + " CM") : "—";
+    const w = M.kg ? (M.imperial ? romanNumeral(poundsOf(M.kg)) + " LB" : romanNumeral(Math.round(M.kg)) + " KG") : "—";
+    seal.querySelector("textPath").textContent = "AGED " + (M.age ? romanNumeral(M.age) : "—") + sep + (M.sex ? SEAL_SEX[M.sex] : "—") + sep + h + sep + w + sep;
+    seal.querySelector(".s-year").textContent = romanNumeral(new Date().getFullYear());
+    // The field: a name, if one is given, sized to sit inside the inner ring.
+    const nm = (M.name || "").trim() || "You", you = seal.querySelector(".s-you");
+    you.textContent = nm;
+    you.style.fontSize = Math.min(64, 170 / (nm.length * .47)).toFixed(1) + "px";
+    q(".mz-plate").dataset.tint = M.ink;
+    for (const b of qa(".own-ink [data-ink]")) { const on = b.dataset.ink === M.ink; b.setAttribute("aria-checked", String(on)); b.tabIndex = on ? 0 : -1; }
+    const ni = q(".own-in");
+    if (ni !== document.activeElement) ni.value = M.name || "";
+    seal.setAttribute("aria-label", n === 4 ? "Your seal, struck. Press to strike it again" : "Your seal, not yet struck. Press to give what is missing");
+    const state = n === 4 ? "struck" : "blank";
+    if (seal.dataset.state !== state) { seal.dataset.state = state; if (state === "struck" && cur === "label") strike(); }
+    const day = new Date((M.sealed || new Date().toISOString().slice(0, 10)) + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    q('[data-show="credit"]').textContent = n === 4 ? "Struck " + day + ", in this browser. Never sent anywhere."
+      : ["Nothing given yet", "One fact given", "Two facts given", "Three facts given"][n] + "; the seal is struck with all four. Never sent anywhere.";
+  }
+  function strike() {
+    const s = q(".seal");
+    if (!s || s.dataset.state !== "struck") return;
+    s.classList.remove("strike"); void s.offsetWidth; s.classList.add("strike");
   }
 
   /* The rule is numbered in the user's height: the crown is at their stature, or the marble's. */
@@ -373,8 +461,14 @@
   addEventListener("pointerup", endDrag);
   addEventListener("pointercancel", endDrag);
 
-  page.addEventListener("input", e => { if (e.target.matches(".mz-num")) onInput(e.target, false); });
-  page.addEventListener("change", e => { if (e.target.matches(".mz-num")) onInput(e.target, true); });
+  page.addEventListener("input", e => {
+    if (e.target.matches(".mz-num")) onInput(e.target, false);
+    else if (e.target.matches(".own-in")) { M.name = e.target.value.trim().slice(0, MEASURE_NAME_MAX) || null; paintSeal(); }
+  });
+  page.addEventListener("change", e => {
+    if (e.target.matches(".mz-num")) onInput(e.target, true);
+    else if (e.target.matches(".own-in")) { save(); strike(); }
+  });
   page.addEventListener("keydown", e => {
     const t = e.target, k = e.key;
     if (t.matches(".mz-num")) {
@@ -383,6 +477,7 @@
       else if (k === "Enter") t.blur();
       return;
     }
+    if (t.matches(".own-in")) { if (k === "Enter") t.blur(); return; }
     const dir = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 }[k];
     if (t.matches(".mz-yard") && (dir || k === "Home" || k === "End")) {
       e.preventDefault();
@@ -416,6 +511,15 @@
     if (sx) { M.set("sex", sx.dataset.sex); save(); paint(); return; }
     const u = t.closest("[data-units]");
     if (u) { M.units = u.dataset.units; save(); paint(); return; }
+    const ik = t.closest(".own-ink [data-ink]");
+    if (ik) { M.ink = ik.dataset.ink; save(); paintSeal(); strike(); return; }
+    // The seal, struck, strikes again; not yet struck, it goes to the first fact missing.
+    if (t.closest(".seal")) {
+      if (M.complete) return strike();
+      const miss = [["stature", M.cm], ["mass", M.kg], ["years", M.age], ["physis", M.sex]].find(([, v]) => v === null);
+      if (miss) go(stop[miss[0]].a);
+      return;
+    }
     const g = t.closest("[data-go]");
     if (g && stop[g.dataset.go]) {
       const k = g.dataset.go;
@@ -423,6 +527,12 @@
       // Then into its first field, once the page has arrived.
       const f = secEl[k].querySelector(".mz-field:not([hidden]) .mz-num, [role=radiogroup] [tabindex='0']");
       if (f && !Stages.narrow) setTimeout(() => { if (live() && nearestKey(target) === k) f.focus({ preventScroll: true }); }, 650);
+      return;
+    }
+    if (t.closest(".mz-clear")) {
+      M.clear();
+      save(); paint();
+      announce("The seal is cleared");
     }
   });
   // The page is moved by the scroll, never by the browser bringing focus into view.
@@ -499,6 +609,7 @@
     cur = k;
     root.dataset.mzs = k;
     setWord(WORDS[k], k);
+    if (k === "label") strike();
     for (const el of page.querySelectorAll(".mz-s.here")) el.classList.remove("here");
     secEl[k].classList.add("here");
     Stages.paintFooter();
@@ -607,7 +718,7 @@
     },
     shot: () => "measure-" + (Stages.narrow ? "intro" : nearestKey(y)),
     wheel: () => owns ? false : undefined,
-    focus: () => $("mz-title"),
+    focus: () => $(nearestKey(target) === "label" ? "mz-label" : "mz-title"),
     footer() {
       const end = Stages.narrow || atEnd;
       return {
