@@ -9,6 +9,8 @@
    part, woven through the legs (flow-front.js copies it).
 
      intro    what is asked, why, and where it goes; the figure right
+     stature  a stadiometer stands beside the figure, its rule numbered
+              from the soles to the crown in the user's own height
 
    On a phone the parts stack in one column under the figure's band.
    ========================================================================= */
@@ -29,12 +31,20 @@
   const root = Stages.root, stage = $("anatomy-stage"), mount = stage.querySelector(".anatomy-viewport");
 
   /* ------------------------------- framings ------------------------------- */
-  const KEYS = ["intro"];
-  const WORDS = { intro: "Measure" };
+  const KEYS = ["intro", "stature"];
+  const WORDS = { intro: "Measure", stature: "Stature" };
   const shots = docShots("measure-");
   shots.set("intro", { d: 560, sx: .70, sy: .50, az: -14 });
+  shots.set("stature", { d: 540, sx: .29, sy: .50, az: 4 });
 
   /* -------------------------------- markup -------------------------------- */
+  /* A coin, as the footer's (FOOT_COIN): a beaded rim, a fine ring, the sign struck in the field. */
+  const coin = d => '<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="mzc-beads" cx="26" cy="26" r="24.2" pathLength="40"/>' +
+    '<circle class="mzc-ring" cx="26" cy="26" r="20.5"/><path class="mzc-arr" d="' + d + '"/></svg>';
+  const steps = (f, what) => '<div class="mz-steps">' +
+    '<button type="button" class="mz-coin" data-step="-1" data-f="' + f + '" aria-label="Less ' + what + '">' + coin("M19 26h14") + '</button>' +
+    '<button type="button" class="mz-coin" data-step="1" data-f="' + f + '" aria-label="More ' + what + '">' + coin("M19 26h14M26 19v14") + '</button></div>';
+  const num = (f, label, ph) => '<input class="mz-num" data-f="' + f + '" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + label + '" placeholder="' + ph + '">';
   const INDEX = [["stature", "I", "Stature", "Resting burn"], ["mass", "II", "Mass", "Resting burn · protein"],
     ["years", "III", "Years", "Resting burn"], ["physis", "IV", "Physiology", "The equation’s constant"]];
 
@@ -50,6 +60,18 @@
         '<button type="button" class="mz-cue" data-go="stature"><span class="mz-cue-line" aria-hidden="true"></span>Scroll to begin</button>' +
         '<div class="mz-units" role="radiogroup" aria-label="Units"><button type="button" role="radio" data-units="metric">cm · kg</button><button type="button" role="radio" data-units="imperial">ft · lb</button></div>' +
       '</div>' +
+    '</div></section>' +
+
+    '<section class="mz-s" data-s="stature" data-side="r"><div class="mz-col">' +
+      '<p class="eyebrow" data-r="0"><span class="n">I</span> / Stature</p>' +
+      '<h2 class="mz-h" data-r="0">How <em>tall.</em></h2>' +
+      '<div class="mz-read" data-r="1">' +
+        '<label class="mz-field" data-u="metric">' + num("cm", "Height in centimetres", "158") + '<span class="mz-unit">cm</span></label>' +
+        '<span class="mz-field" data-u="imperial">' + num("ft", "Height, feet", "5") + '<span class="mz-unit">ft</span>' + num("in", "Height, inches", "2") + '<span class="mz-unit">in</span></span>' +
+        steps("cm", "height") +
+      '</div>' +
+      '<p class="mz-alt" data-r="1" data-alt="stature"></p>' +
+      '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> A taller frame carries more of what burns at rest. Height is one term in the resting-burn estimate, and nothing else reads it.</p>' +
     '</div></section>';
 
   const sec = $("stage-measure");
@@ -62,18 +84,54 @@
   word.dataset.w = "measure";
   document.querySelector(".flow-ground").append(word);
 
+  /* The stadiometer, over the figure, beside it. */
+  const rule = document.createElement("div");
+  rule.className = "mz-rule";
+  rule.setAttribute("aria-hidden", "true");
+  rule.innerHTML = '<span class="mzr-spine"></span><span class="mzr-floor"></span><span class="mzr-head"></span><span class="mzr-slide"></span>' +
+    '<span class="mzr-ticks"></span><span class="mzr-val"><span class="mzr-n"></span><span class="mzr-u"></span><span class="mzr-cap"></span></span>';
+  stage.append(rule);
+  const ticksEl = rule.querySelector(".mzr-ticks");
+  let ticksFor = null;
+
   function build() {
     page.innerHTML = HTML;
     secEl = {};
     for (const el of page.querySelectorAll(".mz-s")) secEl[el.dataset.s] = el;
     built = true;
+    buildScales();
+  }
+
+  /* The scales, in the units chosen: the rule's ticks, every 10 cm or every 6 inches. */
+  function buildScales() {
+    if (!built || ticksFor === M.units) return;
+    ticksFor = M.units;
+    const metric = !M.imperial, stepC = metric ? 10 : 15.24, n = metric ? 25 : 16;
+    let t = "";
+    for (let i = 0; i <= n; i++) {
+      const c = i * stepC, mj = metric ? i % 5 === 0 : i % 2 === 0;
+      const lab = mj && i ? (metric ? String(c) : i / 2 + "′") : "";
+      t += '<i class="mzr-t' + (mj ? " mj" : "") + '" data-c="' + c.toFixed(2) + '">' + (lab ? "<span>" + lab + "</span>" : "") + "</i>";
+    }
+    ticksEl.innerHTML = t;
   }
 
   /* --------------------------------- paint -------------------------------- */
   const q = s => page.querySelector(s), qa = s => page.querySelectorAll(s);
-  function paint() {
+  /** Writes a field's value into its inputs, but the one being typed in; each input as wide as what it holds. */
+  function setIn(f, v, except) {
+    for (const i of qa('.mz-num[data-f="' + f + '"]')) {
+      if (i !== except) i.value = v;
+      i.style.setProperty("--len", Math.max(1, String(i.value || i.placeholder).length));
+    }
+  }
+  function paint(except = null) {
     if (!built) return;
+    buildScales();
     doc.dataset.units = M.units;
+    const [ft, inch] = M.cm ? feetInches(M.cm) : ["", ""];
+    setIn("cm", M.cm ? Math.round(M.cm) : "", except);
+    setIn("ft", ft, except); setIn("in", inch, except);
     for (const el of qa("[data-show]")) {
       const k = el.dataset.show;
       if (show[k]) { const v = show[k](); el.textContent = v || "—"; el.classList.toggle("none", !v); }
@@ -83,11 +141,76 @@
       b.setAttribute("aria-checked", String(on));
       b.tabIndex = on ? 0 : -1;
     }
+    q('[data-alt="stature"]').textContent = M.cm
+      ? (M.imperial ? Math.round(M.cm) + " cm" : feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″") + ". The rule beside the figure is yours now."
+      : "The marble stands 158 cm, as carved. And you?";
+    paintRule();
+  }
+
+  /* The rule is numbered in the user's height: the crown is at their stature, or the marble's. */
+  function paintRule() {
+    const H = M.cm || SCULPTURE_SHOT_HEIGHT;
+    for (const t of ticksEl.children) {
+      const c = +t.dataset.c;
+      t.style.bottom = (c / H * 100).toFixed(3) + "%";
+      t.classList.toggle("off", c > H + .01);
+    }
+    rule.classList.toggle("empty", !M.cm);
+    rule.querySelector(".mzr-n").textContent = M.cm ? (M.imperial ? feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″" : Math.round(M.cm)) : "158";
+    rule.querySelector(".mzr-u").textContent = M.cm && M.imperial ? "" : "cm";
+    rule.querySelector(".mzr-cap").textContent = M.cm ? "You" : "The marble";
+    if (rule.offsetHeight) nearTicks();
   }
 
   /* -------------------------------- editing ------------------------------- */
+  /** A field typed in: kept while it fits the limits, held to them once it is left (commit). */
+  function onInput(i, commit) {
+    const f = i.dataset.f, raw = String(i.value).trim(), n = parseFloat(raw.replace(",", "."));
+    const fits = (field, v) => commit ? Number.isFinite(v) : BodyMeasure.fits(field, v);
+    if (f === "cm") { if (fits("cm", n)) M.set("cm", n); else if (!raw) M.set("cm", null); }
+    else if (f === "ft" || f === "in") {
+      const ft = parseFloat(q('[data-f="ft"]').value), inch = parseFloat(q('[data-f="in"]').value) || 0;
+      if (Number.isFinite(ft)) { const cm = (ft * 12 + inch) * 2.54; if (fits("cm", cm)) M.set("cm", cm); }
+      else if (!raw && f === "ft") M.set("cm", null);
+    }
+    if (commit) save();
+    paint(commit ? null : i);
+  }
+
+  /** One step of a field: a centimetre or an inch. */
+  function stepF(f, dir) {
+    if (f === "cm") {
+      if (M.imperial) M.set("cm", ((M.cm ? Math.round(M.cm / 2.54) : 62) + dir) * 2.54);
+      else M.set("cm", (M.cm ? Math.round(M.cm) : 158) + dir);
+    }
+    save();
+    paint();
+  }
+
+  /* A coin held down keeps stepping. */
+  let holdT = 0, holdI = 0;
+  const stopHold = () => { clearTimeout(holdT); clearInterval(holdI); };
+  page.addEventListener("pointerdown", e => {
+    const b = e.target.closest("[data-step]");
+    if (!b) return;
+    e.preventDefault();
+    stepF(b.dataset.f, +b.dataset.step);
+    stopHold();
+    holdT = setTimeout(() => { holdI = setInterval(() => stepF(b.dataset.f, +b.dataset.step), 70); }, 420);
+  });
+  addEventListener("pointerup", stopHold);
+  addEventListener("pointercancel", stopHold);
+
+  page.addEventListener("input", e => { if (e.target.matches(".mz-num")) onInput(e.target, false); });
+  page.addEventListener("change", e => { if (e.target.matches(".mz-num")) onInput(e.target, true); });
   page.addEventListener("keydown", e => {
     const t = e.target, k = e.key;
+    if (t.matches(".mz-num")) {
+      const d = { ArrowUp: 1, ArrowDown: -1 }[k];
+      if (d) { e.preventDefault(); stepF(t.dataset.f === "ft" || t.dataset.f === "in" ? "cm" : t.dataset.f, d * (e.shiftKey ? 10 : 1)); }
+      else if (k === "Enter") t.blur();
+      return;
+    }
     const grp = t.closest("[role=radiogroup]"), side = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[k];
     if (grp && side) {
       e.preventDefault();
@@ -100,6 +223,9 @@
 
   page.addEventListener("click", e => {
     const t = e.target;
+    // A coin is stepped on pointerdown; a click from the keyboard steps it here.
+    const st = t.closest("[data-step]");
+    if (st) { if (e.detail === 0) stepF(st.dataset.f, +st.dataset.step); return; }
     const u = t.closest("[data-units]");
     if (u) { M.units = u.dataset.units; save(); paint(); return; }
     const g = t.closest("[data-go]");
@@ -129,6 +255,10 @@
     KEYS.forEach((k, i) => { secEl[k].style.height = Stages.narrow ? "" : SH + "px"; stop[k] = { a: i * SH }; });
     max = stop[KEYS[KEYS.length - 1]].a;
     y = Math.min(y, max); target = Math.min(target, max);
+    let vt = 0;
+    for (let el = sec; el; el = el.offsetParent) vt += el.offsetTop;
+    const ch = mount.clientHeight || innerHeight;
+    shots.fit("stature", vt + 18, ch - 44);     // room above the crown for the headboard
   }
   function seg(v = y) {
     for (let i = 0; i < KEYS.length - 1; i++) {
@@ -194,9 +324,37 @@
     wordT = setTimeout(() => {
       word.textContent = w;
       word.dataset.k = k;
-      word.style.setProperty("--k", Math.min(1, 6.4 / Math.max(1, w.length)).toFixed(3));
+      // Stature stands back from the rule, to the far side of the figure.
+      word.style.setProperty("--k", (Math.min(1, 6.4 / Math.max(1, w.length)) * (k === "stature" ? .84 : 1)).toFixed(3));
       if (w) word.classList.add("on");
     }, 300);
+  }
+
+  /* A tick's number gives way where the crown's readout stands over it. */
+  function nearTicks(h = rule.offsetHeight) {
+    const H = M.cm || SCULPTURE_SHOT_HEIGHT, room = (rule.querySelector(".mzr-val").offsetHeight || 55) + 22;
+    for (const t of ticksEl.children) t.classList.toggle("near", (H - +t.dataset.c) / H * h < room);
+  }
+
+  /* The rule stands beside the figure through the camera it holds now. */
+  let rk = "";
+  function placeRule() {
+    let o = 0;
+    if (live() && !Stages.narrow && built && stop.stature && SH) o = Math.max(0, Math.min(1, 1 - Math.abs((stop.stature.a - y) / SH) * 1.8));
+    const r = o > 0 && figure.renderer, a = r && r.axisPoint && r.axisPoint(0), b = a && r.axisPoint(1);
+    if (!a || !b || !isFinite(a.y) || !isFinite(b.y)) { if (rk !== "off") { rk = "off"; rule.style.opacity = "0"; } return; }
+    const top = mount.offsetTop + b.y, h = a.y - b.y, x = mount.offsetLeft + a.x;
+    const side = x < stage.clientWidth / 2 ? 1 : -1, reach = h * .19, gap = reach + 26, rx = x + side * gap;
+    const key = [rx, top, h, o].map(v => v.toFixed(1)).join() + side;
+    if (key === rk) return;
+    rk = key;
+    rule.style.transform = "translate(" + rx.toFixed(1) + "px," + top.toFixed(1) + "px)";
+    rule.style.height = h.toFixed(1) + "px";
+    rule.style.setProperty("--in", (gap + h * .03).toFixed(1) + "px");
+    rule.style.setProperty("--fl", (gap + reach).toFixed(1) + "px");
+    rule.dataset.side = side;
+    rule.style.opacity = o.toFixed(3);
+    nearTicks(h);
   }
 
   /* -------------------------------- motion -------------------------------- */
@@ -208,6 +366,7 @@
       if (Math.abs(target - y) <= .3) { y = target; settleFigure(); }
       render();
     }
+    placeRule();
     requestAnimationFrame(frame);
   })(0);
   function go(v) {
