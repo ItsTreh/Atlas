@@ -50,6 +50,15 @@ const STAGE_WHEEL = { threshold: 260, gap: 450, quiet: 450 };
    stage. css/styles.css uses the same query. */
 const STAGE_NARROW = "(max-width: 759px), (max-width: 999px) and (orientation: portrait)";
 
+/* The footer's coins: a drachma, its beaded rim, a fine ring inside it,
+   the arrow struck in the field (css/styles.css, "the way on"). */
+const FOOT_COIN = (() => {
+  const coin = d => '<span class="fx-coin" aria-hidden="true"><svg viewBox="0 0 52 52">' +
+    '<circle class="fx-beads" cx="26" cy="26" r="24.2" pathLength="40"/>' +
+    '<circle class="fx-ring" cx="26" cy="26" r="20.5"/><path class="fx-arr" d="' + d + '"/></svg></span>';
+  return { next: coin("M17 26h17M29 21l5 5-5 5"), back: coin("M35 26H18M23 21l-5 5 5 5") };
+})();
+
 const Stages = {
   current: "targets",
   phase: "idle",
@@ -305,9 +314,20 @@ const Stages = {
       el.hidden = !text;
       if (text && el.textContent !== text) el.textContent = text;
     };
-    set("foot-back", f.back);
+    // Back and the way on are an inscription and a coin (FOOT_COIN): the
+    // label without its arrow, which the coin carries instead.
+    const dress = (id, text, back) => {
+      const el = $(id);
+      el.hidden = !text;
+      if (!text || el.dataset.label === text) return;
+      el.dataset.label = text;
+      const label = '<span class="fx-label">' + esc(text.replace(/^\s*←\s*|\s*→\s*$/g, "")) + '</span>';
+      el.innerHTML = back ? FOOT_COIN.back + label
+        : label + '<span class="fx-key" aria-hidden="true"></span>' + FOOT_COIN.next;
+    };
+    dress("foot-back", f.back, true);
     set("foot-skip", f.skip);
-    set("foot-next", f.next);
+    dress("foot-next", f.next, false);
     $("foot-next").disabled = !!f.nextDisabled;
     $("foot-hint").textContent = f.hint || "";
   },
