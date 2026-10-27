@@ -1,104 +1,108 @@
 /* ===========================================================================
-   Theme tokens — ATLAS.
+   Theme tokens — ATLAS: polychromy.
 
-   Light is the primary design: a cool off-white ground, layered neutral
-   grays and charcoal type, with borders and shadows kept to a whisper. The
-   interface is monochrome on purpose — "accent" is charcoal, not a hue —
-   so the body and the user's choices are what carry colour. Every text
-   colour clears 4.5:1 on every surface it sits on, in both themes.
+   The page takes the sculpture's warmth instead of fighting it: limestone
+   paper and iron-gall ink by day, a lamplit gallery by night. The interface
+   stays monochrome on purpose ("accent" is the ink, not a hue), so the body
+   and the user's choices are what carry colour. Every text colour clears
+   4.5:1 on every surface it sits on, in both themes.
 
    The four family hues (push, pull, legs, core) are data, not decoration:
-   a colour-vision-validated categorical set (worst all-pairs CVD ΔE 9.4),
-   used as small dots beside the families they name.
+   the pigments Greek statues were actually painted with (yellow ochre,
+   Egyptian blue, green earth, madder rose), used as small dots beside the
+   families they name. Worst all-pairs ΔE2000 under full protan, deutan and
+   tritan simulation (Machado 2009): 8.3 light, 8.7 dark.
    ========================================================================= */
 
 :root, [data-theme="light"] {
   color-scheme: light;
-  --bg:          #f4f5f6;   /* the ground */
-  --card:        #fafafa;   /* a surface that sits on it */
-  --raised:      #eceef0;   /* a layer inside a surface */
-  --ink:         #25282c;   /* primary text */
-  --ink-soft:    #575c61;   /* secondary text */
-  --ink-faint:   #63686d;   /* metadata — still 4.5:1 on every surface */
-  --line:        #d9dde1;
-  --line-soft:   #e6e9ec;
+  --bg:          #f3f0ea;   /* the ground */
+  --card:        #faf8f4;   /* a surface that sits on it */
+  --raised:      #ebe6dd;   /* a layer inside a surface */
+  --ink:         #24201b;   /* primary text */
+  --ink-soft:    #59524a;   /* secondary text */
+  --ink-faint:   #6b6459;   /* metadata — still 4.5:1 on every surface */
+  --line:        #dcd5c9;
+  --line-soft:   #e8e3da;
 
-  --busy:        #d3d8dd;
-  --busy-hatch:  rgba(20,24,28,.07);
+  --busy:        #ddd6ca;
+  --busy-hatch:  rgba(40,30,18,.07);
 
-  --push:  #eda100;
-  --pull:  #2a78d6;
+  --push:  #c38a1e;
+  --pull:  #2f5fa8;
   /* Each hue as fine lines on the lit sculpture (a family pointed at in the
      summary): deeper than the dot here, lighter in the dark theme. */
-  --push-trace: #965f00;  --pull-trace: #1d5bb0;
-  --legs-trace: #006409;  --core-trace: #b02f66;
-  --trace-vivid: 1;   /* dark hues on light grey: darken less in shadow, draw stronger */
-  --legs:  #008300;
-  --core:  #e87ba4;
+  --push-trace: #87590a;  --pull-trace: #1f4787;
+  --legs-trace: #295a35;  --core-trace: #8b3352;
+  --trace-vivid: 1;   /* dark hues on light stone: darken less in shadow, draw stronger */
+  --legs:  #3e7b4c;
+  --core:  #b5536f;
 
-  --accent:       #25282c;
-  --accent-hover: #3b3f44;
-  --accent-ink:   #fafafa;
-  --accent-soft:  #e4e7ea;
+  --accent:       #24201b;
+  --accent-hover: #3a342d;
+  --accent-ink:   #faf8f4;
+  --accent-soft:  #e6e0d5;
   --warn:         #8a5212;
   --err:          #a3452f;
 
   /* anatomy: body < muscle < selected, stepping in lightness */
-  --body:        #e6e9ec;
-  --joint:       #dde1e5;
-  --muscle:      #c7ccd2;
-  --muscle-hover:#b3b9c0;
-  --seam:        #f4f5f6;
-  --sel:         #2f3337;
-  --sel-hover:   #474c51;
-  /* The sculpture is marble, a shade warmer than the page's cool neutrals,
-     so it reads as stone rather than clay. Selection adds only a small
-     material shift; its surface constellation carries the state. */
-  --sculpt-form:     #cdc8c0;
-  --sculpt-muscle:   #cdc8c0;
-  --sculpt-selected: #5d5953;
+  --body:        #e9e4db;
+  --joint:       #e0d9ce;
+  --muscle:      #cdc4b6;
+  --muscle-hover:#b8ae9f;
+  --seam:        #f3f0ea;
+  --sel:         #2e2924;
+  --sel-hover:   #4a433b;
+  /* The sculpture is Pentelic marble, a touch brighter and creamier than the
+     paper, so it reads as lit stone, of a piece with the page. Selection
+     adds only a small material shift; its surface constellation carries
+     the state. */
+  --sculpt-form:     #d6cfc3;
+  --sculpt-muscle:   #d6cfc3;
+  --sculpt-selected: #62594d;
   --cartography-ink: var(--ink);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg:          #141618;
-  --card:        #1b1e21;
-  --raised:      #24282c;
-  --ink:         #e9ebed;
-  --ink-soft:    #aeb3b8;
-  --ink-faint:   #969ba0;
-  --line:        #33383d;
-  --line-soft:   #272b2f;
+  --bg:          #14120f;
+  --card:        #1c1915;
+  --raised:      #26221d;
+  --ink:         #ede6d9;
+  --ink-soft:    #b8ae9e;
+  --ink-faint:   #9c9283;
+  --line:        #37322a;
+  --line-soft:   #28241e;
 
-  --busy:        #2d3237;
-  --busy-hatch:  rgba(255,255,255,.05);
+  --busy:        #2f2a23;
+  --busy-hatch:  rgba(255,240,215,.05);
 
-  --push:  #c98500;
-  --pull:  #3987e5;
-  --push-trace: #f4c35c;  --pull-trace: #9cc6fb;
-  --legs-trace: #86d880;  --core-trace: #f3a4c3;
+  --push:  #d4a03c;
+  --pull:  #5d8fd6;
+  --push-trace: #f0c870;  --pull-trace: #a9c4ef;
+  --legs-trace: #a2d3ab;  --core-trace: #f1adc1;
   --trace-vivid: 0;
-  --legs:  #008300;
-  --core:  #d55181;
+  --legs:  #5fa571;
+  --core:  #d27993;
 
-  --accent:       #e9ebed;
-  --accent-hover: #ffffff;
-  --accent-ink:   #141618;
-  --accent-soft:  #2b3035;
+  --accent:       #ede6d9;
+  --accent-hover: #fffaf0;
+  --accent-ink:   #14120f;
+  --accent-soft:  #2e2923;
   --warn:         #e0a458;
   --err:          #e8846a;
 
-  --body:        #262a2e;
-  --joint:       #2c3135;
-  --muscle:      #3c4248;
-  --muscle-hover:#4c535a;
-  --seam:        #141618;
-  --sel:         #e4e7ea;
-  --sel-hover:   #c9cdd0;
-  --sculpt-form:     #8b8781;
-  --sculpt-muscle:   #8b8781;
-  --sculpt-selected: #bcb7af;
+  --body:        #29251f;
+  --joint:       #2f2a24;
+  --muscle:      #423c33;
+  --muscle-hover:#534b40;
+  --seam:        #14120f;
+  --sel:         #ede6d9;
+  --sel-hover:   #d0c7b7;
+  /* Marble under a single lamp: it holds its light against the dark. */
+  --sculpt-form:     #a39b8e;
+  --sculpt-muscle:   #a39b8e;
+  --sculpt-selected: #d6cec0;
   --cartography-ink: var(--ink);
 }
 
@@ -1377,6 +1381,24 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
    (a hand reaching below the panel). It comes and goes with the text
    (data-shown), so it never covers the figure while the camera travels.
    How strongly it shows is a registered property, so it can fade. */
+/* The gallery light: a soft pool where the figure stands, daylight on the
+   paper by day, a lamp's warmth by night. It follows the figure from stage
+   to stage, and the figure itself (--gx) on Targets' movements. */
+.anatomy-stage::before {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: 2%; height: 112%; width: min(84vw, 1150px); left: var(--lamp-x, 62%); transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(255,254,250,.9), rgba(255,253,247,.45) 50%, transparent);
+  transition: left .9s var(--ease-out), opacity .6s ease;
+}
+[data-theme="dark"] .anatomy-stage::before {
+  background: radial-gradient(closest-side, rgba(255,232,196,.06), rgba(255,232,196,.02) 55%, transparent);
+}
+.atlas[data-stage="targets"][data-sub="how"] { --lamp-x: 74%; }
+.atlas[data-stage="targets"]:is([data-sub="focus"], [data-sub="train"]) { --lamp-x: calc(var(--gx, .64) * 100%); }
+.atlas[data-stage="nutrition"] { --lamp-x: 16%; }
+.atlas[data-stage="plan"] { --lamp-x: 50%; }
+.atlas[data-opening] { --lamp-x: 50%; }
+
 @property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .anatomy-stage::after {
   content: ""; position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; pointer-events: none;
@@ -2131,6 +2153,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   [data-reveal], .atlas[data-shown] .stage.is-current [data-reveal] { transform: none; }
   .atlas[data-shown] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
   .atlas[data-shown][data-stage="nutrition"] .anatomy-stage::after { transition: --veil .25s ease; }
+  .anatomy-stage::before { transition: none; }
   .figure-controls, .js .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
   .atlas[data-stage="targets"][data-shown] .figure-controls {
     transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s;
