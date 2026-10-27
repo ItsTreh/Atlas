@@ -86,6 +86,7 @@ js/
                     the stages (Targets in three movements); workout-view.js is a session in full
   targets-muscles.js, targets-train.js
                     Your muscles and Training focus as scrolled pages, on a wide screen
+  flow-front.js     the words behind the body, woven in front of the near leg
   render.js, paint.js, app.js
                     shared helpers, painting busy hours, generating, boot
 tests/              Vitest suites

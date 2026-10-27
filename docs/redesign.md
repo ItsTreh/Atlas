@@ -165,9 +165,11 @@ of its panels: a page registers in `FLOW_DOCS` (`js/targets.js`), and
 camera between the page's framings, so the figure crosses from side to side
 with the page, and each part of the information gets the screen in turn. A
 very large ghost word behind the figure names what is pointed at, in place
-of the label beside the body. The way on only shows at the foot of a page;
-until then the footer says "Scroll down", and past either end the wheel
-moves between movements as before. On a phone, or with the flat SVG figure,
+of the label beside the body. Below the hips it comes round in front of
+the leg nearer the eye and stays behind the other, woven through the figure
+(`js/flow-front.js`, design "ATLAS Start", 2026-10-26). The way on only shows at
+the foot of a page; until then the footer says "Scroll down", and past
+either end the wheel moves between movements as before. On a phone, or with the flat SVG figure,
 the panels above stay.
 - *Your muscles* (`js/targets-muscles.js`, framings `targets-doc-…`): an
   opening; every program on one reel, turned by the scroll, the body

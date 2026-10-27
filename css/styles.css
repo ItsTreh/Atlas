@@ -933,6 +933,25 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 #atlas[data-opening] .flow-ground .ghost { opacity: 0; transition: none; }
 .atlas .flow-ground[data-pointed] > span { opacity: 0 !important; transition: opacity .3s ease !important; }
 
+/* The word, in front too: a twin of the ground over the figure
+   (js/flow-front.js), shown only below the hips (--knee) and on the leg
+   nearer the eye (--axis, --wdir), so the word runs behind one leg and in
+   front of the other. Three masks, intersected: a lens that clears around
+   the pointer, the line, and the near side of the figure's axis. */
+@property --lens { syntax: "<length>"; inherits: true; initial-value: 0px; }
+.flow-ground.flow-front {
+  z-index: 2; opacity: .82;
+  --m-lens: radial-gradient(circle var(--lens) at var(--px, -999px) var(--py, -999px), transparent 45%, #000);
+  --m-line: linear-gradient(transparent calc(var(--knee, 200vh) - 12px), #000 calc(var(--knee, 200vh) + 12px));
+  --m-side: linear-gradient(var(--wdir, 90deg), transparent calc(var(--axis, 200vw) - 3px), #000 calc(var(--axis, 200vw) + 3px));
+  -webkit-mask-image: var(--m-lens), var(--m-line), var(--m-side);
+  -webkit-mask-composite: source-in, source-in;
+  mask-image: var(--m-lens), var(--m-line), var(--m-side);
+  mask-composite: intersect;
+  transition: --lens .45s var(--ease-out);
+}
+.flow-front .ghost-meta { visibility: hidden !important; }
+
 /* The page: its sections stacked in one place, moved by the scroll. */
 .doc-view {
   position: absolute; inset: 0; overflow: hidden;
@@ -2154,6 +2173,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .atlas[data-shown] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
   .atlas[data-shown][data-stage="nutrition"] .anatomy-stage::after { transition: --veil .25s ease; }
   .anatomy-stage::before { transition: none; }
+  .flow-front { transition: none; }
   .figure-controls, .js .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
   .atlas[data-stage="targets"][data-shown] .figure-controls {
     transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s;
