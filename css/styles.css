@@ -1068,15 +1068,16 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 /* The movement's word belongs to the page's opening; further down, the
    ground is left to the names. */
 .atlas[data-doc="focus"]:not([data-doc-at="intro"]) .flow-ground > span { opacity: 0 !important; transition: opacity .5s ease !important; }
-/* The muscle's name stands low behind the figure, at its shins (--gyl,
-   holdFigure), where flow-front.js weaves it through the legs; never into
-   the footer, the box being at most 34.4vh + 11px tall. The meta line reads
-   under the word, stepped sideways to just past the legs (--gbw). */
-.atlas[data-doc="focus"][data-sub="focus"] .flow-ground .ghost {
+/* On both movements' pages the name stands low behind the figure, at its
+   shins (--gyl, holdFigure), where flow-front.js weaves it through the
+   legs; never into the footer, the box being at most 34.4vh + 11px tall.
+   The meta line reads under the word, stepped sideways to just past the
+   legs (--gbw). */
+.atlas:is([data-doc="focus"][data-sub="focus"], [data-doc="train"][data-sub="train"]) .flow-ground .ghost {
   top: min(calc(var(--gyl, var(--gy, .43)) * 100%), calc(100% - 96px - 17.2vh));
   flex-direction: column-reverse;
 }
-.atlas[data-doc="focus"][data-sub="focus"] .flow-ground .ghost .ghost-meta {
+.atlas:is([data-doc="focus"][data-sub="focus"], [data-doc="train"][data-sub="train"]) .flow-ground .ghost .ghost-meta {
   transform: translateX(calc(50% + var(--gbw, 64px) + 14px));
 }
 

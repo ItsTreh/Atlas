@@ -467,7 +467,7 @@ function holdFigure(shots, a, b, e, live) {
   Stages.root.style.setProperty("--gx", sx.toFixed(4));
   Stages.root.style.setProperty("--gy", (sy - .07).toFixed(4));
   Stages.root.style.setProperty("--gs", (2 * Math.min(sx, 1 - sx) * 100 / 3.9).toFixed(2) + "vw");
-  // Your muscles writes its words low, at the shins, where they cross the
+  // The pages write their words low, at the shins, where they cross the
   // legs (flow-front.js weaves them through): --gyl, the line a fifth of
   // the body's height below its middle, and --gbw, how far the legs reach
   // either side of its axis, so the small meta line can stand beside them.
