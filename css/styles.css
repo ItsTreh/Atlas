@@ -977,8 +977,8 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   color: var(--fam-ink); opacity: .8;
 }
 .ghost-meta:empty { display: none; }
-/* A word a page pins (a family, the movement's name) is quieter, and smaller. */
-.flow-ground .ghost[data-family="program"] .ghost-word { font-size: calc(min(var(--gs, 23vw), 36vh) * .6); color: color-mix(in srgb, var(--ink) 9%, var(--bg)); }
+/* The movement's name, pinned by its page (Emphasis), is quieter. */
+.flow-ground .ghost[data-family="program"] .ghost-word { color: color-mix(in srgb, var(--ink) 9%, var(--bg)); }
 .flow-ground .ghost[data-family="program"] .ghost-meta { visibility: hidden; }
 .ghost.swap .ghost-word i { animation: ghostIn .9s var(--ease-out) both; animation-delay: calc(var(--j) * 26ms); }
 .ghost.swap .ghost-meta { animation: ghostMeta .6s ease .15s both; }
@@ -1013,6 +1013,8 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   transition: --lens .45s var(--ease-out);
 }
 .flow-front .ghost-meta { visibility: hidden !important; }
+/* Method stands higher, across the thighs, not low at the shins: it stays wholly behind. */
+.flow-front [data-w="how"] { visibility: hidden; }
 
 /* The page: its sections stacked in one place, moved by the scroll. */
 .doc-view {
