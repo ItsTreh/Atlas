@@ -262,8 +262,77 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .foot-start { grid-column: 1; display: flex; align-items: center; }
 .foot-dots { grid-column: 2; }
 .foot-end { grid-column: 3; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
-.foot-hint { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+/* The hint beside the way on speaks in the inscription's voice. */
+.foot-hint { font: italic 400 16px/1.2 var(--serif); letter-spacing: .01em; color: var(--ink-faint); white-space: nowrap; }
 .foot-hint:empty { display: none; }
+
+/* The way on: an inscription and a coin. The label cut in spaced capitals;
+   a Greek key that runs on toward the coin as you reach for it; the coin a
+   drachma (FOOT_COIN, stages.js), its beaded rim turning as it is struck.
+   Back: the small coin alone, with the destination as a gallery label. */
+:root { --key: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='10'%3E%3Cpath d='M.5 10V.5h9v6h-3v-3h-3v6H12' fill='none' stroke='%23000'/%3E%3C/svg%3E"); }
+#foot-next:not([hidden]) {
+  display: inline-flex; align-items: center; gap: 12px;
+  min-height: 56px; padding: 4px 0 4px 10px;
+  background: none; border: 0; border-radius: 0; color: var(--ink);
+  font: 600 15px/1 var(--serif); letter-spacing: .24em; text-transform: uppercase;
+  text-shadow: 0 0 3px var(--bg), 0 0 10px var(--bg), 0 0 18px var(--bg);
+  transition: color .3s ease; opacity: 1;
+}
+#foot-next:hover:not(:disabled) { background: none; }
+#foot-next:focus-visible { outline: none; }
+#foot-next .fx-label { padding-top: 1px; }
+
+/* The key: two turns at rest, five when reached for, the last line running into the coin. */
+.fx-key {
+  flex: none; display: block; width: 24px; height: 10px; margin-left: 6px;
+  background: var(--ink-faint);
+  -webkit-mask: var(--key) 0 0 / 12px 10px repeat-x; mask: var(--key) 0 0 / 12px 10px repeat-x;
+  transition: width .7s var(--ease-out), background-color .3s ease;
+}
+
+.fx-coin {
+  position: relative; flex: none; display: grid; place-items: center;
+  width: 52px; height: 52px; border-radius: 50%; color: var(--ink);
+  background: color-mix(in oklab, var(--bg) 78%, transparent);
+  transition: background .35s var(--ease-out), color .35s var(--ease-out), transform .2s ease;
+}
+.fx-coin svg { width: 100%; height: 100%; display: block; overflow: visible; fill: none; stroke: currentColor; }
+.fx-beads { stroke-width: 2.4; stroke-linecap: round; stroke-dasharray: 0 1; transform-origin: 26px 26px; transition: transform 1.1s var(--ease-out), opacity .3s ease; }
+.fx-ring { stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .45; transition: opacity .3s ease; }
+.fx-arr { stroke-width: 1.25; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; transition: transform .5s var(--ease-out); }
+
+#foot-next:is(:hover, :focus-visible):not(:disabled) .fx-key { width: 60px; background: var(--ink); }
+#foot-next:is(:hover, :focus-visible):not(:disabled) .fx-coin { background: var(--ink); color: var(--bg); }
+#foot-next:is(:hover, :focus-visible):not(:disabled) .fx-beads { transform: rotate(27deg); }
+#foot-next:is(:hover, :focus-visible):not(:disabled) .fx-ring { opacity: .7; }
+#foot-next:is(:hover, :focus-visible):not(:disabled) .fx-arr { transform: translateX(3px); }
+#foot-next:active:not(:disabled) .fx-coin { transform: scale(.95); }
+#foot-next:focus-visible .fx-coin { box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--ink); }
+
+#foot-next:disabled { color: var(--ink-faint); cursor: not-allowed; }
+#foot-next:disabled .fx-key { background: var(--line); }
+#foot-next:disabled .fx-beads { opacity: .45; }
+#foot-next:disabled .fx-ring { opacity: .3; }
+
+/* Training focus opening: the coin rings once, twice, like a struck bell. */
+#foot-next.fresh .fx-coin::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--ink);
+  animation: fxRing 1.3s var(--ease-out) 2 both; pointer-events: none;
+}
+@keyframes fxRing { from { transform: scale(1); opacity: .6; } to { transform: scale(1.75); opacity: 0; } }
+
+#foot-back:not([hidden]) {
+  display: inline-flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 10px 4px 0;
+  font: 600 12.5px/1 var(--serif); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-soft);
+}
+#foot-back .fx-coin { width: 40px; height: 40px; color: var(--ink-soft); }
+#foot-back .fx-ring { opacity: .3; }
+#foot-back:is(:hover, :focus-visible) { color: var(--ink); outline: none; }
+#foot-back:is(:hover, :focus-visible) .fx-coin { color: var(--ink); }
+#foot-back:is(:hover, :focus-visible) .fx-beads { transform: rotate(-27deg); }
+#foot-back:is(:hover, :focus-visible) .fx-arr { transform: translateX(-3px); }
+#foot-back:focus-visible .fx-coin { box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--ink); }
 .foot-dots { display: none; justify-content: center; gap: 6px; }
 .foot-dots button {
   width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
@@ -762,13 +831,6 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .lf:hover :is(.lf-name, .lf-n) { color: var(--fam-ink); }
 .lf:hover .lf-ms { color: var(--ink); }
 .lg-foot { display: flex; justify-content: flex-start; }
-/* Training focus opening: the way on comes alive. */
-#foot-next.fresh { animation: nextOpen 1.2s var(--ease-out); }
-@keyframes nextOpen {
-  0% { transform: scale(.94); box-shadow: 0 0 0 0 var(--ink-faint); }
-  45% { box-shadow: 0 0 0 9px transparent; }
-  100% { transform: none; box-shadow: 0 0 0 0 transparent; }
-}
 
 /* ----- iii: training focus. The figure stepped left, and each muscle's
    priority on a dial, with the weekly sets it starts from. */
@@ -2112,7 +2174,13 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   }
   .foot-dots { display: flex; }
   .foot-end { gap: 12px; }
-  .stage-foot .btn { padding: 11px 16px; }
+  .stage-foot .btn { padding: 0; }
+  #foot-next:not([hidden]) { font-size: 13.5px; letter-spacing: .18em; gap: 10px; min-height: 48px; padding: 0; text-shadow: none; }
+  #foot-next .fx-key { display: none; }
+  /* The inscription is wider than a third of a phone: the dots take what is left between. */
+  .stage-foot { grid-template-columns: auto minmax(0, 1fr) auto; }
+  #foot-next .fx-coin, #foot-back .fx-coin { width: 44px; height: 44px; }
+  #foot-back .fx-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
   .stage-targets {
     inset: auto; left: 0; right: 0; top: calc(var(--bar) + 52vh); bottom: 64px;
@@ -2198,5 +2266,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .atlas:not([data-shown]) .stage-targets [data-reveal] { transform: none; filter: none; }
   .chapter.on .ch-bar span { animation: none !important; transform: scaleX(1); }
   .flow-ground span { transition: opacity .3s ease; }
-  .lf.new, .tr, #foot-next.fresh { animation: none !important; }
+  .lf.new, .tr { animation: none !important; }
+  #foot-next.fresh .fx-coin::after { animation: none; }
+  .fx-key, .fx-coin, .fx-beads, .fx-arr { transition: none !important; }
 }
