@@ -13,6 +13,7 @@
               from the soles to the crown in the user's own height
      mass     a steelyard: the poise slides along the beam, which swings
      years    a frieze of decades, a metope each, the years lived filled
+     physis   which physiology the resting-burn equation should use
 
    On a phone the parts stack in one column under the figure's band.
    ========================================================================= */
@@ -27,19 +28,26 @@
     years: () => M.age ? M.age + " years" : "",
     physis: () => M.sex ? MEASURE_SEX[M.sex] : ""
   };
+  const SEX_NOTE = {
+    female: "The female constant is used.",
+    male: "The male constant is used.",
+    unspecified: "The midpoint of the two is used, so the estimate is a little less exact either way.",
+    none: "Choose one, or leave it: the midpoint would be used."
+  };
   /** A weight in kg, to a tenth where it has one. */
   const kgText = kg => { const r = Math.round(kg * 10) / 10; return Number.isInteger(r) ? String(r) : r.toFixed(1); };
 
   const root = Stages.root, stage = $("anatomy-stage"), mount = stage.querySelector(".anatomy-viewport");
 
   /* ------------------------------- framings ------------------------------- */
-  const KEYS = ["intro", "stature", "mass", "years"];
-  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass", years: "Years" };
+  const KEYS = ["intro", "stature", "mass", "years", "physis"];
+  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass", years: "Years", physis: "Physiology" };
   const shots = docShots("measure-");
   shots.set("intro", { d: 560, sx: .70, sy: .50, az: -14 });
   shots.set("stature", { d: 540, sx: .29, sy: .50, az: 4 });
   shots.set("mass", { d: 540, sx: .71, sy: .50, az: -24 });
   shots.set("years", { d: 540, sx: .29, sy: .50, az: 26 });
+  shots.set("physis", { d: 540, sx: .71, sy: .50, az: -40 });
 
   /* -------------------------------- markup -------------------------------- */
   /* A coin, as the footer's (FOOT_COIN): a beaded rim, a fine ring, the sign struck in the field. */
@@ -102,6 +110,16 @@
         '<span class="mz-roman" aria-hidden="true"></span>' + steps("age", "age") + '</div>' +
       '<div class="mz-frieze" data-r="1"><div class="frz" role="slider" tabindex="0" aria-label="Age" aria-valuemin="' + MEASURE_LIMITS.age[0] + '" aria-valuemax="' + MEASURE_LIMITS.age[1] + '"></div><div class="frz-l" aria-hidden="true"></div></div>' +
       '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> Resting burn eases slowly with the years, by roughly five calories a day for each one. An estimate, like every figure here.</p>' +
+    '</div></section>' +
+
+    '<section class="mz-s" data-s="physis" data-side="l"><div class="mz-col">' +
+      '<p class="eyebrow" data-r="0"><span class="n">IV</span> / Physiology</p>' +
+      '<h2 class="mz-h" data-r="0">Which <em>physiology.</em></h2>' +
+      '<div class="mz-phys" data-r="1" role="radiogroup" aria-label="Physiology for the estimate">' +
+        Object.entries(MEASURE_SEX).map(([k, w]) => '<button type="button" role="radio" data-sex="' + k + '">' + w + '</button>').join('<span class="mz-dot" aria-hidden="true">·</span>') +
+      '</div>' +
+      '<p class="mz-alt" data-r="1" data-alt="physis" aria-live="polite"></p>' +
+      '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> The standard resting-burn equations add a different constant for female and male physiology, about 166 kcal a day apart. Only that equation reads it; nothing else in ATLAS changes.</p>' +
     '</div></section>';
 
   const sec = $("stage-measure");
@@ -199,6 +217,12 @@
     q('[data-alt="stature"]').textContent = M.cm
       ? (M.imperial ? Math.round(M.cm) + " cm" : feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″") + ". The rule beside the figure is yours now."
       : "The marble stands 158 cm, as carved. And you?";
+    q('[data-alt="physis"]').textContent = SEX_NOTE[M.sex || "none"];
+    for (const b of qa("[data-sex]")) {
+      const on = b.dataset.sex === M.sex;
+      b.setAttribute("aria-checked", String(on));
+      b.tabIndex = on || (!M.sex && b.dataset.sex === "female") ? 0 : -1;
+    }
     q('[data-alt="mass"]').textContent = M.kg ? (M.imperial ? kgText(M.kg) + " kg" : poundsOf(M.kg) + " lb") + ", on the beam." : "Slide the weight along the beam, or type it.";
 
     // The steelyard.
@@ -388,6 +412,8 @@
     // A coin is stepped on pointerdown; a click from the keyboard steps it here.
     const st = t.closest("[data-step]");
     if (st) { if (e.detail === 0) stepF(st.dataset.f, +st.dataset.step); return; }
+    const sx = t.closest("[data-sex]");
+    if (sx) { M.set("sex", sx.dataset.sex); save(); paint(); return; }
     const u = t.closest("[data-units]");
     if (u) { M.units = u.dataset.units; save(); paint(); return; }
     const g = t.closest("[data-go]");
@@ -420,7 +446,7 @@
     let vt = 0;
     for (let el = sec; el; el = el.offsetParent) vt += el.offsetTop;
     const ch = mount.clientHeight || innerHeight;
-    for (const k of ["mass", "years"]) shots.fit(k, vt - 14, ch - 34);
+    for (const k of ["mass", "years", "physis"]) shots.fit(k, vt - 14, ch - 34);
     shots.fit("stature", vt + 18, ch - 44);     // room above the crown for the headboard
   }
   function seg(v = y) {
