@@ -186,7 +186,7 @@ function configHTML() {
 
   return '<div class="wk-config">' +
     '<div class="wk-head" data-reveal="0">' +
-      '<p class="eyebrow"><span class="n">III</span> / Week plan</p>' +
+      '<p class="eyebrow"><span class="n">' + STAGE_NUMERALS.plan + '</span> / Week plan</p>' +
       '<h1 class="display" id="plan-title" tabindex="-1">Fit it into your life</h1>' +
       '<p class="who"><b>' + muscles.length + (muscles.length === 1 ? " muscle group" : " muscle groups") + esc(program) + '</b>' +
         '<span>' + esc(names.length > 5 ? names.slice(0, 4).join(", ") + " +" + (names.length - 4) : names.join(", ")) + '</span>' +
@@ -432,7 +432,7 @@ function genHTML() {
   const focus = routine.sessions.find(s => s.id === (wk.hover || wk.sel));
 
   const head = '<div class="gen-head" data-reveal="0">' +
-      '<p class="eyebrow"><span class="n">III</span> / Week plan</p>' +
+      '<p class="eyebrow"><span class="n">' + STAGE_NUMERALS.plan + '</span> / Week plan</p>' +
       '<div class="gen-title">' +
         '<div class="gen-title-text">' +
           '<h1 class="display" id="plan-title" tabindex="-1">Your week</h1>' +
