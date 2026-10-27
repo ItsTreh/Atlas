@@ -1,5 +1,5 @@
 /* ===========================================================================
-   Stages — moving between Targets, Nutrition and the Week plan.
+   Stages — moving between Targets, the Measure, Nutrition and the Week plan.
 
    One rule: motion helps the user understand where they are going;
    stillness helps them concentrate on what they are doing. So a change of
@@ -31,10 +31,10 @@
    until open() brings the stage in, as at the end of a change.
    ========================================================================= */
 
-const STAGE_ORDER = ["targets", "nutrition", "plan"];
-const STAGE_NAMES = { targets: "Targets", nutrition: "Nutrition", plan: "Week plan" };
+const STAGE_ORDER = ["targets", "measure", "nutrition", "plan"];
+const STAGE_NAMES = { targets: "Targets", measure: "Measure", nutrition: "Nutrition", plan: "Week plan" };
 /* The stages are numbered as a gallery numbers its rooms. */
-const STAGE_NUMERALS = { targets: "I", nutrition: "II", plan: "III" };
+const STAGE_NUMERALS = { targets: "I", measure: "II", nutrition: "III", plan: "IV" };
 
 /* Phase lengths in ms; with reduced motion, just long enough to swap.
    `landBy` is the longest a change waits for the camera to land. */
@@ -95,11 +95,11 @@ const Stages = {
   get still() { return matchMedia("(prefers-reduced-motion: reduce)").matches; },
 
   /**
-   * The gallery light follows the pointer on the start screen and on
-   * Targets, where the body is the thing looked at. Nutrition and the Week
-   * plan are forms: there the light rests, as everything else does.
+   * The gallery light follows the pointer on the start screen, on Targets
+   * and on the Measure, where the body is the thing looked at. Nutrition
+   * and the Week plan are forms: there the light rests, as everything else does.
    */
-  get lit() { return (this.opening || this.current === "targets") && !this.still; },
+  get lit() { return (this.opening || this.current === "targets" || this.current === "measure") && !this.still; },
 
   /** Week plan opens only once something is selected. */
   can(name) { return name !== "plan" || !routine.selection.isEmpty(); },
@@ -150,6 +150,8 @@ const Stages = {
   go(name, before) {
     if (!STAGE_ORDER.includes(name) || this.busy || !this.can(name)) return;
     if (name === this.current) { if (before) { before(); this.refresh(); } return; }
+    // The way the stages are travelled, for the CSS: 1 forward, −1 back.
+    this.root.style.setProperty("--fdir", STAGE_ORDER.indexOf(name) > STAGE_ORDER.indexOf(this.current) ? 1 : -1);
     this.run(() => {
       if (before) before();
       // What allowed the move may have changed on the way (the selection

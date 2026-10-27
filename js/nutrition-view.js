@@ -609,7 +609,7 @@ Stages.register("nutrition", {
   dim: () => nut.day ? 0.45 : 1,
   focus: () => $("nutrition-title"),
   footer: () => ({
-    back: "← Targets",
+    back: "← Your measure",
     skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
     next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
     nextDisabled: routine.selection.isEmpty()

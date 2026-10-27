@@ -1,12 +1,13 @@
 # ATLAS — notes for Claude
 
-ATLAS is a weekly training planner that runs in the browser. It has three stages:
+ATLAS is a weekly training planner that runs in the browser. It has four stages:
 
 1. **Targets**: pick muscles on an anatomy figure.
-2. **Nutrition**: calorie and protein targets worked out from that training.
-3. **Week plan**: sessions, exercises and meals placed into the user's free hours.
+2. **Measure**: height, weight, age and physiology, for Nutrition's estimates (`measure.js`; nothing reads them yet, the maths comes later).
+3. **Nutrition**: calorie and protein targets worked out from that training.
+4. **Week plan**: sessions, exercises and meals placed into the user's free hours.
 
-One sculpture runs through all three, its camera moving between stages (`docs/redesign.md`).
+One sculpture runs through all four, its camera moving between stages (`docs/redesign.md`).
 
 `README.md` describes the product and the code layout. This file covers how to work on it, where it is heading, and the anatomy pipeline, which is where most of the current work happens.
 

@@ -2,7 +2,8 @@
    Local persistence — remembers the routine between visits.
 
    Only the INPUTS are stored (muscle selection, nutrition settings, the
-   schedule preferences, the availability grid) plus whether a week had been generated. Sessions and workouts
+   schedule preferences, the availability grid) plus whether a week had been generated,
+   and, apart, the measure. Sessions and workouts
    are derived and are rebuilt by generate() on load, deterministically, from
    those same inputs — nothing generated is stored directly, so this stays
    correct even if the exercise or food database changes later.
@@ -40,6 +41,18 @@ function loadRoutine(routine) {
   } catch {
     return false;   // corrupt or foreign data under this key — start clean, not broken
   }
+}
+
+/* The measure (measure.js): the four facts and the seal, kept beside the
+   routine, since nothing the routine plans from reads them yet. */
+const MEASURE_KEY = "atlas.measure.v1";
+
+function saveMeasure(m) {
+  try { localStorage.setItem(MEASURE_KEY, JSON.stringify(m.snapshot())); } catch {}
+}
+
+function loadMeasure(m) {
+  try { m.restore(JSON.parse(localStorage.getItem(MEASURE_KEY))); } catch {}
 }
 
 /* Where the user is: the stage, and the view's own place in it (Targets'

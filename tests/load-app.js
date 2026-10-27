@@ -22,7 +22,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VIEW_FILES = new Set([
   "anatomy.js", "anatomy-sculpture.js", "anatomy-stage.js", "render.js", "stages.js", "targets.js",
   "targets-muscles.js", "targets-train.js", "flow-front.js",
-  "workout-view.js", "nutrition-view.js", "week-view.js", "paint.js", "start.js", "app.js"
+  "workout-view.js", "measure-view.js", "nutrition-view.js", "week-view.js", "paint.js", "start.js", "app.js"
 ]);
 
 /* The globals tests can use. Adding a name here is all it takes to expose one. */
@@ -40,6 +40,7 @@ const EXPORTS = [
   "exercisesFor", "tierRank",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
   "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
+  "BodyMeasure", "MEASURE_LIMITS", "romanNumeral", "feetInches", "poundsOf",
   "ANATOMY_MODEL", "ANATOMY_REGIONS"
 ];
 
