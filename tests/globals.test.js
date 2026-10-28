@@ -23,8 +23,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 function pageScripts() {
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   const listed = [...html.matchAll(/<script\s+src="(js\/[^"]+)"/g)].map(m => m[1]);
-  // The sculpture's model is written in by a small inline script, before the regions.
-  const model = (html.match(/MALE_BODY_SRC\s*=\s*"(js\/[^"]+)"/) || [])[1];
+  // The sculpture's model is written in by js/anatomy-load.js, before the regions.
+  const loader = fs.readFileSync(path.join(ROOT, "js/anatomy-load.js"), "utf8");
+  const model = (loader.match(/MALE_BODY_SRC\s*=\s*"(js\/[^"]+)"/) || [])[1];
   const at = listed.indexOf("js/anatomy-regions.js");
   if (model) listed.splice(at < 0 ? listed.length : at, 0, model);
   return listed;

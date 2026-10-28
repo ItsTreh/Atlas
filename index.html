@@ -4,15 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ATLAS — weekly training planner</title>
-<script>
-  /* The interface hides what it is about to reveal only while its scripts
-     run. An error before the page has started (app.js marks it booted)
-     drops the class, so what is written shows instead of a blank screen. */
-  document.documentElement.classList.add("js");
-  addEventListener("error", function () {
-    if (!document.documentElement.hasAttribute("data-booted")) document.documentElement.classList.remove("js");
-  });
-</script>
+<!-- Everything the page loads is its own files: no inline or outside
+     scripts, nothing fetched from elsewhere. Inline styles stay allowed:
+     the views set style attributes in the HTML they write. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<script src="js/boot.js"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -237,14 +233,7 @@
 <script src="js/routine.js"></script>
 <script src="js/scheduler.js"></script>
 <script src="js/anatomy-model.js"></script>
-<!-- The Male_Body sculpture is the anatomy stage's figure
-     (js/anatomy-model-male-body.js, 8 MB). index.html?anatomy=procedural
-     leaves it out, showing the procedural figure it replaced. -->
-<script>
-  var MALE_BODY_SRC = "js/anatomy-model-male-body.js";
-  if (new URLSearchParams(location.search).get("anatomy") !== "procedural")
-    document.write('<script src="' + MALE_BODY_SRC + '"><\/script>');
-</script>
+<script src="js/anatomy-load.js"></script>
 <script src="js/anatomy-regions.js"></script>
 <script src="js/anatomy.js"></script>
 <script src="js/anatomy-cartography.js"></script>
