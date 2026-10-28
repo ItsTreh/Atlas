@@ -1523,7 +1523,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 @keyframes mzCue { from { transform: translateY(-100%); } to { transform: translateY(260%); } }
 
 .mz-units { display: flex; gap: 16px; }
-.mz-units button {
+.mz-units button, .mz-clear {
   position: relative; padding: 4px 0 7px; background: none; border: 0; cursor: pointer;
   font: 500 12px/1 var(--font); letter-spacing: .02em; color: var(--ink-faint); transition: color .25s ease;
 }
@@ -1531,10 +1531,11 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--ink);
   transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease-out);
 }
-.mz-units button:hover { color: var(--ink-soft); }
+.mz-units button:hover, .mz-clear:hover { color: var(--ink-soft); }
 .mz-units button[aria-checked="true"] { color: var(--ink); }
 .mz-units button[aria-checked="true"]::after { transform: scaleX(1); }
-:is(.mz-units button, .mz-cue):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.mz-clear { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+:is(.mz-units button, .mz-clear, .mz-cue):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
 
 /* ---- the readout: a number cut large, and its two coins ---- */
 .mz-read { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
@@ -1693,6 +1694,110 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .mz-phys button:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 2px; }
 .mz-dot { font: 400 30px/1 var(--serif); color: var(--line); }
 
+/* ---- the seal: the measure, struck. The figure has stepped away; the
+   seal stands alone, its four facts led out to it like a catalogue plate. ---- */
+.atlas[data-stage="measure"][data-mzs="label"] { --lamp-x: 50%; }
+.mz-s[data-side="c"] { justify-content: center; }
+.mz-s[data-side="c"] .mz-col { width: min(100%, 1060px); align-items: center; text-align: center; gap: 14px; }
+.mz-plate {
+  --s: clamp(230px, min(50vh, 34vw), 440px); --seal: var(--core-trace, var(--ink)); --lead: calc(var(--s) * -.05);
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--s) minmax(0, 1fr); grid-template-rows: calc(var(--s) / 2) calc(var(--s) / 2);
+  width: 100%;
+}
+.mz-plate[data-tint="pull"] { --seal: var(--pull-trace, var(--ink)); }
+.mz-plate[data-tint="legs"] { --seal: var(--legs-trace, var(--ink)); }
+.mz-plate[data-tint="push"] { --seal: var(--push-trace, var(--ink)); }
+.mz-plate[data-tint="ink"] { --seal: var(--ink); }
+
+.seal {
+  grid-column: 2; grid-row: 1 / 3; position: relative; width: var(--s); height: var(--s); padding: 0; border: 0; border-radius: 50%;
+  background: none; cursor: pointer; color: var(--seal); transform: rotate(-7deg); transition: color .6s ease;
+  user-select: none; -webkit-user-select: none;
+}
+.seal:focus-visible { outline: 2px solid var(--ink); outline-offset: 8px; }
+.seal-svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.seal-ink { fill: none; stroke: currentColor; }
+.s-rim { stroke-width: 3.4; }
+.s-beads { stroke-width: 5; stroke-linecap: round; stroke-dasharray: 0 1; }
+.s-hair, .s-rule { stroke-width: 1; }
+.s-dent { stroke-width: 8; stroke-dasharray: .45 .55; }
+.seal text { fill: currentColor; stroke: none; font-family: var(--serif); }
+.s-arc { font-size: 15.5px; font-weight: 600; letter-spacing: .1em; }
+.s-top { font-size: 12px; font-weight: 600; letter-spacing: .42em; }
+.s-you { font-style: italic; font-weight: 500; }
+.s-year { font-size: 13px; font-weight: 600; letter-spacing: .32em; }
+.seal[data-state="blank"] { color: var(--ink-faint); transform: none; }
+.seal[data-state="blank"] .seal-ink { filter: none; opacity: .5; }
+.seal[data-state="blank"] :is(.s-rim, .s-hair) { stroke-dasharray: 2 5; }
+.seal[data-state="struck"]:hover { transform: rotate(-7deg) scale(1.012); }
+.seal::after { content: ""; position: absolute; inset: 3%; border-radius: 50%; border: 1.5px solid currentColor; opacity: 0; pointer-events: none; }
+.seal.strike { animation: sealStrike .95s cubic-bezier(.2, .9, .25, 1) both; }
+.seal.strike::after { animation: sealRing 1.2s ease-out .42s both; }
+@keyframes sealStrike {
+  0% { transform: scale(1.45) rotate(-18deg); opacity: 0; }
+  52% { transform: scale(.94) rotate(-6deg); opacity: 1; }
+  74% { transform: scale(1.025) rotate(-7.6deg); }
+  100% { transform: scale(1) rotate(-7deg); }
+}
+@keyframes sealRing { from { opacity: .4; transform: scale(.97); } to { opacity: 0; transform: scale(1.28); } }
+
+/* The callouts: each fact led by a hairline to the rim, a drop of the ink where it meets it. */
+.mz-plate .pl-line {
+  position: relative; display: flex; flex-direction: column; gap: 6px; max-width: 300px; padding: 0; border: 0;
+  background: none; cursor: pointer; color: inherit;
+}
+.pl-line[data-pos="tl"], .pl-line[data-pos="bl"] { grid-column: 1; justify-self: end; align-items: flex-end; text-align: right; padding-right: 96px; }
+.pl-line[data-pos="tr"], .pl-line[data-pos="br"] { grid-column: 3; justify-self: start; align-items: flex-start; text-align: left; padding-left: 96px; }
+.pl-line[data-pos^="t"] { grid-row: 1; align-self: start; margin-top: calc(var(--s) * .27 - 12px); }
+.pl-line[data-pos^="b"] { grid-row: 2; align-self: end; margin-bottom: calc(var(--s) * .27 - 34px); }
+.mz-plate .pl-line::before { content: ""; position: absolute; top: 12px; height: 1px; width: calc(84px - var(--lead)); transition: background .3s ease; }
+.mz-plate .pl-line::after { content: ""; position: absolute; top: 9px; width: 7px; height: 7px; border-radius: 50%; background: var(--seal); transition: transform .4s var(--ease-out), background .6s ease; }
+.pl-line[data-pos$="l"]::before { right: var(--lead); background: linear-gradient(90deg, transparent, var(--ink-faint)); }
+.pl-line[data-pos$="r"]::before { left: var(--lead); background: linear-gradient(270deg, transparent, var(--ink-faint)); }
+.pl-line[data-pos$="l"]::after { right: calc(var(--lead) - 3.5px); }
+.pl-line[data-pos$="r"]::after { left: calc(var(--lead) - 3.5px); }
+.pl-v { font: 400 25px/1.05 var(--serif); color: var(--ink); font-variant-numeric: lining-nums; white-space: nowrap; transition: transform .45s var(--ease-out); }
+.pl-v.none { color: var(--ink-faint); font-style: italic; }
+.pl-u { font: 500 10px/1 var(--font); letter-spacing: .11em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+.pl-e { font: 500 10px/1 var(--font); letter-spacing: .11em; text-transform: uppercase; color: var(--ink); opacity: 0; transition: opacity .3s ease; }
+.pl-line:is(:hover, :focus-visible) .pl-e { opacity: 1; }
+.pl-line[data-pos$="l"]:is(:hover, :focus-visible) .pl-v { transform: translateX(-6px); }
+.pl-line[data-pos$="r"]:is(:hover, :focus-visible) .pl-v { transform: translateX(6px); }
+.pl-line[data-pos$="l"]:is(:hover, :focus-visible)::before { background: linear-gradient(90deg, transparent, var(--ink)); }
+.pl-line[data-pos$="r"]:is(:hover, :focus-visible)::before { background: linear-gradient(270deg, transparent, var(--ink)); }
+.pl-line:is(:hover, :focus-visible)::after { transform: scale(1.5); }
+.pl-line:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 2px; }
+.pl-credit { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
+
+/* Yours: a name for the field, and the ink it is struck in. */
+.mz-own { display: flex; align-items: flex-end; justify-content: center; flex-wrap: wrap; gap: 18px 44px; margin-top: 6px; }
+.own-name, .own-ink-w { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.own-name { cursor: text; }
+.own-l { font: 500 10px/1 var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+.own-in {
+  width: 8.5em; padding: 2px 0 5px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none;
+  text-align: center; font: italic 400 26px/1 var(--serif); color: var(--ink); outline: none; transition: border-color .3s ease;
+}
+.own-in::placeholder { color: var(--ink-faint); opacity: 1; }
+.own-in:hover { border-bottom-color: var(--ink-faint); }
+.own-in:focus { border-bottom-color: var(--ink); }
+.own-ink { display: flex; gap: 8px; }
+.own-ink button {
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--line); transition: box-shadow .3s ease, transform .2s ease;
+}
+.own-ink i { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--sw); }
+.own-ink [data-ink="core"] { --sw: var(--core-trace, #8b3352); }
+.own-ink [data-ink="pull"] { --sw: var(--pull-trace, #1f4787); }
+.own-ink [data-ink="legs"] { --sw: var(--legs-trace, #295a35); }
+.own-ink [data-ink="push"] { --sw: var(--push-trace, #87590a); }
+.own-ink [data-ink="ink"] { --sw: var(--ink); }
+.own-ink button:hover { transform: scale(1.08); }
+.own-ink button[aria-checked="true"] { box-shadow: 0 0 0 1.5px var(--ink); }
+.own-ink button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.mz-clear { margin-bottom: 4px; }
+.mz-priv { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-soft); max-width: 62ch; text-wrap: pretty; }
+
 /* ---- the word behind the body: where the figure stands (--mzx, --mzy), as
    large as the room beside it allows (--mzs), fitted to its length (--k).
    Targets' pages hide the ground's words with !important; on this stage
@@ -1718,6 +1823,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-ix-w, .mz-ix-v { font-size: 23px; }
   .mz-yard { height: 112px; }
   .yp-thread { height: 24px; }
+  .mz-plate { --s: clamp(210px, min(38vh, 30vw), 340px); }
+  .mz-s[data-side="c"] .mz-col { gap: 10px; }
+  .mz-own { margin-top: 2px; }
 }
 @media (max-height: 760px) {
   .mz-col { gap: 13px; }
@@ -1727,9 +1835,11 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-yard { height: 118px; }
   .mz-ix { padding: 9px 0 8px; }
   .mz-ix-w { font-size: 23px; }
+  .mz-plate { --s: clamp(200px, min(36vh, 28vw), 300px); }
   .mz-s[data-s="intro"] { padding-top: 16px; }
   .mz-lede { font-size: 14px; line-height: 1.5; }
   .mz-ix-u { font-size: 9.5px; }
+  .mz-priv { font-size: 12px; }
 }
 @media (max-height: 700px) {
   .mz-title { font-size: clamp(40px, 4.8vw, 66px); }
@@ -1750,24 +1860,34 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .frz { height: 48px; }
   .mz-phys button { font-size: clamp(30px, 3vw, 44px); }
   .mz-s { padding-top: 12px; }
+  .mz-plate { --s: clamp(180px, 34vh, 260px); }
   .mz-s[data-s="intro"] .mz-col { gap: 10px; }
   .mz-ix-u { display: none; }
+  .mz-priv { display: none; }
+  .mz-own { gap: 14px 32px; }
+  .own-in { font-size: 22px; }
+  .pl-v { font-size: 21px; }
+  .mz-end { gap: 12px; }
 }
 @media (max-height: 620px) and (min-width: 1000px), (max-height: 620px) and (min-width: 760px) and (orientation: landscape) {
   .stage-measure { top: 90px; }
   .mz-s { padding-bottom: 84px; }
   .mz-col { gap: 10px; }
   .mz-s[data-s="intro"] .mz-col { gap: 12px; }
-  .mz-s[data-s="intro"] .mz-lede, .mz-alt:not([data-alt="physis"]) { display: none; }
+  .mz-s[data-s="intro"] .mz-lede, .mz-alt:not([data-alt="physis"]), .mz-priv, .pl-u, .pl-credit { display: none; }
   .mz-s[data-s="intro"] { padding-top: 8px; }
 }
 @media (max-width: 1180px) {
   .mz-col { width: min(48vw, 560px); }
+  .pl-line[data-pos$="l"] { padding-right: 76px; }
+  .pl-line[data-pos$="r"] { padding-left: 76px; }
+  .mz-plate .pl-line::before { width: calc(64px - var(--lead)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .mz-s [data-r] { translate: none; }
   .mz-cue-line::after { animation: none; }
-  .mz-ix-w, .mzr-t, .frz-m i { transition: none !important; }
+  .mz-ix-w, .mzr-t, .frz-m i, .pl-v { transition: none !important; }
+  .seal.strike, .seal.strike::after { animation: none; }
 }
 
 /* ------------------------------- nutrition -------------------------------- */
@@ -2541,6 +2661,12 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .mz-h { font-size: 40px; white-space: normal; }
   .mz-num { font-size: 84px; }
   .mz-rule, .flow-ground span.mz-word { display: none; }
+  .mz-s[data-side="c"] .mz-col { align-items: stretch; text-align: left; }
+  .mz-plate { --s: min(72vw, 300px); grid-template-columns: 1fr 1fr; grid-template-rows: auto; row-gap: 18px; column-gap: 16px; }
+  .mz-plate .seal { grid-column: 1 / 3; grid-row: 1; justify-self: center; }
+  .mz-plate .pl-line { grid-column: auto !important; grid-row: auto !important; margin: 0 !important; padding: 0 !important; justify-self: stretch !important; align-items: flex-start !important; text-align: left !important; }
+  .mz-plate .pl-line::before, .mz-plate .pl-line::after { display: none; }
+  .mz-own { justify-content: flex-start; }
   .anatomy-stage::after { display: none; }
   .nu-kcal { font-size: 60px; }
   .row-toggle { grid-template-columns: 84px minmax(0, 1fr) auto; }
