@@ -1,41 +1,75 @@
-# ATLAS
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/atlas-plate-dark.svg">
+  <img alt="ATLAS, a weekly training planner. I Targets, II Measure, III Nutrition, IV Week plan." src=".github/atlas-plate-light.svg" width="100%">
+</picture>
 
-**Plan a week of training around the muscles you want to build, and a schedule you actually have.**
+<br>
 
-ATLAS is a weekly training planner in four stages. Pick your target muscles on an interactive anatomy figure, give your measure (height, weight, age and physiology), get a nutrition plan built from that training, then let it place the sessions, exercises and meals into the free hours of your week.
+**Plan a week of training around the muscles you want to build, and the hours you actually have.**
 
-One classical anatomical sculpture runs through all four. Moving to another stage moves the camera round it, and the interface settles around the body. The motion happens between stages; within one, everything stays still while you work.
+ATLAS is a weekly training planner built around a single sculpture. You choose muscles on a marble anatomical figure, give your measure, see what to eat for that training, and ATLAS places the sessions, exercises and meals into the free hours of your week.
 
-It runs entirely in the browser: no account, no server, no build step. Open `index.html` and it works.
+The body never leaves the screen. Moving to another stage moves the camera around it, and the interface settles beside it: motion happens between stages, and within a stage everything stays still while you work.
 
----
+It runs entirely in your browser. There is no account, no server and no build step: open `index.html` and it works. Nothing you enter leaves your machine.
 
-## How it works
+> [!NOTE]
+> ATLAS is a work in progress, built in the open. Targets and Measure have their new design; Nutrition and the Week plan still wear the old one. See [the roadmap](#roadmap).
 
-### 01 · Targets — define your focus
-Three movements, each its own framing of the sculpture: **How it works**, where the chapters play in turn and the camera shows what each stage will do; **Your muscles**; and, once something is chosen, **Training focus**. Continue, Back or a scroll moves between them, as between stages. On a wide screen, Your muscles and Training focus are each one page, scrolled: the figure crosses from side to side with the page, and each part gets the screen in turn.
+<br>
 
-- **Start from a program.** Whole-body splits, Push · Pull · Legs and classic pairings, one at a time (on a wide screen, a reel turned by the scroll; once one is chosen, scrolling on moves to refining it). Point at one to preview its muscles on the sculpture, apply it, then edit freely ("Full Body *edited* — removed Abs").
-- **Or pick muscles on the body.** Click or tap any of the 16 muscle groups; click again to remove it. Front and Back turn the body round, and a sideways drag turns it a little either way to look at the borders.
-- **Hold the light.** On the start screen and on Targets, the light on the sculpture follows your pointer, like a lamp held up to it.
-- **Explore the surface.** Anatomical cartography draws fine, curved traces in the sculpture's own material. Pointing at a muscle reveals its whole training group, a little stronger near the pointer, and the traces flow while you rest there. Selected groups keep a faint, still imprint. A serif label beside the body names the group. The traces follow the existing authored borders and add no anatomy (see `docs/cartography.md`).
-- **Set the focus.** Training focus lists the selection by family, each muscle with the weekly sets it starts from. Set any to Focus (more sets and days) or Maintain (the minimum, trimmed first). Resting on a row lights its muscle and turns the body to the side that shows it.
+## The four stages
 
-### 02 · Nutrition — fuel the training *(optional)*
-- **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for your training.
-- **Targets from your training:** calories are set against your daily burn and protein per kg of body weight, both adjusted to the plan's training load. The figures show the sum that made them, and every reason is one click away. You can fine-tune either.
-- **Your rhythm:** meals a day, first and last meal times, and a diet style (everything, pescatarian, vegetarian, vegan).
-- **A day of eating:** the day as a timeline, one meal open at a time, with its share of the day, how far the targets are met by its end, and an example plate in everyday portions near its numbers.
-- **Skip it** if you only want training.
+Each new visit opens on the sculpture in one of five ways: the figure from below, the chest rising from the bottom edge, the name carved out of the ground with the camera diving through the T, the back of the shoulder up close, or the whole figure standing before the five letters. You see each one once before any repeats. A reload skips the opening and returns you to where you were.
 
-### 03 · Week plan — fit it into your life
-- **See the week before you generate it.** Seven days, each with the session the planner would place there and when, plus how many days, how the week is split and how long you have trained. Notes say what fits and what won't (an estimate).
-- **Shape your week.** A full-width calendar: drag down a day to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and whether meals go on the calendar.
-- **Generate the week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings, and meals are placed around the workouts; busy hours block training, not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture. Open it to move it, or to swap, add or remove exercises. Your settings are saved in the browser; edits to a generated week are not kept yet. A reload comes back to the same stage; each new visit opens with a short start screen first, then goes back to where you were.
+| | Stage | What you do there | State |
+|:-:|---|---|---|
+| **I** | Targets | Pick muscles on the sculpture, then set each to Focus, Normal or Maintain. | Redesigned. The maths isn't evidenced yet. |
+| **II** | Measure | Give your stature, mass, years and physiology, sealed into one plate. | Designed. Nothing reads its data yet. |
+| **III** | Nutrition | Get calorie and protein targets worked out from the training. | Works, in the old design. |
+| **IV** | Week plan | Get sessions, exercises and meals placed in your free hours. | Works, in the old design. |
 
-Every calorie, protein and progress figure is labelled an **estimate**, shows how it was worked out, and never promises a physique by a date.
+### I · Targets
 
----
+Targets has three movements, each with its own framing of the sculpture.
+
+- **How it works.** The figure steps aside and acts out each stage as its chapter plays.
+- **Your muscles.** Start from a program (whole-body splits, Push · Pull · Legs, or classic pairings), then refine it on the body. Pointing at a program previews its muscles on the sculpture. Click or tap any of the 16 muscle groups to add or remove it. Front and Back turn the body round, and a sideways drag turns it a little either way.
+- **Training focus.** Your selection, grouped by family, each muscle with the weekly sets it starts from. Set a muscle to Focus for more sets and days, or Maintain for the minimum, which is trimmed first when the week is short. Resting on a row lights that muscle and turns the body to show it.
+
+On the start screen, Targets and Measure, the light on the sculpture follows your pointer like a lamp held up to marble. Pointing at a muscle draws fine engraved traces across its whole training group, in the sculpture's own material, with a serif label beside the body. This is the **anatomical cartography** ([`docs/cartography.md`](docs/cartography.md)). The traces follow the painted borders and never invent anatomy.
+
+### II · Measure
+
+Measure is one scrolled page, with an instrument for each fact. A stadiometer beside the figure, numbered in your own height. A steelyard whose poise slides along the beam. A frieze of decades for the years you've lived. Then a choice of physiology for the resting-burn equation. Once all four are given, they're struck into a **seal**: a beaded coin with each fact inscribed around it in Roman numerals, laid out like a catalogue plate.
+
+Measure doesn't affect the plan yet. Wiring it into training and nutrition is next on the roadmap.
+
+### III · Nutrition *(optional)*
+
+- **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for this training.
+- **Targets:** calories set against your daily burn, and protein per kilogram of body weight, both adjusted to the plan's training load. Each figure shows the sum behind it, and every reason is one click away.
+- **Rhythm:** meals a day, your eating window, and a diet style (everything, pescatarian, vegetarian or vegan).
+- **A day of eating:** the day as a timeline, one meal open at a time, with an example plate portioned to it.
+
+### IV · Week plan
+
+- **Fit it into your life.** See the seven days the planner would place before you generate anything, with notes on what fits and what won't.
+- **Shape your week.** Drag down a full-width calendar to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and experience.
+- **Your week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings. Meals are placed around the workouts: busy hours block training but not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture, or open it to move it or to swap, add and remove exercises.
+
+Your inputs are saved in the browser. Edits to a generated week aren't kept yet: a reload rebuilds the week from the same inputs.
+
+<br>
+
+## What ATLAS holds to
+
+- **Every number is an estimate, and it says so.** Each calorie, protein and progress figure shows how it was worked out. ATLAS never promises a physique by a date.
+- **Evidence is kept apart from decisions.** [`js/evidence.js`](js/evidence.js) records what the research says and how sure it is. Each planner value is labelled *evidence*, *heuristic*, *preference*, *optimization* or *safety*. A value may be called evidence only when a source supports that exact number, and today none is.
+- **Anatomy comes first.** Every clickable area selects the muscle actually under it. Bone, tendon, the kneecap and the point of the elbow select nothing.
+- **Four pigments for four families.** Push is yellow ochre, Pull Egyptian blue, Legs green earth and Core madder rose. These are the four colours under the name above.
+
+<br>
 
 ## Run it
 
@@ -45,7 +79,15 @@ cd Atlas
 open index.html        # or double-click it
 ```
 
-That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond), shipped with the page, so it looks the same offline. The page loads nothing from other sites: a Content-Security-Policy in `index.html` allows only its own files.
+That's all: it opens straight from disk, with no build step and no server. Light and dark themes are built in (top-right toggle). The titles use Cormorant Garamond, which ships with the page, so ATLAS looks the same offline. A Content-Security-Policy in `index.html` lets the page load only its own files.
+
+It's designed for desktop first. The phone layout works but is due its own redesign.
+
+| URL | Opens |
+|---|---|
+| `index.html?start=off` | Skips the opening |
+| `index.html?start=carved` | A chosen opening: `cinematic`, `torso`, `carved`, `detail` or `monument` |
+| `index.html?anatomy=procedural` | The procedural figure that came before the sculpture |
 
 ### Tests
 
@@ -54,90 +96,132 @@ npm install
 npm test
 ```
 
-The logic (muscles, programs, estimates, nutrition, exercise selection, scheduling) is tested with [Vitest](https://vitest.dev), running the app's own files unchanged.
+The [Vitest](https://vitest.dev) suites run the app's own files unchanged, loading them in Node in the same order and shared scope the browser uses. They cover the muscles, programs, evidence, estimates, nutrition, exercise selection and scheduling. They also check the sculpture's data and regions, the cartography, saving and restoring, and that no two scripts declare the same global.
 
----
+<br>
 
 ## How it's built
 
-Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler. That's why it opens straight from disk.
+The app is plain HTML, CSS and JavaScript, loaded as classic scripts in dependency order, with no framework, bundler or modules. That's why it opens from `file://`. The data stays apart from the UI: views read and write one shared state (`routine`, and `routine.selection` for the targets), and nothing keeps its own copy.
+
+### The sculpture
 
 ```
-index.html          one screen: the sculpture, the four stages over it
-css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
-fonts/              Cormorant Garamond (SIL Open Font License, OFL.txt beside it)
-js/
-  boot.js           marks the page as scripted; shows the plain page if a script fails first
-  anatomy-load.js   writes in the sculpture's model, unless ?anatomy=procedural
-  model.js          muscles, time slots, sessions — the core data
-  selection.js      MuscleSelection: the one source of truth for targets
-  programs.js       recommended programs
-  evidence.js       the planner's figures, each with its source and certainty
-  estimate.js       weekly sets and time, and fitting targets to the time
-  exercises.js      exercise catalogue with tier ratings
-  workouts.js       builds each session's workout
-  distribution.js   spreads each muscle's weekly sets over the training days
-  measure.js        the measure: height, weight, age and physiology (not read by the estimates yet)
-  nutrition.js      calorie and protein targets
-  foods.js          foods, diet styles, example meals
-  routine.js        WeeklyRoutine: the shared plan state; places the week and its meals
-  scheduler.js      finds the days and hours for the sessions
-  storage.js        saving the routine in the browser, and restoring it
-  anatomy*.js       the anatomy figure, its regions, cartography and camera, and its stage
-  stages.js         moving between stages: motion between, stillness within
-  start.js          the start screen: five openings, one per visit, that hand over to the stage
-  targets.js, measure-view.js, nutrition-view.js, week-view.js, workout-view.js
-                    the stages (Targets in three movements); workout-view.js is a session in full
+assets/anatomy/Male_Body.blend         sculpted, and painted by hand in Blender: one colour per muscle
+  + Male_Body.paint.png / .paint.json  the paint, and which colour names which region
+  ▼  tools/anatomy/authored/male_body.py   cuts the mesh along the painted borders
+assets/anatomy/male-body.glb           one primitive per region
+  ▼  tools/anatomy/build-authored.mjs
+js/anatomy-model-male-body.js          what the page loads
+  ▼  js/anatomy-regions.js             region → one of the 16 muscle groups, or nothing
+```
+
+Every training muscle is painted, so the sculpture selects all 16 groups. Some painted muscles that no program trains, such as those of the shin, are drawn but not selectable. The renderer is WebGL2 with a matte marble material. Without WebGL2, an SVG figure takes over. If the sculpture's file is missing, the procedural figure (`npm run build:anatomy`) stands in. A rigged copy, `Male_Body_rigged.blend` (59 bones), is being prepared for posing, and the app doesn't use it yet ([`docs/male-body-rig.md`](docs/male-body-rig.md)).
+
+### Files
+
+```
+index.html               one screen: the sculpture, with the four stages over it
+css/styles.css           the theme: tokens, light and dark, the shell, every stage
+fonts/                   Cormorant Garamond, under the SIL Open Font License (OFL.txt)
+
+js/                      ── data and logic: no page code, all tested ──
+  model.js               the 16 muscles, time slots, training blocks
+  selection.js           MuscleSelection, the one source of truth for targets
+  programs.js            the preset programs
+  evidence.js            findings with sources, and every planner value with its origin
+  estimate.js            weekly sets and time, and fitting targets to the time
+  exercises.js           the exercise catalogue and its tier ratings
+  workouts.js            each session's exercises
+  distribution.js        spreads each muscle's weekly sets over the training days
+  routine.js             WeeklyRoutine, the shared plan; places the week and its meals
+  scheduler.js           finds the days and hours for the sessions
+  nutrition.js, foods.js calorie and protein targets; foods, diets, example meals
+  measure.js             the measure's four facts and the seal
+  storage.js             saves your inputs in the browser, and restores them
+
+                         ── the figure ──
+  anatomy-load.js        loads the sculpture, unless ?anatomy=procedural
+  anatomy-model*.js      the procedural figure and the sculpture (generated)
+  anatomy-regions.js     region → app muscle
+  anatomy-sculpture.js   the WebGL2 renderer, its camera shots and the lamp
+  anatomy-cartography.js the surface samples the traces flow along
+  anatomy.js             the SVG fallback
+  anatomy-stage.js       the room the body stands in, between the page and a renderer
+
+                         ── the page ──
+  boot.js                shows the plain page if a script fails before start
+  stages.js              moving between stages: out, moving, idle
+  start.js               the five openings
+  targets.js             Targets' three movements
   targets-muscles.js, targets-train.js
-                    Your muscles and Training focus as scrolled pages, on a wide screen
-  flow-front.js     the words behind the body, woven in front of the near leg
-  render.js, paint.js, app.js
-                    shared helpers, painting busy hours, generating, boot
-tests/              Vitest suites
+                         Your muscles and Training focus as scrolled pages, on a wide screen
+  flow-front.js          the words behind the body, woven in front of the nearer leg
+  measure-view.js        Measure: the instruments and the seal
+  nutrition-view.js      Nutrition
+  week-view.js, workout-view.js, paint.js
+                         the Week plan, a session in full, painting busy hours
+  render.js, app.js      shared helpers; wiring and boot
+
+assets/anatomy/          the sculpture, its paint and its export (all rights reserved)
+tools/anatomy/           the Blender export and the builds that turn it into scripts
+tests/                   Vitest suites; load-app.js runs the real scripts in Node
+docs/                    design notes: the redesign, the cartography, anatomy levels, the rig
+CLAUDE.md, .claude/      working notes and agents for building ATLAS with Claude Code
 ```
 
-Data lives apart from the UI and is validated when it loads. Views read from and write to shared state (`routine`, `routine.selection`); nothing keeps its own copy.
+<br>
 
----
+## Where it's heading
 
-## Where we are
+The four stages are the path for a new user. Once you've been through them, your plan will live in **My Atlas**, where you adjust it instead of starting over. A recovery section will live there too, alongside ideas still being settled.
 
-The page shows **Male_Body**, a sculpted 3D body whose muscles are painted by hand in Blender, one region per colour, then exported to the page. Every muscle that matters for training is painted, so it selects all 16 muscle groups; `index.html?anatomy=procedural` shows the procedural figure it replaced. Borders are left as painted, for a single polishing pass later.
+ATLAS is a website first, with no backend yet. A backend comes next, and a native app after that.
 
-Every painted muscle selects the muscle actually under it. Where there's no muscle (bone, tendon, the kneecap) nothing is selectable. A few painted muscles, such as the shin muscles, are drawn but not selectable yet; they'll become explorable with zoom.
+## Roadmap
 
-The current work is the anatomical cartography (`docs/cartography.md`): fine traces in the sculpture's material that show what is pointed at and chosen.
-
----
-
-## Roadmap — the ATLAS redesign
-
-ATLAS is mid-way through a redesign towards a calm, monochrome, gallery-like interface, with the body as its centrepiece.
-
-- [x] Foundation: light monochrome theme, one type family, fewer surfaces
-- [x] A dedicated, centred stage for the anatomy
-- [x] Front/back controls and rotation: one body that turns, with a limited free orbit
-- [x] A stylised 3D anatomical sculpture in place of the flat figure, painted muscle by muscle
-- [x] One continuous sculpture across the stages, with camera choreography between them
+**Done**
+- [x] The theme: calm, monochrome, gallery-like, with light and dark modes and the serif
+- [x] Male_Body, a sculpted 3D body painted muscle by muscle, selecting all 16 groups
+- [x] One sculpture across every stage, with the camera moving between named shots
+- [x] Front and Back, with a limited drag orbit, and a lamp that follows the pointer
+- [x] The start screen and its five openings
 - [x] Targets in three movements: How it works, Your muscles, Training focus
-- [x] Redesigned nutrition stage: the plan beside the sculpture, a day of eating one meal at a time
-- [x] Redesigned week-plan stage: the week before Generate, Shape your week, and the generated week beside the sculpture (see `docs/redesign.md`)
-- [ ] Refined hover and selection states, a side view and zoom
+- [x] Measure, with its instruments and the seal
+- [x] An evidence register that labels where every planner value comes from
+- [x] AGPL licensing, a local font, and a Content-Security-Policy
 
-### Planned for the anatomy
+**Now**
+- [ ] Polish the anatomical cartography's hover and selection states
+- [ ] Polish the painted borders, one muscle at a time
 
-Agreed directions, each built only when its turn comes (see `docs/anatomy-levels.md`):
+**Next**
+1. Improve and evidence the maths on Targets.
+2. Make Measure's data affect the training algorithm.
+3. Redesign Nutrition, then evidence its maths the same way as Targets.
+4. Evidence and redesign the Week plan.
+5. Redesign the full phone layout.
+6. Add a backend, then My Atlas for returning users, with saved data.
+7. Make it an app.
+8. Add a fitness news section.
 
-- **Three levels.** Training groups for the planner (today's 16 muscles); the individual muscles, revealed by zooming in, each with a short card on what it does and what trains it; and an exercise view that lights up everything an exercise works, with estimated contributions.
-- **One anatomy knowledge dataset**, apart from the UI, that the cards and the exercise view both read. Contribution scores start as display-only estimates and don't change the planner.
-- **Finer regions under the groups**, such as the three heads of the deltoid, sitting beneath the current group regions.
-- **Later:** a weekly coverage map of the body, and selection that grows into a map-like "cartography" system.
+**For the anatomy** ([`docs/anatomy-levels.md`](docs/anatomy-levels.md))
+- A side view and zoom, added to the same camera.
+- Three levels: the 16 training groups; the individual muscles, revealed by zooming in, each with a card on what it does and what trains it; and an exercise view that lights everything an exercise works.
+- Finer regions under the groups, such as the three heads of the deltoid.
+- Later, a weekly coverage map of the body.
 
+**An idea, not a commitment**
+- Optional sharing of progress: globally, locally or with friends.
+
+<br>
 
 ## License
 
-© 2026 Tred (github.com/ItsTreh).
+© 2026 Tred ([github.com/ItsTreh](https://github.com/ItsTreh)).
 
 The code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE). If you run a modified version for others, including as a website, you must offer them its source.
 
-The Male_Body sculpture (its `.blend`, paint, `.glb`, manifest and `js/anatomy-model-male-body.js`) is **not** under the AGPL: it is all rights reserved. See [ASSETS-LICENSE.md](ASSETS-LICENSE.md). Without it, ATLAS falls back to the procedural figure, which is AGPL like the rest of the code.
+The Male_Body sculpture is **not** under the AGPL: it is all rights reserved. That covers its `.blend` files (including the rigged one), the paint image and its colour key, the `.glb`, the manifest and `js/anatomy-model-male-body.js`; [ASSETS-LICENSE.md](ASSETS-LICENSE.md) lists them. Without the sculpture, ATLAS falls back to the procedural figure, which is AGPL like the rest of the code.
+
+Cormorant Garamond is © the Cormorant Project Authors, under the [SIL Open Font License 1.1](fonts/cormorant-garamond/OFL.txt).
