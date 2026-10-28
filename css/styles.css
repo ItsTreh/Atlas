@@ -1536,6 +1536,77 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .mz-units button[aria-checked="true"]::after { transform: scaleX(1); }
 :is(.mz-units button, .mz-cue):focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
 
+/* ---- the readout: a number cut large, and its two coins ---- */
+.mz-read { display: flex; align-items: flex-end; gap: 22px; flex-wrap: wrap; }
+.mz-field { display: flex; align-items: baseline; gap: 10px; cursor: text; }
+.mz[data-units="metric"] .mz-field[data-u="imperial"], .mz[data-units="imperial"] .mz-field[data-u="metric"] { display: none; }
+.mz-num {
+  box-sizing: content-box; width: calc(var(--len, 3) * 1ch); padding: 0 0 4px; margin: 0;
+  font: 400 clamp(96px, 9.6vw, 164px)/.86 var(--serif); letter-spacing: -.03em; font-variant-numeric: lining-nums tabular-nums;
+  color: var(--ink); caret-color: var(--ink); background: none; border: 0; border-bottom: 1px solid transparent; border-radius: 0;
+  outline: none; transition: border-color .3s ease;
+}
+.mz-num::placeholder { color: var(--line); opacity: 1; }
+.mz-num:hover { border-bottom-color: var(--line); }
+.mz-num:focus { border-bottom-color: var(--ink); }
+.mz-field[data-u="imperial"] .mz-num { font-size: clamp(84px, 8.4vw, 140px); }
+.mz-unit { font: italic 400 30px/1 var(--serif); color: var(--ink-soft); }
+.mz-steps { display: flex; gap: 6px; margin-bottom: 12px; }
+.mz-coin {
+  position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  background: color-mix(in oklab, var(--bg) 78%, transparent); color: var(--ink-soft); cursor: pointer;
+  transition: background .35s var(--ease-out), color .35s var(--ease-out), transform .2s ease;
+}
+.mz-coin svg { width: 100%; height: 100%; display: block; overflow: visible; fill: none; stroke: currentColor; }
+.mzc-beads { stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 0 1; transform-origin: 26px 26px; transition: transform 1.1s var(--ease-out); }
+.mzc-ring { stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .4; }
+.mzc-arr { stroke-width: 1.3; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+.mz-coin:hover, .mz-coin:focus-visible { background: var(--ink); color: var(--bg); outline: none; }
+.mz-coin:hover .mzc-beads { transform: rotate(27deg); }
+.mz-coin[data-step="-1"]:hover .mzc-beads { transform: rotate(-27deg); }
+.mz-coin:active { transform: scale(.94); }
+
+/* ---- stature: the stadiometer beside the figure (js/measure-view.js stands it there) ---- */
+.mz-rule {
+  position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; opacity: 0;
+  color: var(--ink); transition: opacity .35s ease;
+  --halo: 0 0 3px var(--bg), 0 0 9px var(--bg), 0 0 16px var(--bg);
+}
+.atlas:not([data-shown]) .mz-rule, .atlas:not([data-stage="measure"]) .mz-rule { opacity: 0 !important; }
+.mzr-spine { position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--ink-faint); }
+.mzr-floor, .mzr-head { position: absolute; height: 1px; }
+.mzr-floor { bottom: 0; width: var(--fl, 120px); background: linear-gradient(var(--fdir2, 270deg), var(--ink-faint), transparent); }
+.mzr-head { top: 0; height: 2px; margin-top: -1px; width: var(--in, 120px); background: var(--ink); transition: background .4s ease; }
+.mzr-slide { position: absolute; top: -9px; left: -3px; width: 7px; height: 18px; border-radius: 1px; background: var(--ink); transition: background .4s ease; }
+.mz-rule[data-side="1"] :is(.mzr-floor, .mzr-head) { right: 0; }
+.mz-rule[data-side="-1"] :is(.mzr-floor, .mzr-head) { left: 0; --fdir2: 90deg; }
+.mzr-ticks { position: absolute; left: 0; top: 0; bottom: 0; width: 0; }
+.mzr-t {
+  position: absolute; left: 0; height: 1px; width: 7px; background: var(--ink-faint); font-style: normal;
+  transition: bottom .9s var(--ease-out), opacity .4s ease;
+}
+.mzr-t.mj { width: 15px; background: var(--ink-soft); }
+.mzr-t.off { opacity: 0; }
+.mzr-t span {
+  position: absolute; top: -6px; font: 500 10px/1 var(--mono); letter-spacing: .04em; color: var(--ink-faint);
+  white-space: nowrap; text-shadow: var(--halo); transition: opacity .3s ease;
+}
+.mzr-t.near span { opacity: 0; }
+.mz-rule[data-side="1"] .mzr-t { transform: translateX(-100%); }
+.mz-rule[data-side="1"] .mzr-t span { left: calc(100% + 9px); }
+.mz-rule[data-side="-1"] .mzr-t span { right: calc(100% + 9px); }
+.mzr-val {
+  position: absolute; top: 12px; display: grid; grid-template-columns: auto auto; column-gap: 6px;
+  align-items: baseline; white-space: nowrap; text-shadow: var(--halo);
+}
+.mz-rule[data-side="1"] .mzr-val { left: 16px; }
+.mz-rule[data-side="-1"] .mzr-val { right: 16px; justify-items: end; }
+.mzr-n { font: 400 40px/1 var(--serif); letter-spacing: -.02em; font-variant-numeric: lining-nums; color: var(--ink); }
+.mzr-u { font: italic 400 17px/1 var(--serif); color: var(--ink-soft); }
+.mzr-cap { grid-column: 1 / 3; margin-top: 4px; font: 500 10px/1 var(--font); letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); }
+.mz-rule.empty :is(.mzr-head, .mzr-slide) { background: var(--ink-faint); }
+.mz-rule.empty .mzr-n { color: var(--ink-faint); font-style: italic; }
+
 /* ---- the word behind the body: where the figure stands (--mzx, --mzy), as
    large as the room beside it allows (--mzs), fitted to its length (--k).
    Targets' pages hide the ground's words with !important; on this stage
@@ -1547,6 +1618,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   opacity: 0; transition: opacity .3s ease, left 0s, top 0s;
 }
 .atlas[data-stage="measure"][data-shown] .flow-ground span.mz-word.on { opacity: 1 !important; transition: opacity 1.1s ease .1s !important; }
+.atlas .flow-ground span.mz-word[data-k="stature"] { transform: translate(-82%, -50%); }
 #atlas[data-opening] .flow-ground span.mz-word { opacity: 0 !important; }
 
 @media (max-height: 820px) {
@@ -1555,6 +1627,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-s[data-s="intro"] .mz-col { gap: 13px; }
   .mz-title { font-size: clamp(46px, 5vw, 80px); }
   .mz-h { font-size: clamp(38px, 4.2vw, 66px); }
+  .mz-num { font-size: clamp(80px, 8.4vw, 136px); }
   .mz-ix { padding: 8px 0 7px; row-gap: 5px; }
   .mz-ix-w, .mz-ix-v { font-size: 23px; }
 }
@@ -1562,6 +1635,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-col { gap: 13px; }
   .mz-title { font-size: clamp(48px, 5.6vw, 92px); }
   .mz-h { font-size: clamp(38px, 4vw, 62px); }
+  .mz-num { font-size: clamp(80px, 8vw, 128px); }
   .mz-ix { padding: 9px 0 8px; }
   .mz-ix-w { font-size: 23px; }
   .mz-s[data-s="intro"] { padding-top: 16px; }
@@ -1573,6 +1647,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .mz-h { font-size: clamp(34px, 3.6vw, 54px); }
   .mz-lede { font-size: 13.5px; line-height: 1.55; }
   .mz-why { font-size: 12.5px; line-height: 1.55; }
+  .mz-num { font-size: clamp(68px, 7vw, 108px); }
+  .mz-field[data-u="imperial"] .mz-num { font-size: clamp(60px, 6vw, 92px); }
+  .mz-unit { font-size: 24px; }
+  .mz-steps { margin-bottom: 6px; }
   .mz-alt { font-size: 18px; }
   .mz-ix { padding: 7px 0 6px; row-gap: 4px; }
   .mz-ix-w, .mz-ix-v { font-size: 21px; }
@@ -1594,7 +1672,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 @media (prefers-reduced-motion: reduce) {
   .mz-s [data-r] { translate: none; }
   .mz-cue-line::after { animation: none; }
-  .mz-ix-w { transition: none !important; }
+  .mz-ix-w, .mzr-t { transition: none !important; }
 }
 
 /* ------------------------------- nutrition -------------------------------- */
@@ -2366,6 +2444,8 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .mz-s[data-s="intro"] .mz-cue { display: none; }
   .mz-title { font-size: 52px; }
   .mz-h { font-size: 40px; white-space: normal; }
+  .mz-num { font-size: 84px; }
+  .mz-rule, .flow-ground span.mz-word { display: none; }
   .anatomy-stage::after { display: none; }
   .nu-kcal { font-size: 60px; }
   .row-toggle { grid-template-columns: 84px minmax(0, 1fr) auto; }
