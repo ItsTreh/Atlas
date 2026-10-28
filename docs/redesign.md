@@ -116,11 +116,9 @@ fallback all keep working.
 
 ### Type
 
-Cormorant Garamond, loaded from Google Fonts, is used for stage titles,
-figures, the stages' Roman numerals (I, II, III) and the ATLAS wordmark
-only; the interface stays in the system sans. Opened from disk
-without a connection, the serif falls back to Georgia and everything else
-is unchanged.
+Cormorant Garamond, shipped in `fonts/` (SIL Open Font License), is used
+for stage titles, figures, the stages' Roman numerals (I, II, III) and the
+ATLAS wordmark only; the interface stays in the system sans.
 
 ## Stage 01 · Targets
 
