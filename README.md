@@ -45,7 +45,7 @@ cd Atlas
 open index.html        # or double-click it
 ```
 
-That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond) from Google Fonts. Opened offline, they fall back to Georgia and nothing else changes.
+That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond), shipped with the page, so it looks the same offline.
 
 ### Tests
 
@@ -65,6 +65,7 @@ Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler.
 ```
 index.html          one screen: the sculpture, the four stages over it
 css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
+fonts/              Cormorant Garamond (SIL Open Font License, OFL.txt beside it)
 js/
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
