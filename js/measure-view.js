@@ -12,6 +12,7 @@
      stature  a stadiometer stands beside the figure, its rule numbered
               from the soles to the crown in the user's own height
      mass     a steelyard: the poise slides along the beam, which swings
+     years    a frieze of decades, a metope each, the years lived filled
 
    On a phone the parts stack in one column under the figure's band.
    ========================================================================= */
@@ -32,12 +33,13 @@
   const root = Stages.root, stage = $("anatomy-stage"), mount = stage.querySelector(".anatomy-viewport");
 
   /* ------------------------------- framings ------------------------------- */
-  const KEYS = ["intro", "stature", "mass"];
-  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass" };
+  const KEYS = ["intro", "stature", "mass", "years"];
+  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass", years: "Years" };
   const shots = docShots("measure-");
   shots.set("intro", { d: 560, sx: .70, sy: .50, az: -14 });
   shots.set("stature", { d: 540, sx: .29, sy: .50, az: 4 });
   shots.set("mass", { d: 540, sx: .71, sy: .50, az: -24 });
+  shots.set("years", { d: 540, sx: .29, sy: .50, az: 26 });
 
   /* -------------------------------- markup -------------------------------- */
   /* A coin, as the footer's (FOOT_COIN): a beaded rim, a fine ring, the sign struck in the field. */
@@ -91,6 +93,15 @@
       '</div>' +
       '<p class="mz-alt" data-r="2" data-alt="mass"></p>' +
       '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> The largest term in the resting-burn estimate, and the base for protein, counted in grams per kilogram. Today’s weight is enough; change it as you do.</p>' +
+    '</div></section>' +
+
+    '<section class="mz-s" data-s="years" data-side="r"><div class="mz-col">' +
+      '<p class="eyebrow" data-r="0"><span class="n">III</span> / Years</p>' +
+      '<h2 class="mz-h" data-r="0">How many <em>years.</em></h2>' +
+      '<div class="mz-read" data-r="1"><label class="mz-field">' + num("age", "Age in years", "00") + '<span class="mz-unit">years</span></label>' +
+        '<span class="mz-roman" aria-hidden="true"></span>' + steps("age", "age") + '</div>' +
+      '<div class="mz-frieze" data-r="1"><div class="frz" role="slider" tabindex="0" aria-label="Age" aria-valuemin="' + MEASURE_LIMITS.age[0] + '" aria-valuemax="' + MEASURE_LIMITS.age[1] + '"></div><div class="frz-l" aria-hidden="true"></div></div>' +
+      '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> Resting burn eases slowly with the years, by roughly five calories a day for each one. An estimate, like every figure here.</p>' +
     '</div></section>';
 
   const sec = $("stage-measure");
@@ -117,6 +128,16 @@
     page.innerHTML = HTML;
     secEl = {};
     for (const el of page.querySelectorAll(".mz-s")) secEl[el.dataset.s] = el;
+    // The frieze: a metope a decade, a slot a year, its decade numbered under it.
+    let h = "", l = "";
+    for (let d = 1; d <= 9; d++) {
+      h += '<span class="frz-m" data-d="' + d + '">';
+      for (let j = 0; j < 10; j++) h += '<i data-y="' + (d * 10 + j) + '" style="--j:' + j + '"></i>';
+      h += '</span>';
+      l += '<span data-d="' + d + '">' + romanNumeral(d * 10) + '</span>';
+    }
+    page.querySelector(".frz").innerHTML = h;
+    page.querySelector(".frz-l").innerHTML = l;
     built = true;
     buildScales();
   }
@@ -163,6 +184,7 @@
     setIn("cm", M.cm ? Math.round(M.cm) : "", except);
     setIn("ft", ft, except); setIn("in", inch, except);
     setIn("kg", M.kg ? (M.imperial ? poundsOf(M.kg) : kgText(M.kg)) : "", except);
+    setIn("age", M.age || "", except);
     q('.mz-num[data-f="kg"]').setAttribute("aria-label", M.imperial ? "Body weight in pounds" : "Body weight in kilograms");
     q('[data-unit="kg"]').textContent = M.imperial ? "lb" : "kg";
     for (const el of qa("[data-show]")) {
@@ -190,6 +212,20 @@
     yard.setAttribute("aria-valuemin", lo); yard.setAttribute("aria-valuemax", hi);
     if (dv == null) { yard.removeAttribute("aria-valuenow"); yard.setAttribute("aria-valuetext", "Not given"); }
     else { yard.setAttribute("aria-valuenow", Math.round(dv)); yard.setAttribute("aria-valuetext", show.mass()); }
+
+    // The frieze: the years lived filled, this one standing up; before 14, hatched.
+    q(".mz-roman").textContent = M.age ? romanNumeral(M.age) : "";
+    const frz = q(".frz");
+    for (const i of frz.querySelectorAll("i")) {
+      const yr = +i.dataset.y;
+      i.classList.toggle("x", yr < MEASURE_LIMITS.age[0]);
+      i.classList.toggle("f", !!M.age && yr < M.age);
+      i.classList.toggle("now", yr === M.age);
+    }
+    const dec = M.age ? Math.floor(M.age / 10) : 0;
+    for (const el of qa(".frz-l span, .frz-m")) el.classList.toggle("on", +el.dataset.d === dec);
+    if (M.age) { frz.setAttribute("aria-valuenow", M.age); frz.setAttribute("aria-valuetext", M.age + " years"); }
+    else { frz.removeAttribute("aria-valuenow"); frz.setAttribute("aria-valuetext", "Not given"); }
 
     paintRule();
   }
@@ -222,7 +258,7 @@
     } else if (f === "kg") {
       const kg = M.imperial ? n * KG_PER_LB : Math.round(n * 10) / 10;
       if (fits("kg", kg)) M.set("kg", kg); else if (!raw) M.set("kg", null);
-    }
+    } else if (f === "age") { if (fits("age", n)) M.set("age", n); else if (!raw) M.set("age", null); }
     if (commit) save();
     paint(commit ? null : i);
   }
@@ -235,7 +271,7 @@
     } else if (f === "kg") {
       if (M.imperial) M.set("kg", ((M.kg ? poundsOf(M.kg) : 154) + dir) * KG_PER_LB);
       else M.set("kg", (M.kg ? Math.round(M.kg * 2) / 2 : 70) + dir * .5);
-    }
+    } else if (f === "age") M.set("age", (M.age || 30) + dir);
     save();
     paint();
   }
@@ -271,6 +307,12 @@
     M.set("kg", M.imperial ? Math.round(dv) * KG_PER_LB : Math.round(dv * 2) / 2);
     paint();
   }
+  /** The frieze touched at `x`: the year under it. */
+  function setAgeFrom(x) {
+    const r = q(".frz").getBoundingClientRect(), f = Math.max(0, Math.min(.9999, (x - r.left) / r.width));
+    M.set("age", 10 + Math.floor(f * 90));
+    paint();
+  }
 
   /* A coin held down keeps stepping. */
   let holdT = 0, holdI = 0;
@@ -284,16 +326,19 @@
       holdT = setTimeout(() => { holdI = setInterval(() => stepF(b.dataset.f, +b.dataset.step), 70); }, 420);
       return;
     }
-    const el = e.target.closest(".mz-yard");
-    if (!el) return;
+    const yard = e.target.closest(".mz-yard"), frz = e.target.closest(".frz");
+    if (!yard && !frz) return;
     e.preventDefault();
-    dragging = "yard";
+    dragging = yard ? "yard" : "frz";
+    const el = yard || frz;
     el.focus({ preventScroll: true });
     el.setPointerCapture(e.pointerId);
     el.classList.add("drag");
-    setMassFrom(e.clientX);
+    (yard ? setMassFrom : setAgeFrom)(e.clientX);
   });
-  page.addEventListener("pointermove", e => { if (dragging === "yard") setMassFrom(e.clientX); });
+  page.addEventListener("pointermove", e => {
+    if (dragging) (dragging === "yard" ? setMassFrom : setAgeFrom)(e.clientX);
+  });
   const endDrag = () => {
     stopHold();
     if (!dragging) return;
@@ -320,6 +365,12 @@
       const [lo, hi] = YARD[M.units];
       if (k === "Home" || k === "End") { M.set("kg", (k === "Home" ? lo : hi) * (M.imperial ? KG_PER_LB : 1)); save(); paint(); }
       else for (let i = 0; i < Math.abs(dir); i++) stepF("kg", Math.sign(dir) * (M.imperial ? 1 : 2));
+      return;
+    }
+    if (t.matches(".frz") && (dir || k === "Home" || k === "End")) {
+      e.preventDefault();
+      M.set("age", k === "Home" ? MEASURE_LIMITS.age[0] : k === "End" ? MEASURE_LIMITS.age[1] : (M.age || 30) + dir);
+      save(); paint();
       return;
     }
     const grp = t.closest("[role=radiogroup]"), side = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[k];
@@ -369,7 +420,7 @@
     let vt = 0;
     for (let el = sec; el; el = el.offsetParent) vt += el.offsetTop;
     const ch = mount.clientHeight || innerHeight;
-    shots.fit("mass", vt - 14, ch - 34);
+    for (const k of ["mass", "years"]) shots.fit(k, vt - 14, ch - 34);
     shots.fit("stature", vt + 18, ch - 44);     // room above the crown for the headboard
   }
   function seg(v = y) {
