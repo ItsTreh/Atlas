@@ -11,6 +11,7 @@
      intro    what is asked, why, and where it goes; the figure right
      stature  a stadiometer stands beside the figure, its rule numbered
               from the soles to the crown in the user's own height
+     mass     a steelyard: the poise slides along the beam, which swings
 
    On a phone the parts stack in one column under the figure's band.
    ========================================================================= */
@@ -31,11 +32,12 @@
   const root = Stages.root, stage = $("anatomy-stage"), mount = stage.querySelector(".anatomy-viewport");
 
   /* ------------------------------- framings ------------------------------- */
-  const KEYS = ["intro", "stature"];
-  const WORDS = { intro: "Measure", stature: "Stature" };
+  const KEYS = ["intro", "stature", "mass"];
+  const WORDS = { intro: "Measure", stature: "Stature", mass: "Mass" };
   const shots = docShots("measure-");
   shots.set("intro", { d: 560, sx: .70, sy: .50, az: -14 });
   shots.set("stature", { d: 540, sx: .29, sy: .50, az: 4 });
+  shots.set("mass", { d: 540, sx: .71, sy: .50, az: -24 });
 
   /* -------------------------------- markup -------------------------------- */
   /* A coin, as the footer's (FOOT_COIN): a beaded rim, a fine ring, the sign struck in the field. */
@@ -72,6 +74,23 @@
       '</div>' +
       '<p class="mz-alt" data-r="1" data-alt="stature"></p>' +
       '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> A taller frame carries more of what burns at rest. Height is one term in the resting-burn estimate, and nothing else reads it.</p>' +
+    '</div></section>' +
+
+    '<section class="mz-s" data-s="mass" data-side="l"><div class="mz-col">' +
+      '<p class="eyebrow" data-r="0"><span class="n">II</span> / Mass</p>' +
+      '<h2 class="mz-h" data-r="0">How <em>heavy.</em></h2>' +
+      '<div class="mz-read" data-r="1"><label class="mz-field">' + num("kg", "Body weight", "00") + '<span class="mz-unit" data-unit="kg"></span></label>' + steps("kg", "weight") + '</div>' +
+      '<div class="mz-yard" data-r="1" role="slider" tabindex="0" aria-label="Body weight">' +
+        '<span class="yard-hang" aria-hidden="true"><svg viewBox="0 0 24 44"><circle class="yh-ring" cx="12" cy="7" r="5.5"/><circle class="yh-beads" cx="12" cy="7" r="5.5" pathLength="12"/><path d="M12 12.5V40"/><circle class="yh-pin" cx="12" cy="40" r="2.6"/></svg></span>' +
+        '<span class="yard-arm" aria-hidden="true"><span class="yard-beam"></span><span class="yard-key"></span>' +
+          '<span class="yard-load"><svg viewBox="0 0 20 40"><path d="M10 0V24"/><path d="M10 24a5 5 0 1 0 5 5"/></svg><b>you</b></span>' +
+          '<span class="yard-track"><span class="yard-ticks"></span><span class="yard-nums"></span>' +
+          '<span class="yard-poise"><span class="yp-swing"><i class="yp-ring"></i><i class="yp-thread"></i>' +
+            '<svg class="yp-coin" viewBox="0 0 52 52"><circle class="ypc-face" cx="26" cy="26" r="24"/><circle class="ypc-beads" cx="26" cy="26" r="21.4" pathLength="36"/>' +
+            '<circle class="ypc-ring" cx="26" cy="26" r="17.6"/><text class="ypc-v" x="26" y="31" text-anchor="middle"></text></svg></span></span></span></span>' +
+      '</div>' +
+      '<p class="mz-alt" data-r="2" data-alt="mass"></p>' +
+      '<p class="mz-why" data-r="2"><b>Why it’s asked.</b> The largest term in the resting-burn estimate, and the base for protein, counted in grams per kilogram. Today’s weight is enough; change it as you do.</p>' +
     '</div></section>';
 
   const sec = $("stage-measure");
@@ -102,7 +121,9 @@
     buildScales();
   }
 
-  /* The scales, in the units chosen: the rule's ticks, every 10 cm or every 6 inches. */
+  /* The steelyard's beam, in the units chosen: [from, to, a tick every, a number every]. */
+  const YARD = { metric: [40, 160, 5, 20], imperial: [90, 350, 10, 50] };
+  /* The scales, in the units chosen: the rule's ticks, every 10 cm or every 6 inches, and the beam's. */
   function buildScales() {
     if (!built || ticksFor === M.units) return;
     ticksFor = M.units;
@@ -114,6 +135,15 @@
       t += '<i class="mzr-t' + (mj ? " mj" : "") + '" data-c="' + c.toFixed(2) + '">' + (lab ? "<span>" + lab + "</span>" : "") + "</i>";
     }
     ticksEl.innerHTML = t;
+    const [lo, hi, minor, major] = YARD[M.units];
+    let yt = "", yn = "";
+    for (let v = lo; v <= hi; v += minor) {
+      const x = ((v - lo) / (hi - lo) * 100).toFixed(2), mj = v % major === 0;
+      yt += "<i" + (mj ? ' class="mj"' : "") + ' style="left:' + x + '%"></i>';
+      if (mj) yn += '<span style="left:' + x + '%">' + v + "</span>";
+    }
+    page.querySelector(".yard-ticks").innerHTML = yt;
+    page.querySelector(".yard-nums").innerHTML = yn;
   }
 
   /* --------------------------------- paint -------------------------------- */
@@ -132,6 +162,9 @@
     const [ft, inch] = M.cm ? feetInches(M.cm) : ["", ""];
     setIn("cm", M.cm ? Math.round(M.cm) : "", except);
     setIn("ft", ft, except); setIn("in", inch, except);
+    setIn("kg", M.kg ? (M.imperial ? poundsOf(M.kg) : kgText(M.kg)) : "", except);
+    q('.mz-num[data-f="kg"]').setAttribute("aria-label", M.imperial ? "Body weight in pounds" : "Body weight in kilograms");
+    q('[data-unit="kg"]').textContent = M.imperial ? "lb" : "kg";
     for (const el of qa("[data-show]")) {
       const k = el.dataset.show;
       if (show[k]) { const v = show[k](); el.textContent = v || "—"; el.classList.toggle("none", !v); }
@@ -144,6 +177,20 @@
     q('[data-alt="stature"]').textContent = M.cm
       ? (M.imperial ? Math.round(M.cm) + " cm" : feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″") + ". The rule beside the figure is yours now."
       : "The marble stands 158 cm, as carved. And you?";
+    q('[data-alt="mass"]').textContent = M.kg ? (M.imperial ? kgText(M.kg) + " kg" : poundsOf(M.kg) + " lb") + ", on the beam." : "Slide the weight along the beam, or type it.";
+
+    // The steelyard.
+    const [lo, hi] = YARD[M.units], dv = M.kg ? (M.imperial ? M.kg / KG_PER_LB : M.kg) : null;
+    const yard = q(".mz-yard");
+    Y.tx = dv == null ? 0 : Math.max(0, Math.min(1, (dv - lo) / (hi - lo)));
+    Y.base = dv == null ? 3.5 : 0;
+    Y.rested = false;
+    q(".ypc-v").textContent = dv == null ? "" : Math.round(dv);
+    yard.classList.toggle("empty", dv == null);
+    yard.setAttribute("aria-valuemin", lo); yard.setAttribute("aria-valuemax", hi);
+    if (dv == null) { yard.removeAttribute("aria-valuenow"); yard.setAttribute("aria-valuetext", "Not given"); }
+    else { yard.setAttribute("aria-valuenow", Math.round(dv)); yard.setAttribute("aria-valuetext", show.mass()); }
+
     paintRule();
   }
 
@@ -172,18 +219,56 @@
       const ft = parseFloat(q('[data-f="ft"]').value), inch = parseFloat(q('[data-f="in"]').value) || 0;
       if (Number.isFinite(ft)) { const cm = (ft * 12 + inch) * 2.54; if (fits("cm", cm)) M.set("cm", cm); }
       else if (!raw && f === "ft") M.set("cm", null);
+    } else if (f === "kg") {
+      const kg = M.imperial ? n * KG_PER_LB : Math.round(n * 10) / 10;
+      if (fits("kg", kg)) M.set("kg", kg); else if (!raw) M.set("kg", null);
     }
     if (commit) save();
     paint(commit ? null : i);
   }
 
-  /** One step of a field: a centimetre or an inch. */
+  /** One step of a field: a centimetre or an inch; half a kilogram or a pound. */
   function stepF(f, dir) {
     if (f === "cm") {
       if (M.imperial) M.set("cm", ((M.cm ? Math.round(M.cm / 2.54) : 62) + dir) * 2.54);
       else M.set("cm", (M.cm ? Math.round(M.cm) : 158) + dir);
+    } else if (f === "kg") {
+      if (M.imperial) M.set("kg", ((M.kg ? poundsOf(M.kg) : 154) + dir) * KG_PER_LB);
+      else M.set("kg", (M.kg ? Math.round(M.kg * 2) / 2 : 70) + dir * .5);
     }
     save();
+    paint();
+  }
+
+  /* The steelyard moves as a thing hung on threads: the poise follows the
+     hand on a spring, the beam rocks toward where it is going and settles,
+     the coin swings on its thread. Empty, the long arm tips down; given a
+     weight, it balances. */
+  const Y = { x: 0, v: 0, tx: 0, th: 0, w: 0, sw: 0, sv: 0, base: 3.5, set: false, rested: false };
+  function yardStep(dt) {
+    const yard = q(".mz-yard");
+    if (!yard) return;
+    const s = Math.min(dt, 34) / 1000, drag = dragging === "yard";
+    if (!Y.set) { Y.x = Y.tx; Y.th = Y.base; Y.set = true; }
+    const k = drag ? 260 : 90, c = 2 * Math.sqrt(k) * (drag ? .9 : .62);
+    const a = k * (Y.tx - Y.x) - c * Y.v;
+    Y.v += a * s; Y.x += Y.v * s;
+    const want = Y.base + Math.max(-4, Math.min(4, Y.v * 2.4));
+    Y.w += (55 * (want - Y.th) - 4.2 * Y.w) * s; Y.th += Y.w * s;
+    Y.sv += (-38 * Y.sw - 2.6 * Y.sv + a * 7) * s; Y.sw = Math.max(-28, Math.min(28, Y.sw + Y.sv * s));
+    const still = Math.abs(Y.tx - Y.x) < 1e-4 && Math.abs(Y.v) < 1e-4 && Math.abs(Y.th - Y.base) < .01 && Math.abs(Y.w) < .01 && Math.abs(Y.sw) < .02 && Math.abs(Y.sv) < .02;
+    if (still && Y.rested) return;
+    Y.rested = still;
+    yard.style.setProperty("--x", Y.x.toFixed(4));
+    yard.style.setProperty("--tilt", Y.th.toFixed(3) + "deg");
+    yard.style.setProperty("--sw", Y.sw.toFixed(2) + "deg");
+  }
+
+  /** The poise dragged to `x` (px across the screen): the weight it reads, a pound or half a kilogram at a time. */
+  function setMassFrom(x) {
+    const track = q(".yard-track").getBoundingClientRect(), [lo, hi] = YARD[M.units];
+    const f = Math.max(0, Math.min(1, (x - track.left) / track.width)), dv = lo + f * (hi - lo);
+    M.set("kg", M.imperial ? Math.round(dv) * KG_PER_LB : Math.round(dv * 2) / 2);
     paint();
   }
 
@@ -192,14 +277,32 @@
   const stopHold = () => { clearTimeout(holdT); clearInterval(holdI); };
   page.addEventListener("pointerdown", e => {
     const b = e.target.closest("[data-step]");
-    if (!b) return;
+    if (b) {
+      e.preventDefault();
+      stepF(b.dataset.f, +b.dataset.step);
+      stopHold();
+      holdT = setTimeout(() => { holdI = setInterval(() => stepF(b.dataset.f, +b.dataset.step), 70); }, 420);
+      return;
+    }
+    const el = e.target.closest(".mz-yard");
+    if (!el) return;
     e.preventDefault();
-    stepF(b.dataset.f, +b.dataset.step);
-    stopHold();
-    holdT = setTimeout(() => { holdI = setInterval(() => stepF(b.dataset.f, +b.dataset.step), 70); }, 420);
+    dragging = "yard";
+    el.focus({ preventScroll: true });
+    el.setPointerCapture(e.pointerId);
+    el.classList.add("drag");
+    setMassFrom(e.clientX);
   });
-  addEventListener("pointerup", stopHold);
-  addEventListener("pointercancel", stopHold);
+  page.addEventListener("pointermove", e => { if (dragging === "yard") setMassFrom(e.clientX); });
+  const endDrag = () => {
+    stopHold();
+    if (!dragging) return;
+    for (const el of qa(".drag")) el.classList.remove("drag");
+    dragging = null;
+    save();
+  };
+  addEventListener("pointerup", endDrag);
+  addEventListener("pointercancel", endDrag);
 
   page.addEventListener("input", e => { if (e.target.matches(".mz-num")) onInput(e.target, false); });
   page.addEventListener("change", e => { if (e.target.matches(".mz-num")) onInput(e.target, true); });
@@ -209,6 +312,14 @@
       const d = { ArrowUp: 1, ArrowDown: -1 }[k];
       if (d) { e.preventDefault(); stepF(t.dataset.f === "ft" || t.dataset.f === "in" ? "cm" : t.dataset.f, d * (e.shiftKey ? 10 : 1)); }
       else if (k === "Enter") t.blur();
+      return;
+    }
+    const dir = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, PageDown: -10, PageUp: 10 }[k];
+    if (t.matches(".mz-yard") && (dir || k === "Home" || k === "End")) {
+      e.preventDefault();
+      const [lo, hi] = YARD[M.units];
+      if (k === "Home" || k === "End") { M.set("kg", (k === "Home" ? lo : hi) * (M.imperial ? KG_PER_LB : 1)); save(); paint(); }
+      else for (let i = 0; i < Math.abs(dir); i++) stepF("kg", Math.sign(dir) * (M.imperial ? 1 : 2));
       return;
     }
     const grp = t.closest("[role=radiogroup]"), side = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }[k];
@@ -258,6 +369,7 @@
     let vt = 0;
     for (let el = sec; el; el = el.offsetParent) vt += el.offsetTop;
     const ch = mount.clientHeight || innerHeight;
+    shots.fit("mass", vt - 14, ch - 34);
     shots.fit("stature", vt + 18, ch - 44);     // room above the crown for the headboard
   }
   function seg(v = y) {
@@ -367,6 +479,7 @@
       render();
     }
     placeRule();
+    if (built && live()) yardStep(dt);
     requestAnimationFrame(frame);
   })(0);
   function go(v) {
