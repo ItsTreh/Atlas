@@ -17,7 +17,9 @@
      label    the seal: everything given, struck, each fact led out to it
               like a catalogue plate; the figure steps away
 
-   On a phone the parts stack in one column under the figure's band.
+   Once all four are given, or coming back from Nutrition, it opens on the
+   seal: a single screen. On a phone the parts stack in one column under
+   the figure's band, and the links between them scroll it.
    ========================================================================= */
 (() => {
   const M = bodyMeasure;
@@ -509,7 +511,8 @@
     if (st) { if (e.detail === 0) stepF(st.dataset.f, +st.dataset.step); return; }
     const sx = t.closest("[data-sex]");
     if (sx) { M.set("sex", sx.dataset.sex); save(); paint(); return; }
-    const u = t.closest("[data-units]");
+    // The page itself carries data-units (for the CSS): only the choice's own buttons are the units.
+    const u = t.closest(".mz-units [data-units]");
     if (u) { M.units = u.dataset.units; save(); paint(); return; }
     const ik = t.closest(".own-ink [data-ink]");
     if (ik) { M.ink = ik.dataset.ink; save(); paintSeal(); strike(); return; }
@@ -517,24 +520,32 @@
     if (t.closest(".seal")) {
       if (M.complete) return strike();
       const miss = [["stature", M.cm], ["mass", M.kg], ["years", M.age], ["physis", M.sex]].find(([, v]) => v === null);
-      if (miss) go(stop[miss[0]].a);
+      if (miss) visit(miss[0]);
       return;
     }
     const g = t.closest("[data-go]");
-    if (g && stop[g.dataset.go]) {
-      const k = g.dataset.go;
-      go(stop[k].a);
-      // Then into its first field, once the page has arrived.
-      const f = secEl[k].querySelector(".mz-field:not([hidden]) .mz-num, [role=radiogroup] [tabindex='0']");
-      if (f && !Stages.narrow) setTimeout(() => { if (live() && nearestKey(target) === k) f.focus({ preventScroll: true }); }, 650);
-      return;
-    }
+    if (g && stop[g.dataset.go]) { visit(g.dataset.go); return; }
     if (t.closest(".mz-clear")) {
       M.clear();
       save(); paint();
       announce("The seal is cleared");
     }
   });
+  /**
+   * Goes to a part of the page, then into its first field, once it has
+   * arrived. On a phone the parts are stacked: the stage scrolls to it.
+   */
+  function visit(k) {
+    const f = secEl[k].querySelector('.mz-field:not([data-u]) .mz-num, .mz-field[data-u="' + M.units + '"] .mz-num, [role=radiogroup] [tabindex="0"]');
+    if (Stages.narrow) {
+      // Only the stage's own pane: scrollIntoView would move the fixed frame too.
+      sec.scrollTo({ top: secEl[k].offsetTop - parseFloat(getComputedStyle(sec).paddingTop), behavior: Stages.still ? "auto" : "smooth" });
+      if (f) f.focus({ preventScroll: true });
+      return;
+    }
+    go(stop[k].a);
+    if (f) setTimeout(() => { if (live() && nearestKey(target) === k) f.focus({ preventScroll: true }); }, 650);
+  }
   // The page is moved by the scroll, never by the browser bringing focus into view.
   doc.addEventListener("scroll", e => { const t = e.target; if (!Stages.narrow && (t.scrollTop || t.scrollLeft)) { t.scrollTop = 0; t.scrollLeft = 0; } }, true);
   page.addEventListener("focusin", e => {
@@ -701,6 +712,7 @@
   if (document.fonts) document.fonts.ready.then(() => { if (live()) { measure(); render(); } });
 
   /* ------------------------------- the stage ------------------------------- */
+  let from = null;
   function finish() {
     if (Stages.busy) return;
     M.sealed = new Date().toISOString().slice(0, 10);
@@ -709,10 +721,11 @@
   }
 
   Stages.register("measure", {
+    arrive() { from = Stages.from; },
     enter() {
       if (!built) build();
       paint(); measure();
-      y = target = 0;
+      y = target = M.complete || from === "nutrition" ? stop.label.a : 0;
       cur = null; atEnd = false;
       render(); settleFigure();
     },
