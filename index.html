@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<!-- One screen, three stages. The sculpture is a single element behind
+<!-- One screen, four stages. The sculpture is a single element behind
      them all; moving between stages moves its camera (stages.js), and each
      stage's interface settles around it. -->
 <!-- data-opening keeps the stage's interface out of sight until start.js
@@ -38,8 +38,9 @@
     </div>
     <nav class="stage-nav" id="stage-nav" aria-label="Stages">
       <button type="button" data-goto="targets" aria-current="step"><i class="sn" aria-hidden="true">I</i><span>Targets</span></button>
-      <button type="button" data-goto="nutrition"><i class="sn" aria-hidden="true">II</i><span>Nutrition</span></button>
-      <button type="button" data-goto="plan"><i class="sn" aria-hidden="true">III</i><span>Week plan</span></button>
+      <button type="button" data-goto="measure"><i class="sn" aria-hidden="true">II</i><span>Measure</span></button>
+      <button type="button" data-goto="nutrition"><i class="sn" aria-hidden="true">III</i><span>Nutrition</span></button>
+      <button type="button" data-goto="plan"><i class="sn" aria-hidden="true">IV</i><span>Week plan</span></button>
     </nav>
     <div class="mast-end">
       <button type="button" class="theme-btn" id="theme">
@@ -57,7 +58,7 @@
       <div class="how-copy">
         <p class="eyebrow" data-reveal="0"><span class="n">I</span> / Targets · How ATLAS works</p>
         <h1 class="how-title" id="how-title" tabindex="-1" data-reveal="0">A week of training, <em>built around you.</em></h1>
-        <p class="how-lede" data-reveal="1">Plan around the muscles you want to build and the time you actually have. Three stages, one figure.</p>
+        <p class="how-lede" data-reveal="1">Plan around the muscles you want to build and the time you actually have. Four stages, one figure.</p>
       </div>
       <ol class="chapters" id="chapters" data-reveal="2">
         <li><button type="button" class="chapter on" data-ch="0" aria-pressed="true">
@@ -69,12 +70,18 @@
         <li><button type="button" class="chapter" data-ch="1" aria-pressed="false">
           <span class="ch-bar" aria-hidden="true"><span></span></span>
           <span class="ch-n" aria-hidden="true">II</span>
-          <span class="ch-head"><span class="ch-title">Nutrition</span><span class="ch-tag">Optional</span></span>
-          <span class="ch-text">Calories and protein to match the training. Skip it if you only want workouts.</span>
+          <span class="ch-head"><span class="ch-title">Measure</span></span>
+          <span class="ch-text">Height, weight, age and physiology, so Nutrition's estimate is yours, not an average.</span>
         </button></li>
         <li><button type="button" class="chapter" data-ch="2" aria-pressed="false">
           <span class="ch-bar" aria-hidden="true"><span></span></span>
           <span class="ch-n" aria-hidden="true">III</span>
+          <span class="ch-head"><span class="ch-title">Nutrition</span><span class="ch-tag">Optional</span></span>
+          <span class="ch-text">Calories and protein to match the training. Skip it if you only want workouts.</span>
+        </button></li>
+        <li><button type="button" class="chapter" data-ch="3" aria-pressed="false">
+          <span class="ch-bar" aria-hidden="true"><span></span></span>
+          <span class="ch-n" aria-hidden="true">IV</span>
           <span class="ch-head"><span class="ch-title">Week plan</span></span>
           <span class="ch-text">Tell ATLAS when you're busy. It fits the sessions around you and picks the exercises.</span>
         </button></li>
@@ -151,14 +158,21 @@
     </div>
   </div>
 
-  <!-- =========================== Stage 2: nutrition ======================== -->
+  <!-- ============================ Stage 2: measure ========================= -->
+  <!-- Four facts for Nutrition's estimates, one page scrolled past the
+       figure; measure-view.js draws it into the page. -->
+  <section class="stage stage-measure" id="stage-measure" data-scroll aria-labelledby="mz-title">
+    <div class="mz" data-reveal="0"><div class="mz-view"><div class="mz-page"></div></div></div>
+  </section>
+
+  <!-- =========================== Stage 3: nutrition ======================== -->
   <!-- Optional. The plan sits right of the sculpture; nutrition-view.js
        draws it, and "A day of eating", into the panel. -->
   <section class="stage stage-nutrition" id="stage-nutrition" data-scroll aria-labelledby="nutrition-title">
     <div class="nu" id="nutrition-panel"></div>
   </section>
 
-  <!-- =========================== Stage 3: week plan ======================== -->
+  <!-- =========================== Stage 4: week plan ======================== -->
   <!-- Fit it into your life, Shape your week, and Your week: week-view.js
        draws whichever is open into the panel. -->
   <section class="stage stage-plan" id="stage-plan" data-scroll data-view="config" aria-labelledby="plan-title">
@@ -221,6 +235,7 @@
 <script src="js/estimate.js"></script>
 <script src="js/nutrition.js"></script>
 <script src="js/foods.js"></script>
+<script src="js/measure.js"></script>
 <script src="js/exercises.js"></script>
 <script src="js/workouts.js"></script>
 <script src="js/distribution.js"></script>
@@ -248,6 +263,7 @@
 <script src="js/targets-train.js"></script>
 <script src="js/flow-front.js"></script>
 <script src="js/workout-view.js"></script>
+<script src="js/measure-view.js"></script>
 <script src="js/nutrition-view.js"></script>
 <script src="js/week-view.js"></script>
 <script src="js/paint.js"></script>

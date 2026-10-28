@@ -795,7 +795,8 @@ Stages.register("targets", {
     // nothing is chosen any more.
     const back = !!Stages.from, empty = selection.isEmpty();
     const at = FLOW_SUBS.includes(Stages.at) && !(Stages.at === "train" && empty) ? Stages.at : null;
-    flow.sub = at || (back && !empty ? "train" : "how");
+    // Back from the Measure with nothing chosen, its way back said Your muscles.
+    flow.sub = at || (back && !empty ? "train" : back && Stages.from === "measure" ? "focus" : "how");
     flow.chapter = 0;
     setFlowDir(back ? -1 : 1);
     paintSub();
@@ -830,12 +831,12 @@ Stages.register("targets", {
       nextDisabled: empty,
       hint: empty ? "Select at least one muscle to continue." : scroll
     };
-    return { back: "← Your muscles", next: Stages.narrow ? "Continue →" : "Continue to nutrition →", hint: scroll };
+    return { back: "← Your muscles", next: Stages.narrow ? "Continue →" : "Continue to your measure →", hint: scroll };
   },
   onNext() {
     if (flow.sub === "how") goSub("focus");
     else if (flow.sub === "focus") goSub("train");
-    else if (!selection.isEmpty()) Stages.go("nutrition");
+    else if (!selection.isEmpty()) Stages.go("measure");
     return true;
   },
   onBack() {

@@ -2,9 +2,9 @@
 
 **Plan a week of training around the muscles you want to build, and a schedule you actually have.**
 
-ATLAS is a weekly training planner in three stages. Pick your target muscles on an interactive anatomy figure, get a nutrition plan built from that training, then let it place the sessions, exercises and meals into the free hours of your week.
+ATLAS is a weekly training planner in four stages. Pick your target muscles on an interactive anatomy figure, give your measure (height, weight, age and physiology), get a nutrition plan built from that training, then let it place the sessions, exercises and meals into the free hours of your week.
 
-One classical anatomical sculpture runs through all three. Moving to another stage moves the camera round it, and the interface settles around the body. The motion happens between stages; within one, everything stays still while you work.
+One classical anatomical sculpture runs through all four. Moving to another stage moves the camera round it, and the interface settles around the body. The motion happens between stages; within one, everything stays still while you work.
 
 It runs entirely in the browser: no account, no server, no build step. Open `index.html` and it works.
 
@@ -63,7 +63,7 @@ The logic (muscles, programs, estimates, nutrition, exercise selection, scheduli
 Plain HTML, CSS and JavaScript as classic scripts, with no framework or bundler. That's why it opens straight from disk.
 
 ```
-index.html          one screen: the sculpture, the three stages over it
+index.html          one screen: the sculpture, the four stages over it
 css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
 js/
   model.js          muscles, time slots, sessions — the core data
@@ -74,6 +74,7 @@ js/
   exercises.js      exercise catalogue with tier ratings
   workouts.js       builds each session's workout
   distribution.js   spreads each muscle's weekly sets over the training days
+  measure.js        the measure: height, weight, age and physiology (not read by the estimates yet)
   nutrition.js      calorie and protein targets
   foods.js          foods, diet styles, example meals
   routine.js        WeeklyRoutine: the shared plan state; places the week and its meals
@@ -82,7 +83,7 @@ js/
   anatomy*.js       the anatomy figure, its regions, cartography and camera, and its stage
   stages.js         moving between stages: motion between, stillness within
   start.js          the start screen: five openings, one per visit, that hand over to the stage
-  targets.js, nutrition-view.js, week-view.js, workout-view.js
+  targets.js, measure-view.js, nutrition-view.js, week-view.js, workout-view.js
                     the stages (Targets in three movements); workout-view.js is a session in full
   targets-muscles.js, targets-train.js
                     Your muscles and Training focus as scrolled pages, on a wide screen

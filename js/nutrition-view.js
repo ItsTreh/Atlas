@@ -117,7 +117,7 @@ function planHTML() {
     '</div>';
   }).join("");
   return '<div class="nu-head" data-reveal="0">' +
-      '<p class="eyebrow"><span><span class="n">II</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
+      '<p class="eyebrow"><span><span class="n">' + STAGE_NUMERALS.nutrition + '</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
       '<h1 class="display nu-title" id="nutrition-title" tabindex="-1">Fuel the training</h1>' +
       '<p class="nu-lede" id="nu-fuels">' + esc(fuelsText(n)) + '</p>' +
     '</div>' +
@@ -609,7 +609,7 @@ Stages.register("nutrition", {
   dim: () => nut.day ? 0.45 : 1,
   focus: () => $("nutrition-title"),
   footer: () => ({
-    back: "← Targets",
+    back: "← Your measure",
     skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
     next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
     nextDisabled: routine.selection.isEmpty()

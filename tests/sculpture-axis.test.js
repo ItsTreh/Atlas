@@ -26,7 +26,7 @@ function project(r, p) {
   return { x: (c(0) / w + 1) / 2 * cw, y: (1 - c(1) / w) / 2 * ch, w };
 }
 
-const shots = ["targets-front", "targets-back", "targets-how0", "targets-how1", "targets-how2",
+const shots = ["targets-front", "targets-back", "targets-how0", "targets-how1", "targets-how2", "targets-how3",
   "targets-train-front", "nutrition", "plan"];
 
 describe("the figure's axis on the canvas", () => {

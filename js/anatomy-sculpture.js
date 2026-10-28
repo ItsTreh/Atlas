@@ -84,8 +84,9 @@ const SCULPTURE_SHOTS = {
   // Targets' movements (targets.js). How it works acts out each stage as
   // its chapter is read, the figure stepped right; Training focus steps it left.
   "targets-how0":       { az: -24, el: 3,   ty: 80,  d: 640, sx: .76, sy: .50,  fov: 20 },
-  "targets-how1":       { az: -18, el: -24, ty: 120, d: 320, sx: .76, sy: .44,  fov: 20 },
-  "targets-how2":       { az: 36,  el: -6,  ty: 114, d: 330, sx: .76, sy: .50,  fov: 20 },
+  "targets-how1":       { az: 4,   el: 2,   ty: 80,  d: 600, sx: .76, sy: .50,  fov: 20 },
+  "targets-how2":       { az: -18, el: -24, ty: 120, d: 320, sx: .76, sy: .44,  fov: 20 },
+  "targets-how3":       { az: 36,  el: -6,  ty: 114, d: 330, sx: .76, sy: .50,  fov: 20 },
   "targets-train-front": { az: 0,  el: 2,   ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
   "targets-train-back":  { az: 180, el: 2,  ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
   "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .19, sy: .40,  fov: 20 },
@@ -440,7 +441,7 @@ class AnatomySculpture {
   shotParams(name = this.shotName) {
     const s = { ...(SCULPTURE_SHOTS[name] || SCULPTURE_SHOTS["targets-front"]) };
     if (this.mobile) {
-      const fit = SCULPTURE_MOBILE[name.startsWith("targets") ? "targets" : name] || {};
+      const fit = SCULPTURE_MOBILE[/^(targets|measure)/.test(name) ? "targets" : name] || {};
       s.sx = 0.5; s.sy = 0.5;
       if (fit.ty) s.ty = fit.ty;
       if (fit.d) s.d *= fit.d;

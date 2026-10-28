@@ -102,7 +102,7 @@
         '<div class="tw-band" data-r="2">' + band + '</div>' +
         '<p class="tw-mix" data-r="2"></p>' +
         '<div class="tw-note" data-r="3"></div>' +
-        '<div class="tw-end" data-r="3"><button type="button" class="ds-cue tw-on"><span class="ds-cue-line" aria-hidden="true"></span>Continue to nutrition</button></div>' +
+        '<div class="tw-end" data-r="3"><button type="button" class="ds-cue tw-on"><span class="ds-cue-line" aria-hidden="true"></span>Continue to your measure</button></div>' +
       '</div>' +
     '</section>';
   };
