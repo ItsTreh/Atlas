@@ -45,7 +45,7 @@ cd Atlas
 open index.html        # or double-click it
 ```
 
-That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond), shipped with the page, so it looks the same offline.
+That's all. Light and dark themes are built in (top-right toggle), and the layout works from phones to large desktops. Stage titles use a classical serif (Cormorant Garamond), shipped with the page, so it looks the same offline. The page loads nothing from other sites: a Content-Security-Policy in `index.html` allows only its own files.
 
 ### Tests
 
@@ -67,6 +67,8 @@ index.html          one screen: the sculpture, the four stages over it
 css/styles.css      the ATLAS theme: tokens, light/dark, the shell, the stages
 fonts/              Cormorant Garamond (SIL Open Font License, OFL.txt beside it)
 js/
+  boot.js           marks the page as scripted; shows the plain page if a script fails first
+  anatomy-load.js   writes in the sculpture's model, unless ?anatomy=procedural
   model.js          muscles, time slots, sessions — the core data
   selection.js      MuscleSelection: the one source of truth for targets
   programs.js       recommended programs
