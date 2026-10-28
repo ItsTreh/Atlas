@@ -130,3 +130,11 @@ Agreed directions, each built only when its turn comes (see `docs/anatomy-levels
 - **Finer regions under the groups**, such as the three heads of the deltoid, sitting beneath the current group regions.
 - **Later:** a weekly coverage map of the body, and selection that grows into a map-like "cartography" system.
 
+
+## License
+
+© 2026 Tred (github.com/ItsTreh).
+
+The code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE). If you run a modified version for others, including as a website, you must offer them its source.
+
+The Male_Body sculpture (its `.blend`, paint, `.glb`, manifest and `js/anatomy-model-male-body.js`) is **not** under the AGPL: it is all rights reserved. See [ASSETS-LICENSE.md](ASSETS-LICENSE.md). Without it, ATLAS falls back to the procedural figure, which is AGPL like the rest of the code.

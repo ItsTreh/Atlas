@@ -17,6 +17,7 @@ One sculpture runs through all four, its camera moving between stages (`docs/red
 - **The data stays apart from the UI.** Views read and write shared state (`routine`, `routine.selection`). `MuscleSelection` (`js/selection.js`) is the one source of truth for targets, so nothing keeps its own copy.
 - **Every calorie, protein or progress figure is labelled an estimate** and shows how it was worked out. The app never promises a physique by a date.
 - **Never loosen size, triangle or region tests silently.** If a test has to change, say so and explain why.
+- **Licensing.** The code is AGPL-3.0-or-later; the Male_Body sculpture files are all rights reserved (`ASSETS-LICENSE.md` lists them; add any new sculpture file there). Any library the app ships must be MIT, BSD or Apache, so the user can still publish builds to Apple's App Store; flag anything else before adding it.
 
 ## Commands
 
