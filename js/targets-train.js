@@ -18,9 +18,8 @@
 (() => {
   const FAMS = Object.keys(FAMILIES);
   const TITLES = { push: "What <em>presses.</em>", pull: "What <em>pulls.</em>", legs: "What <em>carries.</em>", core: "What <em>holds.</em>" };
-  const exp = () => routine.experience || DEFAULT_EXPERIENCE;
   const has = m => exercisesFor(m.id).length > 0;
-  const setsAt = (m, lv) => has(m) ? weeklyTarget(m, exp(), lv) || 0 : 0;
+  const setsAt = (m, lv) => has(m) ? weeklyTarget(m, lv) || 0 : 0;
   const live = () => !!flowDoc("train");
 
   /* ------------------------------- framings ------------------------------- */
@@ -43,7 +42,7 @@
     '<section class="ds ds-intro ds-tintro" data-s="intro">' +
       '<p class="eyebrow" data-r="0"><span class="n">I</span> / Targets · Training focus</p>' +
       '<h1 class="ds-title" id="tdoc-title" tabindex="-1" data-r="1">Where the <em>work</em> goes.</h1>' +
-      '<p class="ds-lede" data-r="2">Every block is one hard set a week. Normal starts a muscle inside its range; Focus moves it up the range; Maintain holds it at the floor, and is the first trimmed when your week runs short. One family at a time: the figure turns to show each.</p>' +
+      '<p class="ds-lede" data-r="2">Every block is one hard set a week. Normal starts a muscle inside its range; Focus moves it up the range; Maintain holds a small dose, and is the last trimmed when your week runs short. One family at a time: the figure turns to show each.</p>' +
       '<div class="tlg" data-r="2" aria-hidden="true">' + LEGEND.map(([lv, name, n]) =>
         '<span class="tlg-i" data-level="' + lv + '"><span class="tlg-s">' + '<i class="s f"></i>'.repeat(n) + '</span>' +
         '<span class="tlg-w">' + name + '</span></span>').join("") + '</div>' +
@@ -51,7 +50,7 @@
     '</section>';
 
   const rowHTML = (m, N, i) => {
-    const [lo, hi] = m.weeklySets, ok = has(m);
+    const lo = weeklyFloor(m, "maintain"), hi = weeklyCeiling(m), ok = has(m);
     let slots = "";
     for (let j = 0; j < N; j++) slots += '<i class="s' + (!ok || j >= hi ? " x" : "") + '" style="--j:' + j + '"></i>';
     return '<div class="tdr" data-row="' + m.id + '" data-muscle="' + m.id + '" data-family="' + m.family + '" style="--i:' + i + '">' +
@@ -116,7 +115,7 @@
     fams = FAMS.map(k => ({ k, ms: ms.filter(m => m.family === k) })).filter(f => f.ms.length);
     KEYS = ["intro", ...fams.map(f => f.k), "week"];
     // The ladders line up: as many places as the largest range chosen.
-    const N = Math.max(1, ...ms.filter(has).map(m => m.weeklySets[1]));
+    const N = Math.max(1, ...ms.filter(has).map(weeklyCeiling));
     fams.forEach((f, i) => {
       const back = f.ms.filter(m => FLOW_BACK.has(m.id)).length * 2 > f.ms.length;
       shots.set(f.k, { d: 545, sx: .27, sy: .50, az: (back ? 180 : 0) + (i % 2 ? -18 : 18) });
@@ -364,7 +363,7 @@
       s.classList.toggle("pc", i >= then && i < now);
     });
     row.querySelector(".tdr-n").innerHTML = d ? "<b>" + then + "</b><span>from " + now + "</span>"
-      : "<b>" + now + "</b><span>" + (lv === "maintain" ? "trimmed first" : "kept") + "</span>";
+      : "<b>" + now + "</b><span>" + (lv === "maintain" ? "trimmed last" : "kept") + "</span>";
     if (d) flyD.textContent = " · " + (d > 0 ? "+" : "−") + Math.abs(d);
   }
   page.addEventListener("pointerover", e => point(e.target));

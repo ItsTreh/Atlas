@@ -232,9 +232,9 @@ describe("the final plan", () => {
 
   test("spare days become rest days instead of repeating a focus", () => {
     // The plan adds a session to a muscle only while each session keeps four or more
-    // sets: Push has two worthwhile days whatever number is asked for (3 to 7).
+    // sets: Push has four worthwhile days whatever number is asked for (4 to 7).
     const { routine, result } = generatedWeek(app, { program: "push", sessions: 6 });
-    expect(routine.sessions.length).toBe(2);
+    expect(routine.sessions.length).toBe(4);
     expect(result.reason).toBe("rest");
     expect(routine.nutrition.load.sessionsPerWeek).toBe(routine.sessions.length);
   });
@@ -381,9 +381,14 @@ describe("splits the user chooses", () => {
   });
 
   test("Upper · Lower from Monday to Thursday reaches every minimum when the sessions hold it", () => {
-    // 16 muscles in four 60-minute sessions do not hold every usual minimum
-    // (the fit note says so); in 90 minutes they do.
-    const { routine } = week("full-body", "upper-lower", 4, 90, ["FRI", "SAT", "SUN"]);
+    // 16 muscles on Normal in four 90-minute sessions do not hold every floor
+    // (the fit note says so); on Maintain they do.
+    const routine = new app.WeeklyRoutine();
+    routine.selection.applyProgram(app.PROGRAM_BY_ID.get("full-body"));
+    for (const m of routine.selection.muscles()) routine.selection.setPriority(m.id, "maintain");
+    Object.assign(routine, { split: "upper-lower", sessionsPerWeek: 4, sessionMinutes: 90 });
+    for (const d of ["FRI", "SAT", "SUN"]) routine.setDayUnavailable(d, true);
+    routine.generate();
     const v = routine.weeklyVolume();
     expect(v.short).toEqual([]);
     expect(v.untrained).toEqual([]);
@@ -414,14 +419,14 @@ describe("splits the user chooses", () => {
                 .toBeLessThanOrEqual(app.WORKOUT.maxSetsPerSession);
           }
           for (const r of routine.weeklyVolume().rows)
-            expect(r.sets, at + " " + r.muscle.id).toBeLessThanOrEqual(r.muscle.weeklySets[1]);
+            expect(r.sets, at + " " + r.muscle.id).toBeLessThanOrEqual(app.weeklyCeiling(r.muscle));
         }
   });
 
   test("Legs on Push · Pull · Legs, 4 × 60: no muscle over its maximum", () => {
     const { routine } = week("legs", "push-pull-legs", 4, 60);
     for (const r of routine.weeklyVolume().rows)
-      expect(r.sets, r.muscle.id).toBeLessThanOrEqual(r.muscle.weeklySets[1]);
+      expect(r.sets, r.muscle.id).toBeLessThanOrEqual(app.weeklyCeiling(r.muscle));
   });
 
   test("a split day can end well inside its length, and says nothing is missing", () => {

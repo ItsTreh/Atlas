@@ -10,10 +10,11 @@
    consistent training usually runs before changes show. That is what this
    returns.
 
-   The volume ranges come from each muscle's `weeklySets` (model.js), which
-   follow the common reading of weekly-volume research: roughly 10 hard sets
-   a week per muscle is where growth reliably shows, with small muscles
-   needing less direct work because compound lifts already train them.
+   The weekly sets come from one table, weeklyTargets (evidence.js): a
+   target and a floor for each priority, and a ceiling, on the main scale
+   or the accessory one (Muscle.kind). They are planning defaults built on
+   the volume research (docs/training-evidence.md): more sets help with
+   diminishing returns, and no threshold exists.
    ========================================================================= */
 
 const ESTIMATE = Object.freeze({
@@ -25,24 +26,34 @@ const ESTIMATE = Object.freeze({
   warmupMinutes: configValue("warmupMinutes")     // per session, not available for working sets
 });
 
-/* Experience, asked once. The weekly target for each muscle starts from it. */
+/* Experience, asked once. It does not change the weekly targets (weeklyTarget):
+   it is kept for the starting point and ramp, once training is logged. */
 const EXPERIENCE_LEVELS = Object.freeze([
   { id: "beginner",     label: "Under 6 months" },
   { id: "intermediate", label: "6 months to 2 years" },
   { id: "advanced",     label: "More than 2 years" }
 ]);
 
+/** The weekly sets scale a muscle uses (weeklyTargets, by Muscle.kind). */
+const weeklyScale = muscle => configValue("weeklyTargets")[muscle.kind];
+
 /**
- * Hard sets a week to aim for on one muscle: its range [low, high], then a
- * fraction of the way up it by experience and priority. A whole number that
- * always lies inside the range. Returns null until experience is known.
+ * Hard sets a week to aim for on one muscle at `priority`. Experience does
+ * not change it: the research shows no experience-specific curve. Null for
+ * an unknown priority.
  */
-function weeklyTarget(muscle, experience, priority = "normal") {
-  const table = configValue("weeklyTargetFraction")[experience];
-  if (!table || table[priority] === undefined) return null;
-  const [low, high] = muscle.weeklySets;
-  return Math.max(low, Math.min(high, Math.round(low + table[priority] * (high - low))));
+function weeklyTarget(muscle, priority = "normal") {
+  const level = weeklyScale(muscle)[priority];
+  return level ? level.target : null;
 }
+
+/** The least a short week trims a muscle at `priority` to before it says so. */
+function weeklyFloor(muscle, priority = "normal") {
+  return weeklyScale(muscle)[priority].floor;
+}
+
+/** The most a muscle is given a week, at any priority: past it no extra growth has been shown. */
+const weeklyCeiling = muscle => weeklyScale(muscle).ceiling;
 
 /** What the plan assumes while the user has not said how long they have trained. */
 const DEFAULT_EXPERIENCE = "beginner";
@@ -90,16 +101,16 @@ function muscleWeekMinutes(sets, days = Infinity) {
 /**
  * Whether the weekly targets fit the time the user has, and what to do if
  * not. `targets` is a Map of muscle id -> sets; `muscles` are the Muscle
- * objects (for each one's floor, the low end of its range); `priorities`
- * maps id -> "maintain" | "normal" | "focus".
+ * objects; `priorities` maps id -> "maintain" | "normal" | "focus".
  *
  * Over budget, sets come off one at a time: Normal muscles first, then Focus,
- * each from whichever is furthest above its floor, never below the floor.
- * Maintain is already at its floor. If even the floors do not fit, every
- * muscle still gets trained: Maintain, then Normal, then Focus muscles are
- * lowered below their usual minimum, one set at a time from whichever has the
- * most, down to WORKOUT.minDirectSets, and listed in `belowMinimum` so the
- * page can say so. Returns
+ * each from whichever is furthest above its floor (weeklyFloor), never below
+ * it. If even the floors do not fit, Normal, then Focus, then Maintain
+ * muscles are lowered further, one set at a time from whichever has the
+ * most, but never below the Maintain floor: with diminishing returns the
+ * first sets on a muscle are worth the most, so the cheap floor is the last
+ * thing to go. A muscle taken under its own priority's floor is listed in
+ * `belowMinimum` so the page can say so. Returns
  *   { targets, fits, meetsMinimums, neededMinutes, requestedMinutes, capacityMinutes,
  *     trimmed: [muscle ids lowered], belowMinimum: [muscle ids under their
  *     usual minimum], fixes: { extraDay, sessionMinutes } }
@@ -110,8 +121,10 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
   const minutesOver = (map, days) => [...map.values()].reduce((t, n) => t + muscleWeekMinutes(n, days), 0);
   const minutesFor = (map, perWeek, len) => minutesOver(map, perWeek) <= perWeek * usableMinutes(len);
   const total = map => minutesOver(map, sessionsPerWeek);
-  const floor = new Map(muscles.map(m => [m.id, m.weeklySets[0]]));
   const level = id => priorities.get(id) || "normal";
+  const byId = new Map(muscles.map(m => [m.id, m]));
+  const floor = new Map(muscles.map(m => [m.id, weeklyFloor(m, level(m.id))]));
+  const lowest = id => weeklyFloor(byId.get(id), "maintain");
   const capacity = sessionsPerWeek * usableMinutes(sessionMinutes);
 
   const out = new Map(targets);
@@ -128,12 +141,12 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
     }
   }
 
-  // Not even the minimums fit: lower them too, least important first.
+  // Not even the floors fit: lower them too, Maintain last and never below its floor.
   const belowMinimum = new Set();
-  for (const group of ["maintain", "normal", "focus"]) {
+  for (const group of ["normal", "focus", "maintain"]) {
     for (;;) {
       if (total(out) <= capacity) break;
-      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > WORKOUT.minDirectSets);
+      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > lowest(id));
       if (!candidates.length) break;
       const id = candidates.reduce((a, b) => out.get(b) > out.get(a) ? b : a);
       out.set(id, out.get(id) - 1);
@@ -173,19 +186,22 @@ const PROGRESS_PHASES = Object.freeze([
 /**
  * @param muscles         the Muscle objects being targeted
  * @param sessionMinutes  the planned session length
- * @returns null when nothing is selected, otherwise ranges as {low, high}
+ * @param priorityOf      function(muscle) -> its priority; Normal by default
+ * @returns null when nothing is selected, otherwise ranges as {low, high}:
+ *          every muscle at its floor, and at its target
  */
-function estimateTraining(muscles, sessionMinutes) {
+function estimateTraining(muscles, sessionMinutes, priorityOf = () => "normal") {
   if (!muscles.length) return null;
 
+  const low = m => weeklyFloor(m, priorityOf(m)), high = m => weeklyTarget(m, priorityOf(m));
   const sets = {
-    low:  muscles.reduce((t, m) => t + m.weeklySets[0], 0),
-    high: muscles.reduce((t, m) => t + m.weeklySets[1], 0)
+    low:  muscles.reduce((t, m) => t + low(m), 0),
+    high: muscles.reduce((t, m) => t + high(m), 0)
   };
   // The same time model as fitToTime, so this note and the fit note agree.
   const minutes = {
-    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(m.weeklySets[0]), 0)),
-    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(m.weeklySets[1]), 0))
+    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(low(m)), 0)),
+    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(high(m)), 0))
   };
   const usable = usableMinutes(sessionMinutes);
   const sessions = {

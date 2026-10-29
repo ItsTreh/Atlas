@@ -81,7 +81,7 @@ const PROTEIN_PER_KG_RANGE = [1.2, 3.0];
 const NO_TRAINING = Object.freeze({ muscles: [], sessionsPerWeek: 0, sessionMinutes: 0 });
 
 /* The weekly volume of training every muscle: what "all of the body" means. */
-const FULL_BODY_SETS = MUSCLES.reduce((t, m) => t + m.weeklySets[1], 0);
+const FULL_BODY_SETS = MUSCLES.reduce((t, m) => t + weeklyCeiling(m), 0);
 
 /**
  * What the planned training asks of the diet.
@@ -106,7 +106,7 @@ function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = n
     return { muscles, sessionsPerWeek: 0, sessionMinutes, hours: 0, bigShare: 0,
              kcalPerDay: 0, coverage: 0, load: 0 };
   // The sets the plan aims for, when it says; otherwise the most each muscle takes.
-  const setsOf = m => weeklySets && weeklySets.has(m.id) ? weeklySets.get(m.id) : m.weeklySets[1];
+  const setsOf = m => weeklySets && weeklySets.has(m.id) ? weeklySets.get(m.id) : weeklyCeiling(m);
   const sets = muscles.reduce((t, m) => t + setsOf(m), 0);
   const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? setsOf(m) : 0), 0);
   const minutes = Math.min(sessionsPerWeek * sessionMinutes,

@@ -43,20 +43,54 @@ const EVIDENCE = Object.freeze([
     id: "weekly-volume",
     topic: "Weekly sets per muscle",
     finding: "More weekly sets per muscle are associated with more growth, with " +
-             "diminishing returns.",
+             "diminishing returns. The step from about 8 to about 16 sets gives a small, " +
+             "real gain; in trained lifters, going past about 16 to 20 direct sets has " +
+             "shown no further growth.",
     certainty: "high",
-    limits: "The direction is well supported; the exact numbers are not. A 15-study " +
-            "meta-analysis found about 5.4% growth under 5 weekly sets, 6.6% at 5 to 9 " +
-            "and 9.8% at 10 or more, but few studies went past 12 sets, only 2 involved " +
-            "trained people, and the result moved when one study was removed. A 2024 " +
-            "preprint of 67 studies (2,058 people) agrees on the shape and gives no cap.",
+    limits: "The direction is well supported; the exact numbers are not. A 67-study " +
+            "meta-regression (the volume analysis used 35 studies, 1,032 people) found " +
+            "about 0.24% more growth per extra set on a curve that flattens, a smallest " +
+            "detectable effect of 2.05%, and thin data above about 25 sets. The position " +
+            "stand finds growth enhanced at about 10 sets or more but does not describe " +
+            "diminishing returns. The 8 to 16 step comes from a preprint. The trials past " +
+            "16 to 20 sets are small and short, almost all quads in men, so they rule out " +
+            "a large extra gain, not any gain.",
     sources: [
-      { label: "Schoenfeld, Ogborn and Krieger 2016, Journal of Sports Sciences",
-        url: "https://paulogentil.com/pdf/Dose-response%20relationship%20between%20weekly%20resistance%20training%20volume%20and%20increases%20in%20muscle%20mass%20-%20A%20systematic%20review%20and%20metaanalysis.pdf" },
-      { label: "Pelland et al. 2024, preprint (no peer review shown on the page)",
-        url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
+      { label: "Pelland et al. 2026, Sports Medicine 56(2):481-505",
+        url: "https://doi.org/10.1007/s40279-025-02344-w" },
+      { label: "ACSM Position Stand 2026, Medicine & Science in Sports & Exercise",
+        url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12965823/" },
+      { label: "Schoenfeld, Ogborn and Krieger 2017, Journal of Sports Sciences",
+        url: "https://doi.org/10.1080/02640414.2016.1210197" },
+      { label: "Robinson et al. 2025, preprint (8 vs 16 sets)",
+        url: "https://www.biorxiv.org/content/10.1101/2025.07.24.666533v1" },
+      { label: "Barsuhn et al. 2025, Journal of Applied Physiology (habitual vs +30% and +60%)",
+        url: "https://openrepository.aut.ac.nz/server/api/core/bitstreams/4f83ffc5-1aad-4dc8-92fb-1c28156b3211/content" },
+      { label: "Räntilä and Ahtiainen 2026 (about 40 vs about 60 sets)",
+        url: "https://jyx.jyu.fi/bitstreams/91cae5f5-7294-4d9b-b963-73609dfa1c89/download" }
     ],
-    lastReviewed: "2026-10-08"
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "maintenance-volume",
+    topic: "Keeping muscle with less training",
+    finding: "Holding muscle takes far fewer sets than building it, as long as the load " +
+             "and effort stay high. Muscles left untrained can shrink.",
+    certainty: "medium",
+    limits: "Young adults kept fibre size on 3 sets a week for 32 weeks after cutting " +
+            "from 27, though thigh lean mass began slipping after 16 weeks; older adults " +
+            "kept it on neither dose and need about 2 sessions a week. Untrained muscles " +
+            "shrank in novices, mainly in those eating too little. No trial tests " +
+            "maintenance in long-term trained lifters or during a calorie deficit.",
+    sources: [
+      { label: "Bickel, Cross and Bamman 2011, Medicine & Science in Sports & Exercise",
+        url: "https://pubmed.ncbi.nlm.nih.gov/21131862/" },
+      { label: "Spiering et al. 2021, Journal of Strength and Conditioning Research (review)",
+        url: "https://pubmed.ncbi.nlm.nih.gov/33629972/" },
+      { label: "Van Vossel et al. 2024 (untrained muscles shrank)",
+        url: "https://researchprofiles.ku.dk/en/publications/evidence-for-simultaneous-muscle-atrophy-and-hypertrophy-in-respo/" }
+    ],
+    lastReviewed: "2026-10-29"
   },
   {
     id: "frequency",
@@ -234,19 +268,34 @@ const PLANNER_CONFIG = Object.freeze({
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
     note: "Per session, not available for working sets."
   },
-  weeklyTargetFraction: {
-    group: "target", origin: "heuristic", basedOn: ["weekly-volume"],
-    // Where in a muscle's weekly range [low, high] the target lands:
-    // low + fraction * (high - low), by experience and priority.
+  weeklyTargets: {
+    group: "target", origin: "heuristic", basedOn: ["weekly-volume", "maintenance-volume"],
+    // Hard sets a week, by kind of muscle (Muscle.kind) and priority: the
+    // target the plan aims for, and the floor a short week may trim it to.
+    // The ceiling is the most any priority may reach.
     value: Object.freeze({
-      beginner:     Object.freeze({ maintain: 0, normal: 0,   focus: 0.5 }),
-      intermediate: Object.freeze({ maintain: 0, normal: 0.5, focus: 0.8 }),
-      advanced:     Object.freeze({ maintain: 0, normal: 0.5, focus: 1.0 })
+      main: Object.freeze({
+        ceiling: 18,
+        maintain: Object.freeze({ floor: 3,  target: 4 }),
+        normal:   Object.freeze({ floor: 8,  target: 10 }),
+        focus:    Object.freeze({ floor: 12, target: 14 })
+      }),
+      accessory: Object.freeze({
+        ceiling: 6,
+        maintain: Object.freeze({ floor: 2, target: 2 }),
+        normal:   Object.freeze({ floor: 4, target: 4 }),
+        focus:    Object.freeze({ floor: 6, target: 6 })
+      })
     }),
-    note: "Newer lifters start at the low end of each range, which the volume research " +
-          "supports in direction (more sets help with diminishing returns) but not in " +
-          "these exact numbers. Maintain is the bottom of the range by definition. The " +
-          "fractions are a starting point to adjust, not findings."
+    note: "Planning defaults, not prescriptions (docs/training-evidence.md, \"Weekly " +
+          "budgets\"). Main muscles: Maintain 4 with a floor of 3 (3 sets held young " +
+          "adults' fibre size; 4 is the smallest dose with detectable growth); Normal " +
+          "10 within 8 to 12 (growth is enhanced at about 10 or more); Focus 14 within " +
+          "12 to 18 (the 8 to 16 step is detectable, nothing more has been shown past " +
+          "about 18 in trained lifters, so 18 is a ceiling, not a safety limit). The " +
+          "accessory scale (traps, forearms, adductors, obliques, lower back) is a " +
+          "design choice: no dose data exist for them. Experience does not change these " +
+          "numbers: no status-specific curve has been found."
   }
 });
 
@@ -256,14 +305,12 @@ const PLANNER_CONFIG = Object.freeze({
  * a later step.
  */
 const PLANNER_TABLES = Object.freeze({
-  weeklySetsRange: {
-    at: "model.js, MUSCLE_SEED (sets/week)", origin: "heuristic", basedOn: ["weekly-volume"],
-    note: "Per-muscle ranges of hard sets a week, read as a common reading of the " +
-          "volume research. The numbers are not taken from a single study."
-  },
-  weeklySetsMaximum: {
-    at: "model.js, MUSCLE_SEED (high end of sets/week)", origin: "safety", basedOn: [],
-    note: "The high end of each range is a limit the planner never passes."
+  muscleKind: {
+    at: "model.js, MUSCLE_SEED (kind)", origin: "heuristic", basedOn: [],
+    note: "Which scale of weeklyTargets a muscle uses. Main for the eleven groups users " +
+          "usually target; accessory for traps, forearms, adductors, obliques and lower " +
+          "back, which have no dose data and get large credit from compound lifts. A " +
+          "design choice, not a finding that small muscles need less."
   },
   muscleMinutes: {
     at: "model.js, MUSCLE_SEED (min)", origin: "heuristic", basedOn: [],

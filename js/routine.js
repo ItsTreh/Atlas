@@ -149,7 +149,7 @@ class WeeklyRoutine {
     // Only muscles the exercise database can fill take time.
     const muscles = this.selection.muscles().filter(m => exercisesFor(m.id).length > 0);
     const priorities = new Map(muscles.map(m => [m.id, this.selection.priority(m.id)]));
-    const raw = new Map(muscles.map(m => [m.id, weeklyTarget(m, experience, priorities.get(m.id))]));
+    const raw = new Map(muscles.map(m => [m.id, weeklyTarget(m, priorities.get(m.id))]));
     const askedDays = Math.max(1, Math.min(this.sessionsPerWeek, this.availableDays().length));
     if (!muscles.length) {
       const fit = fitToTime(raw, muscles, priorities, askedDays, this.sessionMinutes);
@@ -170,7 +170,7 @@ class WeeklyRoutine {
     const targets = new Map(fit.targets);
     const trial = () => {
       const sessions = placements.map((p, i) => new WorkoutSession(i, p.day, p.start, p.block));
-      return buildWeek(sessions, this.sessionMinutes, targets).sessions;
+      return buildWeek(sessions, this.sessionMinutes, targets, priorities).sessions;
     };
     const credit = (sessions, id) => sessions.reduce((t, s) =>
       t + s.workout.directSets(id) + s.workout.assistedSets(id), 0);
@@ -184,7 +184,7 @@ class WeeklyRoutine {
       const own = sessions.some(s => s.workout.entriesFor(m.id).length);
       const assisted = sessions.reduce((a, s) => a + s.workout.assistedSets(m.id), 0);
       const over = own || assisted < target ? Math.max(0, got - target - TARGET_MATCH.over) : 0;
-      return Math.max(0, targetFloor(m, target) - got) + over;
+      return Math.max(0, targetFloor(m, target, priorities.get(m.id)) - got) + over;
     });
 
     let week = trial();
@@ -195,7 +195,7 @@ class WeeklyRoutine {
       for (const m of muscles) {
         if (!carried(m.id)) continue;
         const got = Math.floor(credit(week, m.id));
-        if (got < targetFloor(m, targets.get(m.id))) { targets.set(m.id, got); lowered = true; }
+        if (got < targetFloor(m, targets.get(m.id), priorities.get(m.id))) { targets.set(m.id, got); lowered = true; }
       }
       if (!lowered) break;
       week = trial();
@@ -219,7 +219,7 @@ class WeeklyRoutine {
     const unplaced = muscles.filter(m => !carried(m.id)).map(m => m.id);
     const trimmed = muscles.filter(m => carried(m.id) && targets.get(m.id) < raw.get(m.id)).map(m => m.id);
     // A muscle with no day is reported as unplaced, not as lowered below its minimum.
-    const belowMinimum = muscles.filter(m => carried(m.id) && targets.get(m.id) < m.weeklySets[0]).map(m => m.id);
+    const belowMinimum = muscles.filter(m => carried(m.id) && targets.get(m.id) < weeklyFloor(m, priorities.get(m.id))).map(m => m.id);
     const worked = week.reduce((t, s) => t + Math.max(0, s.workout.minutes - ESTIMATE.warmupMinutes), 0);
     return {
       fit: { ...fit, targets, trimmed, belowMinimum, unplaced, meetsMinimums: !belowMinimum.length,
@@ -578,7 +578,8 @@ class WeeklyRoutine {
    * out a session not worth a day (buildWeek). Returns how many were taken out.
    */
   buildWorkouts() {
-    const { dropped } = buildWeek(this.sessions, this.sessionMinutes, this.plannedWeeklySets());
+    const priorities = new Map(this.selectedMuscles().map(m => [m.id, this.selection.priority(m.id)]));
+    const { dropped } = buildWeek(this.sessions, this.sessionMinutes, this.plannedWeeklySets(), priorities);
     for (const s of dropped) this.removeSession(s);
     return dropped.length;
   }
@@ -605,8 +606,8 @@ class WeeklyRoutine {
   /**
    * How the week measures up to what the chosen muscles usually need
    * (estimate.js). For each chosen muscle with exercises: its weekly sets,
-   * direct plus assisting credit (already halved), against the low end of
-   * its `weeklySets`, and how many sessions train it: give it at least a
+   * direct plus assisting credit (already halved), against the floor for
+   * its priority (weeklyFloor), and how many sessions train it: give it at least a
    * set's worth, direct or assisting (a press trains the triceps too).
    *
    * A muscle is "trained" in a session when that session gives it at least a
@@ -637,7 +638,7 @@ class WeeklyRoutine {
         sets += here;
         if (here >= 1) times++;          // at least a set's worth, direct or assisting
       }
-      return { muscle: m, sets, times, need: m.weeklySets[0] };
+      return { muscle: m, sets, times, need: weeklyFloor(m, this.selection.priority(m.id)) };
     });
     const untrained = rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle);
     const carrying = m => this.sessions.filter(s => s.block.muscles.includes(m) && !s.block.riders.has(m));
@@ -651,7 +652,7 @@ class WeeklyRoutine {
       short:      rows.filter(r => r.times > 0 && Math.round(r.sets) < r.need),
       sets: rows.reduce((t, r) => t + r.sets, 0),
       need: rows.reduce((t, r) => t + r.need, 0),
-      estimate: estimateTraining(muscles, this.sessionMinutes)
+      estimate: estimateTraining(muscles, this.sessionMinutes, m => this.selection.priority(m.id))
     };
   }
 
