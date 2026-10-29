@@ -194,15 +194,49 @@ describe("fitting the weekly targets to the time", () => {
     expect(fit.targets.get("quads")).toBeLessThan(16);
   });
 
-  test("with an impossible week it says so and stops at the minimums", () => {
+  test("with an impossible week it says so and stops at the Maintain floor", () => {
     const fit = app.fitToTime(raw("normal"), muscles, pri("normal"), 1, 45);
-    // Too short even for the floors: sets go below them (never below
-    // the direct-set floor) so every muscle is still trained, and it says so.
+    // Too short even for the floors: sets go below them (never below the
+    // Maintain floor) so every muscle is still trained, and it says so.
     expect(fit.meetsMinimums).toBe(false);
-    for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.WORKOUT.minDirectSets);
+    for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.weeklyFloor(m, "maintain"));
     // Timed with the planner's one time model (estimate.js), over the one session.
     const minutes = [...fit.targets.values()].reduce((t, n) => t + app.muscleWeekMinutes(n, 1), 0);
     expect(fit.neededMinutes).toBeCloseTo(minutes, 5);
+  });
+
+  describe("Maintain is trimmed last and never below its floor", () => {
+    // Chest on Maintain, quads on Normal, lats on Focus, in one session whose
+    // length is worked out from the planner's own time model.
+    const trio = ["chest", "quads", "lats"].map(id => app.MUSCLE_BY_ID.get(id));
+    const levels = new Map([["chest", "maintain"], ["quads", "normal"], ["lats", "focus"]]);
+    const asked = new Map(trio.map(m => [m.id, app.weeklyTarget(m, levels.get(m.id))]));
+    const lengthFor = sets => Math.ceil(Object.entries(sets)
+      .reduce((t, [, n]) => t + app.muscleWeekMinutes(n, 1), 0)) + app.ESTIMATE.warmupMinutes;
+    const fit = len => app.fitToTime(asked, trio, levels, 1, len);
+
+    test("Normal goes below its floor before Maintain loses a set", () => {
+      const f = fit(lengthFor({ chest: 4, quads: 3, lats: 12 }));
+      expect(f.targets.get("chest")).toBe(4);
+      expect(f.targets.get("lats")).toBe(12);
+      expect(f.targets.get("quads")).toBeLessThan(app.weeklyFloor(trio[1], "normal"));
+      expect(f.belowMinimum).toEqual(["quads"]);
+    });
+
+    test("however short the week, no muscle goes below the Maintain floor", () => {
+      for (const len of [15, 30, 45, lengthFor({ chest: 3, quads: 3, lats: 3 })]) {
+        const f = fit(len);
+        for (const m of trio) expect(f.targets.get(m.id), m.id + " at " + len).toBeGreaterThanOrEqual(app.weeklyFloor(m, "maintain"));
+      }
+    });
+
+    test("every muscle on Maintain, all sixteen in one short session: each keeps its floor", () => {
+      const all = app.MUSCLES;
+      const pri = new Map(all.map(m => [m.id, "maintain"]));
+      const f = app.fitToTime(new Map(all.map(m => [m.id, app.weeklyTarget(m, "maintain")])), all, pri, 1, 45);
+      expect(f.fits).toBe(false);
+      for (const m of all) expect(f.targets.get(m.id), m.id).toBeGreaterThanOrEqual(app.weeklyFloor(m, "maintain"));
+    });
   });
 
   test("it names a fix that makes the requested targets fit", () => {
