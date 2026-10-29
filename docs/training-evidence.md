@@ -264,9 +264,9 @@ The tier lists in `js/exercises.js` (`EXERCISE_RATINGS`) match his criteria; the
 - Unread: the 2024 autoregulation trial (PMC11343444), Enes 2024 full text, Ramos-Campo's identifier, Ralston 2017 (identification presumed), Nippard's 2026 videos and his biceps, shoulders, glutes, hamstrings and calves tier lists, any 2025–26 Refalo failure follow-up.
 - To watch: NCT07379385 (weekly set volume), NCT06825052 (deloads).
 
-## Proposed model (second check; not yet adopted)
+## Proposed model (second check; weekly budgets adopted)
 
-Every number is a starting policy that adapts to the user's logs. The user has not adopted it yet. It replaces the first check's proposal.
+Every number is a starting policy that adapts to the user's logs. It replaces the first check's proposal. The **weekly budgets were adopted in step 2 (2026-10-29)**; everything else below is still a proposal.
 
 ### Weekly budgets: one scale for main groups, a small labelled scale for accessories
 
@@ -281,6 +281,17 @@ Every number is a starting policy that adapts to the user's logs. The user has n
 - **Accessory groups (5):** traps, forearms, adductors, obliques, lower back. Default priority Maintain.
 - The split is [D]. The reason is *not* that small muscles need less: no dose data exist for these five, most users don't target them, and adductors and lower back get large compound credit. Abs is on the main scale because users target it, but it also has no dose data: [D].
 - Per-muscle ranges for main groups would count compound overlap twice once a credit table exists, so they go.
+
+**As built** (`weeklyTargets` in `js/evidence.js`, step 2), with the user's choices of 2026-10-29: the accessory scale is used; experience does not change the targets; with no logs, Focus aims at 14.
+
+| | Main: floor / target | Accessory: floor / target |
+|---|---|---|
+| Maintain | 3 / 4 | 2 / 2 |
+| Normal | 8 / 10 | 4 / 4 |
+| Focus | 12 / 14 | 6 / 6 |
+| Ceiling | 18 | 6 |
+
+The accessory floors for Normal and Focus equal their targets [D]: no accessory range was proposed. When a week is short, `fitToTime` trims Normal, then Focus, to their floors; if that is not enough, Normal, then Focus, then Maintain go lower, never below the Maintain floor. The full shrink order (Normal toward 6, a Focus limit, a physical-set budget) is step 5.
 
 ### Status, age and diet
 
@@ -403,24 +414,39 @@ The user agreed with this reading on 2026-10-29, and with the note on trim order
 - **Progression**: Progress can be more weight, more reps at the same weight, or better performance at the same effort. You don't need to add weight every workout.
 - **Tempo**: Use controlled, repeatable reps. Slowing every rep to stretch "time under tension" hasn't been shown to build more muscle.
 
-## Where the code stands (2026-10-29)
+## Where the code stands (after step 2, 2026-10-29)
 
-From a read-only check of the training code against this file, with the second check's change list. Nothing has been changed yet.
+Resolved in step 2:
+- The per-muscle ranges are gone; muscles carry a `kind` and read one scale (`weeklyTargets`).
+- Maintain is 4 on main muscles, no longer the bottom of a range; beginners' Normal now differs from Maintain (tested).
+- Experience no longer raises the targets.
+- The top of the scale is a ceiling, no longer labelled "safety".
+- Trim order: Maintain is trimmed last and never below its floor in `fitToTime` (tested); `trimOverfullDays` keeps each muscle's floor for its priority.
+- `js/estimate.js` and `js/workouts.js:52` no longer claim a threshold or "the least that usually works".
+- `js/evidence.js`: the weekly-volume finding cites the published Pelland and the trained-lifter trials; a maintenance finding was added; links go to DOI or PubMed/PMC pages where they exist.
 
-- **Per-muscle ranges** (`MUSCLE_SEED`, `js/model.js`) have no source and, with secondary credit also counted, count compound overlap twice.
-- **Maintain = bottom of each range**: 8 for chest, quads, lats and upper back, 2 for the accessories. All-Maintain costs 78 FHS.
-- **Beginners get identical Normal and Maintain** (`weeklyTargetFraction`, `js/evidence.js`): a bug, independent of evidence.
-- **Experience raises Focus** (0.5 / 0.8 / 1.0 of the range): unsupported.
-- **The top of each range is labelled "safety"**: it's a ceiling.
-- **Trim order** (`fitToTime`, `js/estimate.js`): trims Normal, then Focus, down to their *range floors* first, which is the right order. But those floors equal Maintain's value, and when even the floors don't fit, **Maintain is lowered first**, down to 2. `trimOverfullDays` (`js/distribution.js`) trims whichever muscle has the most sets on a day, ignoring priority. The Targets copy says Maintain "is the first trimmed". The second check's "Maintain is cut first" is true only past the floors, but the floor itself is unprotected.
-- **No Focus limit; no physical-set budget cap.**
+Still open:
+- **No Focus limit; no physical-set budget cap** (step 5).
 - **`maxSetsPerSession` 8** is a hard cap justified in a comment by research that doesn't exist (`js/workouts.js:39`).
-- **Flat `secondaryCredit` 0.5**, with exercises carrying two 1.0 primaries; several credits have no data (lower back, forearms, traps, obliques, abs from compounds; hamstrings from squats and lunges), seated calf raise counts 1.0, and squat adductor credit goes to the app's Adductors (see the open question).
+- **Flat `secondaryCredit` 0.5**, with exercises carrying two 1.0 primaries; several credits have no data (lower back, forearms, traps, obliques, abs from compounds; hamstrings from squats and lunges), seated calf raise counts 1.0, and squat adductor credit goes to the app's Adductors (see the open question). Step 4.
 - **No effort guidance, no safety line.**
 - **`EXERCISE_RATINGS`** is undocumented practitioner opinion.
-- **Comments and copy** that overstate: `js/estimate.js:14` ("where growth reliably shows"), "add sets as you adapt" (`js/targets-train.js:180`), "the least that usually works" (`js/workouts.js:52`).
-- **`js/evidence.js`** still cites Pelland as a 2024 preprint and Schoenfeld as 2016, and holds five findings this file doesn't cover yet (Singer 2024 rest, Wolf 2023 range of motion, Sousa 2024 recovery, Grgic 2019 / Hamarsland 2022 frequency, Schoenfeld 2019 counting).
+- **Copy:** "add sets as you adapt" (`js/targets-train.js:180`).
+- **`js/evidence.js`** holds five findings this file doesn't cover yet (Singer 2024 rest, Wolf 2023 range of motion, Sousa 2024 recovery, Grgic 2019 / Hamarsland 2022 frequency, Schoenfeld 2019 counting), and some older links still point to repositories.
 - **Unused:** `estimateHTML` (`js/targets.js:324`) and `PROGRESS_PHASES` (`js/estimate.js:161`), whose timeline has no source.
+
+## Open items
+
+Tracked, not blocking:
+- **Chosen splits under-deliver (step 5).** For a split the user chooses, the time fit assumes every asked day gets a session, but recovery may place fewer (3 of 6 Lower days), so targets are lowered after the build: calves and triceps fall from 10 to 7, and the user sees it. `tests/targets-match.test.js` skips those weeks in "targets stay within 1 set of the ask", with a comment pointing here. Fix: plan a chosen split's time with the sessions it can place, then remove the skip.
+- **The Maintain floor is only guaranteed in the time fit.** After the workouts are built, the routine can still lower a target to what the sessions give. The UI must not claim a guaranteed floor until step 5 makes sessions hold it.
+- **Nutrition moved (decide at the Nutrition redesign).** `FULL_BODY_SETS` is now the sum of ceilings, 228 sets instead of 172, which changes "Muscle gain" coverage. A ceiling sum is a poor proxy for what someone trains.
+- **Requested totals are not a plan.** Targets shows the requested sets before trimming (full body with chest on Focus: "About 132 hard sets a week"), far more than most weeks hold. Don't present it as a plan until the Focus limit and whole-body budget (step 5) exist.
+- **The adductor magnus credit** (see "Open question" above), before step 4.
+
+Later, after the volume work:
+- `js/evidence.js` says six muscles have no tier ratings; it's eight.
+- The "no exercises yet" messages are unreachable (every group has exercises) and can be deleted.
 
 ## Sources
 
