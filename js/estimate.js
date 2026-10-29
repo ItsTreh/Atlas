@@ -105,11 +105,12 @@ function muscleWeekMinutes(sets, days = Infinity) {
  *
  * Over budget, sets come off one at a time: Normal muscles first, then Focus,
  * each from whichever is furthest above its floor (weeklyFloor), never below
- * it. If even the floors do not fit, every muscle still gets trained:
- * Maintain, then Normal, then Focus muscles are lowered below their floor,
- * one set at a time from whichever has the most, down to
- * WORKOUT.minDirectSets, and listed in `belowMinimum` so the page can say
- * so. Returns
+ * it. If even the floors do not fit, Normal, then Focus, then Maintain
+ * muscles are lowered further, one set at a time from whichever has the
+ * most, but never below the Maintain floor: with diminishing returns the
+ * first sets on a muscle are worth the most, so the cheap floor is the last
+ * thing to go. A muscle taken under its own priority's floor is listed in
+ * `belowMinimum` so the page can say so. Returns
  *   { targets, fits, meetsMinimums, neededMinutes, requestedMinutes, capacityMinutes,
  *     trimmed: [muscle ids lowered], belowMinimum: [muscle ids under their
  *     usual minimum], fixes: { extraDay, sessionMinutes } }
@@ -121,7 +122,9 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
   const minutesFor = (map, perWeek, len) => minutesOver(map, perWeek) <= perWeek * usableMinutes(len);
   const total = map => minutesOver(map, sessionsPerWeek);
   const level = id => priorities.get(id) || "normal";
+  const byId = new Map(muscles.map(m => [m.id, m]));
   const floor = new Map(muscles.map(m => [m.id, weeklyFloor(m, level(m.id))]));
+  const lowest = id => weeklyFloor(byId.get(id), "maintain");
   const capacity = sessionsPerWeek * usableMinutes(sessionMinutes);
 
   const out = new Map(targets);
@@ -138,12 +141,12 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
     }
   }
 
-  // Not even the minimums fit: lower them too, least important first.
+  // Not even the floors fit: lower them too, Maintain last and never below its floor.
   const belowMinimum = new Set();
-  for (const group of ["maintain", "normal", "focus"]) {
+  for (const group of ["normal", "focus", "maintain"]) {
     for (;;) {
       if (total(out) <= capacity) break;
-      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > WORKOUT.minDirectSets);
+      const candidates = [...out.keys()].filter(id => level(id) === group && out.get(id) > lowest(id));
       if (!candidates.length) break;
       const id = candidates.reduce((a, b) => out.get(b) > out.get(a) ? b : a);
       out.set(id, out.get(id) - 1);
