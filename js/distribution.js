@@ -30,7 +30,7 @@
         trained once a week moves from the one to the other if that lowers the
         heaviest day.
      5. A day still over what a session holds loses sets, from the muscle with
-        the most on it, never below that muscle's usual weekly minimum.
+        the most on it, never below the floor for that muscle's priority.
      6. A day nothing landed on is a rest day.
 
    The days here are positions in the week (0 = the first training day), not
@@ -242,16 +242,16 @@ function consolidate(day, frequency, capacity) {
 /**
  * Step 5: a day that still holds more than a session can take (its muscles
  * could not be moved) loses sets, one at a time from the muscle with the
- * most on that day, never taking a muscle below its usual weekly minimum or
- * WORKOUT.minDirectSets in the day.
+ * most on that day, never taking a muscle below the floor for its priority
+ * (weeklyFloor) or WORKOUT.minDirectSets in the day.
  */
-function trimOverfullDays(day, frequency, capacity) {
+function trimOverfullDays(day, frequency, capacity, level) {
   const week = new Map();
   for (const d of day) for (const [id, n] of d.sets) week.set(id, (week.get(id) || 0) + n);
   for (const d of day) {
     while (dayMinutes(d) > capacity) {
       const candidates = d.muscles.filter(m =>
-        d.sets.get(m.id) > WORKOUT.minDirectSets && week.get(m.id) > m.weeklySets[0]);
+        d.sets.get(m.id) > WORKOUT.minDirectSets && week.get(m.id) > weeklyFloor(m, level(m)));
       if (!candidates.length) break;
       const m = candidates.reduce((a, b) => d.sets.get(b.id) > d.sets.get(a.id) ? b : a);
       d.sets.set(m.id, d.sets.get(m.id) - 1);
@@ -301,7 +301,7 @@ function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold =
 
   balance(day, frequency);
   if (fold) consolidate(day, frequency, capacity);
-  trimOverfullDays(day, frequency, capacity);
+  trimOverfullDays(day, frequency, capacity, level);
 
   // Days nothing landed on are rest days. Biggest muscles first inside a day.
   const used = day.filter(d => d.muscles.length);

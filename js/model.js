@@ -35,10 +35,10 @@ const LAST_HOUR  = 23;
    muscles get 2, small ones get 1 — that difference is the whole reason for
    modelling muscles individually instead of lumping them into splits.
 
-   `weeklySets` is the range of hard sets a week the muscle is usually given
-   for growth: large muscles take the most direct work, small ones need less
-   because the compound lifts already train them. Only the progress estimate
-   reads it (see estimate.js).
+   `kind` says which scale of weekly hard sets the muscle uses
+   (weeklyTargets in evidence.js): "main" for the groups users usually
+   target, "accessory" for the five with no dose data. The sets themselves
+   live in that one table, by priority, not here.
 
    The `id` is the stable key every other system uses — the anatomy figure,
    the programs, the selection. Names are for display and may change.
@@ -52,32 +52,32 @@ const FAMILIES = {
 };
 
 class Muscle {
-  constructor(id, name, family, minutes, recoveryDays, weeklySets) {
+  constructor(id, name, family, minutes, recoveryDays, kind) {
     this.id = id; this.name = name; this.family = family;
     this.minutes = minutes; this.recoveryDays = recoveryDays;
-    this.weeklySets = weeklySets;
+    this.kind = kind;
     Object.freeze(this);
   }
 }
 
 const MUSCLE_SEED = [
-  //  id            name          family  min rec  sets/week
-  ["chest",      "Chest",      "push", 20, 2, [8, 16]],
-  ["shoulders",  "Shoulders",  "push", 15, 2, [6, 12]],
-  ["triceps",    "Triceps",    "push", 15, 1, [4, 10]],
-  ["traps",      "Traps",      "pull", 10, 1, [4, 8]],
-  ["upper-back", "Upper Back", "pull", 20, 2, [8, 16]],
-  ["lats",       "Lats",       "pull", 20, 2, [8, 16]],
-  ["biceps",     "Biceps",     "pull", 15, 1, [4, 10]],
-  ["forearms",   "Forearms",   "pull", 10, 1, [2, 6]],
-  ["quads",      "Quads",      "legs", 25, 2, [8, 16]],
-  ["hamstrings", "Hamstrings", "legs", 20, 2, [6, 12]],
-  ["glutes",     "Glutes",     "legs", 20, 2, [6, 12]],
-  ["adductors",  "Adductors",  "legs", 10, 1, [2, 6]],
-  ["calves",     "Calves",     "legs", 10, 1, [4, 10]],
-  ["abs",        "Abs",        "core", 15, 1, [4, 10]],
-  ["obliques",   "Obliques",   "core", 10, 1, [2, 6]],
-  ["lower-back", "Lower Back", "core", 10, 2, [2, 6]]
+  //  id            name          family  min rec  kind
+  ["chest",      "Chest",      "push", 20, 2, "main"],
+  ["shoulders",  "Shoulders",  "push", 15, 2, "main"],
+  ["triceps",    "Triceps",    "push", 15, 1, "main"],
+  ["traps",      "Traps",      "pull", 10, 1, "accessory"],
+  ["upper-back", "Upper Back", "pull", 20, 2, "main"],
+  ["lats",       "Lats",       "pull", 20, 2, "main"],
+  ["biceps",     "Biceps",     "pull", 15, 1, "main"],
+  ["forearms",   "Forearms",   "pull", 10, 1, "accessory"],
+  ["quads",      "Quads",      "legs", 25, 2, "main"],
+  ["hamstrings", "Hamstrings", "legs", 20, 2, "main"],
+  ["glutes",     "Glutes",     "legs", 20, 2, "main"],
+  ["adductors",  "Adductors",  "legs", 10, 1, "accessory"],
+  ["calves",     "Calves",     "legs", 10, 1, "main"],
+  ["abs",        "Abs",        "core", 15, 1, "main"],
+  ["obliques",   "Obliques",   "core", 10, 1, "accessory"],
+  ["lower-back", "Lower Back", "core", 10, 2, "accessory"]
 ];
 
 /** The one catalogue of muscles. Muscles are immutable and shared. */

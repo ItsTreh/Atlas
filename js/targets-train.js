@@ -18,9 +18,8 @@
 (() => {
   const FAMS = Object.keys(FAMILIES);
   const TITLES = { push: "What <em>presses.</em>", pull: "What <em>pulls.</em>", legs: "What <em>carries.</em>", core: "What <em>holds.</em>" };
-  const exp = () => routine.experience || DEFAULT_EXPERIENCE;
   const has = m => exercisesFor(m.id).length > 0;
-  const setsAt = (m, lv) => has(m) ? weeklyTarget(m, exp(), lv) || 0 : 0;
+  const setsAt = (m, lv) => has(m) ? weeklyTarget(m, lv) || 0 : 0;
   const live = () => !!flowDoc("train");
 
   /* ------------------------------- framings ------------------------------- */
@@ -51,7 +50,7 @@
     '</section>';
 
   const rowHTML = (m, N, i) => {
-    const [lo, hi] = m.weeklySets, ok = has(m);
+    const lo = weeklyFloor(m, "maintain"), hi = weeklyCeiling(m), ok = has(m);
     let slots = "";
     for (let j = 0; j < N; j++) slots += '<i class="s' + (!ok || j >= hi ? " x" : "") + '" style="--j:' + j + '"></i>';
     return '<div class="tdr" data-row="' + m.id + '" data-muscle="' + m.id + '" data-family="' + m.family + '" style="--i:' + i + '">' +
@@ -116,7 +115,7 @@
     fams = FAMS.map(k => ({ k, ms: ms.filter(m => m.family === k) })).filter(f => f.ms.length);
     KEYS = ["intro", ...fams.map(f => f.k), "week"];
     // The ladders line up: as many places as the largest range chosen.
-    const N = Math.max(1, ...ms.filter(has).map(m => m.weeklySets[1]));
+    const N = Math.max(1, ...ms.filter(has).map(weeklyCeiling));
     fams.forEach((f, i) => {
       const back = f.ms.filter(m => FLOW_BACK.has(m.id)).length * 2 > f.ms.length;
       shots.set(f.k, { d: 545, sx: .27, sy: .50, az: (back ? 180 : 0) + (i % 2 ? -18 : 18) });

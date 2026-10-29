@@ -29,8 +29,8 @@ describe.each(PROGRAMS)("%s", program => {
       if (fit && fit.meetsMinimums && placed.length === sessions) expect(v.untrained).toEqual([]);
 
       // no muscle goes over its weekly maximum
-      for (const row of v.rows) if (row.muscle.weeklySets) {
-        expect(row.sets, row.muscle.id).toBeLessThanOrEqual(row.muscle.weeklySets[1] + 4);
+      for (const row of v.rows) {
+        expect(row.sets, row.muscle.id).toBeLessThanOrEqual(app.weeklyCeiling(row.muscle) + 4);
       }
     });
   }

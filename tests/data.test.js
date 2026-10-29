@@ -18,8 +18,19 @@ describe("muscles", () => {
     for (const m of app.MUSCLES) expect(Object.keys(app.FAMILIES)).toContain(m.family);
   });
 
-  test("weekly set ranges run low to high", () => {
-    for (const m of app.MUSCLES) expect(m.weeklySets[0]).toBeLessThanOrEqual(m.weeklySets[1]);
+  test("every muscle uses a known weekly sets scale", () => {
+    for (const m of app.MUSCLES) expect(Object.keys(app.configValue("weeklyTargets")), m.id).toContain(m.kind);
+  });
+
+  test("each scale runs floor to target to ceiling, Maintain below Normal below Focus", () => {
+    for (const [kind, scale] of Object.entries(app.configValue("weeklyTargets"))) {
+      for (const p of app.PRIORITY_LEVELS) {
+        expect(scale[p].floor, kind + " " + p).toBeLessThanOrEqual(scale[p].target);
+        expect(scale[p].target, kind + " " + p).toBeLessThanOrEqual(scale.ceiling);
+      }
+      expect(scale.maintain.target, kind).toBeLessThan(scale.normal.target);
+      expect(scale.normal.target, kind).toBeLessThan(scale.focus.target);
+    }
   });
 });
 

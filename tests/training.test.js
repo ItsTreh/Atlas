@@ -104,34 +104,45 @@ describe("weekly target", () => {
   const muscle = id => app.MUSCLE_BY_ID.get(id);
   const levels = app.EXPERIENCE_LEVELS.map(e => e.id);
 
-  test("is unknown until experience is known", () => {
-    expect(app.weeklyTarget(muscle("chest"), null)).toBeNull();
+  test("an unknown priority has no target", () => {
     expect(app.weeklyTarget(muscle("chest"), "expert")).toBeNull();
   });
 
-  test("always a whole number inside the muscle's range", () => {
-    for (const m of app.MUSCLES) for (const e of levels) for (const p of app.PRIORITY_LEVELS) {
-      const t = app.weeklyTarget(m, e, p);
+  test("always a whole number between its priority's floor and the ceiling", () => {
+    for (const m of app.MUSCLES) for (const p of app.PRIORITY_LEVELS) {
+      const t = app.weeklyTarget(m, p);
       expect(Number.isInteger(t), m.id).toBe(true);
-      expect(t).toBeGreaterThanOrEqual(m.weeklySets[0]);
-      expect(t).toBeLessThanOrEqual(m.weeklySets[1]);
+      expect(t).toBeGreaterThanOrEqual(app.weeklyFloor(m, p));
+      expect(t).toBeLessThanOrEqual(app.weeklyCeiling(m));
     }
   });
 
-  test("focus is never below normal, and normal never below maintain", () => {
-    for (const m of app.MUSCLES) for (const e of levels) {
-      const t = p => app.weeklyTarget(m, e, p);
-      expect(t("focus")).toBeGreaterThanOrEqual(t("normal"));
-      expect(t("normal")).toBeGreaterThanOrEqual(t("maintain"));
+  test("focus is above normal, and normal above maintain, for every muscle", () => {
+    for (const m of app.MUSCLES) {
+      const t = p => app.weeklyTarget(m, p);
+      expect(t("focus"), m.id).toBeGreaterThan(t("normal"));
+      expect(t("normal"), m.id).toBeGreaterThan(t("maintain"));
     }
   });
 
-  test("maintain is the bottom of the range; experience only raises the target", () => {
+  test("the main scale is Maintain 4, Normal 10, Focus 14 with a ceiling of 18", () => {
     const chest = muscle("chest");
-    for (const e of levels) expect(app.weeklyTarget(chest, e, "maintain")).toBe(chest.weeklySets[0]);
-    const n = e => app.weeklyTarget(chest, e, "normal");
-    expect(n("beginner")).toBeLessThanOrEqual(n("intermediate"));
-    expect(n("intermediate")).toBeLessThanOrEqual(n("advanced"));
+    expect(["maintain", "normal", "focus"].map(p => app.weeklyTarget(chest, p))).toEqual([4, 10, 14]);
+    expect(app.weeklyCeiling(chest)).toBe(18);
+    const forearms = muscle("forearms");
+    expect(["maintain", "normal", "focus"].map(p => app.weeklyTarget(forearms, p))).toEqual([2, 4, 6]);
+    expect(app.weeklyCeiling(forearms)).toBe(6);
+  });
+
+  test("experience does not change the targets", () => {
+    const fits = levels.map(e => {
+      const r = new app.WeeklyRoutine();
+      r.selection.toggle("chest"); r.selection.toggle("quads");
+      r.selection.setPriority("chest", "focus");
+      Object.assign(r, { experience: e, sessionsPerWeek: 4, sessionMinutes: 90 });
+      return [...r.weekFit().targets];
+    });
+    for (const f of fits) expect(f).toEqual(fits[0]);
   });
 
   test("the routine keeps experience, restores it, and drops an unknown one", () => {
@@ -140,7 +151,7 @@ describe("weekly target", () => {
     r.selection.toggle("chest");
     r.experience = "intermediate";
     r.selection.setPriority("chest", "focus");
-    expect(r.weekFit().targets.get("chest")).toBe(app.weeklyTarget(muscle("chest"), "intermediate", "focus"));
+    expect(r.weekFit().targets.get("chest")).toBe(app.weeklyTarget(muscle("chest"), "focus"));
     const other = new app.WeeklyRoutine();
     other.restore(r.snapshot());
     expect(other.experience).toBe("intermediate");
@@ -152,7 +163,7 @@ describe("weekly target", () => {
 describe("fitting the weekly targets to the time", () => {
   const ids = ["chest", "quads", "triceps"];
   const muscles = ids.map(id => app.MUSCLE_BY_ID.get(id));
-  const raw = level => new Map(muscles.map(m => [m.id, app.weeklyTarget(m, "advanced", level)]));
+  const raw = level => new Map(muscles.map(m => [m.id, app.weeklyTarget(m, level)]));
   const pri = level => new Map(ids.map(id => [id, level]));
   const sets = map => [...map.values()].reduce((t, n) => t + n, 0);
 
@@ -163,10 +174,11 @@ describe("fitting the weekly targets to the time", () => {
     expect([...fit.targets]).toEqual([...raw("normal")]);
   });
 
-  test("a short week lowers sets but never below a muscle's minimum", () => {
-    const fit = app.fitToTime(raw("focus"), muscles, pri("focus"), 2, 60);
+  test("a short week lowers sets but never below a muscle's floor", () => {
+    // 3 x 65 holds the Focus floors (12 each) but not the targets (14 each).
+    const fit = app.fitToTime(raw("focus"), muscles, pri("focus"), 3, 65);
     expect(fit.meetsMinimums).toBe(true);
-    for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(m.weeklySets[0]);
+    for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.weeklyFloor(m, "focus"));
     expect(sets(fit.targets)).toBeLessThan(sets(raw("focus")));
     expect(fit.trimmed.length).toBeGreaterThan(0);
   });
@@ -184,7 +196,7 @@ describe("fitting the weekly targets to the time", () => {
 
   test("with an impossible week it says so and stops at the minimums", () => {
     const fit = app.fitToTime(raw("normal"), muscles, pri("normal"), 1, 45);
-    // Too short even for the usual minimums: sets go below them (never below
+    // Too short even for the floors: sets go below them (never below
     // the direct-set floor) so every muscle is still trained, and it says so.
     expect(fit.meetsMinimums).toBe(false);
     for (const m of muscles) expect(fit.targets.get(m.id)).toBeGreaterThanOrEqual(app.WORKOUT.minDirectSets);
@@ -231,9 +243,12 @@ describe("found in the 2026-10-22 sweep", () => {
 
   test("a muscle whose assisting credit can't land on its target ends at or above its floor, not below", () => {
     // Shoulders: 5.5 -> add a set -> 6.5 -> shedding one went back to 5.5, and so on.
-    const r = plan({ program: "push", days: 1, minutes: 90 });
+    // Push over 2 x 75 still lands the shoulders on a half set (3.5 assisting).
+    const r = plan({ program: "push", days: 2, minutes: 75 });
+    const shoulders = app.MUSCLE_BY_ID.get("shoulders");
     expect(r.weeklyVolume().short).toEqual([]);
-    expect(sets(r, "shoulders")).toBeGreaterThanOrEqual(6);
+    expect(sets(r, "shoulders")).toBeGreaterThanOrEqual(
+      app.targetFloor(shoulders, r.plannedWeeklySets().get("shoulders"), "normal"));
   });
 
   test("Focus never gives a one-movement muscle less than Normal", () => {

@@ -49,15 +49,17 @@ const WORKOUT = Object.freeze({
  * What the four numbers about a muscle's week mean. Sets are counted as
  * weeklyVolume() counts them: direct sets plus half credit for assisting ones.
  *
- *   minimum    the low end of Muscle.weeklySets: the least that usually works.
- *              A week may end below it only when the time, the days or the
- *              split cannot hold it, and the fit note then says so.
+ *   minimum    the floor for the muscle's priority (weeklyFloor): the least a
+ *              short week trims it to before saying so. A week may end
+ *              below it only when the time, the days or the split cannot
+ *              hold it, and the fit note then says so.
  *   target     what the plan aims for (weeklyTarget, fitted to the week): a
  *              recommended goal, not a physiological ceiling. The plan stops
  *              when a muscle reaches it and never adds sets to a muscle that
  *              has, however much session time is left.
- *   maximum    the high end of Muscle.weeklySets: a safety and planning
- *              limit, never a goal and never a reason to add sets.
+ *   maximum    the ceiling (weeklyCeiling): past it no extra growth has been
+ *              shown. A planning limit, not a safety one; never a goal and
+ *              never a reason to add sets.
  *   tolerance  TARGET_MATCH: how far the finished week may end from the
  *              target: at most `under` below it, and at most `over` above.
  *              The +2 is not permission to add sets. It absorbs what the
@@ -75,13 +77,13 @@ const TARGET_MATCH = Object.freeze({ under: 1, over: 2 });
 const OVERSHOOT_DEMOTION = 1;
 
 /**
- * The least a muscle with weekly target `target` may end the week with:
- * TARGET_MATCH.under below it, but never under the muscle's usual weekly
- * minimum when the target is at or above it (a beginner's target is the
- * minimum itself, and the week should not read as short of it).
+ * The least a muscle at `priority` with weekly target `target` may end the
+ * week with: TARGET_MATCH.under below it, but never under the floor for its
+ * priority when the target is at or above it (a target trimmed to the floor
+ * should not read as short of it).
  */
-function targetFloor(muscle, target) {
-  const low = muscle.weeklySets[0];
+function targetFloor(muscle, target, priority = "normal") {
+  const low = weeklyFloor(muscle, priority);
   return target >= low ? Math.max(target - TARGET_MATCH.under, low) : target - TARGET_MATCH.under;
 }
 
@@ -95,12 +97,12 @@ function targetFloor(muscle, target) {
  * session that remains is worth it. Returns { sessions, dropped }: the
  * sessions kept and the ones taken out.
  */
-function buildWeek(sessions, sessionMinutes, targets) {
+function buildWeek(sessions, sessionMinutes, targets, priorities = null) {
   const inWeek = (a, b) => DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour;
   let kept = [...sessions];
   const dropped = [];
   for (;;) {
-    new WorkoutBuilder(kept, sessionMinutes, targets).build();
+    new WorkoutBuilder(kept, sessionMinutes, targets, priorities).build();
     const seen = new Set(), weak = [];
     for (const s of [...kept].sort(inWeek)) {
       if (!s.workout.entries.length || (seen.has(s.block) && s.workout.sets < WORKOUT.setsPerExercise))
@@ -217,13 +219,16 @@ class WorkoutBuilder {
    * @param sessionMinutes  the planned session length
    * @param targets         Map muscle id -> the weekly sets the plan aims for
    *                        (WeeklyRoutine.plannedWeeklySets), or null
+   * @param priorities      Map muscle id -> its priority, for its floor and
+   *                        default target; Normal when missing
    */
-  constructor(sessions, sessionMinutes, targets = null) {
+  constructor(sessions, sessionMinutes, targets = null, priorities = null) {
     this.sessions = [...sessions].sort((a, b) =>
       DayOfWeek.indexOf(a.day) - DayOfWeek.indexOf(b.day) || a.startHour - b.startHour);
     this.limit = sessionMinutes;
     this.available = usableMinutes(sessionMinutes);
     this.targets = targets;
+    this.priorities = priorities;
 
     // How many sessions this week train each muscle — spreads its weekly volume.
     this.timesThisWeek = new Map();
@@ -245,26 +250,30 @@ class WorkoutBuilder {
     return this.sessions;
   }
 
-  /** The weekly sets `id` is aimed at: its target when the plan has one, else the middle of its range. */
-  targetFor(id) {
-    if (this.targets && this.targets.has(id)) return this.targets.get(id);
-    const [low, high] = MUSCLE_BY_ID.get(id).weeklySets;
-    return (low + high) / 2;
+  /** The priority of `id`: Normal when the builder was given none. */
+  priorityOf(id) {
+    return (this.priorities && this.priorities.get(id)) || "normal";
   }
 
-  /** The most a muscle may be credited this week: its target and the agreed margin, never past its maximum. */
+  /** The weekly sets `id` is aimed at: its target when the plan has one, else the default for its priority. */
+  targetFor(id) {
+    if (this.targets && this.targets.has(id)) return this.targets.get(id);
+    return weeklyTarget(MUSCLE_BY_ID.get(id), this.priorityOf(id));
+  }
+
+  /** The most a muscle may be credited this week: its target and the agreed margin, never past its ceiling. */
   ceilingFor(id) {
-    const high = MUSCLE_BY_ID.get(id).weeklySets[1];
+    const high = weeklyCeiling(MUSCLE_BY_ID.get(id));
     return this.targets && this.targets.has(id) ? Math.min(high, this.targets.get(id) + TARGET_MATCH.over) : high;
   }
 
   /**
    * The least `id` may end the week with: TARGET_MATCH.under below its
-   * target, but never under its usual weekly minimum when the target is at
-   * or above it (a beginner's target is the minimum itself).
+   * target, but never under the floor for its priority when the target is
+   * at or above it.
    */
   floorFor(id) {
-    return targetFloor(MUSCLE_BY_ID.get(id), this.targets.get(id));
+    return targetFloor(MUSCLE_BY_ID.get(id), this.targets.get(id), this.priorityOf(id));
   }
 
   /** What `id` is credited so far: earlier sessions, and the lifts already in this one. */
@@ -454,7 +463,7 @@ class WorkoutBuilder {
     // fit every muscle; there the muscles furthest below their weekly minimum
     // go first, so a muscle left out on Monday leads on Wednesday instead of
     // being left out every time. This decides the order, not the sets.
-    const behind = m => (this.setsThisWeek.get(m.id) || 0) / m.weeklySets[0];
+    const behind = m => (this.setsThisWeek.get(m.id) || 0) / weeklyFloor(m, this.priorityOf(m.id));
     const order = [...block.muscles].sort((a, b) =>
       (block.splitDay ? behind(a) - behind(b) : 0) || b.minutes - a.minutes);
     const workout = new Workout(order, []);
@@ -525,13 +534,13 @@ class WorkoutBuilder {
   }
 
   /** Sets this muscle should get in one session: its share of the session
-      time, but no more than its weekly maximum spread over the week. */
+      time, but no more than its weekly ceiling spread over the week. */
   targetSets(muscle, scale) {
     // Rounded, not floored: a merged block scaled below 1 would otherwise lose
     // up to a set per muscle and leave a quarter of the session empty.
     const fromTime = Math.round(muscle.minutes * scale / ESTIMATE.minutesPerSet);
     const times = this.timesThisWeek.get(muscle.id) || 1;
-    const weeklyCap = Math.ceil(muscle.weeklySets[1] / times);
+    const weeklyCap = Math.ceil(weeklyCeiling(muscle) / times);
     return Math.max(WORKOUT.minDirectSets, Math.min(fromTime, weeklyCap));
   }
 
@@ -540,12 +549,12 @@ class WorkoutBuilder {
    * session could hold. The session length only limits it (the budget in
    * buildOne); it is never a reason to add sets.
    *
-   *   • aim at the middle of the muscle's weekly range (weeklySets), spread
-   *     over the sessions that train it this week;
+   *   • aim at the muscle's weekly target (targetFor), spread over the
+   *     sessions that train it this week;
    *   • less what the lifts already in this session give it (`credit`);
    *   • no more than WORKOUT.maxSetsPerSession in one session;
-   *   • a hard weekly maximum: its own sets never take what it has been
-   *     credited this week past weeklySets[1]. (Credit a muscle gets from
+   *   • never past the weekly target: its own sets never take what it has
+   *     been credited this week past it. (Credit a muscle gets from
    *     lifts done for another muscle is counted where those lifts are
    *     chosen, not here.)
    *

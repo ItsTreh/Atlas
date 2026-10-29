@@ -6,10 +6,11 @@ import { loadApp } from "./load-app.js";
 
 const app = loadApp();
 
-function week({ muscles, program, days, minutes = 60, split = "auto", experience = "beginner" }) {
+function week({ muscles, program, days, minutes = 60, split = "auto", experience = "beginner", level = null }) {
   const r = new app.WeeklyRoutine();
   if (program) r.selection.applyProgram(app.PROGRAM_BY_ID.get(program));
   for (const id of muscles || []) r.selection.set(id, true);
+  if (level) for (const m of r.selection.muscles()) r.selection.setPriority(m.id, level);
   Object.assign(r, { experience, sessionsPerWeek: days, sessionMinutes: minutes, split, preferredWindow: "evening" });
   r.nutrition.showMeals = true;
   const result = r.generate();
@@ -48,8 +49,9 @@ describe("repeats that would come out empty or bare", () => {
       .every(s => r.sessions.includes(s))).toBe(true);
   });
 
+  // On Maintain the targets are small enough that a repeat has nothing worth doing.
   test("a week that lost a repeat says the extra day is a rest day", () => {
-    const { r, result } = week({ program: "shoulders-arms", days: 5, split: "push-pull-legs" });
+    const { r, result } = week({ program: "shoulders-arms", days: 5, split: "push-pull-legs", level: "maintain" });
     expect(result.placed).toBeLessThan(result.requested);
     expect(result.reason).toBe("rest");
   });
@@ -61,7 +63,7 @@ describe("repeats that would come out empty or bare", () => {
                                              [["abs", "calves"], null, "full-body"],
                                              [["biceps", "triceps", "forearms"], null, "upper-lower"],
                                              [null, "upper", "push-pull-legs"]]) {
-      const { r, result } = week({ muscles, program, days: 6, split });
+      const { r, result } = week({ muscles, program, days: 6, split, level: "maintain" });
       const name = (program || muscles.join("+")) + " " + split;
       expect(result.reason, name).toBe("rest");
       expect(result.dropped, name).toBeGreaterThan(0);

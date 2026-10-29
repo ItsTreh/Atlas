@@ -634,10 +634,10 @@ ledgerEl.addEventListener("pointerout", e => {
 
 /* ---------------------------- iii: training focus ------------------------- */
 
-/** The weekly hard sets a muscle starts from, for its experience and priority (estimate.js). */
+/** The weekly hard sets a muscle starts from, for its priority (estimate.js). */
 function startingSets(m) {
   if (!exercisesFor(m.id).length) return 0;
-  return weeklyTarget(m, routine.experience || DEFAULT_EXPERIENCE, selection.priority(m.id)) || 0;
+  return weeklyTarget(m, selection.priority(m.id)) || 0;
 }
 
 /** Says up front which chosen muscles the exercise database cannot fill yet. */
@@ -656,8 +656,7 @@ function noExercisesNote(muscles) {
 
 /** The most weekly sets any of `ms` would get on Focus: the sets bars' full length. */
 function maxSets(ms) {
-  const exp = routine.experience || DEFAULT_EXPERIENCE;
-  return Math.max(1, ...ms.map(m => exercisesFor(m.id).length ? weeklyTarget(m, exp, "focus") || 0 : 0));
+  return Math.max(1, ...ms.map(m => exercisesFor(m.id).length ? weeklyTarget(m, "focus") || 0 : 0));
 }
 
 function renderTrain() {

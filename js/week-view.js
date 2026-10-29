@@ -226,8 +226,7 @@ function configHTML() {
                 'data-experience="' + lv.id + '" data-key="exp-' + lv.id + '" aria-label="' + esc(lv.label) + '" ' +
                 'title="' + esc(lv.label) + '">' + esc(EXPERIENCE_SHORT[lv.id] || lv.label) + '</button>').join("") +
           '</span>' +
-          (routine.experience ? '' : '<span class="field-note">Until you choose, sets start as for ' +
-            EXPERIENCE_LEVELS.find(l => l.id === DEFAULT_EXPERIENCE).label.toLowerCase() + '.</span>') +
+          '<span class="field-note">It does not change your weekly sets yet.</span>' +
         '</div>' +
       '</div>' +
       '<div class="wk-notes">' +
