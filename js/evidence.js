@@ -268,19 +268,34 @@ const PLANNER_CONFIG = Object.freeze({
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
     note: "Per session, not available for working sets."
   },
-  weeklyTargetFraction: {
-    group: "target", origin: "heuristic", basedOn: ["weekly-volume"],
-    // Where in a muscle's weekly range [low, high] the target lands:
-    // low + fraction * (high - low), by experience and priority.
+  weeklyTargets: {
+    group: "target", origin: "heuristic", basedOn: ["weekly-volume", "maintenance-volume"],
+    // Hard sets a week, by kind of muscle (Muscle.kind) and priority: the
+    // target the plan aims for, and the floor a short week may trim it to.
+    // The ceiling is the most any priority may reach.
     value: Object.freeze({
-      beginner:     Object.freeze({ maintain: 0, normal: 0,   focus: 0.5 }),
-      intermediate: Object.freeze({ maintain: 0, normal: 0.5, focus: 0.8 }),
-      advanced:     Object.freeze({ maintain: 0, normal: 0.5, focus: 1.0 })
+      main: Object.freeze({
+        ceiling: 18,
+        maintain: Object.freeze({ floor: 3,  target: 4 }),
+        normal:   Object.freeze({ floor: 8,  target: 10 }),
+        focus:    Object.freeze({ floor: 12, target: 14 })
+      }),
+      accessory: Object.freeze({
+        ceiling: 6,
+        maintain: Object.freeze({ floor: 2, target: 2 }),
+        normal:   Object.freeze({ floor: 4, target: 4 }),
+        focus:    Object.freeze({ floor: 6, target: 6 })
+      })
     }),
-    note: "Newer lifters start at the low end of each range, which the volume research " +
-          "supports in direction (more sets help with diminishing returns) but not in " +
-          "these exact numbers. Maintain is the bottom of the range by definition. The " +
-          "fractions are a starting point to adjust, not findings."
+    note: "Planning defaults, not prescriptions (docs/training-evidence.md, \"Weekly " +
+          "budgets\"). Main muscles: Maintain 4 with a floor of 3 (3 sets held young " +
+          "adults' fibre size; 4 is the smallest dose with detectable growth); Normal " +
+          "10 within 8 to 12 (growth is enhanced at about 10 or more); Focus 14 within " +
+          "12 to 18 (the 8 to 16 step is detectable, nothing more has been shown past " +
+          "about 18 in trained lifters, so 18 is a ceiling, not a safety limit). The " +
+          "accessory scale (traps, forearms, adductors, obliques, lower back) is a " +
+          "design choice: no dose data exist for them. Experience does not change these " +
+          "numbers: no status-specific curve has been found."
   }
 });
 
@@ -290,14 +305,12 @@ const PLANNER_CONFIG = Object.freeze({
  * a later step.
  */
 const PLANNER_TABLES = Object.freeze({
-  weeklySetsRange: {
-    at: "model.js, MUSCLE_SEED (sets/week)", origin: "heuristic", basedOn: ["weekly-volume"],
-    note: "Per-muscle ranges of hard sets a week, read as a common reading of the " +
-          "volume research. The numbers are not taken from a single study."
-  },
-  weeklySetsMaximum: {
-    at: "model.js, MUSCLE_SEED (high end of sets/week)", origin: "safety", basedOn: [],
-    note: "The high end of each range is a limit the planner never passes."
+  muscleKind: {
+    at: "model.js, MUSCLE_SEED (kind)", origin: "heuristic", basedOn: [],
+    note: "Which scale of weeklyTargets a muscle uses. Main for the eleven groups users " +
+          "usually target; accessory for traps, forearms, adductors, obliques and lower " +
+          "back, which have no dose data and get large credit from compound lifts. A " +
+          "design choice, not a finding that small muscles need less."
   },
   muscleMinutes: {
     at: "model.js, MUSCLE_SEED (min)", origin: "heuristic", basedOn: [],

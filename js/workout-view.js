@@ -86,7 +86,7 @@ function sessionDetailHTML(session, inline = false) {
 /**
  * What the user's own edits did that the planner never would: a session
  * longer than its time on the calendar, or a muscle past its usual weekly
- * maximum (MUSCLES weeklySets, the safety limit the planner keeps to).
+ * ceiling (weeklyCeiling, the planning limit the planner keeps to).
  */
 function editNote(session) {
   const w = session.workout;
@@ -95,9 +95,9 @@ function editNote(session) {
   const booked = Math.min(routine.sessionMinutes, session.durationHours * 60);
   if (w.minutes > booked)
     notes.push("about " + w.minutes + " min now, longer than the " + booked + " min it has on your calendar");
-  const over = w.muscles.filter(m => weekSets(m) > m.weeklySets[1]);
+  const over = w.muscles.filter(m => weekSets(m) > weeklyCeiling(m));
   if (over.length)
-    notes.push(nameList(over.map(m => m.name + " (≈" + fmtSets(weekSets(m)) + " of at most " + m.weeklySets[1] + ")")) +
+    notes.push(nameList(over.map(m => m.name + " (≈" + fmtSets(weekSets(m)) + " of at most " + weeklyCeiling(m) + ")")) +
       " above the usual weekly maximum");
   return notes.length ? '<span class="warn"><b>Your edits:</b> ' + notes.join("; ") + '.</span>' : "";
 }
