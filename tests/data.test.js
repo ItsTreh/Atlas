@@ -65,6 +65,41 @@ describe("exercises", () => {
     for (const ex of app.EXERCISES) expect(app.MOVEMENTS[ex.movement]).toBeTruthy();
   });
 
+  /* A muscle listed twice in one exercise would be credited twice for one set:
+     directSets and assistedSets check the two lists separately. Several
+     different primaries are fine (a squat trains quads and glutes). */
+  function listedTwice(exercises) {
+    const out = [];
+    const twiceIn = (list, label, ex) => {
+      for (const id of new Set(list))
+        if (list.filter(x => x === id).length > 1) out.push(ex.name + ": " + id + " twice in " + label);
+    };
+    for (const ex of exercises) {
+      twiceIn(ex.primary, "primary", ex);
+      twiceIn(ex.secondary, "secondary", ex);
+      for (const id of new Set(ex.primary))
+        if (ex.secondary.includes(id)) out.push(ex.name + ": " + id + " in both primary and secondary");
+    }
+    return out;
+  }
+
+  test("no exercise lists a muscle twice, so no set is credited twice", () => {
+    expect(listedTwice(app.EXERCISES)).toEqual([]);
+    expect(app.EXERCISE_BY_NAME.get("Barbell Back Squat").primary).toEqual(expect.arrayContaining(["quads", "glutes"]));
+  });
+
+  test("the check names every offender and where the muscle repeats", () => {
+    expect(listedTwice([
+      { name: "A", primary: ["quads", "glutes"], secondary: [] },
+      { name: "B", primary: ["chest", "chest"], secondary: ["triceps", "triceps"] },
+      { name: "C", primary: ["lats"], secondary: ["biceps", "lats"] }
+    ])).toEqual([
+      "B: chest twice in primary",
+      "B: triceps twice in secondary",
+      "C: lats in both primary and secondary"
+    ]);
+  });
+
   test("a muscle's candidates come best tier first, unrated last", () => {
     for (const m of app.MUSCLES) {
       const ranks = app.exercisesFor(m.id).map(ex => app.tierRank(ex.tierFor(m.id)));

@@ -606,7 +606,8 @@ class WeeklyRoutine {
   /**
    * How the week measures up to what the chosen muscles usually need
    * (estimate.js). For each chosen muscle with exercises: its weekly sets,
-   * direct plus assisting credit (already halved), against the floor for
+   * direct plus assisting credit (already halved), each also given on its own
+   * (`direct`, `assisted`), against the floor for
    * its priority (weeklyFloor), and how many sessions train it: give it at least a
    * set's worth, direct or assisting (a press trains the triceps too).
    *
@@ -631,14 +632,16 @@ class WeeklyRoutine {
   weeklyVolume() {
     const muscles = this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0);
     const rows = muscles.map(m => {
-      let sets = 0, times = 0;
+      let direct = 0, assisted = 0, times = 0;
       for (const s of this.sessions) {
         if (!s.workout) continue;
-        const here = s.workout.directSets(m.id) + s.workout.assistedSets(m.id);
-        sets += here;
-        if (here >= 1) times++;          // at least a set's worth, direct or assisting
+        const d = s.workout.directSets(m.id), a = s.workout.assistedSets(m.id);
+        direct += d;
+        assisted += a;
+        if (d + a >= 1) times++;          // at least a set's worth, direct or assisting
       }
-      return { muscle: m, sets, times, need: weeklyFloor(m, this.selection.priority(m.id)) };
+      return { muscle: m, sets: direct + assisted, direct, assisted, times,
+               need: weeklyFloor(m, this.selection.priority(m.id)) };
     });
     const untrained = rows.filter(r => r.times === 0 && Math.round(r.sets) < r.need).map(r => r.muscle);
     const carrying = m => this.sessions.filter(s => s.block.muscles.includes(m) && !s.block.riders.has(m));
