@@ -414,7 +414,11 @@ The user agreed with this reading on 2026-10-29, and with the note on trim order
 - **Progression**: Progress can be more weight, more reps at the same weight, or better performance at the same effort. You don't need to add weight every workout.
 - **Tempo**: Use controlled, repeatable reps. Slowing every rep to stretch "time under tension" hasn't been shown to build more muscle.
 
-## Where the code stands (after step 2, 2026-10-29)
+## Where the code stands (after step 3, 2026-10-29)
+
+Step 3 needed no new counting: `Workout.directSets` / `assistedSets` and `WeeklyRoutine.weeklyVolume()` already counted planned sets per muscle apart from the UI. What was left became the first PR of step 4's stack:
+- Each `weeklyVolume()` row also gives `direct` and `assisted` (`sets` is unchanged), for step 4's credit rules and step 7's arithmetic.
+- `tests/data.test.js` checks every exercise in the catalogue: no muscle twice in its primaries, twice in its secondaries, or in both. It lists every offender. Different primaries stay valid (a squat for quads and glutes); whether both should get 1.0 is step 4's question.
 
 Resolved in step 2:
 - The per-muscle ranges are gone; muscles carry a `kind` and read one scale (`weeklyTargets`).
@@ -443,6 +447,8 @@ Tracked, not blocking:
 - **Nutrition moved (decide at the Nutrition redesign).** `FULL_BODY_SETS` is now the sum of ceilings, 228 sets instead of 172, which changes "Muscle gain" coverage. A ceiling sum is a poor proxy for what someone trains.
 - **Requested totals are not a plan.** Targets shows the requested sets before trimming (full body with chest on Focus: "About 132 hard sets a week"), far more than most weeks hold. Don't present it as a plan until the Focus limit and whole-body budget (step 5) exist.
 - **The adductor magnus credit** (see "Open question" above), before step 4.
+
+- **The workout view counts on its own (step 7).** `weekSets` (`js/workout-view.js:204`) adds up each muscle's weekly sets itself, the same total a `weeklyVolume()` row gives, and the per-session lines (`:68`, `:210`) call `directSets` / `assistedSets` directly. When step 7 shows the weekly arithmetic, the view should read the row's `sets`, `direct` and `assisted` instead; the per-session split stays the workout's.
 
 Later, after the volume work:
 - `js/evidence.js` says six muscles have no tier ratings; it's eight.

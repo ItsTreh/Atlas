@@ -310,3 +310,22 @@ describe("found in the 2026-10-22 sweep", () => {
     expect(v.noTime).toEqual([]);
   });
 });
+
+describe("weekly volume: direct and assisting sets", () => {
+  test.each(PROGRAMS)("%s: each row splits its sets into direct and assisting", program => {
+    const { routine } = generatedWeek(app, { program, sessions: 4, minutes: 60 });
+    const sum = (id, f) => routine.sessions.reduce((t, s) => t + (s.workout ? f(s.workout, id) : 0), 0);
+    for (const row of routine.weeklyVolume().rows) {
+      const id = row.muscle.id;
+      expect(row.direct).toBeCloseTo(sum(id, (w, m) => w.directSets(m)), 9);
+      expect(row.assisted).toBeCloseTo(sum(id, (w, m) => w.assistedSets(m)), 9);
+      expect(row.direct + row.assisted).toBeCloseTo(row.sets, 9);   // fractional: assisting sets are discounted
+    }
+  });
+
+  test("a pressing week credits the triceps with assisting sets", () => {
+    const { routine } = generatedWeek(app, { program: "push", sessions: 3, minutes: 60 });
+    const triceps = routine.weeklyVolume().rows.find(r => r.muscle.id === "triceps");
+    expect(triceps.assisted).toBeGreaterThan(0);
+  });
+});
