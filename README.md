@@ -166,7 +166,7 @@ js/                      ── data and logic: no page code, all tested ──
 assets/anatomy/          the sculpture, its paint and its export (all rights reserved)
 tools/anatomy/           the Blender export and the builds that turn it into scripts
 tests/                   Vitest suites; load-app.js runs the real scripts in Node
-docs/                    design notes: the redesign, the cartography, anatomy levels, the rig
+docs/                    design notes: the redesign, the cartography, anatomy levels, the rig; the training evidence
 CLAUDE.md, .claude/      working notes and agents for building ATLAS with Claude Code
 ```
 
@@ -189,24 +189,30 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 - [x] Targets in three movements: How it works, Your muscles, Training focus
 - [x] Measure, with its instruments and the seal
 - [x] An evidence register that labels where every planner value comes from
+- [x] The anatomical cartography: engraved traces for hover and selection
 - [x] AGPL licensing, a local font, and a Content-Security-Policy
 
-**Now**
-- [ ] Polish the anatomical cartography's hover and selection states
+**Now: the maths of Targets, based on research** ([`docs/training-evidence.md`](docs/training-evidence.md))
+- [ ] Map the existing Targets logic: how priorities are stored, how exercises are assigned, how the Week plan uses them
+- [ ] Define the weekly targets in one place: Maintain about 4 sets, Normal about 10, Focus about 12–18, as planning defaults
+- [ ] Count each muscle's direct weekly sets, never the same set twice
+- [ ] Add estimated credit from compound lifts to the muscles that assist
+- [ ] Handle short weeks: keep maintenance work first, give Focus the extra volume, cut optional work
+- [ ] Connect it to the Week plan, so changing a priority changes the plan predictably
+- [ ] Show whether each muscle is below, within or above its range, with credit marked as an estimate
 - [ ] Polish the painted borders, one muscle at a time
 
 **Next**
-1. Improve and evidence the maths on Targets.
-2. Make Measure's data affect the training algorithm.
-3. Redesign Nutrition, then evidence its maths the same way as Targets.
-4. Evidence and redesign the Week plan.
-5. Redesign the full phone layout.
-6. Add a backend, then My Atlas for returning users, with saved data.
-7. Make it an app.
-8. Add a fitness news section.
+1. Make Measure's data affect the training algorithm.
+2. Redesign Nutrition, then evidence its maths the same way as Targets.
+3. Evidence and redesign the Week plan.
+4. Redesign the full phone layout.
+5. Add a backend, then My Atlas for returning users, with saved data.
+6. Make it an app.
+7. Add a fitness news section.
 
 **For the anatomy** ([`docs/anatomy-levels.md`](docs/anatomy-levels.md))
-- A side view and zoom, added to the same camera.
+- Zoom, added to the same camera.
 - Three levels: the 16 training groups; the individual muscles, revealed by zooming in, each with a card on what it does and what trains it; and an exercise view that lights everything an exercise works.
 - Finer regions under the groups, such as the three heads of the deltoid.
 - Later, a weekly coverage map of the body.
