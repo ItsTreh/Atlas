@@ -109,7 +109,7 @@ describe("the generated week", () => {
       const { routine } = generatedWeek(app, opts);
       const v = routine.weeklyVolume();
       expect(v.untrained, JSON.stringify(opts)).toEqual([]);
-      for (const r of v.rows) expect(r.sets, r.muscle.id).toBeLessThanOrEqual(r.muscle.weeklySets[1]);
+      for (const r of v.rows) expect(r.sets, r.muscle.id).toBeLessThanOrEqual(app.weeklyCeiling(r.muscle));
     }
   });
 
