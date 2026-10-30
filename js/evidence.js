@@ -187,6 +187,119 @@ const EVIDENCE = Object.freeze([
         url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
     ],
     lastReviewed: "2026-10-08"
+  },
+
+  /* Measured regional growth from one exercise: the basis of SET_CREDIT
+     (set-credit.js). Almost all in untrained young adults, small groups, but
+     measured rather than assumed (docs/training-evidence.md, "Indirect sets"). */
+  {
+    id: "squat-regional-growth",
+    topic: "What a deep squat grows",
+    finding: "Deep squats grew the glutes (+6.7%), the adductors (+6.2%) and the quads " +
+             "(+4.9%); half squats gave about half as much each. No hamstring muscle changed.",
+    certainty: "low",
+    limits: "One trial in untrained young men, back squats only. The adductors were " +
+            "measured together, the adductor magnus among them.",
+    sources: [
+      { label: "Kubo et al. 2019, European Journal of Applied Physiology",
+        url: "https://uniguacu.com.br/wp-content/uploads/2023/09/Artigo-Agachamento.pdf" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "squat-vs-hip-thrust",
+    topic: "Squats and hip thrusts compared",
+    finding: "Squats and hip thrusts grew the glutes about equally. Neither grew the " +
+             "hamstrings more than negligibly; hip thrusts grew the quads and adductors less.",
+    certainty: "low",
+    limits: "One trial, untrained adults.",
+    sources: [
+      { label: "Plotkin et al. 2023, Frontiers in Physiology",
+        url: "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1279170/full" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "leg-press-regional-growth",
+    topic: "What a leg press grows",
+    finding: "Leg presses grew the glutes (+15.4%) and the adductor magnus (+6.2%), but " +
+             "the rectus femoris only +1.1%, against +13.2% from knee extensions.",
+    certainty: "low",
+    limits: "A single trial, not yet replicated.",
+    sources: [
+      { label: "Kinoshita, Maeo et al. 2026, Medicine & Science in Sports & Exercise",
+        url: "https://www.fisiologiadelejercicio.com/wp-content/uploads/2026/02/hypertrophic_effects_of_single__versus_multi_joint.1002-1.pdf" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "press-triceps-growth",
+    topic: "What bench pressing gives the triceps",
+    finding: "Bench pressing grew the triceps about half as much as triceps extensions " +
+             "(0.51), or 0.55 to 0.57 of what it grew the chest. The long head barely grew " +
+             "(+2.1% against +17.5% with extensions, about 0.12).",
+    certainty: "low",
+    limits: "Two trials, both in untrained men.",
+    sources: [
+      { label: "Brandão et al. 2020",
+        url: "https://paulogentil.com/pdf/Varying%20the%20Order%20of%20Combinations%20of%20Single-%20and%20Multi-Joint%20Exercises%20Differentially%20Affects%20Resistance%20Training%20Adaptations.pdf" },
+      { label: "Ogasawara et al. 2013",
+        url: "https://paulogentil.com/pdf/Comparison%20of%20muscle%20hypertrophy%20following%206-month%20of%20continuous%20and%20periodic%20strength%20training.pdf" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "pull-biceps-growth",
+    topic: "What rows and pulldowns give the biceps",
+    finding: "Rows grew the elbow flexors 0.47 as much as curls; lat pulldowns about as " +
+             "much as curls.",
+    certainty: "low",
+    limits: "Two small trials that disagree.",
+    sources: [
+      { label: "Mannarino et al.",
+        url: "https://paulogentil.com/pdf/Single-Joint%20Exercise%20Results%20in%20Higher%20Hypertrophy%20of%20Elbow%20Flexors%20Than%20Multijoint%20Exercise.pdf" },
+      { label: "Gentil et al. 2015, Asian Journal of Sports Medicine",
+        url: "https://brieflands.com/articles/asjsm-21609.html" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "calf-raise-knee-angle",
+    topic: "Calf raises with the knee straight or bent",
+    finding: "Standing calf raises grew the gastrocnemius 9 to 12% and the soleus 2%. " +
+             "Seated calf raises grew the gastrocnemius only 0.6 to 1.7%.",
+    certainty: "low",
+    limits: "One trial.",
+    sources: [
+      { label: "Calf raise trial 2023, Frontiers in Physiology",
+        url: "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1272106/full" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "hip-extension-hamstrings",
+    topic: "Hip extension work for the hamstrings",
+    finding: "A hip extension exercise grew the long head of the biceps femoris more " +
+             "than Nordic curls did.",
+    certainty: "low",
+    limits: "One trial, read in abstract only.",
+    sources: [
+      { label: "Bourne et al. 2017",
+        url: "https://search.pedro.org.au/search-results/record-detail/57401" }
+    ],
+    lastReviewed: "2026-10-29"
+  },
+  {
+    id: "leg-curl-hamstrings",
+    topic: "Seated and lying leg curls",
+    finding: "Seated leg curls grew the hamstrings more than lying ones (+14% against +9%).",
+    certainty: "low",
+    limits: "One trial, read in abstract only.",
+    sources: [
+      { label: "Maeo et al. 2021",
+        url: "https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:33009197&resultType=core&format=json" }
+    ],
+    lastReviewed: "2026-10-29"
   }
 ]);
 
@@ -336,6 +449,15 @@ const PLANNER_TABLES = Object.freeze({
   schedulerScore: {
     at: "scheduler.js, SCORE", origin: "optimization", basedOn: ["recovery-between-sessions"],
     note: "Weights tuned against each other to place sessions; not taken from research."
+  },
+  setCredit: {
+    at: "set-credit.js, SET_CREDIT", origin: "heuristic",
+    basedOn: ["squat-regional-growth", "squat-vs-hip-thrust", "leg-press-regional-growth",
+              "press-triceps-growth", "pull-biceps-growth", "calf-raise-knee-angle",
+              "hip-extension-hamstrings", "leg-curl-hamstrings"],
+    note: "How much a set of an exercise counts for each muscle, for the pairs where " +
+          "growth was measured. The measured ratios are rounded to 1, 0.5, 0.25 or 0, a " +
+          "scale ATLAS chose; each row carries its own tier. Not yet read by the planner."
   },
   exerciseTiers: {
     at: "exercises.js, EXERCISE_RATINGS", origin: "heuristic", basedOn: [],

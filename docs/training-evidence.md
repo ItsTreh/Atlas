@@ -329,6 +329,8 @@ Rules [D]: credits are 1.0, 0.5, 0.25 or 0 only. A set credits each app group at
 | Leg raise / knee raise → Abs (incl. iliopsoas) | 1.0 | Psoas about +3% | [D] on [B] |
 | Compounds → Abs, Obliques, Traps, Forearms | 0 | No growth data; EMG only | [D]; never claim coverage |
 
+**As built** (`js/set-credit.js`, step 4, not yet read by the planner): the rows above backed by measured growth, [B], with the adductor decision applied (squat → Adductors 0, stored at the magnus; leg press likewise). Each row covers catalogue movements, so a row measured on one variant (back squat, standing calf raise, bench press) also covers the others; the row's `how` says so. Not in yet: the [D] rows (any press → Shoulders, overhead press, row → Upper back / Lats / rear delts, half squat, hip thrust → Quads / Adductors, hinge → Glutes / Lower back, leg raise, compounds → Abs, Obliques, Traps, Forearms) and leg press → Quads / Hamstrings. Pairs without a row keep the flat 1 / 0.5. Against the catalogue this changes 11 credits, listed in `tests/set-credit.test.js`.
+
 With squats at 3.0 FHS per set, FHS per physical set will run well above the first check's assumed 1.25×. Compute it from generated plans; don't assume a multiplier.
 
 ### Focus cap and whole-body budget [D]
@@ -369,13 +371,15 @@ Prefer at most **8 physical sets per group per session**, adding an exposure bef
 6. **Return after >3 weeks off:** about 70% of previous FHS for one week, then resume [D]; the ramp is for soreness and injury risk (Halonen [B]). Don't use strength to "prove" muscle was kept (Räntilä 2025 [B]).
 7. Never label anyone a non-responder.
 
-## Open question: where the adductor magnus belongs
+## Decided: where the adductor magnus belongs
 
 The second check says ATLAS "has a separate Adductors group, so the honest Hamstrings credit is 0", and that the first check's mapping of adductor magnus into Hamstrings "was wrong for this codebase". But that mapping **is** the codebase: `js/anatomy-regions.js:72` sends the painted `adductor-magnus` region to Hamstrings, by the user's anatomical decision (CLAUDE.md: its visible rear part is the "fourth hamstring"). Adductors holds the adductor longus, gracilis and pectineus.
 
 This matters for credit. Kubo's and Kinoshita/Maeo's adductor growth includes, or is specifically, the adductor magnus. So "deep squat → Adductors 1.0" credits the app's Adductors group (longus, gracilis, pectineus) for growth that was largely measured in a muscle the app files under Hamstrings. Squat → Hamstrings 0 stays right for the true hamstrings (Kubo: no hamstring muscle changed). Before the credit table is built, the user decides whether the selection mapping, the credit mapping, or both should change. Changing the selection mapping is an anatomy decision, not a training one.
 
-The user agreed with this reading on 2026-10-29, and with the note on trim order under "Where the code stands". The credit decision is still open.
+The user agreed with this reading on 2026-10-29, and with the note on trim order under "Where the code stands".
+
+**Decision (the user, 2026-10-29):** the selection mapping stays: the adductor magnus selects Hamstrings. Its squat stimulus goes to neither broad group. It is stored at the magnus level (a `region` row in `js/set-credit.js`) and credited to neither Hamstrings nor Adductors until the app can hold sub-regions; then the magnus gets its own region and is credited directly. A 0 for squat → Adductors means too little evidence for the current group mapping, not zero activation or growth. Squat → Hamstrings 0 is a different zero: Kubo measured it. Leg press adductor magnus growth (Kinoshita/Maeo) is stored the same way.
 
 ## What the app may and may not claim
 
@@ -432,7 +436,7 @@ Resolved in step 2:
 Still open:
 - **No Focus limit; no physical-set budget cap** (step 5).
 - **`maxSetsPerSession` 8** is a hard cap justified in a comment by research that doesn't exist (`js/workouts.js:39`).
-- **Flat `secondaryCredit` 0.5**, with exercises carrying two 1.0 primaries; several credits have no data (lower back, forearms, traps, obliques, abs from compounds; hamstrings from squats and lunges), seated calf raise counts 1.0, and squat adductor credit goes to the app's Adductors (see the open question). Step 4.
+- **Flat `secondaryCredit` 0.5** still drives the planner. The measured credits are in `js/set-credit.js` (step 4), checked against the catalogue but not read by `Workout` yet. Several credits still have no data (lower back, forearms, traps, obliques, abs from compounds; hamstrings from lunges).
 - **No effort guidance, no safety line.**
 - **`EXERCISE_RATINGS`** is undocumented practitioner opinion.
 - **Copy:** "add sets as you adapt" (`js/targets-train.js:180`).
@@ -446,7 +450,6 @@ Tracked, not blocking:
 - **The Maintain floor is only guaranteed in the time fit.** After the workouts are built, the routine can still lower a target to what the sessions give. The UI must not claim a guaranteed floor until step 5 makes sessions hold it.
 - **Nutrition moved (decide at the Nutrition redesign).** `FULL_BODY_SETS` is now the sum of ceilings, 228 sets instead of 172, which changes "Muscle gain" coverage. A ceiling sum is a poor proxy for what someone trains.
 - **Requested totals are not a plan.** Targets shows the requested sets before trimming (full body with chest on Focus: "About 132 hard sets a week"), far more than most weeks hold. Don't present it as a plan until the Focus limit and whole-body budget (step 5) exist.
-- **The adductor magnus credit** (see "Open question" above), before step 4.
 
 - **The workout view counts on its own (step 7).** `weekSets` (`js/workout-view.js:204`) adds up each muscle's weekly sets itself, the same total a `weeklyVolume()` row gives, and the per-session lines (`:68`, `:210`) call `directSets` / `assistedSets` directly. When step 7 shows the weekly arithmetic, the view should read the row's `sets`, `direct` and `assisted` instead; the per-session split stays the workout's.
 
