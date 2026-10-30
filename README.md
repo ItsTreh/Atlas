@@ -132,6 +132,7 @@ js/                      ── data and logic: no page code, all tested ──
   evidence.js            findings with sources, and every planner value with its origin
   estimate.js            weekly sets and time, and fitting targets to the time
   exercises.js           the exercise catalogue and its tier ratings
+  set-credit.js          how much a set counts for each muscle, where growth was measured
   workouts.js            each session's exercises
   distribution.js        spreads each muscle's weekly sets over the training days
   routine.js             WeeklyRoutine, the shared plan; places the week and its meals

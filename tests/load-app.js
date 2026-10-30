@@ -38,7 +38,7 @@ const EXPORTS = [
   "TRAINING_ENERGY", "ADJUST_RANGE", "PROTEIN_PER_KG_RANGE", "trainingLoad", "recommendTargets",
   "FOODS", "MEAL_IDEAS", "DIETS", "fitsDiet", "portionIdea", "mealIdeasFor", "totals",
   "TIERS", "MOVEMENTS", "EXERCISES", "EXERCISE_BY_ID", "EXERCISE_BY_NAME",
-  "exercisesFor", "tierRank",
+  "exercisesFor", "tierRank", "SET_CREDIT", "CREDIT_STEPS", "setCredit",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
   "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
   "BodyMeasure", "MEASURE_LIMITS", "romanNumeral", "feetInches", "poundsOf",
