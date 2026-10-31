@@ -99,12 +99,12 @@ Measured regional growth (almost all in untrained young adults, often 10–20 pe
 | Exercise | Finding | Source |
 |---|---|---|
 | Deep squat | Glutes +6.7%, adductors +6.2%, quads +4.9%; half squats about half as much each; **no hamstring muscle changed** | Kubo 2019 [B, full text] |
-| Squat vs hip thrust | About equal glute growth; hamstrings negligible; hip thrust gave quads and adductors less | Plotkin 2023 [B, full text] |
-| Leg press | Glutes +15.4%, adductor magnus +6.2%, rectus femoris only +1.1% (vs +13.2% from knee extensions) | Kinoshita/Maeo 2026, MSSE [B, full text], single trial |
+| Barbell back squat vs barbell hip thrust | About equal glute growth; hamstrings negligible; hip thrust gave quads and adductors less | Plotkin 2023 [B, full text] |
+| Seated leg press | Glutes +15.4%, adductor magnus +6.2%, rectus femoris only +1.1% (vs +13.2% from knee extensions) | Kinoshita/Maeo 2026, MSSE [B, full text], single trial, seated leg press machine |
 | Bench press → triceps | 0.51 of extension growth; 0.55–0.57 of pec growth; long head about 0.12 (+2.1% vs +17.5% with extensions) | Brandão 2020; Ogasawara 2013 [B, full text], untrained men |
-| Row → biceps | 0.47 of curls | Mannarino [B, full text] |
-| Pulldown → biceps | About 1.0 of curls | Gentil 2015 [B, full text] |
-| Standing vs seated calf raise | Standing: gastrocnemius +9–12%, soleus +2%. Seated: gastrocnemius +0.6–1.7% | Frontiers 2023 [B, full text] |
+| One-arm dumbbell row → biceps | 0.47 of curls | Mannarino [B, full text] |
+| Wide-grip pulldown → biceps | About 1.0 of curls | Gentil 2015 [B, full text] |
+| Standing vs seated calf raise | Standing: gastrocnemius +9–12%, soleus +2.1%, whole calf +5.6%. Seated: gastrocnemius +0.6–1.7%, soleus +2.9%, whole calf +2.1% | Kinoshita 2023 [B, full text], machines |
 | Hip extension → hamstrings | Biceps femoris long head grew more than with Nordics | Bourne 2017 [B, abstract], thin |
 | Direct hip-flexor work → psoas | About +3% | [LIDA record](https://lida.sport-iat.de/ta/Record/4072039?lng=en) [B] |
 
@@ -264,6 +264,25 @@ The tier lists in `js/exercises.js` (`EXERCISE_RATINGS`) match his criteria; the
 - Unread: the 2024 autoregulation trial (PMC11343444), Enes 2024 full text, Ramos-Campo's identifier, Ralston 2017 (identification presumed), Nippard's 2026 videos and his biceps, shoulders, glutes, hamstrings and calves tier lists, any 2025–26 Refalo failure follow-up.
 - To watch: NCT07379385 (weekly set volume), NCT06825052 (deloads).
 
+## Evidence wanted
+
+Credits held at the flat default (1 for a primary muscle, 0.5 for an assisting one) or at an ATLAS choice because the evidence is thin, missing, or measured on a different exercise. Each says what would let it move. Add to this list rather than credit a variant nobody measured.
+
+| Exercise → group | Now | Why it's held | What would settle it |
+|---|---|---|---|
+| Hack, pendulum, front, low-bar and Smith squats → Glutes / Hamstrings | Flat | Kubo and Plotkin measured only the barbell back squat | Growth measured on the variant |
+| Every squat → Adductors | Flat | The back squat's measured adductor growth includes the magnus, which selects Hamstrings; the variants weren't measured | Sub-regions for the magnus, then adductor growth measured apart from it |
+| 45° leg press → Glutes, adductor magnus | Flat | The only trial used a seated leg press, and it is one trial | A replication, ideally on a 45° sled |
+| Machine and single-leg hip thrusts → Glutes / Hamstrings | Flat | Plotkin measured the barbell hip thrust, which isn't in the catalogue | Growth measured on these, or adding the barbell hip thrust |
+| 45° back extension → Hamstrings | 0.5, held | One trial (Bourne 2017), read in abstract only | The full text, then a replication |
+| Romanian deadlift and other hinges → Hamstrings / Glutes / Lower back | Flat | No growth data | Any trial measuring them |
+| Seated calf raise → Calves | 0.25, ATLAS's choice | Whole calf 0.375 of standing in one trial; ATLAS's Calves (gastrocnemius and upper soleus) has no measured ratio | A ratio for the gastrocnemius and upper soleus, or a replication |
+| Leg press and Smith calf raises → Calves | Flat | Measured on a standing machine only | Growth measured on them |
+| Rows and pulldowns → Biceps | 0.5 | Two trials disagree (0.47 and about 1.0); only the one-arm dumbbell row and the wide-grip pulldown were measured | A trial that settles the range |
+| Incline, dumbbell, machine and Smith presses, push-ups → Triceps | Flat | Measured on the barbell bench press only, in untrained men | Growth measured on the variants |
+| The [D] rows: any press → Shoulders; overhead press; row → Upper back / Lats / rear delts; hip thrust → Quads / Adductors; hinge → Glutes / Lower back; leg raise → Abs; compounds → Abs, Obliques, Traps, Forearms; lunges and split squats → anything | Flat; not built | No growth data, EMG at most | Any growth trial |
+| Every credit above | | All measured in untrained adults | Trials in trained lifters |
+
 ## Proposed model (second check; weekly budgets adopted)
 
 Every number is a starting policy that adapts to the user's logs. It replaces the first check's proposal. The **weekly budgets were adopted in step 2 (2026-10-29)**; everything else below is still a proposal.
@@ -320,16 +339,16 @@ Rules [D]: credits are 1.0, 0.5, 0.25 or 0 only. A set credits each app group at
 | Leg press → Quads / Glutes / Adductors | 1.0 / 0.5 / 0.5 | Measured glutes 3.1×, adductor magnus 1.27× quads, single trial; held at 0.5 until replicated | [B] + [D] |
 | Leg press → Hamstrings | 0 | | [B] |
 | Hip thrust → Glutes / Quads / Adductors | 1.0 / 0.25 / 0.25 | Glutes = squat; others less (Plotkin) | [B] glutes; [D] fractions |
-| Hinge (RDL, 45° hip extension) → Hamstrings | 1.0 | Bourne 2017, thin | [B], one trial |
+| 45° hip extension → Hamstrings | 0.5 | Bourne 2017, one trial, abstract only; held at the flat default (the user, 2026-10-30) | [B] + [D] |
 | Hinge → Glutes / Lower back | 0.5 / 0.5 | No data | [D] |
 | Leg extension → Quads | 1.0 | Rectus femoris +13.2% | [B] |
 | Leg curl → Hamstrings | 1.0 | Seated > lying (exercise note, not extra credit) | [B] |
 | Standing calf raise → Calves | 1.0 | Gastrocnemius +9–12% | [B] |
-| Seated calf raise → Calves | 0.25 | Gastrocnemius +0.6–1.7% | [B] |
+| Seated calf raise → Calves | 0.25 | Whole calf 0.375 of standing (gastrocnemius +0.6–1.7%, soleus +2.9%); rounded down, a conservative choice (the user, 2026-10-30) | [B] + [D] |
 | Leg raise / knee raise → Abs (incl. iliopsoas) | 1.0 | Psoas about +3% | [D] on [B] |
 | Compounds → Abs, Obliques, Traps, Forearms | 0 | No growth data; EMG only | [D]; never claim coverage |
 
-**As built** (`js/set-credit.js`, step 4, not yet read by the planner): the rows above backed by measured growth, [B], with the adductor decision applied (squat → Adductors 0, stored at the magnus; leg press likewise). Each row covers catalogue movements, so a row measured on one variant (back squat, standing calf raise, bench press) also covers the others; the row's `how` says so. Not in yet: the [D] rows (any press → Shoulders, overhead press, row → Upper back / Lats / rear delts, half squat, hip thrust → Quads / Adductors, hinge → Glutes / Lower back, leg raise, compounds → Abs, Obliques, Traps, Forearms) and leg press → Quads / Hamstrings. Pairs without a row keep the flat 1 / 0.5. Against the catalogue this changes 11 credits, listed in `tests/set-credit.test.js`.
+**As built** (`js/set-credit.js`, step 4, not yet read by the planner): the rows above backed by measured growth, [B], with the adductor decision applied (the back squat's adductor growth is stored at the magnus, and Adductors keeps the flat default). **A row applies to the exercise that was measured; every unmeasured variant keeps the flat default** (the user's rule, 2026-10-30). So the rows name catalogue exercises: Barbell Back Squat (Kubo, Plotkin), Bench Press (barbell), 1-Arm Dumbbell Row, Wide-Grip Lat Pulldown, 45-Degree Back Extension, Leg Extension, Seated and Lying Leg Curl, Standing and Seated Calf Raise. The other squats, the 45° leg press (the trial used a seated one), the hip thrusts (the trial's barbell hip thrust isn't in the catalogue) and every other press, row, pulldown and calf raise keep the flat 1 / 0.5. The [D] rows above aren't in. Against the catalogue this changes 1 credit, checked in `tests/set-credit.test.js`: seated calf raise → Calves 1 → 0.25. The catalogue lists Adductors only for the back and Smith machine squats, so the other squats credit it nothing; that is the catalogue's call, not this table's. What the rule holds back is listed under "Evidence wanted".
 
 With squats at 3.0 FHS per set, FHS per physical set will run well above the first check's assumed 1.25×. Compute it from generated plans; don't assume a multiplier.
 
@@ -379,7 +398,9 @@ This matters for credit. Kubo's and Kinoshita/Maeo's adductor growth includes, o
 
 The user agreed with this reading on 2026-10-29, and with the note on trim order under "Where the code stands".
 
-**Decision (the user, 2026-10-29):** the selection mapping stays: the adductor magnus selects Hamstrings. Its squat stimulus goes to neither broad group. It is stored at the magnus level (a `region` row in `js/set-credit.js`) and credited to neither Hamstrings nor Adductors until the app can hold sub-regions; then the magnus gets its own region and is credited directly. A 0 for squat → Adductors means too little evidence for the current group mapping, not zero activation or growth. Squat → Hamstrings 0 is a different zero: Kubo measured it. Leg press adductor magnus growth (Kinoshita/Maeo) is stored the same way.
+**Decision (the user, 2026-10-29):** the selection mapping stays: the adductor magnus selects Hamstrings. Its squat stimulus is stored at the magnus level (a `region` row in `js/set-credit.js`) and credited to no group until the app can hold sub-regions; then the magnus gets its own region and is credited directly. Squat → Hamstrings 0 stays: Kubo measured it.
+
+**Revised (the user, 2026-10-30):** squat → Adductors is not set to 0. Squats do work the adductors, so Adductors takes the flat default (0.5 where the catalogue lists it) in every squat variant, the back squat included. The magnus row stays, credited to no group, so nothing is counted twice. The `unassigned` kind of zero has no row now; the validator keeps it for a real case. Leg press adductor magnus growth (Kinoshita/Maeo) would be stored the same way, but it was measured on a seated leg press, which the catalogue doesn't have, so nothing is stored for it yet.
 
 ## What the app may and may not claim
 
@@ -491,14 +512,14 @@ How far each was read, and where. "EPMC" is Europe PMC.
 | Remmert et al. 2025 | PRE | Preprint page | [SportRxiv](https://sportrxiv.org/index.php/server/preprint/view/537) |
 | Ramos-Campo 2024 | A (secondary) | Secondary only | [Biolayne](https://biolayne.com/reps/issue-25/full-body-vs-split-routine-wars/) |
 | Split-session trial, RQES 2023 | B | Abstract | [LIDA](https://lida.sport-iat.de/ta/Record/4081322?lng=de) |
-| Brandão 2020; Ogasawara 2013 | B | Full text | [Brandão](https://paulogentil.com/pdf/Varying%20the%20Order%20of%20Combinations%20of%20Single-%20and%20Multi-Joint%20Exercises%20Differentially%20Affects%20Resistance%20Training%20Adaptations.pdf); [Ogasawara](https://paulogentil.com/pdf/Comparison%20of%20muscle%20hypertrophy%20following%206-month%20of%20continuous%20and%20periodic%20strength%20training.pdf) |
-| Mannarino; Gentil 2015 | B | Full text | [Mannarino](https://paulogentil.com/pdf/Single-Joint%20Exercise%20Results%20in%20Higher%20Hypertrophy%20of%20Elbow%20Flexors%20Than%20Multijoint%20Exercise.pdf); [Gentil](https://brieflands.com/articles/asjsm-21609.html) |
+| Brandão 2020; Ogasawara 2013 | B | Full text | [Brandão DOI](https://doi.org/10.1519/JSC.0000000000003550); [Ogasawara DOI](https://doi.org/10.1007/s00421-012-2511-9); both read through PDF copies (paulogentil.com) |
+| Mannarino 2021; Gentil 2015 | B | Full text | [Mannarino DOI](https://doi.org/10.1519/JSC.0000000000003234), read through a PDF copy (paulogentil.com); [Gentil DOI](https://doi.org/10.5812/asjsm.24057), read on the publisher's page |
 | Rosa 2023 | A | Record summary | [LIDA](https://lida.sport-iat.de/ta/Record/4082423?lng=en) |
-| Kubo 2019 | B | Full text | [PDF](https://uniguacu.com.br/wp-content/uploads/2023/09/Artigo-Agachamento.pdf) |
-| Kinoshita/Maeo 2026 | B | Full text | [PDF](https://www.fisiologiadelejercicio.com/wp-content/uploads/2026/02/hypertrophic_effects_of_single__versus_multi_joint.1002-1.pdf) |
-| Plotkin 2023 | B | Full text | [Frontiers](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1279170/full) |
-| Maeo 2021; Bourne 2017 | B | Abstract | [EPMC](https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:33009197&resultType=core&format=json); [PEDro](https://search.pedro.org.au/search-results/record-detail/57401) |
-| Calf trial 2023; Kassiano 2023 | B | Full text; abstract | [Frontiers](https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1272106/full); [EPMC](https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:37015016&resultType=core&format=json) |
+| Kubo 2019 | B | Full text | [DOI](https://doi.org/10.1007/s00421-019-04181-y), read through a PDF copy (uniguacu.com.br) |
+| Kinoshita/Maeo 2026 | B | Full text | [DOI](https://doi.org/10.1249/MSS.0000000000003957), read through a PDF copy of the accepted manuscript (fisiologiadelejercicio.com) |
+| Plotkin 2023 | B | Full text | [DOI](https://doi.org/10.3389/fphys.2023.1279170), read on the publisher's page |
+| Maeo 2021; Bourne 2017 | B | Abstract | [Maeo DOI](https://doi.org/10.1249/MSS.0000000000002523), abstract read through EPMC; [Bourne DOI](https://doi.org/10.1136/bjsports-2016-096130), abstract read through PEDro |
+| Kinoshita 2023 (calf); Kassiano 2023 | B | Full text; abstract | [Kinoshita DOI](https://doi.org/10.3389/fphys.2023.1272106), read on the publisher's page; [EPMC](https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:37015016&resultType=core&format=json) |
 | Maeo 2023 (triceps) | B | Abstract | [EPMC](https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:35819335&format=json&resultType=core) |
 | Wolf 2025; Gschneidner; Larsen 2024 | B / PRE / PRE | Full text / preprint / preprint | [PeerJ](https://peerj.com/articles/18904); [SportRxiv](https://sportrxiv.org/index.php/server/preprint/download/485/1040/972); [SportRxiv](https://doi.org/10.51224/SRXIV.407) |
 | Bickel 2011 | B | Full text | [PDF](https://paulogentil.com/pdf/Exercise%20Dosing%20to%20Retain%20Resistance%20Training%20Adaptations%20in%20Young%20and%20Older%20Adults.pdf) |
