@@ -440,7 +440,7 @@ Still open:
 - **No effort guidance, no safety line.**
 - **`EXERCISE_RATINGS`** is undocumented practitioner opinion.
 - **Copy:** "add sets as you adapt" (`js/targets-train.js:180`).
-- **`js/evidence.js`** holds five findings this file doesn't cover yet (Singer 2024 rest, Wolf 2023 range of motion, Sousa 2024 recovery, Grgic 2019 / Hamarsland 2022 frequency, Schoenfeld 2019 counting), and some older links still point to repositories.
+- **`js/evidence.js`** holds five findings this file doesn't cover yet (Singer 2024 rest, Wolf 2023 range of motion, Sousa 2024 recovery, Grgic 2019 / Hamarsland 2022 frequency, Schoenfeld 2019 counting).
 - **Unused:** `estimateHTML` (`js/targets.js:324`) and `PROGRESS_PHASES` (`js/estimate.js:161`), whose timeline has no source.
 
 ## Open items
