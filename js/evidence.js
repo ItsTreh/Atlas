@@ -65,9 +65,9 @@ const EVIDENCE = Object.freeze([
       { label: "Robinson et al. 2025, preprint (8 vs 16 sets)",
         url: "https://www.biorxiv.org/content/10.1101/2025.07.24.666533v1" },
       { label: "Barsuhn et al. 2025, Journal of Applied Physiology (habitual vs +30% and +60%)",
-        url: "https://openrepository.aut.ac.nz/server/api/core/bitstreams/4f83ffc5-1aad-4dc8-92fb-1c28156b3211/content" },
-      { label: "Räntilä and Ahtiainen 2026 (about 40 vs about 60 sets)",
-        url: "https://jyx.jyu.fi/bitstreams/91cae5f5-7294-4d9b-b963-73609dfa1c89/download" }
+        url: "https://doi.org/10.1152/japplphysiol.00476.2024" },
+      { label: "Räntilä and Ahtiainen 2026, Journal of Science in Sport and Exercise (about 40 vs about 60 sets)",
+        url: "https://doi.org/10.1007/s42978-026-00387-7" }
     ],
     lastReviewed: "2026-10-29"
   },
@@ -87,8 +87,8 @@ const EVIDENCE = Object.freeze([
         url: "https://pubmed.ncbi.nlm.nih.gov/21131862/" },
       { label: "Spiering et al. 2021, Journal of Strength and Conditioning Research (review)",
         url: "https://pubmed.ncbi.nlm.nih.gov/33629972/" },
-      { label: "Van Vossel et al. 2024 (untrained muscles shrank)",
-        url: "https://researchprofiles.ku.dk/en/publications/evidence-for-simultaneous-muscle-atrophy-and-hypertrophy-in-respo/" }
+      { label: "Van Vossel et al. 2024, Medicine & Science in Sports & Exercise (untrained muscles shrank)",
+        url: "https://doi.org/10.1249/MSS.0000000000003475" }
     ],
     lastReviewed: "2026-10-29"
   },
@@ -104,9 +104,9 @@ const EVIDENCE = Object.freeze([
             "to spread volume across sessions.",
     sources: [
       { label: "Grgic, Schoenfeld and Latella 2019, Journal of Science and Medicine in Sport",
-        url: "https://ro.ecu.edu.au/ecuworkspost2013/5665" },
+        url: "https://doi.org/10.1016/j.jsams.2018.09.223" },
       { label: "Hamarsland et al. 2022, Frontiers in Physiology",
-        url: "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2021.789403/pdf" },
+        url: "https://doi.org/10.3389/fphys.2021.789403" },
       { label: "Pelland et al. 2024, preprint",
         url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
     ],
@@ -123,7 +123,7 @@ const EVIDENCE = Object.freeze([
             "recovery.",
     sources: [
       { label: "Robinson et al. 2024, Sports Medicine",
-        url: "https://rke.abertay.ac.uk/en/publications/exploring-the-dose-response-relationship-between-estimated-resist/" }
+        url: "https://doi.org/10.1007/s40279-024-02069-2" }
     ],
     lastReviewed: "2026-10-08"
   },
@@ -137,7 +137,7 @@ const EVIDENCE = Object.freeze([
             "controlled comparisons crossed zero, so the evidence for longer rest is weak.",
     sources: [
       { label: "Singer et al. 2024, Frontiers in Sports and Active Living",
-        url: "https://www.frontiersin.org/journals/sports-and-active-living/articles/10.3389/fspor.2024.1429789/text" }
+        url: "https://doi.org/10.3389/fspor.2024.1429789" }
     ],
     lastReviewed: "2026-10-08"
   },
@@ -151,7 +151,7 @@ const EVIDENCE = Object.freeze([
             "exploratory subgroup analysis whose interval includes zero.",
     sources: [
       { label: "Wolf et al. 2023, International Journal of Strength and Conditioning",
-        url: "https://doaj.org/article/99e86b317bec40f5abc2f0008358737e" }
+        url: "https://doi.org/10.47206/ijsc.v3i1.182" }
     ],
     lastReviewed: "2026-10-08"
   },
@@ -182,7 +182,7 @@ const EVIDENCE = Object.freeze([
             "counts indirect sets fractionally.",
     sources: [
       { label: "Schoenfeld et al. 2019, Sports",
-        url: "https://doaj.org/article/784eec50dc3d43a4b8b0d235d4c5845c" },
+        url: "https://doi.org/10.3390/sports7070177" },
       { label: "Pelland et al. 2024, preprint",
         url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
     ],
