@@ -466,8 +466,9 @@ const PLANNER_TABLES = Object.freeze({
   },
   exerciseTiers: {
     at: "exercises.js, EXERCISE_RATINGS", origin: "heuristic", basedOn: [],
-    note: "Tier lists copied as supplied to the project. Their source is not " +
-          "documented, and six muscles have none."
+    note: "Tier lists from an ATLAS user poll (incomplete): opinion, not evidence. " +
+          "They only order exercises within a muscle. Muscles with no list: traps, " +
+          "forearms, hamstrings, adductors, calves, abs, obliques, lower-back."
   }
 });
 

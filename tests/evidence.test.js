@@ -48,4 +48,12 @@ describe("planner configuration", () => {
   test("an unknown key is an error", () => {
     expect(() => app.configValue("nope")).toThrow();
   });
+  test("the tier lists' note names their source and exactly the muscles without a list", () => {
+    const note = app.PLANNER_TABLES.exerciseTiers.note;
+    expect(note).toContain("ATLAS user poll (incomplete)");
+    expect(note).not.toMatch(/not documented|undocumented/);
+    const unrated = app.MUSCLES.filter(m => !app.EXERCISES.some(e => e.tierFor(m.id))).map(m => m.id);
+    const named = note.split("Muscles with no list: ")[1].replace(/\.$/, "").split(", ");
+    expect(named.sort()).toEqual(unrated.sort());
+  });
 });

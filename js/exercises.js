@@ -6,7 +6,8 @@
      EXERCISE_CATALOGUE  what an exercise IS: its movement and the muscles it
                          trains, primary and secondary. Rated or not.
      EXERCISE_RATINGS    how exercises are RATED for a muscle group: tier
-                         lists, copied exactly as supplied.
+                         lists from an ATLAS user poll (incomplete). Opinion,
+                         not evidence (evidence.js, exerciseTiers).
 
    A rating applies to the muscles in the list's `rates` that the exercise
    trains as a primary. That is how one "Back" list rates a pulldown for the
@@ -243,8 +244,8 @@ const EXERCISE_CATALOGUE = [
 ];
 
 /* --------------------------------------------------------------------------
-   Ratings, exactly as supplied. Within a tier, list order is kept and used
-   only to break ties.
+   Ratings from an ATLAS user poll (incomplete), kept as the poll gave them.
+   Within a tier, list order is kept and used only to break ties.
    -------------------------------------------------------------------------- */
 const EXERCISE_RATINGS = [
   { group: "Chest", rates: ["chest"], tiers: {

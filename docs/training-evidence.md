@@ -221,7 +221,7 @@ Traced to their primaries:
 
 **Use in ATLAS:** exercise-selection defaults labelled "Practitioner default (J. Nippard)", cited by video ID because he renames videos; a pointer to primaries ATLAS cites directly; practitioner support for Maintain/Normal/Focus ("keep most muscles low, blast one at a time, rotate"). His set ranges (maintenance 4–8, sweet spot 8–20, Focus up to about 30 for 1–2 months) may appear only as [P]. His N=1 cut experiment never becomes a rule.
 
-The tier lists in `js/exercises.js` (`EXERCISE_RATINGS`) match his criteria; they are practitioner opinion.
+The tier lists in `js/exercises.js` (`EXERCISE_RATINGS`) are not his: they come from an ATLAS user poll (incomplete). They are opinion, not evidence, and only order exercises within a muscle.
 
 ## Do not cite
 
@@ -459,7 +459,7 @@ Still open:
 - **`maxSetsPerSession` 8** is a hard cap justified in a comment by research that doesn't exist (`js/workouts.js:39`).
 - **Flat `secondaryCredit` 0.5** still drives the planner. The measured credits are in `js/set-credit.js` (step 4), checked against the catalogue but not read by `Workout` yet. Several credits still have no data (lower back, forearms, traps, obliques, abs from compounds; hamstrings from lunges).
 - **No effort guidance, no safety line.**
-- **`EXERCISE_RATINGS`** is undocumented practitioner opinion.
+- **`EXERCISE_RATINGS`** comes from an ATLAS user poll (incomplete): opinion, not evidence. Eight muscles have no list (traps, forearms, hamstrings, adductors, calves, abs, obliques, lower back).
 - **Copy:** "add sets as you adapt" (`js/targets-train.js:180`).
 - **`js/evidence.js`** holds five findings this file doesn't cover yet (Singer 2024 rest, Wolf 2023 range of motion, Sousa 2024 recovery, Grgic 2019 / Hamarsland 2022 frequency, Schoenfeld 2019 counting).
 - **Unused:** `estimateHTML` (`js/targets.js:324`) and `PROGRESS_PHASES` (`js/estimate.js:161`), whose timeline has no source.
@@ -475,7 +475,6 @@ Tracked, not blocking:
 - **The workout view counts on its own (step 7).** `weekSets` (`js/workout-view.js:204`) adds up each muscle's weekly sets itself, the same total a `weeklyVolume()` row gives, and the per-session lines (`:68`, `:210`) call `directSets` / `assistedSets` directly. When step 7 shows the weekly arithmetic, the view should read the row's `sets`, `direct` and `assisted` instead; the per-session split stays the workout's.
 
 Later, after the volume work:
-- `js/evidence.js` says six muscles have no tier ratings; it's eight.
 - The "no exercises yet" messages are unreachable (every group has exercises) and can be deleted.
 
 ## Sources
