@@ -175,18 +175,19 @@ const EVIDENCE = Object.freeze([
     id: "indirect-set-counting",
     topic: "Counting sets where a muscle only assists",
     finding: "A squat or a press does not work every assisting muscle as much as the " +
-             "main one, so counting its sets 1 to 1 for each muscle overstates the work.",
+             "main one, so counting its sets 1 to 1 for each muscle overstates the work. " +
+             "Counting them as half fit the growth data better than 0 or 1.",
     certainty: "low",
-    limits: "The sources disagree on the remedy: a 2019 review advises counting 1 to 1 " +
-            "until there is more data, while the best-fitting model in a 2024 preprint " +
-            "counts indirect sets fractionally.",
+    limits: "Only 0, 0.5 and 1 were compared, and the 0.5 was fixed in advance, not " +
+            "estimated; which muscles assist was not wholly objective. A 2019 review " +
+            "advised counting 1 to 1 until there was more data.",
     sources: [
+      { label: "Pelland et al. 2026, Sports Medicine 56(2):481-505",
+        url: "https://doi.org/10.1007/s40279-025-02344-w" },
       { label: "Schoenfeld et al. 2019, Sports",
-        url: "https://doi.org/10.3390/sports7070177" },
-      { label: "Pelland et al. 2024, preprint",
-        url: "https://sportrxiv.org/index.php/server/preprint/view/460" }
+        url: "https://doi.org/10.3390/sports7070177" }
     ],
-    lastReviewed: "2026-10-08"
+    lastReviewed: "2026-11-09"
   },
 
   /* Measured regional growth from one exercise: the basis of SET_CREDIT
@@ -337,8 +338,10 @@ const PLANNER_CONFIG = Object.freeze({
   },
   secondaryCredit: {
     group: "workout", value: 0.5, origin: "heuristic", basedOn: ["indirect-set-counting"],
-    note: "A set where the muscle only assists counts as half. The sources disagree " +
-          "(see the finding), so this value must stay easy to change."
+    note: "A set where the muscle only assists counts as half. Pelland 2026 found 0.5 " +
+          "fit better than counting such sets as 0 or 1, but the authors fixed 0.5 in " +
+          "advance rather than estimating it, and tested only those three values. An " +
+          "interim default, easy to change."
   },
   repeatDemotion: {
     group: "workout", value: 1, origin: "optimization", basedOn: [],
@@ -384,6 +387,14 @@ const PLANNER_CONFIG = Object.freeze({
   warmupMinutes: {
     group: "estimate", value: 10, origin: "heuristic", basedOn: [],
     note: "Per session, not available for working sets."
+  },
+  assistedShareCap: {
+    group: "target", value: 0.5, origin: "heuristic", basedOn: ["indirect-set-counting"],
+    note: "Half-target rule: for Normal and Focus muscles, credit below 1 from sets done for " +
+          "another muscle covers at most this share of the weekly target; the rest is " +
+          "direct work. A design choice (adopted 2026-11-09): every credit below 1 is an " +
+          "estimate, and pressing barely grows the triceps long head. Maintain is exempt, " +
+          "since keeping a muscle needs load and effort more than set count."
   },
   weeklyTargets: {
     group: "target", origin: "heuristic", basedOn: ["weekly-volume", "maintenance-volume"],
@@ -453,6 +464,15 @@ const PLANNER_TABLES = Object.freeze({
   schedulerScore: {
     at: "scheduler.js, SCORE", origin: "optimization", basedOn: ["recovery-between-sessions"],
     note: "Weights tuned against each other to place sessions; not taken from research."
+  },
+  plannedOverlap: {
+    at: "set-credit.js, PLANNED_OVERLAP_LABELS and PLANNED_CREDIT_EXCLUDED", origin: "heuristic",
+    basedOn: ["indirect-set-counting", "press-triceps-growth", "pull-biceps-growth",
+              "squat-regional-growth"],
+    note: "The credit the plan counts before exercises are chosen: the lowest any of a " +
+          "muscle's compounds gives another, from the catalogue's muscle lists, never the " +
+          "tier lists. Each pair is labelled D or B+D. Hamstrings give none (no hinge " +
+          "growth data; the user's call, 2026-11-09)."
   },
   setCredit: {
     at: "set-credit.js, SET_CREDIT", origin: "heuristic",

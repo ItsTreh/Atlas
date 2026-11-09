@@ -321,7 +321,7 @@ The accessory floors for Normal and Focus equal their targets [D]: no accessory 
 
 ### Set-credit table
 
-Rules [D]: credits are 1.0, 0.5, 0.25 or 0 only. A set credits each app group at most once. Credit below 1.0 covers at most half of a group's weekly target; the rest must come from sets where that group scores 1.0. **No per-set total cap.** Store as data, one row per exercise class, each with `tier`, `how` and a `regions` note. Display rounded to 0.5.
+Rules [D]: credits are 1.0, 0.5, 0.25 or 0 only. A set credits each app group at most once. Credit below 1.0 covers at most half of a group's weekly target; the rest must come from sets where that group scores 1.0 (**adopted 2026-11-09 for Normal and Focus; Maintain is exempt**, since keeping a muscle needs load and effort more than set count: `assistedShareCap`). **No per-set total cap.** Store as data, one row per exercise class, each with `tier`, `how` and a `regions` note. Display rounded to 0.5.
 
 | Exercise class → group | Credit | Basis | Tier |
 |---|---|---|---|
@@ -349,6 +349,10 @@ Rules [D]: credits are 1.0, 0.5, 0.25 or 0 only. A set credits each app group at
 | Compounds → Abs, Obliques, Traps, Forearms | 0 | No growth data; EMG only | [D]; never claim coverage |
 
 **As built** (`js/set-credit.js`, step 4, not yet read by the planner): the rows above backed by measured growth, [B], with the adductor decision applied (the back squat's adductor growth is stored at the magnus, and Adductors keeps the flat default). **A row applies to the exercise that was measured; every unmeasured variant keeps the flat default** (the user's rule, 2026-10-30). So the rows name catalogue exercises: Barbell Back Squat (Kubo, Plotkin), Bench Press (barbell), 1-Arm Dumbbell Row, Wide-Grip Lat Pulldown, 45-Degree Back Extension, Leg Extension, Seated and Lying Leg Curl, Standing and Seated Calf Raise. The other squats, the 45° leg press (the trial used a seated one), the hip thrusts (the trial's barbell hip thrust isn't in the catalogue) and every other press, row, pulldown and calf raise keep the flat 1 / 0.5. The [D] rows above aren't in. Against the catalogue this changes 1 credit, checked in `tests/set-credit.test.js`: seated calf raise → Calves 1 → 0.25. The catalogue lists Adductors only for the back and Smith machine squats, so the other squats credit it nothing; that is the catalogue's call, not this table's. What the rule holds back is listed under "Evidence wanted".
+
+**Planned overlap (adopted 2026-11-09, `plannedOverlap` in `js/set-credit.js`).** Targets are effective sets: direct sets plus credit. Before exercises are chosen, the plan counts only the credit a muscle's compounds are sure to give another, which is the lowest across its compounds, read from the catalogue's muscle lists and `SET_CREDIT`, never from the tier lists. Each pair is labelled [D] or [B+D]. Above 0.5, it needs measured rows behind every compound. Hamstrings give no planned credit: the Romanian deadlift's 1.0 to the glutes has no hinge growth data, and counting it would open hamstring sessions with the deadlift ahead of the seated leg curl, the best-measured hamstring exercise. A muscle that gives credit opens each session with a compound (compound-first, [D]: common practice, not researched). Credit flows from bigger muscles to smaller ones, ties broken by catalogue order.
+
+**Units.** Pelland's budgets count effective sets (indirect at 0.5). The trained-lifter trials behind the ceiling of 18 (Barsuhn, Enes, Räntilä) counted direct quad sets, so 18 *effective* sets is slightly more conservative than those trials, which is the safe direction.
 
 With squats at 3.0 FHS per set, FHS per physical set will run well above the first check's assumed 1.25×. Compute it from generated plans; don't assume a multiplier.
 

@@ -23,6 +23,10 @@
                   call, 2026-10-30); the check stays for a real case.
 
    Not read by the planner yet: Workout still counts the flat default.
+
+   Planned overlap (below) is the part the week plan may count before any
+   exercise is chosen: the credit a muscle's sets are sure to give another,
+   whichever of its compounds the workout picks.
    ========================================================================= */
 
 const CREDIT_STEPS = Object.freeze([1, 0.5, 0.25, 0]);
@@ -110,6 +114,99 @@ function setCredit(exercise, muscleId) {
   return { credit: 0, tier: null, how: "", row: null };
 }
 
+/* ============================ planned overlap ============================
+   Targets are effective sets: direct sets plus credit from sets done for
+   another muscle (the user's decision, 2026-11-09). Before the exercises
+   are chosen, the plan may count only the credit that holds whichever
+   compound the workout picks: for a muscle `from`, the lowest credit any of
+   its compounds (an exercise with `from` as a primary and a compound
+   movement) gives `to`, as setCredit counts it. It reads the catalogue's
+   primary and assisting lists and SET_CREDIT, never the tier lists, so the
+   rankings cannot move a muscle's numbers. The workout then makes `from`'s
+   first exercise in each session one of those compounds, so the credit is
+   delivered (compound-first: common practice, not researched; [D]).
+
+   Every overlap with a credit must be labelled below with its tier (D: a
+   flat default on a catalogue label; B+D: the same, with measured growth
+   behind part of it) and how it stands, so a catalogue edit that creates a
+   new overlap has to be looked at. Above 0.5, a credit must rest on measured
+   SET_CREDIT rows for every compound, so the half-target rule
+   (assistedShareCap, evidence.js) reaches every unmeasured credit. */
+
+const OVERLAP_TIERS = Object.freeze(["B+D", "D"]);
+
+/** Muscles whose sets the plan counts for no other muscle, and so have no compound-first. */
+const PLANNED_CREDIT_EXCLUDED = Object.freeze([
+  { muscle: "hamstrings", decided: "2026-11-09",
+    why: "The Romanian deadlift, the only hamstring compound, lists the glutes as a primary " +
+         "(1.0) and the lower back and forearms as assisting, but no hinge growth has been " +
+         "measured. Counting it would also open every hamstring session with the deadlift, " +
+         "ahead of the seated leg curl, the best-measured hamstring exercise. If a deadlift " +
+         "is chosen, its credit is extra (estimate)." }
+]);
+
+const PLANNED_OVERLAP_LABELS = Object.freeze({
+  "chest>shoulders": { tier: "D", how: "Every chest compound is a press, which lists the " +
+    "front delts as assisting. No growth data for the delts from pressing." },
+  "chest>triceps": { tier: "B+D", how: "Barbell bench pressing grew the triceps about half " +
+    "as much as direct work, in untrained men; the other presses are unmeasured and keep " +
+    "the flat 0.5. Pressing barely grows the long head." },
+  "shoulders>triceps": { tier: "D", how: "Overhead presses list the triceps as assisting. " +
+    "No overhead-specific growth data." },
+  "triceps>chest": { tier: "D", how: "The dip, the only triceps compound, lists the chest " +
+    "as assisting. No growth data." },
+  "triceps>shoulders": { tier: "D", how: "The dip lists the front delts as assisting. No " +
+    "growth data." },
+  "upper-back>lats": { tier: "D", how: "Every row lists the lats at least as assisting. No " +
+    "lat or upper-back growth data." },
+  "lats>biceps": { tier: "B+D", how: "Rows and pulldowns grew the elbow flexors 0.47 to " +
+    "about 1.0 as much as curls in two trials; the flat 0.5 is the conservative end." },
+  "quads>glutes": { tier: "B+D", how: "Deep back squats grew the glutes more than the quads; " +
+    "the variants are unmeasured, and the leg press lists the glutes only as assisting, " +
+    "so the guaranteed credit is the flat 0.5." }
+});
+
+const NO_OVERLAP = Object.freeze({ credit: 0, tier: null, how: "" });
+
+/**
+ * Every planned overlap, worked out from the catalogue: Map "from>to" ->
+ * { credit, measured } where `measured` says every compound's credit comes
+ * from a SET_CREDIT row. Computed fresh; plannedOverlap reads a copy.
+ */
+function overlapTable() {
+  const table = new Map();
+  const excluded = new Set(PLANNED_CREDIT_EXCLUDED.map(x => x.muscle));
+  for (const from of MUSCLES) {
+    if (excluded.has(from.id)) continue;
+    const compounds = EXERCISES.filter(e => e.compound && e.trainsPrimarily(from.id));
+    if (!compounds.length) continue;
+    for (const to of MUSCLES) {
+      if (to === from) continue;
+      const credits = compounds.map(e => setCredit(e, to.id));
+      const credit = Math.min(...credits.map(c => c.credit));
+      if (credit > 0) table.set(from.id + ">" + to.id, { credit, measured: credits.every(c => c.row) });
+    }
+  }
+  return table;
+}
+
+let plannedOverlapCache = null;
+
+/**
+ * The credit one set for `fromId` is sure to give `toId` before the
+ * exercises are chosen: { credit, tier, how }, credit 0 when none.
+ */
+function plannedOverlap(fromId, toId) {
+  if (!plannedOverlapCache) plannedOverlapCache = overlapTable();
+  const hit = plannedOverlapCache.get(fromId + ">" + toId);
+  if (!hit) return NO_OVERLAP;
+  const label = PLANNED_OVERLAP_LABELS[fromId + ">" + toId];
+  return { credit: hit.credit, tier: label ? label.tier : null, how: label ? label.how : "" };
+}
+
+/** Whether the plan counts `muscleId`'s sets for another muscle (and so it opens with a compound). */
+const givesPlannedCredit = muscleId => MUSCLES.some(m => plannedOverlap(muscleId, m.id).credit > 0);
+
 /* ============================== validation =============================== */
 
 (function checkSetCredit() {
@@ -144,4 +241,22 @@ function setCredit(exercise, muscleId) {
         problem(name + ": \"" + n + "\" does not list " + row.muscle);
     }
   }
+})();
+
+(function checkPlannedOverlap() {
+  const problem = msg => console.error("Planned overlap data: " + msg);
+  for (const x of PLANNED_CREDIT_EXCLUDED) {
+    if (!MUSCLE_BY_ID.has(x.muscle)) problem("excluded muscle " + x.muscle + " is unknown");
+    if (!x.why || !/^\d{4}-\d{2}-\d{2}$/.test(x.decided)) problem(x.muscle + " needs a reason and a date");
+  }
+  const table = overlapTable();
+  for (const [pair, { credit, measured }] of table) {
+    const label = PLANNED_OVERLAP_LABELS[pair];
+    if (!label) problem(pair + " gives " + credit + " but has no label");
+    else if (!OVERLAP_TIERS.includes(label.tier) || !label.how) problem(pair + " needs a tier and a note");
+    if (credit > configValue("secondaryCredit") && !measured)
+      problem(pair + " gives " + credit + " without a measured row behind every compound");
+  }
+  for (const pair of Object.keys(PLANNED_OVERLAP_LABELS))
+    if (!table.has(pair)) problem(pair + " is labelled but the catalogue gives no overlap");
 })();

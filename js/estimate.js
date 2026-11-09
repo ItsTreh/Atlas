@@ -99,6 +99,66 @@ function muscleWeekMinutes(sets, days = Infinity) {
 }
 
 /**
+ * The order credit flows in when the plan turns targets into direct sets:
+ * biggest share of a session first (Muscle.minutes, the workout builder's
+ * order), ties by position in MUSCLES. Credit only flows from a muscle to
+ * one after it, so pairs that credit each other (chest and triceps,
+ * shoulders and triceps) are settled the same way every time.
+ */
+function planOrder(muscles) {
+  return [...muscles].sort((a, b) => b.minutes - a.minutes || MUSCLES.indexOf(a) - MUSCLES.indexOf(b));
+}
+
+/**
+ * Sessions a week the time model gives `sets` direct sets of one muscle:
+ * enough to keep each at or under WORKOUT.maxSetsPerSession, at most `days`.
+ */
+const sessionsFor = (sets, days = Infinity) =>
+  Math.max(1, Math.min(days, Math.ceil(sets / WORKOUT.maxSetsPerSession)));
+
+/**
+ * The direct sets that deliver each muscle's weekly target, counting the
+ * planned overlap (plannedOverlap, set-credit.js) from muscles earlier in
+ * planOrder. Targets are effective sets: direct + credit.
+ *
+ *   • A muscle's sets give credit only from its first exercise in each
+ *     session, the compound the workout opens with: at most
+ *     WORKOUT.maxSetsPerExercise sets a session (sessionsFor).
+ *   • Half-target rule (assistedShareCap, evidence.js; [D]): for Normal and
+ *     Focus, credit below 1 covers at most that share of the target; the
+ *     rest is direct work. Maintain is exempt: keeping a muscle needs load
+ *     and effort more than set count (the user's call, 2026-11-09).
+ *   • Never fewer direct sets than WORKOUT.minDirectSets (or the target, if
+ *     smaller): a chosen muscle always gets an exercise of its own.
+ *
+ * Direct sets are whole sets, rounded up, so the plan never books less than
+ * the target. Returns { direct: Map id -> sets, credit: Map id -> the
+ * credit counted toward it }.
+ */
+function directSetsFor(targets, muscles, priorities = new Map(), days = Infinity) {
+  const direct = new Map(), credit = new Map();
+  const share = configValue("assistedShareCap");
+  const order = planOrder(muscles);
+  for (const [i, m] of order.entries()) {
+    const target = targets.get(m.id) || 0;
+    if (target <= 0) { direct.set(m.id, 0); credit.set(m.id, 0); continue; }
+    let part = 0, full = 0;
+    for (const from of order.slice(0, i)) {
+      const sets = direct.get(from.id);
+      const c = sets ? plannedOverlap(from.id, m.id).credit : 0;
+      if (!c) continue;
+      const credited = Math.min(sets, WORKOUT.maxSetsPerExercise * sessionsFor(sets, days)) * c;
+      if (c < 1) part += credited; else full += credited;
+    }
+    const capped = (priorities.get(m.id) || "normal") === "maintain" ? part : Math.min(part, target * share);
+    const counted = Math.min(target, capped + full);
+    direct.set(m.id, Math.max(Math.min(WORKOUT.minDirectSets, target), Math.ceil(target - counted - 1e-9)));
+    credit.set(m.id, counted);
+  }
+  return { direct, credit };
+}
+
+/**
  * Whether the weekly targets fit the time the user has, and what to do if
  * not. `targets` is a Map of muscle id -> sets; `muscles` are the Muscle
  * objects; `priorities` maps id -> "maintain" | "normal" | "focus".
