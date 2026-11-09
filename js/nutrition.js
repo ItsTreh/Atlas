@@ -110,7 +110,7 @@ function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = n
   const sets = muscles.reduce((t, m) => t + setsOf(m), 0);
   const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? setsOf(m) : 0), 0);
   const minutes = Math.min(sessionsPerWeek * sessionMinutes,
-    muscles.reduce((t, m) => t + muscleWeekMinutes(setsOf(m), sessionsPerWeek), 0) +
+    muscles.reduce((t, m) => t + muscleWeekMinutes(setsOf(m), sessionsPerWeek, m.id), 0) +
     sessionsPerWeek * ESTIMATE.warmupMinutes);
   const hours = minutes / 60;
   const bigShare = bigSets / sets;

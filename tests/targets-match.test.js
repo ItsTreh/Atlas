@@ -167,9 +167,11 @@ describe("overshoot: deliberate fails, incidental is allowed (review of #70)", (
   });
 
   test("a compound for a muscle still short may push another past its target, within +2", () => {
-    // Full body, 3 x 75, glutes on Maintain: their target is 4 and they get 6, all of it
+    // Full body, 3 x 60, glutes on Maintain: their target is 4 and they get 6, all of it
     // from squats chosen for the quads. Allowed; no lift is chosen for the glutes.
-    const w = week({ program: "full-body", split: "full-body", experience: "beginner", days: 3, minutes: 75,
+    // (3 x 75 was the example until isolation-only muscles were timed at their own
+    // rest, 2026-11-09: that week now lands the glutes exactly on target.)
+    const w = week({ program: "full-body", split: "full-body", experience: "beginner", days: 3, minutes: 60,
                      priorities: { glutes: "maintain" } });
     const target = w.fit.targets.get("glutes");
     const got = w.r.weeklyVolume().rows.find(x => x.muscle.id === "glutes").sets;

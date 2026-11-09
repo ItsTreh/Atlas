@@ -96,7 +96,7 @@ class TrainingBlock {
   }
   get minutes() {
     if (this.plannedSets) {
-      const work = this.muscles.reduce((t, m) => t + muscleSessionMinutes(this.plannedSets.get(m.id) || 0), 0);
+      const work = this.muscles.reduce((t, m) => t + muscleSessionMinutes(this.plannedSets.get(m.id) || 0, m.id), 0);
       return Math.round(work + ESTIMATE.warmupMinutes);
     }
     return this.muscles.reduce((t, m) => t + (this.riders.has(m) ? 0 : m.minutes), 0);

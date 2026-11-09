@@ -140,3 +140,21 @@ describe("direct sets for the targets", () => {
     expect(direct.get("chest")).toBe(0);
   });
 });
+
+describe("the time model's rest", () => {
+  const { workSetMinutes, restCompoundMinutes, restIsolationMinutes, setupMinutes } = app.ESTIMATE;
+  const oneSet = rest => workSetMinutes + rest + setupMinutes;
+
+  test("a muscle with no compound in the catalogue is timed at isolation rest, as its sessions are", () => {
+    for (const id of ["biceps", "calves", "abs", "traps", "forearms", "adductors", "obliques", "lower-back"]) {
+      expect(app.EXERCISES.some(e => e.compound && e.trainsPrimarily(id)), id).toBe(false);
+      expect(app.muscleSessionMinutes(1, id), id).toBeCloseTo(oneSet(restIsolationMinutes));
+    }
+  });
+
+  test("a muscle with compounds, or none named, keeps compound rest: never under-counted", () => {
+    for (const id of ["chest", "quads", "lats", "hamstrings", "triceps"])
+      expect(app.muscleSessionMinutes(1, id), id).toBeCloseTo(oneSet(restCompoundMinutes));
+    expect(app.muscleSessionMinutes(1)).toBeCloseTo(oneSet(restCompoundMinutes));
+  });
+});

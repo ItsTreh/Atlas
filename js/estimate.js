@@ -68,19 +68,34 @@ const usableMinutes = sessionMinutes => Math.max(15, sessionMinutes - ESTIMATE.w
    The one way the planner times sets before the exercises are chosen. The
    fit (fitToTime), the estimate (estimateTraining), the distribution
    (distribution.js) and the workout builder (workouts.js) all use it, so a
-   week the targets fit is a week the sessions can hold. Every set is timed
-   with the compound rest, the longer one, and each exercise adds its setup,
-   split the way the builder splits a muscle's sets; the finished session is
-   then timed exercise by exercise (Workout.minutes) and can only come out
-   the same or shorter. */
+   week the targets fit is a week the sessions can hold. Each exercise adds
+   its setup, split the way the builder splits a muscle's sets. A set is
+   timed with the rest Workout.minutes will give it: a muscle with no
+   compound in the catalogue can only get isolation sets, so it rests
+   restIsolationMinutes; any other muscle (or one not named) rests
+   restCompoundMinutes, the longer one, since the workout may pick compounds
+   for it. The finished session is timed exercise by exercise
+   (Workout.minutes) and can only come out the same or shorter. */
+
+const compoundCache = new Map();
+/** Whether any compound in the catalogue trains `muscleId` as a primary. */
+function hasCompounds(muscleId) {
+  if (!compoundCache.has(muscleId))
+    compoundCache.set(muscleId, EXERCISES.some(e => e.compound && e.trainsPrimarily(muscleId)));
+  return compoundCache.get(muscleId);
+}
+
+/** Rest after one set of `muscleId` (see above); compound rest when the muscle isn't named. */
+const restFor = muscleId => muscleId && !hasCompounds(muscleId)
+  ? ESTIMATE.restIsolationMinutes : ESTIMATE.restCompoundMinutes;
 
 /** Exercises the builder splits `sets` of one muscle into in one session (WorkoutBuilder.buildOne). */
 const exercisesForSets = sets => Math.max(1, Math.round(sets / WORKOUT.setsPerExercise));
 
-/** Working minutes for `sets` of one muscle in one session. */
-function muscleSessionMinutes(sets) {
+/** Working minutes for `sets` of one muscle (`muscleId`) in one session. */
+function muscleSessionMinutes(sets, muscleId = null) {
   if (sets <= 0) return 0;
-  return sets * (ESTIMATE.workSetMinutes + ESTIMATE.restCompoundMinutes) +
+  return sets * (ESTIMATE.workSetMinutes + restFor(muscleId)) +
          exercisesForSets(sets) * ESTIMATE.setupMinutes;
 }
 
@@ -89,12 +104,12 @@ function muscleSessionMinutes(sets) {
  * as distribution.js starts it with: enough to keep each at or under
  * WORKOUT.maxSetsPerSession, at most `days`.
  */
-function muscleWeekMinutes(sets, days = Infinity) {
+function muscleWeekMinutes(sets, days = Infinity, muscleId = null) {
   if (sets <= 0) return 0;
   const times = Math.max(1, Math.min(days, Math.ceil(sets / WORKOUT.maxSetsPerSession)));
   const base = Math.floor(sets / times), extra = sets % times;
   let minutes = 0;
-  for (let i = 0; i < times; i++) minutes += muscleSessionMinutes(base + (i < extra ? 1 : 0));
+  for (let i = 0; i < times; i++) minutes += muscleSessionMinutes(base + (i < extra ? 1 : 0), muscleId);
   return minutes;
 }
 
@@ -178,7 +193,7 @@ function directSetsFor(targets, muscles, priorities = new Map(), days = Infinity
  * (null when it would not, or is unavailable).
  */
 function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes) {
-  const minutesOver = (map, days) => [...map.values()].reduce((t, n) => t + muscleWeekMinutes(n, days), 0);
+  const minutesOver = (map, days) => [...map].reduce((t, [id, n]) => t + muscleWeekMinutes(n, days, id), 0);
   const minutesFor = (map, perWeek, len) => minutesOver(map, perWeek) <= perWeek * usableMinutes(len);
   const total = map => minutesOver(map, sessionsPerWeek);
   const level = id => priorities.get(id) || "normal";
@@ -260,8 +275,8 @@ function estimateTraining(muscles, sessionMinutes, priorityOf = () => "normal") 
   };
   // The same time model as fitToTime, so this note and the fit note agree.
   const minutes = {
-    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(low(m)), 0)),
-    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(high(m)), 0))
+    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(low(m), Infinity, m.id), 0)),
+    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(high(m), Infinity, m.id), 0))
   };
   const usable = usableMinutes(sessionMinutes);
   const sessions = {

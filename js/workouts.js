@@ -117,10 +117,10 @@ function buildWeek(sessions, sessionMinutes, targets, priorities = null) {
   }
 }
 
-/** The most sets of one muscle that fit in `minutes` (muscleSessionMinutes, estimate.js). */
-function setsThatFit(minutes) {
+/** The most sets of one muscle (`muscleId`) that fit in `minutes` (muscleSessionMinutes, estimate.js). */
+function setsThatFit(minutes, muscleId = null) {
   let sets = 0;
-  while (muscleSessionMinutes(sets + 1) <= minutes) sets++;
+  while (muscleSessionMinutes(sets + 1, muscleId) <= minutes) sets++;
   return sets;
 }
 
@@ -472,7 +472,7 @@ class WorkoutBuilder {
     const workMinutes = () => workout.entries.length ? workout.minutes - ESTIMATE.warmupMinutes : 0;
 
     for (const muscle of order) {
-      const room = setsThatFit(this.available - workMinutes());
+      const room = setsThatFit(this.available - workMinutes(), muscle.id);
       if (room < WORKOUT.minDirectSets) { workout.skipped.push(muscle); continue; }
       const credit = workout.directSets(muscle.id) + workout.assistedSets(muscle.id);
       let need;

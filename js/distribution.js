@@ -144,7 +144,7 @@ function planDistribution(muscles, targets, priorities, days, sessionMinutes, ti
 const BALANCE_SLACK = 4;   // sets (about 17 min) of difference between days that are left alone
 const daySets = d => [...d.sets.values()].reduce((t, n) => t + n, 0);
 /** Working minutes of a day's sets (muscleSessionMinutes, the planner's one time model). */
-const dayMinutes = d => [...d.sets.values()].reduce((t, n) => t + muscleSessionMinutes(n), 0);
+const dayMinutes = d => [...d.sets].reduce((t, [id, n]) => t + muscleSessionMinutes(n, id), 0);
 
 /**
  * Step 4: even the days out. While the heaviest day is heavier than the
@@ -214,13 +214,13 @@ function consolidate(day, frequency, capacity) {
       const s = tiny.sets.get(m.id);
       const sessions = others.filter(d => d.sets.has(m.id));
       if (frequency.get(m.id) === 1) {
-        const cost = muscleSessionMinutes(s);
+        const cost = muscleSessionMinutes(s, m.id);
         const room = others.filter(d => plan.get(d) + cost <= capacity)
                            .sort((a, b) => plan.get(a) - plan.get(b));
         if (!room.length) { ok = false; break; }
         plan.set(room[0], plan.get(room[0]) + cost); moves.push([m, room[0], s, false]);
       } else {
-        const cost = d => muscleSessionMinutes(d.sets.get(m.id) + s) - muscleSessionMinutes(d.sets.get(m.id));
+        const cost = d => muscleSessionMinutes(d.sets.get(m.id) + s, m.id) - muscleSessionMinutes(d.sets.get(m.id), m.id);
         const home = sessions.filter(d => d.sets.get(m.id) + s <= sessionSetCap(m.id) &&
                                           plan.get(d) + cost(d) <= capacity)
                              .sort((a, b) => plan.get(a) - plan.get(b))[0];
@@ -280,7 +280,7 @@ function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold =
     for (const pattern of dayPatterns(D, times, 1)) {
       let over = 0, together = 0, heaviest = 0;
       pattern.forEach((d, i) => {
-        const after = load[d] + muscleSessionMinutes(sets[i]);
+        const after = load[d] + muscleSessionMinutes(sets[i], m.id);
         over += Math.max(0, after - capacity);
         together += family[d].get(m.family) || 0;
         heaviest = Math.max(heaviest, after);
@@ -292,7 +292,7 @@ function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold =
       if (!bestKey || compareKeys(key, bestKey) < 0) { best = pattern; bestKey = key; }
     }
     best.forEach((d, i) => {
-      load[d] += muscleSessionMinutes(sets[i]);
+      load[d] += muscleSessionMinutes(sets[i], m.id);
       family[d].set(m.family, (family[d].get(m.family) || 0) + sets[i]);
       day[d].muscles.push(m);
       day[d].sets.set(m.id, sets[i]);
