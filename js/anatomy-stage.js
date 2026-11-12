@@ -118,6 +118,10 @@ class AnatomyStage {
   setHighlight(ids) { this.state.highlight = ids; if (this.renderer && this.renderer.setHighlight) this.renderer.setHighlight(ids); }
   setDim(v) { this.state.dim = v; if (this.renderer && this.renderer.setDim) this.renderer.setDim(v); }
   setLayout(mode) { this.state.layout = mode; if (this.renderer && this.renderer.setLayout) this.renderer.setLayout(mode); }
+  /** Draws plates of the frieze into 2D canvases (AnatomySculpture.plates); false where it cannot. */
+  plates(list) { return !!(this.renderer && this.renderer.plates) && this.renderer.plates(list); }
+  /** Where the figure's axis lies on the stage at a share of its height, in CSS px; null without a camera. */
+  axisPoint(t) { return this.renderer && this.renderer.axisPoint ? this.renderer.axisPoint(t) : null; }
   /** Moves the sculpture's key light, -1 … 1 across and up; 0, 0 at rest (a flat figure has none). */
   setLight(x, y) { if (this.renderer && this.renderer.setLight) this.renderer.setLight(x, y); }
 }
