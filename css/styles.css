@@ -1677,6 +1677,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .atlas[data-stage="plan"] { --lamp-x: 50%; }
 .atlas[data-opening] { --lamp-x: 50%; }
 
+@property --mr { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
+@property --ml { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
+@property --mb { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
 @property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .anatomy-stage::after {
   content: ""; position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; pointer-events: none;
@@ -1715,14 +1718,30 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 [data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
 .bal-label { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; }
 /* What is written on the balance (nutrition-view.js sets each where its
-   piece is as the balance draws). What the needle reads: a small bronze
-   plate under its point. */
-.bal-needle {
-  translate: -50% 0; margin-top: 3px; padding: 3px 10px 4px; border-radius: 2px;
-  background: linear-gradient(170deg, #e9cf92, #b98a3c 55%, #8a5c1e); box-shadow: 0 1px 0 rgba(255,244,214,.6) inset, 0 2px 5px rgba(40,25,5,.3);
-  font: italic 500 18px/1 var(--serif); font-variant-numeric: lining-nums; color: #2c1a04; text-shadow: 0 1px 0 rgba(255,236,190,.55);
+   piece is as the balance draws). While the camera travels to a shot the
+   words stand back. */
+.balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: opacity .45s ease; }
+.balance.travel :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { opacity: 0; transition-duration: .2s; }
+/* How far eating is set from the burn: between the two totals, over the fulcrum. */
+.bal-lean { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 12px; white-space: nowrap; pointer-events: none; }
+.bal-lean b { font: italic 400 clamp(28px, 2.6vw, 38px)/1 var(--serif); font-variant-numeric: lining-nums; color: var(--cast, var(--ink)); }
+.bal-lean small { font-size: 11.5px; color: var(--ink-faint); }
+.bal-lean b:empty, .bal-lean small:empty { display: none; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-lean { display: none; }
+.bal-total-l { display: none; }
+.balance[data-shot="eat"] .bal-total-l { display: inline; }
+/* The way in to a side: a coin and what it does. */
+.bal-go {
+  display: flex; align-items: center; gap: 9px; margin-top: 4px; padding: 3px 4px 3px 0; border: 0; background: none; cursor: pointer; pointer-events: auto;
+  font: italic 400 17px/1 var(--serif); color: var(--ink-soft); transition: color .25s ease;
 }
-.bal-needle:empty { display: none; }
+.bal-legend[data-side="burn"] .bal-go { flex-direction: row-reverse; padding: 3px 0 3px 4px; }
+.bal-go svg { width: 30px; height: 30px; flex: none; overflow: visible; fill: none; stroke: currentColor; border-radius: 50%; transition: background .35s var(--ease-out), color .35s var(--ease-out); }
+.bal-go:hover, .bal-go:focus-visible { color: var(--ink); }
+.bal-go:hover svg, .bal-go:focus-visible svg { background: var(--ink); color: var(--bg); }
+.bal-go:hover .mzc-beads { transform: rotate(27deg); }
+.bal-go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+.balance:is([data-shot="burn"], [data-shot="eat"], [data-shot="set"]) .bal-go { display: none; }
 /* The goal, cut in the plinth's face. */
 .bal-plinth {
   font: 600 12px/1 var(--serif); letter-spacing: .34em; text-transform: uppercase; padding-left: .34em;
@@ -1732,9 +1751,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 /* A side's total, over its end of the beam, a hairline down to it. */
 .bal-total {
   position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 26px;
-  white-space: nowrap; pointer-events: none; transition: opacity .4s ease;
+  white-space: nowrap; pointer-events: none;
 }
 .bal-total::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 1px; height: 16px; background: var(--cast, var(--ink-faint)); opacity: .7; }
+.balance.held, .balance.held .bal-go { cursor: grabbing; }
 .bal-total-h { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
 .bal-total-n { display: flex; align-items: baseline; gap: 8px; }
 .bal-total-n b { font: 400 clamp(42px, 4.1vw, 62px)/.9 var(--serif); letter-spacing: -.015em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
@@ -1742,7 +1762,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .bal-total-p { font-size: 13px; color: var(--ink-soft); }
 .bal-total-p b { font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); margin-right: 2px; }
 /* What a pan holds, beside its rim: the weights by name, a meal a jar. */
-.bal-legend { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 7px; white-space: nowrap; transition: opacity .4s ease; }
+.bal-legend { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 7px; white-space: nowrap; }
 .bal-legend:empty { display: none; }
 .bal-legend[data-side="burn"] { padding-right: 34px; align-items: flex-end; text-align: right; }
 .bal-legend[data-side="eat"] { padding-left: 34px; align-items: flex-start; text-align: left; }
@@ -1773,12 +1793,16 @@ button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3p
 .balance:is([data-shot="burn"], [data-shot="eat"]) .bal-legend { gap: 12px; }
 .balance:is([data-shot="burn"], [data-shot="eat"]) .bal-plinth { display: none; }
 /* Seen close, the balance runs out of the shot: its lower edge fades into the ground. */
-.balance:is([data-shot="burn"], [data-shot="eat"]) canvas {
-  -webkit-mask-image: linear-gradient(var(--to, to right), #000 54%, transparent 68%), linear-gradient(to bottom, #000 80%, transparent 99%);
-  mask-image: linear-gradient(var(--to, to right), #000 54%, transparent 68%), linear-gradient(to bottom, #000 80%, transparent 99%);
+.balance canvas {
+  --mr: 130%; --ml: 130%; --mb: 130%;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
+  mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
   -webkit-mask-composite: source-in; mask-composite: intersect;
+  transition: --mr 1s var(--ease-out), --ml 1s var(--ease-out), --mb 1s var(--ease-out);
 }
-.balance[data-shot="eat"] canvas { --to: to left; }
+.balance[data-shot="burn"] canvas { --mr: 68%; --mb: 99%; }
+.balance[data-shot="eat"] canvas { --ml: 68%; --mb: 99%; }
+@media (prefers-reduced-motion: reduce) { .balance canvas, .balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: none; } }
 .balance:is([data-shot="burn"], [data-shot="eat"])::before { display: none; }
 .bal-sum small { white-space: normal; max-width: 190px; }
 .balance[data-shot="set"] { cursor: default; }
@@ -2760,3 +2784,4 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .nu-panel .row-body { gap: 8px; }
   .nu-panel .kv { gap: 6px 10px; }
 }
+.nu-slot { display: contents; }

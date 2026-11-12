@@ -148,60 +148,61 @@ const BalanceScene = (() => {
     "void main(){ vec4 w = uModel * vec4(aPos, 1.);" +
       "vP = w.xyz; vL = aPos; vN = (uModel * vec4(aNor, 0.)).xyz; gl_Position = uView * w; }";
   /* One way of drawing for every piece, by what it is made of (`uKind`):
-     0 metal, which shows the room (`uSky` above, `uGround` below, the lamp
-     and one bright bar of window) tinted by `uBase`; 1 a glaze, soft with a
-     sharp light on it; 2 stone, `uBase` veined with `uVein` through its
-     mass, so a vein runs on round a corner. */
+     0 metal, shaded as the Measure rings are: by how nearly it mirrors the
+     lamp, from `uDeep` through `uBase` and `uWarm` to a narrow `uHi`, darker
+     where it faces the floor and at its edges; 1 fired clay, matte; 2
+     stone, matte, `uBase` veined with `uDeep` through its mass, so a vein
+     runs on round a corner. `uOcc` is a place something stands (and how
+     far its shade reaches): the plinth under the stand, a pan under its load. */
   const FRAG = "precision highp float; varying vec3 vP; varying vec3 vN; varying vec3 vL;" +
-    "uniform vec3 uEye; uniform vec3 uLamp; uniform vec3 uBase; uniform vec3 uVein; uniform vec3 uSky; uniform vec3 uGround;" +
-    "uniform float uKind; uniform float uGloss; uniform float uLift;" +
+    "uniform vec3 uEye; uniform vec3 uLamp; uniform vec3 uBase; uniform vec3 uDeep; uniform vec3 uWarm; uniform vec3 uHi;" +
+    "uniform vec4 uOcc; uniform float uKind; uniform float uLift;" +
     "float hash(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }" +
     "float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);" +
       "return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y)," +
                  "mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z); }" +
-    "float fbm(vec3 p){ float a = .5, s = 0.; for (int i = 0; i < 4; i++) { s += a * noise(p); p *= 2.03; a *= .5; } return s; }" +
+    "float fbm(vec3 p){ return .5 * noise(p) + .25 * noise(p * 2.03) + .125 * noise(p * 4.1); }" +
     "void main(){" +
       "vec3 n = normalize(vN), v = normalize(uEye - vP);" +
       "if (dot(n, v) < 0.) n = -n;" +
       "float d = max(dot(n, uLamp), 0.);" +
       "vec3 r = reflect(-v, n);" +
-      "float fres = pow(1. - max(dot(n, v), 0.), 4.), sp = max(dot(r, uLamp), 0.);" +
+      "float edge = pow(1. - max(dot(n, v), 0.), 3.);" +
+      "float occ = uOcc.w > 0. ? mix(.42, 1., smoothstep(0., uOcc.w, length(vP - uOcc.xyz))) : 1.;" +
       "vec3 col;" +
       "if (uKind < .5) {" +
-        "vec3 env = mix(uGround, uSky, smoothstep(.2, .8, r.y * .5 + .5));" +
-        "env += uSky * .5 * smoothstep(.06, 0., abs(r.y - .22));" +
-        "float worn = .86 + .28 * fbm(vL * vec3(30., 5., 30.));" +
-        "col = uBase * (env * worn + d * .32) + fres * uSky * .22 + (pow(sp, 48.) * .7 + pow(sp, 6.) * .12) * uGloss * vec3(1., .94, .8);" +
+        "float t = dot(r, uLamp) * .5 + .5;" +
+        "col = mix(uDeep, uBase, smoothstep(.12, .58, t));" +
+        "col = mix(col, uWarm, smoothstep(.55, .8, t));" +
+        "col = mix(col, uHi, smoothstep(.88, .975, t));" +
+        "col *= mix(.5, 1., smoothstep(-.7, .4, r.y)) * (1. - edge * .45) * (.88 + .24 * noise(vL * vec3(24., 4., 24.)));" +
       "} else if (uKind < 1.5) {" +
-        "col = uBase * (d * .72 + .3 + .1 * max(n.y, 0.)) * (.86 + .28 * fbm(vL * 7.));" +
-        "col += pow(sp, 70.) * .65 * uGloss + fres * uSky * .28;" +
+        "col = mix(uDeep, uBase, d * .75 + .25 + .1 * max(n.y, 0.)) * (.9 + .2 * noise(vL * 9.)) * (1. - edge * .3);" +
       "} else {" +
         "float w = fbm(vP * 1.7 + fbm(vP * .9 + 3.) * 2.6);" +
-        "float vein = smoothstep(.045, 0., abs(w - .5)) * .7 + smoothstep(.02, 0., abs(fbm(vP * 3.1 + 7.) - .5)) * .35;" +
-        "col = mix(uBase, uVein, clamp(vein + (fbm(vP * 6.) - .5) * .22, 0., 1.));" +
-        "col *= d * .5 + .5 + .1 * max(n.y, 0.);" +
-        "col += pow(sp, 26.) * .12 * uGloss + fres * uSky * .06;" +
+        "col = mix(uBase, uDeep, smoothstep(.04, 0., abs(w - .5)) * .5 + (noise(vP * 7.) - .5) * .1);" +
+        "col *= (d * .5 + .46 + .1 * max(n.y, 0.)) * (1. - edge * .18);" +
       "}" +
-      "gl_FragColor = vec4(col * uLift, 1.); }";
+      "gl_FragColor = vec4(col * occ * uLift, 1.); }";
 
-  /* The room by day and by lamp, and what each thing is made of. */
+  /* What each thing is made of, by day and by lamp. The bronze is the
+     Measure rings' (BRONZE in measure-view.js); the marble is toned to the
+     statue's, not to white. */
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
   const LOOK = {
     light: {
-      sky: hex("#fff6e2"), ground: hex("#4a3418"),
-      bronze: { kind: 0, base: hex("#c4974c"), gloss: 1 },
-      cord: { kind: 0, base: hex("#8a6a34"), gloss: .3 },
-      glaze: { kind: 1, base: hex("#a9553c"), gloss: 1 },
-      weight: { kind: 2, base: hex("#8b8c8f"), vein: hex("#d9dade"), gloss: 1 },
-      marble: { kind: 2, base: hex("#f1ede5"), vein: hex("#b9b4aa"), gloss: .6 }
+      bronze: { kind: 0, deep: hex("#452b0b"), base: hex("#8a5c1e"), warm: hex("#b98a3c"), hi: hex("#f4dca4") },
+      cord: { kind: 0, deep: hex("#2c1b05"), base: hex("#5d3d12"), warm: hex("#8a5c1e"), hi: hex("#cfa85c") },
+      clay: { kind: 1, deep: hex("#5a2c1e"), base: hex("#a8674c") },
+      weight: { kind: 2, base: hex("#77787b"), deep: hex("#c2c3c6") },
+      marble: { kind: 2, base: hex("#d6d1c7"), deep: hex("#9e988c") }
     },
     dark: {
-      sky: hex("#f3cf96"), ground: hex("#1a1208"),
-      bronze: { kind: 0, base: hex("#c99746"), gloss: 1 },
-      cord: { kind: 0, base: hex("#8a6a34"), gloss: .3 },
-      glaze: { kind: 1, base: hex("#8f4530"), gloss: 1 },
-      weight: { kind: 2, base: hex("#4f5054"), vein: hex("#a9abb0"), gloss: 1 },
-      marble: { kind: 2, base: hex("#8d877b"), vein: hex("#57524a"), gloss: .6 }
+      bronze: { kind: 0, deep: hex("#2c1b05"), base: hex("#7a5219"), warm: hex("#ad7d31"), hi: hex("#f8d891") },
+      cord: { kind: 0, deep: hex("#1c1103"), base: hex("#4b320f"), warm: hex("#7a5219"), hi: hex("#c0924a") },
+      clay: { kind: 1, deep: hex("#3a1b12"), base: hex("#8c523c") },
+      weight: { kind: 2, base: hex("#6b6c70"), deep: hex("#a9aaae") },
+      marble: { kind: 2, base: hex("#8a857a"), deep: hex("#57524a") }
     }
   };
   /* The four shots: what the eye looks at, from how far, how far above the
@@ -238,7 +239,7 @@ const BalanceScene = (() => {
       gl.useProgram(prog);
       this.at = { pos: gl.getAttribLocation(prog, "aPos"), nor: gl.getAttribLocation(prog, "aNor") };
       this.un = {};
-      for (const u of ["uView", "uModel", "uEye", "uLamp", "uBase", "uVein", "uSky", "uGround", "uKind", "uGloss", "uLift"])
+      for (const u of ["uView", "uModel", "uEye", "uLamp", "uBase", "uDeep", "uWarm", "uHi", "uOcc", "uKind", "uLift"])
         this.un[u] = gl.getUniformLocation(prog, u);
       this.mesh = {};
       for (const [name, make] of Object.entries(SHAPES)) {
@@ -266,9 +267,12 @@ const BalanceScene = (() => {
     }
     /** Goes to a shot: "whole", "burn", "eat" or "set"; `now` cuts to it. */
     shotTo(name, now = false) {
-      if (this.shot !== name) this.arrested = false;
+      if (this.shot === name && !now) return;
+      this.arrested = false;
       this.shot = name;
-      if (now) this.cam = null;
+      // The camera travels there in one eased move, from wherever it now is.
+      this.travel = now || !this.cam || this.still ? null : { from: { ...this.cam, at: [...this.cam.at] }, t: 0 };
+      if (!this.travel) this.cam = null;
       this.wake();
     }
     /** The beam's arrest is turned: it comes to rest where it leans and is held there. */
@@ -305,7 +309,7 @@ const BalanceScene = (() => {
       else {
         // The beam on its knife-edge: a spring toward its lean, lightly damped, so it swings and settles.
         const firm = this.held !== null || this.arrested;
-        const stiff = firm ? 120 : 15, damp = firm ? 20 : 2.3;
+        const stiff = firm ? 120 : 15, damp = firm ? 20 : 4.4;
         const acc = stiff * (g.tilt - this.tilt) - damp * this.spin;
         this.spin += acc * s; this.tilt += this.spin * s;
         // The pans hang: each swings a little against the beam's turn.
@@ -329,23 +333,24 @@ const BalanceScene = (() => {
       while (jars.length > g.jars.length && jars[jars.length - 1] < 1e-3) jars.pop();
       this.look[0] = ease(this.look[0], this.lookTo[0], 260);
       this.look[1] = ease(this.look[1], this.lookTo[1], 260);
-      // The camera goes to its shot; set, it is slowly seen round until it is arrested.
+      // The camera: at its shot (a close one follows its pan), or on its way there.
       this.clock += dt;
-      const to = this.shotGoal();
-      if (!this.cam || this.still) this.cam = to;
-      else {
-        const c = this.cam, ms = 520;
-        c.at = c.at.map((v, i) => ease(v, to.at[i], ms));
-        c.dist = ease(c.dist, to.dist, ms); c.pitch = ease(c.pitch, to.pitch, ms); c.yaw = ease(c.yaw, to.yaw, ms);
-      }
+      const to = this.shotGoal(), tr = this.travel;
+      if (tr && !this.still) {
+        tr.t = Math.min(1, tr.t + dt / BalanceScene.TRAVEL);
+        const k = tr.t < .5 ? 4 * tr.t * tr.t * tr.t : 1 - Math.pow(-2 * tr.t + 2, 3) / 2, L = (a, b) => a + (b - a) * k;
+        this.cam = { at: tr.from.at.map((v, i) => L(v, to.at[i])), dist: L(tr.from.dist, to.dist), pitch: L(tr.from.pitch, to.pitch), yaw: L(tr.from.yaw, to.yaw) };
+        if (tr.t >= 1) this.travel = null;
+        moving = true;
+      } else { this.travel = null; this.cam = to; }
       if (this.shot === "set" && !this.still && !this.arrested) moving = true;
       return moving;
     }
 
-    /** Where the pans hang now: [burn's, eating's], each the centre of its dish. */
-    pans() {
+    /** Where the pans hang now: [burn's, eating's], each the centre of its dish; `calm` leaves out their swing (what is written beside them follows the beam only). */
+    pans(calm = false) {
       return [-1, 1].map((side, i) => {
-        const a = -this.tilt, ex = side * REACH * Math.cos(a), ey = PIVOT + side * REACH * Math.sin(a), f = this.sway[i];
+        const a = -this.tilt, ex = side * REACH * Math.cos(a), ey = PIVOT + side * REACH * Math.sin(a), f = calm ? 0 : this.sway[i];
         return { end: [ex, ey, 0], at: [ex + Math.sin(f) * DROP, ey - Math.cos(f) * DROP, 0] };
       });
     }
@@ -367,7 +372,7 @@ const BalanceScene = (() => {
     }
     camera() {
       const c = this.canvas, aspect = (c.clientWidth || 1) / (c.clientHeight || 1), k = this.cam || this.shotGoal();
-      const yaw = k.yaw + this.look[0] * .16, pitch = k.pitch - this.look[1] * .03, dist = k.dist, at = k.at;
+      const yaw = k.yaw + this.look[0] * .07, pitch = k.pitch - this.look[1] * .02, dist = k.dist, at = k.at;
       const eye = [at[0] + dist * Math.sin(yaw) * Math.cos(pitch), at[1] + dist * Math.sin(pitch), at[2] + dist * Math.cos(yaw) * Math.cos(pitch)];
       const tanY = Math.max(1.4 / BASE_DIST, 2.05 / BASE_DIST / aspect);
       return { eye, view: mul(lens(tanY, aspect, 1.5, 30), lookAt(eye, at)) };
@@ -381,9 +386,12 @@ const BalanceScene = (() => {
     }
     /** How many px one unit of the scene takes at the plinth's face. */
     unitPx() { const a = this.project([0, 0, .65]), b = this.project([1, 0, .65]); return Math.hypot(b.x - a.x, b.y - a.y); }
-    /** Where a label goes: at the outer rim of the burn's pan ("burn") or the eating's ("eat"), over the beam's end on either side ("burnEnd", "eatEnd"), on the plinth's face ("plinth"), under the needle's point ("needle"), or over jar `i`. */
+    /** True while the camera is on its way to a shot. */
+    get travelling() { return !!this.travel; }
+    /** Where a label goes: over the fulcrum ("pivot"), at the outer rim of the burn's pan ("burn") or the eating's ("eat"), over the beam's end on either side ("burnEnd", "eatEnd"), on the plinth's face ("plinth"), under the needle's point ("needle"), or over jar `i`. */
     anchor(what) {
-      const [burn, eat] = this.pans();
+      const [burn, eat] = this.pans(typeof what === "string");
+      if (what === "pivot") return this.project([0, PIVOT + .2, 0]);
       if (what === "burnEnd") return this.project([burn.end[0] - .5, burn.end[1] + .12, 0]);
       if (what === "eatEnd") return this.project([eat.end[0] + .5, eat.end[1] + .12, 0]);
       if (what === "plinth") return this.project([0, -.07, .65]);
@@ -421,7 +429,9 @@ const BalanceScene = (() => {
     }
 
     draw() {
-      const gl = this.gl, c = this.canvas, dpr = Math.min(devicePixelRatio || 1, 2);
+      // No more px than a full-width room needs: the stone is worked out for every one of them.
+      const gl = this.gl, c = this.canvas;
+      const dpr = Math.min(devicePixelRatio || 1, 2, Math.sqrt(1.8e6 / Math.max(1, c.clientWidth * c.clientHeight)));
       const w = Math.round(c.clientWidth * dpr), h = Math.round(c.clientHeight * dpr);
       if (!w || !h) return;
       if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
@@ -432,24 +442,26 @@ const BalanceScene = (() => {
       this.view = cam.view;
       gl.uniformMatrix4fv(u.uView, false, cam.view);
       gl.uniform3fv(u.uEye, cam.eye);
-      gl.uniform3fv(u.uSky, look.sky); gl.uniform3fv(u.uGround, look.ground);
       gl.uniform3fv(u.uLamp, unit([-.5 + this.look[0] * .5, .72 + this.look[1] * .25, .62]));
 
-      /* A piece, in what it is made of; `lift` shows it lighter (the jar pointed at). */
-      const put = (name, model, mat, lift = 1) => {
+      /* A piece, in what it is made of; `occ` is where something stands on it ([x, y, z, reach]); `lift` shows it lighter (the jar pointed at). */
+      const NONE = [0, 0, 0, 0];
+      const put = (name, model, mat, occ = NONE, lift = 1) => {
         const m = this.mesh[name], bind = (loc, buf, n) => { gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); };
         gl.uniformMatrix4fv(u.uModel, false, model);
-        gl.uniform3fv(u.uBase, mat.base); gl.uniform3fv(u.uVein, mat.vein || mat.base);
-        gl.uniform1f(u.uKind, mat.kind); gl.uniform1f(u.uGloss, mat.gloss); gl.uniform1f(u.uLift, lift);
+        gl.uniform3fv(u.uBase, mat.base); gl.uniform3fv(u.uDeep, mat.deep);
+        gl.uniform3fv(u.uWarm, mat.warm || mat.base); gl.uniform3fv(u.uHi, mat.hi || mat.base);
+        gl.uniform4fv(u.uOcc, occ);
+        gl.uniform1f(u.uKind, mat.kind); gl.uniform1f(u.uLift, lift);
         bind(this.at.pos, m.pos, 3); bind(this.at.nor, m.nor, 3);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
         gl.drawElements(gl.TRIANGLES, m.n, gl.UNSIGNED_SHORT, 0);
       };
-      const B = look.bronze, C = look.glaze, M = look.marble, W = look.weight, mark = look.cord;
+      const B = look.bronze, C = look.clay, M = look.marble, W = look.weight, mark = look.cord;
 
       // The plinth: two steps of marble.
-      put("block", chain(move(0, -.07, 0), size(3.5, .14, 1.3)), M);
-      put("block", chain(move(0, -.2, 0), size(3.8, .12, 1.6)), M);
+      put("block", chain(move(0, -.07, 0), size(3.5, .14, 1.3)), M, [0, 0, 0, .78]);
+      put("block", chain(move(0, -.2, 0), size(3.8, .12, 1.6)), M, [0, -.14, 0, 2.1]);
       put("stand", move(0, 0, 0), B);
 
       // The scale the needle reads against: a mark each 5%, a longer one each 10%, the level longest.
@@ -470,8 +482,8 @@ const BalanceScene = (() => {
           const a = Math.PI / 2 + k * Math.PI * 2 / 3;
           put("rod", between(p.end, [p.at[0] + Math.cos(a) * PAN, p.at[1] + .12, Math.sin(a) * PAN], .007), mark);
         }
-        put("pan", move(...p.at), B);
-        const floor = p.at[1] + .028;
+        const floor = p.at[1] + .028, load = i === 0 ? this.sizes.base : Math.max(0, ...this.sizes.jars) * 2;
+        put("pan", move(...p.at), B, load > .02 ? [p.at[0], floor, 0, .2 + load * .7] : NONE);
         if (i === 0) {
           // What is burned: the day's weight, and training's beside it.
           const b = this.sizes.base, tr = this.sizes.training;
@@ -481,13 +493,15 @@ const BalanceScene = (() => {
           // What is eaten: a jar a meal.
           const n = this.sizes.jars.length, spots = this.jarSpots(n);
           this.sizes.jars.forEach((s, k) => {
-            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), C, k === this.lit ? 1.25 : 1);
+            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), C, NONE, k === this.lit ? 1.25 : 1);
           });
         }
       });
     }
   }
   /* When each piece of the load is set down after the balance arrives, in ms. */
+  /* How long the camera takes from one shot to the next, in ms. */
+  BalanceScene.TRAVEL = 1100;
   BalanceScene.SET_DOWN = { base: 140, training: 420, jar: 700, each: 170 };
   return BalanceScene;
 })();
