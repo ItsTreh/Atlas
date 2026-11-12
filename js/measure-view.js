@@ -42,7 +42,7 @@
   const PI = Math.PI;
 
   const KEYS = ["stature", "mass", "years", "physis", "dial"];
-  const NAMES = { stature: "Stature", mass: "Mass", years: "Years", physis: "Physiology", dial: "Your measure" };
+  const NAMES = { stature: "Stature", mass: "Mass", years: "Years", physis: "Physiology", dial: "Your mark" };
   /* The marble's own height, in cm: what the stature ring is read against. */
   const MARBLE_CM = 158;
   /** A weight in kg, to a tenth where it has one. */
@@ -154,17 +154,18 @@
           Object.entries(MEASURE_SEX).map(([k, w]) => '<button type="button" role="radio" data-sex="' + k + '">' + w + '</button>').join("") + '</div>' +
         '<p class="arm-alt" data-alt="physis" aria-live="polite"></p>' +
         '<p class="arm-why">The standard resting-burn equations add a different constant for female and male physiology, about 166 kcal a day apart. Only that equation reads it; nothing else in ATLAS changes.</p>') +
-      read("dial", "Your measure",
+      read("dial", "Your mark",
         '<p class="arm-alt" data-show="credit"></p>' +
         '<div class="arm-own">' +
           '<label class="own-name"><span class="own-l">Whose it is</span>' +
-            '<input class="own-in" maxlength="' + MEASURE_NAME_MAX + '" placeholder="You" autocomplete="off" spellcheck="false" aria-label="A name under your measure"></label>' +
-          '<div class="own-ink-w"><span class="own-l" aria-hidden="true">The rule</span><div class="own-ink" role="radiogroup" aria-label="The colour of the rule">' +
+            '<input class="own-in" maxlength="' + MEASURE_NAME_MAX + '" placeholder="You" autocomplete="off" spellcheck="false" aria-label="A name on your mark"></label>' +
+          '<div class="own-ink-w"><span class="own-l" aria-hidden="true">The stone</span><div class="own-ink" role="radiogroup" aria-label="The stone your mark is cut from">' +
             Object.entries(MEASURE_INKS).map(([k, w]) => '<button type="button" role="radio" data-ink="' + k + '" aria-label="' + w + '" title="' + w + '"><i></i></button>').join("") +
           '</div></div>' +
         '</div>' +
-        '<button type="button" class="quiet-btn arm-clear">Clear your measure</button>' +
-        '<p class="arm-why">The same four rings, seen from above, each turned to its reading. Kept in this browser only; press a ring’s tag to change it.</p>') +
+        '<p class="arm-acts"><button type="button" class="quiet-btn arm-clear arm-recut">Cut another stone</button>' +
+          '<button type="button" class="quiet-btn arm-clear arm-wipe">Clear your measure</button></p>' +
+        '<p class="arm-why">The four rings close into its rim, each leaving a bead where its scale begins. No two stones are veined alike, and yours stays as it is when a reading changes. Kept in this browser only; press a ring’s tag to change it.</p>') +
     '</div>';
   const reads = doc.querySelector(".arm-reads");
   const tags = Object.fromEntries(RING_KEYS.map(k => [k, doc.querySelector('.arm-tag[data-go="' + k + '"]')]));
@@ -365,8 +366,10 @@
     if (ik) { M.ink = ik.dataset.ink; save(); paint(); punch = 1; return; }
     const g = t.closest("[data-go]");
     if (g) { setFocus(g.dataset.go, e.detail === 0); return; }
-    if (t.closest(".arm-clear")) {
+    if (t.closest(".arm-recut")) { M.recut(); save(); punch = 1; dirty = true; announce("A new stone is cut"); return; }
+    if (t.closest(".arm-wipe")) {
       M.clear();
+      M.recut();
       save(); paint();
       announce("Your measure is cleared");
     }
@@ -377,13 +380,13 @@
   });
 
   /* -------------------------------- the room ------------------------------- */
-  let focus = "stature", drag = null, punch = 0, lamp = 0, lampTo = 0, clock = 0, turn = 0, turnAt = null;
+  let focus = "stature", drag = null, punch = 0, medal = 0, lamp = 0, lampTo = 0, clock = 0, turn = 0, turnAt = null;
   /* Each fact has the camera its own way: close under the crown for stature,
      level with the waist for mass, the whole figure for the years, from
      higher up for the ring at the feet, and straight down the axis for
      your measure. */
   const shots = docShots("measure-");
-  shots.set("stature", { d: 560, ty: 112, sx: .5, sy: .56, el: 10, az: -12 });
+  shots.set("stature", { d: 600, ty: 112, sx: .5, sy: .68, el: 10, az: -12 });
   shots.set("mass", { d: 690, ty: 84, sx: .5, sy: .55, el: 14, az: 24 });
   shots.set("years", { d: 760, ty: 80, sx: .5, sy: .52, el: 9, az: -30 });
   shots.set("physis", { d: 820, ty: 70, sx: .5, sy: .55, el: 21, az: 8 });
@@ -396,7 +399,7 @@
     root.dataset.mzs = k;
     for (const el of qa(".arm-read")) el.classList.toggle("on", el.dataset.k === k);
     for (const b of qa(".arm-tag")) { if (b.dataset.go === k) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current"); }
-    if (k === "dial" && M.complete) punch = 1;
+    if (k === "dial" && !M.seed) { M.recut(); save(); }
     turn = 0; turnAt = null;
     dirty = true;
     if (live()) { Stages.refresh(); if (!Stages.busy) Stages.remember(); }
@@ -431,21 +434,29 @@
     g.zoom = Math.max(.85, Math.min(1.5, Math.sqrt(g.pt(.5).s * g.H / 530)));
     return g;
   }
-  /** A ring as it hangs now, through the camera. */
+  /* The mark: where it lies on the stage, how wide its stone is, and how
+     wide each ring is once it has closed into the rim. */
+  const RIM = ["stature", "physis", "mass", "years"], BAND = 9;
+  function medalAt(g) {
+    const top = sec.offsetTop, h = sec.clientHeight;
+    return { x: g.pt(.5).x, y: top + h * .5, r: Math.min(h * .29, g.cw * .17, 250) };
+  }
+  /** A ring as it hangs now, through the camera; closing into the mark's rim by `medal`. */
   function ringGeom(k, g) {
     const R = RINGS[k], s = st[k], p = g.pt(s.at), e = g.e, drop = Math.max(0, Math.min(1, s.drop));
+    const m = smooth(medal), mg = medalAt(g), L = (a, b) => a + (b - a) * m;
     return {
-      cx: p.x, cy: p.y + s.bob * (1 - e) - (1 - settleIn(drop)) * 110,
-      r: R.r * g.H * p.s * (1 + punch * .05),
-      k: Math.max(.04, Math.sin(Math.min(PI / 2, g.el + R.lift))), roll: (R.roll + s.lean) * (1 - e), e,
-      b: (9 + 22 * s.act) * (1 - e) * g.zoom, w: (5 + 2 * s.act) * g.zoom, a: Math.min(1, drop * 2.5)
+      cx: L(p.x, mg.x), cy: L(p.y + s.bob * (1 - e) - (1 - settleIn(drop)) * 110, mg.y),
+      r: L(R.r * g.H * p.s, (mg.r + 3 + (RIM.indexOf(k) + 1) * (BAND + 1.5)) * (1 + punch * .025)),
+      k: L(Math.max(.04, Math.sin(Math.min(PI / 2, g.el + R.lift))), 1), roll: (R.roll + s.lean) * (1 - e), e, m,
+      b: (9 + 22 * s.act) * (1 - e) * g.zoom, w: L((5 + 2 * s.act) * g.zoom, BAND), a: Math.min(1, drop * 2.5)
     };
   }
   /** How many px across the screen one unit of a ring's scale moves at the index. */
   const unitPx = k => { const R = ringGeom(k, room()); return Math.max(2, R.r * RINGS[k].scale().deg * PI / 180); };
   /** The ring whose near side is under a point of the screen, or null. */
   function ringAt(x, y) {
-    if (!live() || Stages.busy) return null;
+    if (!live() || Stages.busy || medal > .3) return null;
     const g = room(), sr = stage.getBoundingClientRect();
     let best = null, bd = 1e9;
     for (const k of RING_KEYS) {
@@ -505,7 +516,9 @@
     for (const c of [cb, cf]) { c.save(); c.translate(R.cx, R.cy); c.rotate(R.roll); c.globalAlpha = alpha; }
     // The far half: its inside, and its upper edge. The near half: the edge, then its face.
     if (R.b > .5) strip(cb, -R.b / 2, ri, R.b / 2, ri, PI, 2 * PI, grad(cb, "in"));
-    strip(cb, -R.b / 2, R.r, -R.b / 2, ri, PI, 2 * PI, grad(cb, "lip"));
+    // Closed into the rim, the whole ring lies over the stone's shadow.
+    const far = R.m > .5 ? cf : cb;
+    strip(far, -R.b / 2, R.r, -R.b / 2, ri, PI, 2 * PI, grad(far, "lip"));
     strip(cf, -R.b / 2, R.r, -R.b / 2, ri, 0, PI, grad(cf, "lip"));
     if (R.b > .5) strip(cf, -R.b / 2, R.r, R.b / 2, R.r, 0, PI, grad(cf, "face"));
 
@@ -528,11 +541,13 @@
       const c = nearSide || e > .5 ? cf : cb, rr = nearSide ? R.r : ri;
       const len = (major ? .58 : mid ? .4 : .22) * R.b, sl = major ? 10 : mid ? 6.5 : 3.5;
       const x0 = rr * ca, y0 = rr * R.k * sa - R.b / 2 + 1.5;
-      const x1 = x0 + (((ri - sl) * ca - x0) * e), y1 = y0 + len + (((ri - sl) * sa - (y0 + len)) * e);
-      const xs = x0 + ((ri * ca - x0) * e), ys = y0 + ((ri * sa - y0) * e);
+      // Closed into the mark's rim, the marks are cut across the band itself.
+      const rim = R.m > .5, cutTo = rim ? ri + 1.5 + (R.w - 3) * (major ? 1 : mid ? .6 : .34) : ri - sl, cutFrom = rim ? ri + 1.5 : ri;
+      const x1 = x0 + ((cutTo * ca - x0) * e), y1 = y0 + len + ((cutTo * sa - (y0 + len)) * e);
+      const xs = x0 + ((cutFrom * ca - x0) * e), ys = y0 + ((cutFrom * sa - y0) * e);
       const edge = e > .5 ? 1 : Math.min(1, Math.abs(sa) * 3);
       c.globalAlpha = alpha * edge * (nearSide || e > .5 ? 1 : .4);
-      c.strokeStyle = e > .5 ? P.mid : P.cut; c.lineWidth = major ? 1.3 : 1;
+      c.strokeStyle = e > .5 && !rim ? P.mid : P.cut; c.lineWidth = major ? 1.3 : 1;
       c.beginPath(); c.moveTo(xs, ys); c.lineTo(x1, y1); c.stroke();
       if (major && nearSide && s.act > .2 && e < .3 && sa > .25) {
         cf.save();
@@ -541,6 +556,15 @@
         cf.fillStyle = P.cut; cf.fillText(sc.label(Math.round(u)), 0, 0);
         cf.restore();
       }
+    }
+    // In the rim, a bead where the ring's scale begins: turned to its reading, each ring's lies somewhere else.
+    if (R.m > .5 && given) {
+      const a = PI / 2 + (pos - sc.lo) * dth, rr = (R.r + ri) / 2;
+      cf.globalAlpha = alpha * (R.m - .5) * 2;
+      cf.fillStyle = P.deep; cf.beginPath(); cf.arc(rr * Math.cos(a) + .6, rr * Math.sin(a) + .8, R.w * .62, 0, 2 * PI); cf.fill();
+      const gr = cf.createRadialGradient(rr * Math.cos(a) - 1.5, rr * Math.sin(a) - 1.5, 0, rr * Math.cos(a), rr * Math.sin(a), R.w * .6);
+      gr.addColorStop(0, "#fff8e0"); gr.addColorStop(.4, P.hi); gr.addColorStop(1, P.mid);
+      cf.fillStyle = gr; cf.beginPath(); cf.arc(rr * Math.cos(a), rr * Math.sin(a), R.w * .56, 0, 2 * PI); cf.fill();
     }
     // The index, on the ring in hand: where its scale is read.
     if (s.act > .05 && e < .5) {
@@ -578,7 +602,7 @@
     const len = (w, f) => { let n = 0; for (const ch of w) n += wide(ch, f); return n; };
     const fs = Math.min(54 * g.zoom, arc * .8 / Math.max(...words.map((w, i) => len(w, style(i)))));
     // Raised so the near words stand just clear of the ring's upper edge, across the body.
-    const phase = (s.pos + s.drift) * sc.deg * PI / 180 + spin, lift = -(ro - R.r) * R.k - R.b / 2 - fs * .42;
+    const phase = (s.pos + s.drift) * sc.deg * PI / 180 + spin, lift = -(ro - R.r) * R.k - R.b / 2 - fs * .8;
     const seen = sa => Math.max(0, Math.min(1, (Math.abs(sa) - .16) * 3.2));
     for (const c of [cb, cf]) { c.save(); c.translate(R.cx, R.cy); c.rotate(R.roll); c.fillStyle = P.ink; c.textAlign = "center"; c.textBaseline = "alphabetic"; }
     for (let i = 0; i < slots; i++) {
@@ -605,20 +629,123 @@
     cb.restore(); cf.restore();
   }
 
-  /* Seen from above: one rule from the innermost ring out past the widest,
-     under which every ring stands at its reading, and whose it is beneath. */
-  function drawRule(c, geo, order, a) {
-    const inner = geo[order[0]], outer = geo[order[order.length - 1]];
-    const ink = getComputedStyle(root).getPropertyValue(INK_VAR[M.ink] || "--ink").trim() || "#222";
-    const x = outer.cx, y0 = inner.cy + inner.r * inner.k - inner.w - 12, y1 = outer.cy + outer.r * outer.k + 18;
+  /* The mark: a disc of the user's own stone, set in the four rings. Its
+     veining is drawn from a seed kept with the measure (cut once, the same
+     ever after, unlike a reading); what is inscribed is gilt in the rings'
+     bronze: the first letter of the name, the name round the head, the day
+     it was struck round the foot. */
+  const STONES = {
+    core: { base: "#8a3a3c", deep: "#4f1b22", vein: "#f2dfd4", fleck: "#c98b7a" },
+    pull: { base: "#2b4884", deep: "#15264d", vein: "#e3e8f1", fleck: "#c9a24a" },
+    legs: { base: "#2c5943", deep: "#122d21", vein: "#dfe9d8", fleck: "#86ad92" },
+    push: { base: "#c0913c", deep: "#7a5116", vein: "#f9eecd", fleck: "#8a4a22" },
+    ink: { base: "#242221", deep: "#0a0909", vein: "#eeeae2", fleck: "#8f8a80" }
+  };
+  const rgba = (hex, a) => "rgba(" + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(",") + "," + a.toFixed(3) + ")";
+  const slab = { id: "", c: null };
+  /** The stone for a seed, cut once and kept: clouds, veins running with one grain, flecks. */
+  function cutStone(seed, ink) {
+    const id = seed + ink;
+    if (slab.id === id) return slab.c;
+    const T = 720, c = slab.c || document.createElement("canvas"), S = STONES[ink] || STONES.ink;
+    c.width = c.height = T;
+    const x = c.getContext("2d");
+    let a = seed >>> 0;
+    const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+    x.fillStyle = S.base; x.fillRect(0, 0, T, T);
+    for (let i = 0; i < 52; i++) {
+      const cx = rnd() * T, cy = rnd() * T, r = T * (.07 + rnd() * .3), dark = rnd() < .58, col = dark ? S.deep : S.vein;
+      const g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, rgba(col, dark ? .12 + rnd() * .2 : .04 + rnd() * .09)); g.addColorStop(1, rgba(col, 0));
+      x.fillStyle = g; x.fillRect(0, 0, T, T);
+    }
+    const grain = rnd() * PI;
+    x.lineCap = "round";
+    const vein = (px, py, ang, w, al, depth) => {
+      const wob = rnd() * 10, inside = () => px > -30 && px < T + 30 && py > -30 && py < T + 30;
+      let been = inside();
+      for (let i = 0; i < 260; i++) {
+        ang += (rnd() - .5) * .3 + Math.sin(i * .07 + wob) * .05 + (grain - ang) * .04;
+        const nx = px + Math.cos(ang) * 7, ny = py + Math.sin(ang) * 7, ww = w * (.45 + rnd());
+        x.beginPath(); x.moveTo(px, py); x.lineTo(nx, ny);
+        x.strokeStyle = rgba(S.vein, al * .1); x.lineWidth = ww * 7; x.stroke();
+        x.strokeStyle = rgba(S.vein, al * (.6 + rnd() * .4)); x.lineWidth = ww; x.stroke();
+        if (depth < 2 && rnd() < .02) vein(nx, ny, ang + (rnd() < .5 ? -1 : 1) * (.4 + rnd() * .7), w * .55, al * .8, depth + 1);
+        px = nx; py = ny;
+        if (inside()) been = true; else if (been) break;
+      }
+    };
+    for (let i = 0, n = 4 + Math.floor(rnd() * 3); i < n; i++) {
+      const off = (rnd() - .5) * T * 1.1;
+      vein(T / 2 - Math.cos(grain) * T * .72 - Math.sin(grain) * off, T / 2 - Math.sin(grain) * T * .72 + Math.cos(grain) * off, grain, .7 + rnd() * 2.6, .35 + rnd() * .5, 0);
+    }
+    for (let i = 0; i < 1100; i++) {
+      x.fillStyle = rgba(rnd() < .5 ? S.fleck : S.vein, .12 + rnd() * .4);
+      x.beginPath(); x.arc(rnd() * T, rnd() * T, .4 + rnd() * 1.1, 0, 2 * PI); x.fill();
+    }
+    slab.id = id; slab.c = c;
+    return c;
+  }
+  /** Writes round a circle, read from outside at the head (`at` < 0) or from inside at the foot. */
+  function arcText(c, text, r, foot, fs, track) {
+    const ws = [...text].map(ch => c.measureText(ch).width + track), total = ws.reduce((a, b) => a + b, 0) - track;
+    let x = -total / 2;
+    [...text].forEach((ch, i) => {
+      const a = (x + (ws[i] - track) / 2) / r;
+      c.save();
+      if (foot) { c.rotate(-a); c.translate(0, r + fs * .36); } else { c.rotate(a); c.translate(0, -r + fs * .36); }
+      c.fillText(ch, 0, 0);
+      c.restore();
+      x += ws[i];
+    });
+  }
+  function drawMedal(cb, c, g, a, theme) {
+    const mg = medalAt(g), Rm = mg.r * (1 + punch * .025), B = BRONZE[theme];
+    const outer = Rm + 3 + 4 * (BAND + 1.5) + 2;
+    // Its shadow on the ground, under everything.
+    cb.save();
+    cb.globalAlpha = a;
+    const sh = cb.createRadialGradient(mg.x, mg.y + 22, outer * .82, mg.x, mg.y + 22, outer * 1.22);
+    sh.addColorStop(0, theme === "dark" ? "rgba(0,0,0,.6)" : "rgba(60,40,10,.3)"); sh.addColorStop(1, "rgba(0,0,0,0)");
+    cb.fillStyle = sh; cb.beginPath(); cb.arc(mg.x, mg.y + 22, outer * 1.25, 0, 2 * PI); cb.fill();
+    cb.restore();
+
     c.save();
-    c.globalAlpha = a * (M.complete ? 1 : .45);
-    c.strokeStyle = c.fillStyle = ink; c.lineWidth = 1.5;
-    c.beginPath(); c.moveTo(x, y0); c.lineTo(x, y1); c.stroke();
-    c.beginPath(); c.moveTo(x, y1 - 2); c.lineTo(x - 5, y1 + 8); c.lineTo(x + 5, y1 + 8); c.closePath(); c.fill();
-    c.font = "italic 400 " + Math.round(Math.min(34, outer.r * .14)) + "px \"Cormorant Garamond\", serif";
-    c.textAlign = "center"; c.textBaseline = "top";
-    c.fillText((M.name || "").trim() || "You", x, y1 + 20);
+    c.globalAlpha = a; c.translate(mg.x, mg.y);
+    c.save();
+    c.beginPath(); c.arc(0, 0, Rm + 2.5, 0, 2 * PI); c.clip();
+    c.drawImage(cutStone(M.seed || 1, M.ink), -Rm - 3, -Rm - 3, 2 * Rm + 6, 2 * Rm + 6);
+    // Polished: the lamp on its upper left, following the pointer; darker toward the rim.
+    const lx = (-.34 + lamp * .5) * Rm, ly = -.46 * Rm;
+    let gr = c.createRadialGradient(lx, ly, 0, lx, ly, Rm * 1.5);
+    gr.addColorStop(0, "rgba(255,255,255,.36)"); gr.addColorStop(.3, "rgba(255,255,255,.08)"); gr.addColorStop(1, "rgba(0,0,0,.34)");
+    c.fillStyle = gr; c.fillRect(-Rm - 3, -Rm - 3, 2 * Rm + 6, 2 * Rm + 6);
+    gr = c.createRadialGradient(0, 0, Rm * .8, 0, 0, Rm + 3);
+    gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(1, "rgba(0,0,0,.42)");
+    c.fillStyle = gr; c.fillRect(-Rm - 3, -Rm - 3, 2 * Rm + 6, 2 * Rm + 6);
+    c.restore();
+
+    // The inscription, cut into the stone and gilt.
+    const gilt = c.createLinearGradient(-Rm, -Rm, Rm, Rm);
+    gilt.addColorStop(0, B.hi); gilt.addColorStop(.35 + lamp * .15, "#fff3cf"); gilt.addColorStop(.55, B.warm); gilt.addColorStop(1, B.mid);
+    const cut = draw => {
+      c.fillStyle = c.strokeStyle = "rgba(0,0,0,.6)"; c.save(); c.translate(-1.1, -1.2); draw(); c.restore();
+      c.fillStyle = c.strokeStyle = "rgba(255,255,255,.28)"; c.save(); c.translate(1, 1.1); draw(); c.restore();
+      c.fillStyle = c.strokeStyle = gilt; draw();
+    };
+    c.textAlign = "center"; c.textBaseline = "alphabetic"; c.lineWidth = 1.2;
+    cut(() => { c.beginPath(); c.arc(0, 0, Rm * .93, 0, 2 * PI); c.stroke(); });
+    const name = (M.name || "").trim(), first = name ? [...name][0].toLocaleUpperCase() : "";
+    if (first) {
+      const fs = Rm * 1.08;
+      c.font = "500 " + fs.toFixed(1) + "px " + SERIF;
+      cut(() => c.fillText(first, 0, fs * .32));
+    }
+    const small = Rm * .105;
+    c.font = "600 " + small.toFixed(1) + "px " + SERIF;
+    if (name) cut(() => arcText(c, name.toLocaleUpperCase(), Rm * .77, false, small, small * .34));
+    const d = new Date((M.sealed || new Date().toISOString().slice(0, 10)) + "T12:00:00");
+    cut(() => arcText(c, romanNumeral(d.getDate()) + " · " + romanNumeral(d.getMonth() + 1) + " · " + romanNumeral(d.getFullYear()), Rm * .77, true, small, small * .3));
     c.restore();
   }
 
@@ -659,7 +786,7 @@
   function draw() {
     const g = room(), dpr = Math.min(devicePixelRatio || 1, 2), geo = {};
     for (const k of RING_KEYS) { geo[k] = ringGeom(k, g); geo[k].zoom = g.zoom; }
-    const now = [g.cw, g.ch, g.e, punch, lamp, spin, M.units, M.ink, M.name, M.given, Stages.busy, document.documentElement.dataset.theme,
+    const now = [g.cw, g.ch, g.e, punch, lamp, spin, M.units, medal, M.seed, M.sealed, M.ink, M.name, M.given, Stages.busy, document.documentElement.dataset.theme,
       ...RING_KEYS.flatMap(k => [st[k].pos + st[k].drift, st[k].act, geo[k].cx, geo[k].cy, geo[k].r, geo[k].k, geo[k].roll, geo[k].a])]
       .map(v => typeof v === "number" ? v.toFixed(3) : v).join("|");
     if (now === sig && !dirty) return;
@@ -672,7 +799,7 @@
     const order = [...RING_KEYS].sort((a, b) => geo[a].r - geo[b].r);
     for (const k of [...order].reverse()) drawRing(k, geo[k], cb, cf, P);
     for (const k of RING_KEYS) drawOrbit(k, geo[k], cb, cf, metal(k, P), g);
-    if (g.e > .5) drawRule(cf, geo, order, Math.min(1, (g.e - .5) / .4));
+    if (medal > .02) drawMedal(cb, cf, g, smooth(Math.max(0, Math.min(1, (medal - .25) / .6))), P);
     placeTags(cf, geo, order, g);
     // The reading stands level with the index it is read at, a hairline between them; from above, beside the dial.
     const lead = geo[focus];
@@ -708,6 +835,10 @@
     punch = toward(punch, 0, 170);
     if (!still && !drag) spin = (spin + dt * .00007) % (2 * PI);
     lamp = toward(lamp, lampTo, 200);
+    // Seen from above, the rings close into the rim of the mark, and it is struck as they meet.
+    const closed = focus === "dial" && room().e > .97, was = medal;
+    medal = toward(medal, closed ? 1 : 0, closed ? 420 : 160);
+    if (was < .8 && medal >= .8) punch = 1;
     RING_KEYS.forEach((k, i) => {
       const s = st[k], R = RINGS[k], sc = R.scale(), mine = focus === k;
       s.act = toward(s.act, mine ? 1 : 0, 190);
