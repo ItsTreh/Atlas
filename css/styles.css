@@ -1800,8 +1800,8 @@ button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3p
   -webkit-mask-composite: source-in; mask-composite: intersect;
   transition: --mr 1s var(--ease-out), --ml 1s var(--ease-out), --mb 1s var(--ease-out);
 }
-.balance[data-shot="burn"] canvas { --mr: 68%; --mb: 99%; }
-.balance[data-shot="eat"] canvas { --ml: 68%; --mb: 99%; }
+.balance[data-shot="burn"] canvas { --mr: 63%; --mb: 99%; }
+.balance[data-shot="eat"] canvas { --ml: 63%; --mb: 99%; }
 @media (prefers-reduced-motion: reduce) { .balance canvas, .balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: none; } }
 .balance:is([data-shot="burn"], [data-shot="eat"])::before { display: none; }
 .bal-sum small { white-space: normal; max-width: 190px; }
@@ -1812,38 +1812,69 @@ button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3p
 /* Beside the pan seen close: what sets it, where the far side of the
    balance fades out of the shot. */
 .nu-panel {
-  position: absolute; top: 0; bottom: 0; z-index: 2; width: min(46%, 560px); display: flex; flex-direction: column; justify-content: center; gap: 22px;
-  overflow: auto; cursor: auto;
+  position: absolute; top: 0; bottom: 0; z-index: 2; width: min(46%, 580px); overflow: auto; cursor: auto;
 }
 .nu-panel[data-side="burn"] { right: 0; padding-left: 110px; }
 .nu-panel[data-side="eat"] { left: 0; padding-right: 110px; }
-.nu-part { display: flex; flex-direction: column; gap: 12px; }
-.nu-part-h { margin: 0; font: italic 400 25px/1 var(--serif); color: var(--ink); }
-.nu-panel .row-body { padding: 0; gap: 12px; }
-.nu-panel .kv > .kv-label { min-width: 0; flex-basis: 100%; padding-top: 0; }
-.nu-panel .kv-note { margin-left: 0; }
 .nu-caveat { margin: 0; max-width: 104ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-align: center; text-wrap: pretty; }
 
-/* The key that sets the balance: a bronze knob with its bar, turned a quarter. */
-.nu-set { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-bottom: 6px; }
-.nu-key { display: flex; align-items: center; gap: 18px; padding: 6px 12px; border: 0; background: none; color: var(--ink); cursor: pointer; }
-.nu-key:disabled { opacity: .45; cursor: default; }
-.nu-key-knob {
-  position: relative; flex: none; width: 62px; height: 62px; border-radius: 50%;
-  background: radial-gradient(circle at 34% 28%, #f6e2ae, #c0924a 42%, #7a5116 78%, #4b320f);
-  box-shadow: 0 7px 16px rgba(40,25,5,.38), inset 0 0 0 2px rgba(255,240,200,.3), inset 0 0 0 7px rgba(70,40,5,.22);
-  transition: transform .9s var(--ease-out), box-shadow .3s ease;
+/* The readings beside a pan: each a name in the bronze, its figure large,
+   the coins that step it, a note. Two abreast; a choice among words takes
+   the row. */
+.nu-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: center; gap: 22px 28px; }
+.nu-read { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nu-read.wide { grid-column: 1 / -1; }
+.nu-read-n, .nu-read-n label { font: italic 400 20px/1 var(--serif); color: var(--cast, var(--ink-soft)); }
+.nu-read-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.nu-fig {
+  box-sizing: content-box; min-width: 1.6ch; padding: 0 0 2px; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: none;
+  font: 400 clamp(40px, 3.8vw, 58px)/.95 var(--serif); letter-spacing: -.02em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink);
+  outline: none; transition: border-color .3s ease; -moz-appearance: textfield; appearance: textfield;
 }
-.nu-key-knob i {
-  position: absolute; left: 50%; top: 9%; width: 7px; height: 82%; translate: -50% 0; border-radius: 4px;
-  background: linear-gradient(90deg, #4b320f, #8a5c1e 45%, #e9cf92 55%, #6b4819); box-shadow: 0 1px 2px rgba(0,0,0,.4);
+.nu-fig::-webkit-outer-spin-button, .nu-fig::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.nu-fig { width: 3.4ch; caret-color: var(--ink); }
+input#n-burn.nu-fig { width: 4.2ch; }
+input.nu-fig:hover { border-bottom-color: var(--line); }
+input.nu-fig:focus { border-bottom-color: var(--ink); }
+input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
+.nu-fig.small { font-size: clamp(30px, 2.6vw, 40px); }
+.nu-unit-w { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
+.nu-coins { display: inline-flex; gap: 4px; align-self: center; margin-left: 2px; }
+.nu-coins .arm-coin { width: 36px; height: 36px; }
+.nu-span { display: inline-flex; align-items: baseline; gap: 8px; }
+.nu-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
+.nu-words button {
+  position: relative; padding: 3px 0 8px; border: 0; background: none; cursor: pointer;
+  font: 400 clamp(22px, 2vw, 28px)/1 var(--serif); color: var(--ink-faint); transition: color .3s ease;
 }
-.nu-key:not(:disabled):hover .nu-key-knob, .nu-key:focus-visible .nu-key-knob { transform: rotate(20deg); }
-.nu-set.done .nu-key-knob, .nu-set.done .nu-key:hover .nu-key-knob { transform: rotate(90deg); }
-.nu-key-t { font: italic 400 28px/1 var(--serif); }
-.nu-key:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+.nu-words button::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink));
+  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
+}
+.nu-words button:hover { color: var(--ink-soft); }
+.nu-words button[aria-checked="true"] { color: var(--ink); font-style: italic; }
+.nu-words button[aria-checked="true"]::after { transform: scaleX(1); }
+.nu-words button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.nu-read-v > .nu-words:not(:first-child) button { font-size: 18px; }
+.nu-read-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-soft); text-wrap: pretty; }
+.nu-read-note .pill-tag { margin-right: 4px; }
+.nu-read-note .text-link { font-size: 12px; }
+
+/* The last shot: two plain answers under the balance. */
+.nu-set { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 6px; }
+.nu-answers { display: flex; align-items: baseline; gap: 12px 44px; flex-wrap: wrap; justify-content: center; }
+.nu-answer {
+  position: relative; padding: 4px 0 10px; border: 0; background: none; cursor: pointer;
+  font: italic 400 clamp(28px, 2.8vw, 40px)/1 var(--serif); color: var(--ink); transition: color .3s ease;
+}
+.nu-answer::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink)); transform-origin: left; transition: transform .5s var(--ease-out); }
+.nu-answer.quiet { font-style: normal; font-size: clamp(20px, 1.9vw, 26px); color: var(--ink-faint); }
+.nu-answer.quiet::after { transform: scaleX(0); }
+.nu-answer.quiet:hover, .nu-answer.quiet:focus-visible { color: var(--ink); }
+.nu-answer.quiet:hover::after, .nu-answer.quiet:focus-visible::after { transform: scaleX(1); }
+.nu-answer:disabled { opacity: .45; cursor: default; }
+.nu-answer:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 3px; }
 .nu-set-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
-.nu-set-note .text-link { font-size: 13px; margin-left: 6px; }
 
 /* The goals only fade: the chosen one's line is set against the whole row, which a moved goal would take from it. */
 .goals.turned .goal { animation: nuFade .55s ease both; }
@@ -1851,7 +1882,7 @@ button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3p
 .goals.turned .goal:nth-child(2) { animation-delay: .07s; }
 .goals.turned .goal:nth-child(3) { animation-delay: .14s; }
 .goals.turned .goal:nth-child(4) { animation-delay: .21s; }
-@media (prefers-reduced-motion: reduce) { .goals.turned .goal { animation: none !important; } .nu-key-knob { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .goals.turned .goal { animation: none !important; } }
 .nu-side .nu-row.open .row-label, .nu-side .nu-row.open .row-sum { color: var(--ink); }
 .nu-side .nu-row { transition: opacity .3s ease; }
 .nu-rows:has(.open) .nu-row:not(.open) { opacity: .45; }
@@ -2778,10 +2809,9 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .atlas[data-layout="desktop"] .nu-plan.scale .nu-title { font-size: 34px; }
   .bal-total-n b { font-size: 40px; }
   .bal-total { gap: 3px; padding-bottom: 22px; }
-  .nu-panel { gap: 12px; justify-content: flex-start; }
-  .nu-part { gap: 8px; }
-  .nu-part-h { font-size: 21px; }
-  .nu-panel .row-body { gap: 8px; }
-  .nu-panel .kv { gap: 6px 10px; }
+  .nu-panel { gap: 12px 24px; }
+  .nu-fig { font-size: 38px; }
+  .nu-fig.small { font-size: 28px; }
+  .nu-words button { font-size: 21px; padding-bottom: 6px; }
 }
 .nu-slot { display: contents; }
