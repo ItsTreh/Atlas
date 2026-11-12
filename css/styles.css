@@ -2880,3 +2880,8 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .meal-line.named { height: 62px; }
   .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .day-body { gap: 8px; }
 }
+/* The day's stops as bronze beads: a ring to come, a faint bead eaten, the open meal solid. */
+.stage-nutrition[data-view="day"] .stop-dot { background: var(--bg); border: 1.5px solid var(--cast, var(--ink-faint)); }
+.stage-nutrition[data-view="day"] .stop.past .stop-dot { background: color-mix(in oklab, var(--cast, var(--ink)) 40%, var(--bg)); border-color: var(--cast, var(--ink-faint)); }
+.stage-nutrition[data-view="day"] .stop[aria-selected="true"] .stop-dot { background: radial-gradient(circle at 34% 30%, #f4dca4, #b98a3c 48%, #6b4819); border-color: #6b4819; }
+.stage-nutrition[data-view="day"] .stop-name { font-style: italic; }
