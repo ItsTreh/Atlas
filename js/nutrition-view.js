@@ -621,16 +621,18 @@ function dayHTML() {
    same way. Everything it shows is also in the text beside it. It is one
    element, kept through every redraw, so the water rises and falls. */
 const dayVessel = (() => {
-  const H = 520, TOP = 46, BOT = 486, L = 74, R = 250;         // the inside of the vessel, in its own px
+  const H = 520, TOP = 46, BOT = 486, R = 258;                 // the inside of the vessel, in its own px, and its widest reach
+  // An urn's inside: a wide mouth, a neck, a full belly, down to a narrow foot.
+  const URN = 'M100 ' + TOP + 'C108 92 62 150 66 262C70 362 112 442 126 ' + BOT + 'H198C212 442 254 362 258 262C262 150 216 92 224 ' + TOP;
   const el = document.createElement("div");
   el.className = "day-vessel";
   el.innerHTML =
     '<svg viewBox="0 0 330 ' + H + '" aria-hidden="true">' +
-      '<defs><clipPath id="dv-in"><path d="M' + L + ' ' + TOP + 'C' + (L - 16) + ' 200 ' + (L - 16) + ' 380 ' + (L + 14) + ' ' + BOT + 'H' + (R - 14) + 'C' + (R + 16) + ' 380 ' + (R + 16) + ' 200 ' + R + ' ' + TOP + 'Z"/></clipPath>' +
+      '<defs><clipPath id="dv-in"><path d="' + URN + 'Z"/></clipPath>' +
         '<clipPath id="dv-tube"><rect x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '" rx="7"/></clipPath>' +
         '<linearGradient id="dv-bronze" x1="0" x2="1"><stop offset="0" class="dv-b0"/><stop offset=".3" class="dv-b1"/><stop offset=".46" class="dv-b2"/><stop offset=".62" class="dv-b1"/><stop offset="1" class="dv-b0"/></linearGradient>' +
         '<linearGradient id="dv-glass" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".04"/><stop offset=".8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient></defs>' +
-      '<ellipse class="dv-shadow" cx="162" cy="' + (BOT + 22) + '" rx="120" ry="12"/>' +
+      '<ellipse class="dv-shadow" cx="162" cy="' + (BOT + 24) + '" rx="96" ry="9"/>' +
       '<g clip-path="url(#dv-in)">' +
         '<rect class="dv-back" x="40" y="' + TOP + '" width="250" height="' + (BOT - TOP) + '"/>' +
         '<rect class="dv-pour" id="dv-pour" x="158" y="0" width="7" height="' + H + '" rx="3"/>' +
@@ -640,9 +642,12 @@ const dayVessel = (() => {
         '<g class="dv-water was" id="dv-was"><rect class="dv-body" x="40" y="0" width="250" height="' + H + '"/></g>' +
         '<rect x="40" y="' + TOP + '" width="250" height="' + (BOT - TOP) + '" fill="url(#dv-glass)"/>' +
       '</g>' +
-      '<path class="dv-wall" d="M' + L + ' ' + TOP + 'C' + (L - 16) + ' 200 ' + (L - 16) + ' 380 ' + (L + 14) + ' ' + BOT + 'H' + (R - 14) + 'C' + (R + 16) + ' 380 ' + (R + 16) + ' 200 ' + R + ' ' + TOP + '"/>' +
-      '<rect x="' + (L - 12) + '" y="' + (TOP - 12) + '" width="' + (R - L + 24) + '" height="13" rx="6.5" fill="url(#dv-bronze)"/>' +
-      '<path d="M' + (L + 8) + ' ' + BOT + 'h' + (R - L - 16) + 'l10 16h-' + (R - L + 4) + 'z" fill="url(#dv-bronze)"/>' +
+      '<path class="dv-wall" d="' + URN + '"/>' +
+      // Its bronze: the lip, a collar at the neck, the stem and the foot.
+      '<rect x="86" y="' + (TOP - 13) + '" width="152" height="14" rx="7" fill="url(#dv-bronze)"/>' +
+      '<rect x="98" y="' + (TOP + 40) + '" width="128" height="5" rx="2.5" fill="url(#dv-bronze)" opacity=".85"/>' +
+      '<path d="M122 ' + BOT + 'h80l-8 10h-64z" fill="url(#dv-bronze)"/>' +
+      '<rect x="100" y="' + (BOT + 10) + '" width="124" height="11" rx="5.5" fill="url(#dv-bronze)"/>' +
       '<g clip-path="url(#dv-tube)"><rect class="dv-back" x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '"/><rect class="dv-prot" id="dv-prot" x="22" y="0" width="14" height="' + H + '"/></g>' +
       '<rect class="dv-wall" x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '" rx="7"/>' +
       '<g class="dv-ticks" id="dv-ticks"></g>' +
