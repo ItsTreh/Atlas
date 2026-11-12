@@ -13,9 +13,15 @@
    kilocalories (a weight's volume, a jar's volume), never a body.
 
    The scene is built from turned shapes (lathe: a profile spun round an
-   axis), lit by one key light that follows the pointer as the sculpture's
-   lamp does. It moves when the plan changes or the hand moves it, swings,
-   and comes to rest: nothing runs while it is still.
+   axis) and drawn as an engraved plate, hand-tinted: every form is shaded
+   by lines cut round it, as an engraver shades a turned thing. The lines
+   swell where the form turns from the light and cross in the deepest
+   shade, a contour is drawn round each piece, and a wash of colour lies
+   under the ink (bronze, fired clay, marble). The plate is live: one key
+   light follows the pointer as the sculpture's lamp does, and the lines
+   are cut again for wherever it stands. It moves when the plan changes or
+   the hand moves it, swings, and comes to rest: nothing runs while it is
+   still.
    ========================================================================= */
 
 const BalanceScene = (() => {
@@ -64,41 +70,51 @@ const BalanceScene = (() => {
    * them, for a curve.
    */
   function lathe(profile, smooth = false, around = 56) {
-    const pos = [], nor = [], idx = [];
+    const pos = [], nor = [], idx = [], uv = [], out = [];
+    // How far along the profile each point lies: the engraved lines are cut at even steps of it.
+    const along = [0];
+    for (let i = 1; i < profile.length; i++) along.push(along[i - 1] + Math.hypot(profile[i][0] - profile[i - 1][0], profile[i][1] - profile[i - 1][1]));
     const segN = profile.slice(1).map((p, i) => {
       const dr = p[0] - profile[i][0], dy = p[1] - profile[i][1], l = Math.hypot(dr, dy) || 1;
       return [dy / l, -dr / l];
     });
-    const blend = (a, b) => { const l = Math.hypot(a[0] + b[0], a[1] + b[1]) || 1; return [(a[0] + b[0]) / l, (a[1] + b[1]) / l]; };
+    const blend = (a, b) => { const l = Math.hypot(a[0] + b[0], a[1] + b[1]); return l < 1e-4 ? a : [(a[0] + b[0]) / l, (a[1] + b[1]) / l]; };
     for (let i = 0; i < segN.length; i++) {
       const n0 = smooth && i > 0 ? blend(segN[i - 1], segN[i]) : segN[i];
       const n1 = smooth && i < segN.length - 1 ? blend(segN[i], segN[i + 1]) : segN[i];
       const base = pos.length / 3;
-      for (const [p, n] of [[profile[i], n0], [profile[i + 1], n1]])
+      // The contour is pushed out along a normal shared across each edge, so it never opens at one.
+      const o0 = i > 0 ? blend(segN[i - 1], segN[i]) : segN[i], o1 = i < segN.length - 1 ? blend(segN[i], segN[i + 1]) : segN[i];
+      for (const [p, n, o, v] of [[profile[i], n0, o0, along[i]], [profile[i + 1], n1, o1, along[i + 1]]])
         for (let k = 0; k <= around; k++) {
           const a = k / around * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
           pos.push(p[0] * c, p[1], p[0] * s);
           nor.push(n[0] * c, n[1], n[0] * s);
+          out.push(o[0] * c, o[1], o[0] * s);
+          uv.push(k / around, v);
         }
       for (let k = 0; k < around; k++) {
         const a = base + k, b = a + around + 1;
         idx.push(a, b, a + 1, a + 1, b, b + 1);
       }
     }
-    return { pos, nor, idx };
+    return { pos, nor, idx, uv, out };
   }
   function box() {
-    const pos = [], nor = [], idx = [];
+    const pos = [], nor = [], idx = [], uv = [], out = [];
     for (const [n, u, v] of [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], [[0, 1, 0], [0, 0, 1], [1, 0, 0]],
                              [[0, -1, 0], [1, 0, 0], [0, 0, 1]], [[0, 0, 1], [1, 0, 0], [0, 1, 0]], [[0, 0, -1], [0, 1, 0], [1, 0, 0]]]) {
       const b = pos.length / 3;
       for (const [i, j] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
-        pos.push(...[0, 1, 2].map(k => (n[k] + u[k] * i + v[k] * j) / 2));
+        const at = [0, 1, 2].map(k => n[k] + u[k] * i + v[k] * j);
+        pos.push(...at.map(c => c / 2));
         nor.push(...n);
+        out.push(...at);                    // toward its corner: a block's contour keeps its corners
+        uv.push(0, 0);
       }
       idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
     }
-    return { pos, nor, idx };
+    return { pos, nor, idx, uv, out };
   }
   const arc = (r, from, to, n, x = 0, y = 0) => Array.from({ length: n + 1 }, (_, i) => {
     const a = from + (to - from) * i / n; return [x + r * Math.cos(a), y + r * Math.sin(a)];
@@ -125,41 +141,68 @@ const BalanceScene = (() => {
   };
 
   /* ------------------------------- shading ------------------------------ */
-  const VERT = "attribute vec3 aPos; attribute vec3 aNor; uniform mat4 uView; uniform mat4 uModel;" +
-    "varying vec3 vP; varying vec3 vN;" +
-    "void main(){ vec4 w = uModel * vec4(aPos, 1.); vP = w.xyz; vN = (uModel * vec4(aNor, 0.)).xyz; gl_Position = uView * w; }";
-  /* One material model: `uMetal` 1 is polished bronze, which shows the room
-     (a sky, a floor and the key light's window); 0 is stone or clay, which
-     takes the light matte. `uRough` softens the bronze toward a patina. */
-  const FRAG = "precision mediump float; varying vec3 vP; varying vec3 vN;" +
-    "uniform vec3 uEye; uniform vec3 uTint; uniform float uMetal; uniform float uRough;" +
-    "uniform vec3 uSky; uniform vec3 uFloor; uniform vec3 uKey; uniform vec3 uLamp;" +
-    "vec3 room(vec3 r){" +
-      "vec3 c = mix(uFloor, uSky, smoothstep(-.25, .6, r.y));" +
-      "c *= .72 + .28 * smoothstep(-.2, .5, sin(r.x * 5. + r.y * 2.));" +
-      "float d = max(dot(r, uLamp), 0.);" +
-      "c += uKey * (pow(d, 40.) * 2.2 + pow(d, 5.) * .5);" +
-      "c += uSky * .35 * pow(max(dot(r, normalize(vec3(.85, .1, -.5))), 0.), 5.);" +
-      "return c; }" +
+  /* How many engraved lines are cut in one unit of the scene, how thick the
+     contour round each piece is (in the scene's units), and how far the
+     hull that draws it is pushed out. */
+  const LINES = 30, CONTOUR = .008;
+  const VERT = "attribute vec3 aPos; attribute vec3 aNor; attribute vec3 aOut; attribute vec2 aUV;" +
+    "uniform mat4 uView; uniform mat4 uModel; uniform float uPush; uniform float uBlock;" +
+    "varying vec3 vP; varying vec3 vN; varying vec2 vUV;" +
+    "void main(){ vec4 w = uModel * vec4(aPos, 1.);" +
+      "vec3 o = mix(normalize((uModel * vec4(aOut, 0.)).xyz), normalize(aOut), uBlock);" +
+      "w.xyz += o * uPush;" +
+      "vP = w.xyz; vN = (uModel * vec4(aNor, 0.)).xyz; vUV = aUV; gl_Position = uView * w; }";
+  /* One way of drawing for every piece. `uMode` 2 is the contour: flat ink.
+     Otherwise the form's light decides how thick the line cut at each step
+     along it is (none in the light, swelling into the shade), a second set
+     crosses it in the deepest shade, and the wash under the ink goes from
+     `uShade` to `uLight`. A turned piece is cut round its axis (its own
+     coordinates, `uMode` 0), or along it where it is long and slight (no
+     `uStep`: the beam, the needle); a block along its faces (`uMode` 1). Where the
+     lines would be finer than the screen they give way to their even tone. */
+  const FRAG = (fine) => (fine ? "#extension GL_OES_standard_derivatives : enable\n" : "") +
+    "precision highp float; varying vec3 vP; varying vec3 vN; varying vec2 vUV;" +
+    "uniform vec3 uEye; uniform vec3 uLamp; uniform vec3 uInk; uniform vec3 uLight; uniform vec3 uShade;" +
+    "uniform float uMode; uniform float uStep; uniform float uAround; uniform float uGloss; uniform float uWeight;" +
+    "float cut(float h, float w){" +
+      (fine ? "float f = fwidth(h);" : "float f = .09;") +
+      "float t = abs(fract(h) - .5) * 2.;" +
+      "float l = (1. - smoothstep(w - f * 1.4, w + f * 1.4, t)) * smoothstep(0., .07, w);" +
+      "return mix(l, w, smoothstep(.32, .62, f)); }" +
     "void main(){" +
+      "if (uMode > 1.5) { gl_FragColor = vec4(uInk, 1.); return; }" +
       "vec3 n = normalize(vN), v = normalize(uEye - vP);" +
       "if (dot(n, v) < 0.) n = -n;" +
-      "float lit = max(dot(n, uLamp), 0.);" +
-      "vec3 soft = mix(uFloor, uSky, n.y * .5 + .5) * .7 + uKey * lit * .75;" +
-      "vec3 r = reflect(-v, n);" +
-      "float edge = pow(1. - max(dot(n, v), 0.), 5.);" +
-      "vec3 bronze = uTint * mix(room(r), soft, uRough) + room(r) * edge * .35;" +
-      "vec3 stone = uTint * soft + uKey * pow(max(dot(r, uLamp), 0.), 18.) * .05;" +
-      "vec3 c = mix(stone, bronze, uMetal);" +
-      "gl_FragColor = vec4(pow(c, vec3(.4545)), 1.); }";
+      "float d = max(dot(n, uLamp), 0.);" +
+      "float spec = pow(max(dot(reflect(-v, n), uLamp), 0.), 22.) * uGloss;" +
+      "float lit = clamp(d * .8 + .1 + .14 * max(n.y, 0.) + spec, 0., 1.);" +
+      "float tone = (1. - lit) * uWeight;" +
+      "float h = uMode > .5 ? (abs(n.y) > .6 ? vP.z : vP.y) * uStep : uStep > 0. ? vUV.y * uStep : vUV.x * uAround;" +
+      "float ink = cut(h, clamp(tone * 1.3 - .16, 0., .8));" +
+      "if (uMode < .5 && uAround > 0. && uStep > 0.) ink = max(ink, cut(vUV.x * uAround, clamp((tone - .52) * 1.5, 0., .55)));" +
+      "vec3 wash = mix(uShade, uLight, smoothstep(.05, .95, lit + spec * .6));" +
+      "gl_FragColor = vec4(mix(wash, uInk, ink * .9), 1.); }";
 
-  /* The room by day and by lamp, and the three materials. */
+  /* The plate by day and by lamp: the ink, the colour of what is only a
+     line (the cords, the marks of the scale), and each material's wash
+     from its shade to its light, with how brightly it takes the lamp. */
+  const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
   const LOOK = {
-    light: { sky: [.9, .87, .82], floor: [.1, .075, .05], key: [1, .95, .85], marble: [.66, .62, .56], bronze: [.74, .44, .17], clay: [.5, .23, .12] },
-    dark: { sky: [.26, .23, .2], floor: [.03, .026, .022], key: [1.25, .98, .62], marble: [.4, .37, .33], bronze: [.8, .5, .2], clay: [.42, .19, .1] }
+    light: {
+      ink: hex("#2b2015"), line: hex("#2b2015"),
+      bronze: { light: hex("#f0e4c4"), shade: hex("#bd9350"), gloss: .9 },
+      clay: { light: hex("#f0d8c8"), shade: hex("#c2836a"), gloss: .15 },
+      marble: { light: hex("#f7f3ec"), shade: hex("#e4ddd0"), gloss: 0, weight: .5 }
+    },
+    dark: {
+      ink: hex("#0d0802"), line: hex("#a88446"),
+      bronze: { light: hex("#e6bd6c"), shade: hex("#6f4a17"), gloss: .9 },
+      clay: { light: hex("#c98162"), shade: hex("#5e2e1e"), gloss: .15 },
+      marble: { light: hex("#5f584c"), shade: hex("#2f2b24"), gloss: 0, weight: .6 }
+    }
   };
 
-  return class BalanceScene {
+  class BalanceScene {
     /** @param canvas the canvas to draw in; `ok` is false where WebGL is not to be had. */
     constructor(canvas) {
       this.canvas = canvas;
@@ -172,6 +215,7 @@ const BalanceScene = (() => {
       this.held = null;                    // a lean the hand holds the beam at, or null
       this.lit = -1;                       // the jar pointed at, shown lighter
       this.raf = 0; this.last = 0;
+      this.age = 1e9;                      // ms since it arrived: its load is set down piece by piece
       let gl = null;
       try { gl = canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true }); } catch (e) { gl = null; }
       this.gl = gl;
@@ -180,13 +224,14 @@ const BalanceScene = (() => {
       const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
       const prog = gl.createProgram();
       gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT));
-      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG));
+      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG(!!gl.getExtension("OES_standard_derivatives"))));
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { this.ok = false; return; }
       gl.useProgram(prog);
-      this.at = { pos: gl.getAttribLocation(prog, "aPos"), nor: gl.getAttribLocation(prog, "aNor") };
+      this.at = { pos: gl.getAttribLocation(prog, "aPos"), nor: gl.getAttribLocation(prog, "aNor"),
+                  out: gl.getAttribLocation(prog, "aOut"), uv: gl.getAttribLocation(prog, "aUV") };
       this.un = {};
-      for (const u of ["uView", "uModel", "uEye", "uTint", "uMetal", "uRough", "uSky", "uFloor", "uKey", "uLamp"])
+      for (const u of ["uView", "uModel", "uEye", "uLamp", "uInk", "uLight", "uShade", "uMode", "uStep", "uAround", "uGloss", "uWeight", "uPush", "uBlock"])
         this.un[u] = gl.getUniformLocation(prog, u);
       this.mesh = {};
       for (const [name, make] of Object.entries(SHAPES)) {
@@ -194,7 +239,7 @@ const BalanceScene = (() => {
         const ib = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(m.idx), gl.STATIC_DRAW);
-        this.mesh[name] = { pos: buf(m.pos), nor: buf(m.nor), idx: ib, n: m.idx.length };
+        this.mesh[name] = { pos: buf(m.pos), nor: buf(m.nor), out: buf(m.out), uv: buf(m.uv), idx: ib, n: m.idx.length };
       }
       gl.enable(gl.DEPTH_TEST);
       gl.clearColor(0, 0, 0, 0);
@@ -218,6 +263,7 @@ const BalanceScene = (() => {
     arrive() {
       this.tilt = 0; this.spin = 0;
       this.sizes = { base: 0, training: 0, jars: [] };
+      this.age = 0;
       this.wake();
     }
     /** Where the pointer is, −1 … 1 across and up: the eye and the lamp follow a little. */
@@ -253,12 +299,16 @@ const BalanceScene = (() => {
         if (Math.abs(g.tilt - this.tilt) > 2e-4 || Math.abs(this.spin) > 2e-4 || Math.abs(this.sway[0]) > 1e-3 || Math.abs(this.swayV[0]) > 1e-3) moving = true;
         else { this.tilt = g.tilt; this.spin = 0; }
       }
-      const ms = this.still ? 1 : 190;
-      this.sizes.base = ease(this.sizes.base, g.base, ms);
-      this.sizes.training = ease(this.sizes.training, g.training, ms);
+      // Arriving, the load is set down a piece at a time: the day's weight, training's, then each jar.
+      const ms = this.still ? 1 : 190, here = at => this.still || this.age >= at;
+      this.age += dt;
+      if (!here(BalanceScene.SET_DOWN.jar + g.jars.length * BalanceScene.SET_DOWN.each)) moving = true;
+      this.sizes.base = ease(this.sizes.base, here(BalanceScene.SET_DOWN.base) ? g.base : 0, ms);
+      this.sizes.training = ease(this.sizes.training, here(BalanceScene.SET_DOWN.training) ? g.training : 0, ms);
       const jars = this.sizes.jars;
       while (jars.length < g.jars.length) jars.push(0);
-      for (let i = 0; i < jars.length; i++) jars[i] = ease(jars[i], g.jars[i] || 0, ms);
+      for (let i = 0; i < jars.length; i++)
+        jars[i] = ease(jars[i], here(BalanceScene.SET_DOWN.jar + i * BalanceScene.SET_DOWN.each) ? g.jars[i] || 0 : 0, ms);
       while (jars.length > g.jars.length && jars[jars.length - 1] < 1e-3) jars.pop();
       this.look[0] = ease(this.look[0], this.lookTo[0], 260);
       this.look[1] = ease(this.look[1], this.lookTo[1], 260);
@@ -294,12 +344,13 @@ const BalanceScene = (() => {
       const w = v[3] * p[0] + v[7] * p[1] + v[11] * p[2] + v[15];
       return { x: (x / w * .5 + .5) * c.clientWidth, y: (.5 - y / w * .5) * c.clientHeight };
     }
-    /** Where a label goes: over the burn ("burn"), over the eating ("eat"), by the needle's point ("needle"), or over jar `i`. */
+    /** Where a label goes: at the outer rim of the burn's pan ("burn") or the eating's ("eat"), where a rim hangs with the beam level ("level"), under the needle's point ("needle"), or over jar `i`. */
     anchor(what) {
       const [burn, eat] = this.pans();
-      if (what === "burn") return this.project([burn.at[0], burn.end[1] + .2, 0]);
-      if (what === "eat") return this.project([eat.at[0], eat.end[1] + .2, 0]);
-      if (what === "needle") return this.project([-Math.sin(this.tilt) * 1.3, PIVOT - Math.cos(this.tilt) * 1.3, .14]);
+      if (what === "burn") return this.project([burn.at[0] - PAN, burn.at[1] + .12, 0]);
+      if (what === "eat") return this.project([eat.at[0] + PAN, eat.at[1] + .12, 0]);
+      if (what === "level") return this.project([PAN + REACH, PIVOT - DROP + .12, 0]);
+      if (what === "needle") return this.project([-Math.sin(this.tilt) * 1.36, PIVOT - Math.cos(this.tilt) * 1.36, .14]);
       const n = this.sizes.jars.length, spot = this.jarSpots(n)[what] || [0, 0], s = this.sizes.jars[what] || 0;
       return this.project([eat.at[0] + spot[0], eat.at[1] + .03 + s * 2.5, spot[1]]);
     }
@@ -342,58 +393,77 @@ const BalanceScene = (() => {
       this.view = cam.view;
       gl.uniformMatrix4fv(u.uView, false, cam.view);
       gl.uniform3fv(u.uEye, cam.eye);
-      gl.uniform3fv(u.uSky, look.sky); gl.uniform3fv(u.uFloor, look.floor); gl.uniform3fv(u.uKey, look.key);
+      gl.uniform3fv(u.uInk, look.ink);
       gl.uniform3fv(u.uLamp, unit([-.5 + this.look[0] * .5, .72 + this.look[1] * .25, .62]));
 
-      const put = (name, model, tint, metal, rough = .25) => {
-        const m = this.mesh[name];
+      /* A piece: `mat` its wash; `size` how large it is drawn (its lines are
+         cut at even steps of the scene, whatever its size); `girth` its
+         radius, where it is stout enough for lines to cross in its shade;
+         `along` how many lines run its length, for a long slight piece; `block` for a box;
+         `bare` for a piece too slight for a contour. */
+      const put = (name, model, mat, { size = 1, girth = 0, along = 0, block = false, bare = false, lift = 1 } = {}) => {
+        const m = this.mesh[name], bind = (loc, buf, n) => { gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); };
         gl.uniformMatrix4fv(u.uModel, false, model);
-        gl.uniform3fv(u.uTint, tint); gl.uniform1f(u.uMetal, metal); gl.uniform1f(u.uRough, rough);
-        gl.bindBuffer(gl.ARRAY_BUFFER, m.pos); gl.enableVertexAttribArray(this.at.pos); gl.vertexAttribPointer(this.at.pos, 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, m.nor); gl.enableVertexAttribArray(this.at.nor); gl.vertexAttribPointer(this.at.nor, 3, gl.FLOAT, false, 0, 0);
+        gl.uniform3fv(u.uLight, mat.light.map(v => Math.min(1, v * lift))); gl.uniform3fv(u.uShade, mat.shade.map(v => Math.min(1, v * lift)));
+        gl.uniform1f(u.uGloss, mat.gloss); gl.uniform1f(u.uWeight, mat.weight || 1);
+        gl.uniform1f(u.uStep, along ? 0 : LINES * (block ? 1 : size));
+        gl.uniform1f(u.uAround, along || (girth ? Math.max(6, Math.round(2 * Math.PI * girth * LINES)) : 0));
+        gl.uniform1f(u.uBlock, block ? 1 : 0);
+        bind(this.at.pos, m.pos, 3); bind(this.at.nor, m.nor, 3); bind(this.at.out, m.out, 3); bind(this.at.uv, m.uv, 2);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
+        gl.uniform1f(u.uMode, block ? 1 : 0); gl.uniform1f(u.uPush, 0);
         gl.drawElements(gl.TRIANGLES, m.n, gl.UNSIGNED_SHORT, 0);
+        if (bare) return;
+        // Its contour: the same piece a little larger, only its far faces, in ink.
+        gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT);
+        gl.uniform1f(u.uMode, 2); gl.uniform1f(u.uPush, CONTOUR);
+        gl.drawElements(gl.TRIANGLES, m.n, gl.UNSIGNED_SHORT, 0);
+        gl.disable(gl.CULL_FACE);
       };
-      const B = look.bronze, dark = B.map(v => v * .55);
+      const B = look.bronze, C = look.clay, M = look.marble;
 
       // The plinth: two steps of marble.
-      put("block", chain(move(0, -.07, 0), size(3.5, .14, 1.3)), look.marble, 0);
-      put("block", chain(move(0, -.2, 0), size(3.8, .12, 1.6)), look.marble.map(v => v * .93), 0);
-      put("stand", move(0, 0, 0), B, 1, .22);
+      put("block", chain(move(0, -.07, 0), size(3.5, .14, 1.3)), M, { block: true });
+      put("block", chain(move(0, -.2, 0), size(3.8, .12, 1.6)), M, { block: true });
+      put("stand", move(0, 0, 0), B);
 
       // The scale the needle reads against: a mark each 5%, a longer one each 10%, the level longest.
+      const mark = { light: look.line, shade: look.line, gloss: 0 };
       for (let p = -30; p <= 20; p += 5) {
         const a = p / 100 * LEAN, len = p === 0 ? .15 : p % 10 === 0 ? .1 : .055, r = 1.03 + len / 2;
-        put("block", chain(move(-Math.sin(a) * r, PIVOT - Math.cos(a) * r, .1), turnZ(-a), size(p === 0 ? .02 : .012, len, .012)), p === 0 ? B : dark, 1, .5);
+        put("block", chain(move(-Math.sin(a) * r, PIVOT - Math.cos(a) * r, .1), turnZ(-a), size(p === 0 ? .016 : .009, len, .009)), mark, { block: true, bare: true });
       }
       // The beam on its fulcrum, the needle hanging from it.
       const lean = chain(move(0, PIVOT, 0), turnZ(-this.tilt));
-      put("beam", chain(lean, turnZ(-Math.PI / 2)), B, 1, .18);
-      put("ball", chain(move(0, PIVOT, 0), size(.1)), B, 1, .15);
-      put("needle", chain(move(0, 0, .1), lean, turnZ(Math.PI), size(1, 1.56, 1)), B, 1, .2);
+      put("beam", chain(lean, turnZ(-Math.PI / 2)), B, { along: 14 });
+      put("ball", chain(move(0, PIVOT, 0), size(.1)), B, { size: .1 });
+      put("needle", chain(move(0, 0, .1), lean, turnZ(Math.PI), size(1, 1.56, 1)), B, { along: 6 });
 
       const pans = this.pans();
       pans.forEach((p, i) => {
-        put("ball", chain(move(...p.end), size(.045)), B, 1, .2);
+        put("ball", chain(move(...p.end), size(.045)), B, { size: .045 });
         for (let k = 0; k < 3; k++) {
           const a = Math.PI / 2 + k * Math.PI * 2 / 3;
-          put("rod", between(p.end, [p.at[0] + Math.cos(a) * PAN, p.at[1] + .12, Math.sin(a) * PAN], .009), dark, 1, .5);
+          put("rod", between(p.end, [p.at[0] + Math.cos(a) * PAN, p.at[1] + .12, Math.sin(a) * PAN], .007), mark, { bare: true });
         }
-        put("pan", move(...p.at), B, 1, .3);
+        put("pan", move(...p.at), B, { girth: PAN });
         const floor = p.at[1] + .028;
         if (i === 0) {
           // What is burned: the day's weight, and training's beside it.
           const b = this.sizes.base, tr = this.sizes.training;
-          if (b > .005) put("weight", chain(move(p.at[0] - (tr > .005 ? .1 : 0), floor, 0), size(b)), B, 1, .34);
-          if (tr > .005) put("weight", chain(move(p.at[0] + Math.min(.33, b - .1 + tr + .04), floor, .1), size(tr)), B.map((v, k) => v * [1.05, .9, .7][k]), 1, .3);
+          if (b > .005) put("weight", chain(move(p.at[0] - (tr > .005 ? .1 : 0), floor, 0), size(b)), B, { size: b, girth: b });
+          if (tr > .005) put("weight", chain(move(p.at[0] + Math.min(.33, b - .1 + tr + .04), floor, .1), size(tr)), B, { size: tr, girth: tr });
         } else {
           // What is eaten: a jar a meal.
           const n = this.sizes.jars.length, spots = this.jarSpots(n);
           this.sizes.jars.forEach((s, k) => {
-            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), k === this.lit ? look.clay.map(v => v * 1.5) : look.clay, 0);
+            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), C, { size: s, girth: s, lift: k === this.lit ? 1.12 : 1 });
           });
         }
       });
     }
-  };
+  }
+  /* When each piece of the load is set down after the balance arrives, in ms. */
+  BalanceScene.SET_DOWN = { base: 140, training: 420, jar: 700, each: 170 };
+  return BalanceScene;
 })();

@@ -1699,11 +1699,45 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 [data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
 .bal-label { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; }
-.bal-needle { margin: 10px 0 0 -40px; width: 80px; text-align: center; text-shadow: 0 0 6px var(--bg), 0 0 12px var(--bg); font: italic 400 21px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); }
-.bal-tip {
-  margin: -34px 0 0 0; translate: -50% 0; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--accent-ink);
-  background: var(--accent); border-radius: 999px; font-variant-numeric: tabular-nums;
+/* What the needle reads: a slip of the plate's paper, pinned under its point. */
+.bal-needle {
+  translate: -50% 0; margin-top: 2px; padding: 3px 9px 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
+  font: italic 400 19px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink);
 }
+.bal-needle:empty { display: none; }
+.bal-tip {
+  margin: -36px 0 0 0; translate: -50% 0; padding: 4px 9px 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
+  font: 400 15px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink);
+}
+.bal-tip i { font-size: 17px; margin-right: 4px; }
+/* A hairline from each pan's rim to its side of the page. */
+.bal-lead { position: absolute; left: 0; top: 0; height: 0; border-top: 1px dotted var(--ink-faint); pointer-events: none; opacity: .8; transform-origin: 0 0; }
+.atlas[data-layout="mobile"] .nu-side { translate: none !important; }
+/* A row being edited, under the plinth where the goals stand: its controls
+   side by side, coming out one after another. Its row in the side stays
+   marked, and the balance stays in view to answer every change. */
+.nu-edit { width: min(100%, 1040px); display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--ink-faint); }
+.nu-edit-h { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.nu-edit-h span { font: italic 400 24px/1 var(--serif); color: var(--ink); }
+.nu-edit .row-body { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 12px 30px; padding: 0; }
+.nu-edit .kv > .kv-label { flex-basis: 100%; min-width: 0; padding-top: 0; }
+.nu-edit .kv-note { margin-left: 0; }
+.nu-edit .row-body > * { margin: 0; }
+.nu-edit .row-body > .kv-note, .nu-edit .row-body > .row-note { flex-basis: 100%; }
+.nu-edit .tunes { display: flex; gap: 12px 56px; flex-wrap: wrap; }
+.nu-edit.turned .nu-edit-h, .nu-edit.turned .row-body > * { animation: nuOut .55s var(--ease-out) both; }
+/* The goals only fade: the chosen one's line is set against the whole row, which a moved goal would take from it. */
+.goals.turned .goal { animation: nuFade .55s ease both; }
+@keyframes nuFade { from { opacity: 0; } }
+.nu-edit.turned .row-body > :nth-child(1), .goals.turned .goal:nth-child(2) { animation-delay: .07s; }
+.nu-edit.turned .row-body > :nth-child(2), .goals.turned .goal:nth-child(3) { animation-delay: .14s; }
+.nu-edit.turned .row-body > :nth-child(3), .goals.turned .goal:nth-child(4) { animation-delay: .21s; }
+.nu-edit.turned .row-body > :nth-child(n+4) { animation-delay: .28s; }
+@keyframes nuOut { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .nu-edit.turned *, .goals.turned .goal { animation: none !important; } }
+.nu-side .nu-row.open .row-label, .nu-side .nu-row.open .row-sum { color: var(--ink); }
+.nu-side .nu-row { transition: opacity .3s ease; }
+.nu-rows:has(.open) .nu-row:not(.open) { opacity: .45; }
 .nu-mid { min-height: 300px; }
 .atlas[data-layout="mobile"] .nu-mid, .balance[hidden] { display: none; }
 @media (min-width: 1000px) {
