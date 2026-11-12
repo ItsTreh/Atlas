@@ -27,8 +27,10 @@
    against the burn, a percent at a time. A meal's line (or its jar, seen
    close) opens it in A day of eating: the day as a timeline with one meal
    open at a time, its share of the day, how far the day's targets are met
-   by the end of it, and an example plate portioned to it. There the statue
-   stands by again.
+   by the end of it, and an example plate portioned to it. Beside the text
+   stands a vessel that the day fills meal by meal (dayVessel): the same
+   figures as the text, to be seen and to be handled. Pressing or dragging
+   in it goes to the meal at that level.
 
    On a phone, or without WebGL, there is no balance: the two sides stand
    in columns and a row is edited in place.
@@ -563,26 +565,19 @@ function dayHTML() {
       '<span class="stop-time">' + hourLabel(m.hour) + '</span>' +
       (names ? '<span class="stop-name">' + esc(m.name) + '</span>' : '') +
     '</button>').join("");
-  const segs = meals.map((m, i) =>
-    '<button type="button" class="seg' + (i === mi ? ' on' : i < mi ? ' past' : '') + '" style="flex:' + m.kcal + '" ' +
-      'data-meal="' + i + '" tabindex="-1" aria-label="' + esc(m.name) + ', ' + fmtK(m.kcal) + ' kcal"></button>').join("");
   const p = cm.pick;
 
-  return '<div class="day-head" data-reveal="0">' +
+  return '<div class="day-vessel-slot" id="day-vessel-slot" data-reveal="1"></div>' +
+    '<div class="day-head" data-reveal="0">' +
       '<button type="button" class="quiet-btn" id="close-day" data-key="close-day">← Your daily plan</button>' +
       '<h1 class="display" id="nutrition-title" tabindex="-1">A day of eating</h1>' +
       '<p class="nu-lede">' + tag(false, "Estimate") + ' ' + fmtK(n.kcal) + ' kcal and ' + n.protein +
-        ' g protein across ' + n.mealsPerDay + ' meals, with an example plate for each. Plates come in everyday ' +
-        'portions, so they land near a meal\'s numbers rather than on them. Swap in foods you like with similar numbers.</p>' +
+        ' g protein across ' + n.mealsPerDay + ' meals. Each plate is an example in everyday portions, so it lands near ' +
+        'its meal\'s numbers, not on them: swap in foods you like with similar numbers.</p>' +
       (n.atFloor ? '<p class="nu-warn">' + floorText(n) + '</p>' : '') +
     '</div>' +
     '<div class="day-body" data-reveal="1">' +
       '<div class="meal-line' + (names ? ' named' : '') + '" role="tablist" aria-label="Meals">' + stops + '</div>' +
-      '<div class="meal-segs-wrap">' +
-        '<div class="meal-segs">' + segs + '</div>' +
-        '<span class="meal-share">' + esc(cm.name) + ' is ' + Math.round(cm.share * 100) + '% of the day · ' +
-          fmtK(beforeK + cm.kcal) + ' of ' + fmtK(n.kcal) + ' kcal eaten by ' + hourLabel(cm.hour) + '</span>' +
-      '</div>' +
       '<article class="meal-card" id="meal-card" aria-live="polite">' +
         '<header class="meal-card-head">' +
           '<div class="meal-card-title">' +
@@ -592,8 +587,8 @@ function dayHTML() {
             '<span class="meal-name">' + esc(cm.name) + '</span>' +
           '</div>' +
           '<div class="meal-nav">' +
-            '<button type="button" class="round-btn big" data-meal-step="-1" data-key="meal-prev" aria-label="Previous meal"' + (mi === 0 ? ' disabled' : '') + '>←</button>' +
-            '<button type="button" class="round-btn big" data-meal-step="1" data-key="meal-next" aria-label="Next meal"' + (mi === meals.length - 1 ? ' disabled' : '') + '>→</button>' +
+            '<button type="button" class="arm-coin" data-meal-step="-1" data-key="meal-prev" aria-label="Previous meal"' + (mi === 0 ? ' disabled' : '') + '>' + nuCoinSVG("M32 26H20M25 21l-5 5 5 5") + '</button>' +
+            '<button type="button" class="arm-coin" data-meal-step="1" data-key="meal-next" aria-label="Next meal"' + (mi === meals.length - 1 ? ' disabled' : '') + '>' + nuCoinSVG("M20 26h12M27 21l5 5-5 5") + '</button>' +
           '</div>' +
         '</header>' +
         '<div class="meal-figs">' +
@@ -601,28 +596,109 @@ function dayHTML() {
           '<span><b>' + cm.protein + '</b> g protein</span>' +
           '<span class="meal-of">' + Math.round(cm.share * 100) + '% of the day</span>' +
         '</div>' +
-        '<div class="meal-progress">' +
-          [["Calories by the end of " + cm.name.toLowerCase() + ": " + fmtK(beforeK + cm.kcal) + " / " + fmtK(n.kcal), beforeK / n.kcal, cm.kcal / n.kcal],
-           ["Protein: " + (beforeP + cm.protein) + " / " + n.protein + " g", beforeP / n.protein, cm.protein / n.protein]]
-            .map(([label, before, now]) =>
-              '<div class="bar-block"><span class="bar-label">' + label + '</span>' +
-                '<span class="bar"><span class="bar-before" style="width:' + pct(before) + '"></span>' +
-                '<span class="bar-now" style="left:' + pct(before) + ';width:' + pct(now) + '"></span></span></div>').join("") +
-        '</div>' +
+        // The same two figures the vessel shows, as text.
+        '<p class="meal-sofar">' + tag(false, "Estimate") + ' By the end of ' + esc(cm.name.toLowerCase()) + ': <b>' + fmtK(beforeK + cm.kcal) + '</b> of ' + fmtK(n.kcal) + ' kcal, <b>' +
+          (beforeP + cm.protein) + '</b> of ' + n.protein + ' g protein.</p>' +
         '<div class="meal-idea">' +
           '<span class="meal-focus">' + esc(cm.focus) + '</span>' +
           (p
             ? '<span class="idea-head"><span class="idea-name">' + esc(p.idea.name) + '</span>' +
-                '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g' + plateGap(p, cm) + '</span></span>' +
+                '<span class="idea-nums">' + p.kcal + ' kcal · ' + p.protein + ' g' + plateGap(p, cm) + '</span>' +
+                (cm.choices > 1 ? '<button type="button" class="text-link" data-more="' + cm.index + '" data-key="more">Other ideas ↻</button>' : '') + '</span>' +
               '<ul class="idea-foods">' + p.foods.map(([id, g]) =>
-                '<li><span>' + esc(FOODS[id].name) + '</span><span>' + amountLabel(id, g) + '</span></li>').join("") + '</ul>' +
-              (cm.choices > 1 ? '<button type="button" class="text-link" data-more="' + cm.index + '" data-key="more">Other ideas ↻</button>' : '')
+                '<li><span>' + esc(FOODS[id].name) + '</span><span>' + amountLabel(id, g) + '</span></li>').join("") + '</ul>'
             : '<p class="kv-note flush">No example meals for this diet and meal yet.</p>') +
         '</div>' +
       '</article>' +
       '<p class="note-rule">' + CAVEAT + '</p>' +
     '</div>';
 }
+
+/* The day as a vessel that fills meal by meal: the water stands at what is
+   eaten by the end of the open meal, the part that meal pours lighter over
+   what was there before; a rule beside it is marked at each meal's level
+   with its name and the running total, and a slim tube shows protein the
+   same way. Everything it shows is also in the text beside it. It is one
+   element, kept through every redraw, so the water rises and falls. */
+const dayVessel = (() => {
+  const H = 520, TOP = 46, BOT = 486, L = 74, R = 250;         // the inside of the vessel, in its own px
+  const el = document.createElement("div");
+  el.className = "day-vessel";
+  el.innerHTML =
+    '<svg viewBox="0 0 330 ' + H + '" aria-hidden="true">' +
+      '<defs><clipPath id="dv-in"><path d="M' + L + ' ' + TOP + 'C' + (L - 16) + ' 200 ' + (L - 16) + ' 380 ' + (L + 14) + ' ' + BOT + 'H' + (R - 14) + 'C' + (R + 16) + ' 380 ' + (R + 16) + ' 200 ' + R + ' ' + TOP + 'Z"/></clipPath>' +
+        '<clipPath id="dv-tube"><rect x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '" rx="7"/></clipPath>' +
+        '<linearGradient id="dv-bronze" x1="0" x2="1"><stop offset="0" class="dv-b0"/><stop offset=".3" class="dv-b1"/><stop offset=".46" class="dv-b2"/><stop offset=".62" class="dv-b1"/><stop offset="1" class="dv-b0"/></linearGradient>' +
+        '<linearGradient id="dv-glass" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".04"/><stop offset=".8" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient></defs>' +
+      '<ellipse class="dv-shadow" cx="162" cy="' + (BOT + 22) + '" rx="120" ry="12"/>' +
+      '<g clip-path="url(#dv-in)">' +
+        '<rect class="dv-back" x="40" y="' + TOP + '" width="250" height="' + (BOT - TOP) + '"/>' +
+        '<rect class="dv-pour" id="dv-pour" x="158" y="0" width="7" height="' + H + '" rx="3"/>' +
+        '<g class="dv-water" id="dv-water"><rect class="dv-body" x="40" y="0" width="250" height="' + H + '"/>' +
+          '<path class="dv-wave a" d="M-80 0q20 -7 40 0t40 0 40 0 40 0 40 0 40 0 40 0 40 0 40 0 40 0V14H-80Z"/>' +
+          '<path class="dv-wave b" d="M-80 0q20 6 40 0t40 0 40 0 40 0 40 0 40 0 40 0 40 0 40 0 40 0V14H-80Z"/></g>' +
+        '<g class="dv-water was" id="dv-was"><rect class="dv-body" x="40" y="0" width="250" height="' + H + '"/></g>' +
+        '<rect x="40" y="' + TOP + '" width="250" height="' + (BOT - TOP) + '" fill="url(#dv-glass)"/>' +
+      '</g>' +
+      '<path class="dv-wall" d="M' + L + ' ' + TOP + 'C' + (L - 16) + ' 200 ' + (L - 16) + ' 380 ' + (L + 14) + ' ' + BOT + 'H' + (R - 14) + 'C' + (R + 16) + ' 380 ' + (R + 16) + ' 200 ' + R + ' ' + TOP + '"/>' +
+      '<rect x="' + (L - 12) + '" y="' + (TOP - 12) + '" width="' + (R - L + 24) + '" height="13" rx="6.5" fill="url(#dv-bronze)"/>' +
+      '<path d="M' + (L + 8) + ' ' + BOT + 'h' + (R - L - 16) + 'l10 16h-' + (R - L + 4) + 'z" fill="url(#dv-bronze)"/>' +
+      '<g clip-path="url(#dv-tube)"><rect class="dv-back" x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '"/><rect class="dv-prot" id="dv-prot" x="22" y="0" width="14" height="' + H + '"/></g>' +
+      '<rect class="dv-wall" x="22" y="' + TOP + '" width="14" height="' + (BOT - TOP) + '" rx="7"/>' +
+      '<g class="dv-ticks" id="dv-ticks"></g>' +
+    '</svg>' +
+    '<div class="dv-marks" id="dv-marks"></div>' +
+    '<p class="dv-prot-l" id="dv-prot-l"></p>';
+  const q = id => el.querySelector("#" + id);
+  const yOf = share => BOT - share * (BOT - TOP);
+  let level = null, pourT = 0;
+  /** Sets the water at what is eaten by the end of the open meal, and the marks at each meal's level. */
+  function paint() {
+    const n = nutrition();
+    if (!n.isValid()) return;
+    const meals = n.meals, mi = Math.min(nut.meal, meals.length - 1);
+    let k = 0, p = 0;
+    const upTo = meals.map(m => { k += m.kcal; p += m.protein; return { k, p }; });
+    const now = upTo[mi].k / k, was = mi ? upTo[mi - 1].k / k : 0;
+    // Put back in the page by a redraw, it is first seen where it stood, so the water travels from there.
+    void el.offsetWidth;
+    q("dv-water").style.transform = "translateY(" + yOf(now).toFixed(1) + "px)";
+    q("dv-was").style.transform = "translateY(" + yOf(was).toFixed(1) + "px)";
+    q("dv-prot").style.transform = "translateY(" + yOf(upTo[mi].p / p).toFixed(1) + "px)";
+    // Rising, it is poured: a thread of water from the lip for as long as the level takes.
+    if (level !== null && now > level + .001 && !reducedMotion()) {
+      el.classList.add("pouring");
+      clearTimeout(pourT);
+      pourT = setTimeout(() => el.classList.remove("pouring"), 900);
+    }
+    level = now;
+    q("dv-ticks").innerHTML = upTo.map((u, i) => { const y = yOf(u.k / k).toFixed(1); return '<path class="dv-tick' + (i === mi ? ' on' : '') + '" d="M' + (R + 14) + ' ' + y + 'h' + (i === mi ? 26 : 16) + '"/>'; }).join("");
+    q("dv-marks").innerHTML = meals.map((m, i) =>
+      '<button type="button" class="dv-mark' + (i === mi ? ' on' : i < mi ? ' past' : '') + '" data-meal="' + i + '" data-key="mark-' + i + '" style="top:' + (yOf(upTo[i].k / k) / H * 100).toFixed(2) + '%" ' +
+        'aria-label="' + esc(m.name) + ': ' + fmtK(upTo[i].k) + ' of ' + fmtK(k) + ' kcal eaten by ' + hourLabel(m.hour) + '"' + (i === mi ? ' aria-current="true"' : '') + '>' +
+        '<i>' + esc(m.name) + '</i><b>' + fmtK(upTo[i].k) + '</b></button>').join("");
+    q("dv-prot-l").innerHTML = '<i>Protein</i> ' + upTo[mi].p + ' of ' + p + ' g';
+  }
+  /* Pressed or dragged in, the water goes to the meal whose share of the day holds that level. */
+  let held = false;
+  const mealAt = e => {
+    const n = nutrition(), box = el.querySelector("svg").getBoundingClientRect();
+    const share = 1 - ((e.clientY - box.top) / box.height * H - TOP) / (BOT - TOP), total = n.meals.reduce((a, m) => a + m.kcal, 0);
+    let k = 0;
+    for (let i = 0; i < n.meals.length; i++) { k += n.meals[i].kcal; if (share * total <= k) return i; }
+    return n.meals.length - 1;
+  };
+  const go = e => { const i = mealAt(e); if (i !== nut.meal) { nut.dir = i > nut.meal ? 1 : -1; nut.meal = i; renderNutritionStage(); } };
+  el.addEventListener("pointerdown", e => {
+    if (e.target.closest("button") || (e.pointerType === "mouse" && e.button !== 0)) return;
+    held = true; el.classList.add("held"); e.preventDefault(); go(e);
+  });
+  addEventListener("pointermove", e => { if (held) go(e); });
+  const drop = () => { held = false; el.classList.remove("held"); };
+  addEventListener("pointerup", drop);
+  addEventListener("pointercancel", drop);
+  return { el, paint };
+})();
 
 /* How far a plate is from its meal, when that is more than a little. */
 function plateGap(plate, meal) {
@@ -681,6 +757,7 @@ function renderNutritionStage() {
     nutritionEl.innerHTML = day ? dayHTML() : planHTML();
     const mid = $("nu-mid");
     if (mid) mid.append(balanceEl);
+    if (day) { $("day-vessel-slot").append(dayVessel.el); dayVessel.paint(); }
   }
   $("stage-nutrition").dataset.view = Stages.root.dataset.nview = day ? "day" : "plan";
   balanceEl.dataset.shot = nut.shot;
@@ -1024,8 +1101,8 @@ Stages.register("nutrition", {
   },
   place: () => nut.day ? "day" : nut.shot,
   shot: () => nut.day || Stages.narrow ? "nutrition" : "nutrition-plan",
-  // The balance has the room; in a day of eating, and on a phone, the statue stands by.
-  dim: () => nut.day ? 0.45 : scales.ok && !Stages.narrow ? 0 : 1,
+  // The balance has the room, and the vessel in a day of eating; on a phone the statue stands by.
+  dim: () => nut.day ? (Stages.narrow ? 0.45 : 0) : scales.ok && !Stages.narrow ? 0 : 1,
   focus: () => $("nutrition-title"),
   footer() {
     const empty = routine.selection.isEmpty(), i = NUT_SHOTS.indexOf(nut.shot), stepped = onScale() && !nut.day;
