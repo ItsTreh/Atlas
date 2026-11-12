@@ -1554,6 +1554,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .arm-own { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px 28px; }
 .arm-own .own-name, .arm-own .own-ink-w { align-items: flex-start; }
 .arm-clear { align-self: flex-start; padding: 0; }
+.arm-acts { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; }
 @media (max-height: 820px) {
   .arm-num { font-size: clamp(64px, 6.4vw, 100px) !important; }
   .arm-lede { display: none; }
@@ -1632,11 +1633,12 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   box-shadow: 0 0 0 1px var(--line); transition: box-shadow .3s ease, transform .2s ease;
 }
 .own-ink i { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--sw); }
-.own-ink [data-ink="core"] { --sw: var(--core-trace, #8b3352); }
-.own-ink [data-ink="pull"] { --sw: var(--pull-trace, #1f4787); }
-.own-ink [data-ink="legs"] { --sw: var(--legs-trace, #295a35); }
-.own-ink [data-ink="push"] { --sw: var(--push-trace, #87590a); }
-.own-ink [data-ink="ink"] { --sw: var(--ink); }
+/* The stones the mark is cut from (STONES in measure-view.js). */
+.own-ink [data-ink="core"] { --sw: radial-gradient(circle at 35% 30%, #b0595a, #8a3a3c 55%, #4f1b22); }
+.own-ink [data-ink="pull"] { --sw: radial-gradient(circle at 35% 30%, #4f6da8, #2b4884 55%, #15264d); }
+.own-ink [data-ink="legs"] { --sw: radial-gradient(circle at 35% 30%, #4f7d66, #2c5943 55%, #122d21); }
+.own-ink [data-ink="push"] { --sw: radial-gradient(circle at 35% 30%, #e2ba68, #c0913c 55%, #7a5116); }
+.own-ink [data-ink="ink"] { --sw: radial-gradient(circle at 35% 30%, #575350, #242221 55%, #0a0909); }
 .own-ink button:hover { transform: scale(1.08); }
 .own-ink button[aria-checked="true"] { box-shadow: 0 0 0 1.5px var(--ink); }
 .own-ink button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }

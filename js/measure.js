@@ -13,8 +13,8 @@
    (WEIGHT_KG_RANGE). */
 const MEASURE_LIMITS = { cm: [120, 230], kg: [30, 250], age: [14, 99] };
 const MEASURE_SEX = { female: "Female", male: "Male", unspecified: "Not said" };
-/* The seal's inks: the family hues' traces, and iron-gall ink. */
-const MEASURE_INKS = { core: "Madder rose", pull: "Egyptian blue", legs: "Green earth", push: "Yellow ochre", ink: "Iron-gall ink" };
+/* The stones the mark can be cut from, under the keys the seal's inks had. */
+const MEASURE_INKS = { core: "Rosso antico", pull: "Lapis", legs: "Verde antico", push: "Giallo antico", ink: "Nero" };
 const MEASURE_NAME_MAX = 18;
 
 class BodyMeasure {
@@ -24,11 +24,14 @@ class BodyMeasure {
     this.clear();
   }
 
-  /** Forgets the four facts, the seal's name and the day it was struck; the units and ink stay. */
+  /** Forgets the four facts, the mark's name, its stone's veining and the day it was struck; the units and ink stay. */
   clear() {
     this.cm = null; this.kg = null; this.age = null; this.sex = null;
-    this.sealed = null; this.name = null;
+    this.sealed = null; this.name = null; this.seed = null;
   }
+
+  /** Cuts a new stone for the mark: `seed` is what its veining is drawn from, and nothing else about the user. */
+  recut(random = Math.random) { this.seed = 1 + Math.floor(random() * 0x7ffffffe); return this.seed; }
 
   get imperial() { return this.units === "imperial"; }
   /** How many of the four facts are given. */
@@ -51,8 +54,8 @@ class BodyMeasure {
   }
 
   snapshot() {
-    const { cm, kg, age, sex, units, sealed, name, ink } = this;
-    return { cm, kg, age, sex, units, sealed, name, ink };
+    const { cm, kg, age, sex, units, sealed, name, ink, seed } = this;
+    return { cm, kg, age, sex, units, sealed, name, ink, seed };
   }
 
   /** Takes back only what the page could have set; anything else keeps its default. */
@@ -63,6 +66,7 @@ class BodyMeasure {
     if (s.units === "metric" || s.units === "imperial") this.units = s.units;
     if (Object.hasOwn(MEASURE_INKS, s.ink)) this.ink = s.ink;
     if (typeof s.name === "string" && s.name.trim()) this.name = s.name.trim().slice(0, MEASURE_NAME_MAX);
+    if (Number.isInteger(s.seed) && s.seed > 0 && s.seed <= 0x7fffffff) this.seed = s.seed;
     if (typeof s.sealed === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.sealed)) this.sealed = s.sealed;
   }
 }

@@ -23,6 +23,22 @@ describe("the measure", () => {
     expect([m.cm, m.sex, m.given]).toEqual([null, null, 2]);
   });
 
+  test("the mark's stone is cut once, kept through a reload, and forgotten by clear()", () => {
+    const m = new app.BodyMeasure();
+    expect(m.seed).toBe(null);
+    const seed = m.recut(() => .5);
+    expect(Number.isInteger(seed) && seed > 0).toBe(true);
+    m.set("kg", 80);                      // a fact changing does not recut it
+    expect(m.seed).toBe(seed);
+    const back = new app.BodyMeasure();
+    back.restore(json(m.snapshot()));
+    expect(back.seed).toBe(seed);
+    back.restore({ seed: -4 }); back.restore({ seed: "x" }); back.restore({ seed: 1.5 });
+    expect(back.seed).toBe(seed);
+    m.clear();
+    expect(m.seed).toBe(null);
+  });
+
   test("clear() keeps the units and the ink", () => {
     const m = new app.BodyMeasure();
     Object.assign(m, { units: "imperial", ink: "pull", name: "Ada", sealed: "2026-10-27" });
