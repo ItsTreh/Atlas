@@ -114,6 +114,60 @@ fallback all keep working.
   has no camera: the stage marks itself `flat`, and the figure stands in the
   middle of Targets and steps aside elsewhere.
 
+### Four rooms, four ways of looking
+
+Branch `redesign/four-techniques`, 2026-11-11. Not yet accepted by the user.
+
+Every stage used to say the same sentence: the marble, a large quiet word
+behind it, an eyebrow, a serif title, a list, with the camera moving
+between. A first answer changed the figure's material from room to room
+(a drawing, a bronze cast); the user's verdict was that the figure should
+stay the marble everywhere and the room around it should change. So each
+room now has its own object, its own layout and its own way of being
+moved through. The marble is one mesh, one renderer and one material.
+
+| Stage | The room | How it is laid out | How it is moved |
+|---|---|---|---|
+| I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
+| II Measure | an instrument: three bronze rings round the figure, one a fact | the figure in the middle, what is asked on the left, the reading on the right, level with the ring it is read from | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact and the body turns inside the rings |
+| III Nutrition | a balance, and no statue | as the balance is: what is burned on its left, what is eaten on its right, the goal under its plinth | pull a pan down; press a jar for its meal |
+| IV Week plan | a frieze: seven figures, one a day, each beside its day's hours | the whole week in one row; the settings under it | drag down a day's hours to say when you are busy; the session moves |
+
+How each is built:
+
+- **Measure** (`js/measure-view.js`). The rings are drawn in two 2D
+  canvases, one under the sculpture's and one over it, so each passes
+  behind the body. They hang from `axisPoint`, so they follow the camera.
+  A ring's scale is engraved round its face and read under an index at the
+  front. The seal is the same three rings swung flat and closed into one
+  another, with the facts inscribed between them: the instrument becomes
+  the medal. On a phone there are no rings; the facts stack.
+- **Nutrition** (`js/balance.js`, `js/nutrition-view.js`). The balance is
+  a small WebGL scene of its own (turned shapes, one shader, no library):
+  the burn's weights in one pan, a jar a meal in the other, the beam
+  leaning by how far eating is set from the burn. Sizes are the plan's own
+  kilocalories; nothing here stands for a body. It moves when the plan
+  changes or the hand moves it, swings and rests. Without WebGL the statue
+  stands in its place. *A day of eating* is as it was.
+- **Week plan** (`js/week-view.js`). `plates(list)` on the sculpture draws
+  the figure into each day's canvas (no second context, no second copy of
+  the model). Beside each stands its day (`.staff`): busy hours, the
+  preferred time, the meals, and where the session would go, which slides
+  to its new hours as busy time is painted (`paint.js`). Session length,
+  preferred time, the busy presets and the meals switch moved here from
+  *Shape your week*, which remains only where the frieze cannot be drawn
+  (a phone, no WebGL).
+
+Open, for the user:
+
+- `js/anatomy-sculpture.js` still carries the drawing and the cast
+  (`SCULPTURE_TECHNIQUES`, `setTechnique`, `setCast`) and
+  `tests/sculpture-technique.test.js` tests them. Nothing calls them now:
+  to delete, once this direction is accepted.
+- *A day of eating* and *Your week* (the generated calendar) have not been
+  re-imagined yet.
+- The phone keeps plain versions of all three rooms.
+
 ### Type
 
 Cormorant Garamond, shipped in `fonts/` (SIL Open Font License), is used
