@@ -20,8 +20,10 @@
    follows the pointer as the sculpture's lamp does.
 
    It has four shots (`shotTo`): the whole balance, close on what is burned,
-   close on what is eaten, and the balance alone, slowly seen round, to be
-   set. It moves when the plan changes or the hand moves it, swings, and
+   close on what is eaten, and the balance alone. Seen whole it stands
+   still: the beam goes to its lean and stays, and the pointer does not
+   turn the view; seen close, the view follows the pointer a little and
+   the piece being changed pulses (`glow`). It moves when the plan changes or the hand moves it, swings, and
    comes to rest: nothing runs while it is still.
    ========================================================================= */
 
@@ -135,10 +137,10 @@ const BalanceScene = (() => {
     /* A pan: a shallow dish with a rolled rim, both faces. */
     pan: () => lathe([[0, 0], [.3, .004], [.44, .045], [PAN, .11], [PAN + .012, .125], [PAN, .135], [.45, .085], [.3, .03], [0, .024]], true),
     /* A weight: a drum with a turned grip, of radius 1. */
-    weight: () => lathe([[0, 0], [.94, 0], [1, .06], [1, .64], [.94, .7], [.4, .72], [.24, .78], [.2, .92], [.3, 1.02], [.32, 1.1], [.22, 1.18], [0, 1.2]]),
+    weight: () => lathe([[0, 0], [.94, 0], [1, .06], [1, .64], [.94, .7], [.4, .72], [.24, .78], [.2, .92], [.3, 1.02], [.32, 1.1], [.22, 1.18], [0, 1.2]], false, 64),
     /* A jar: a foot, a full belly, a neck and a lip, of radius 1. */
-    jar: () => lathe([[0, 0], [.36, 0], [.42, .05], [.62, .4], [.9, .85], [1, 1.25], [.93, 1.6], [.68, 1.9], [.42, 2.06], [.36, 2.2],
-      [.4, 2.3], [.52, 2.38], [.5, 2.43], [.36, 2.4], [0, 2.4]], true, 32)
+    jar: () => lathe([[0, 0], [.34, 0], [.38, .04], [.33, .1], [.3, .16], [.5, .5], [.84, .92], [1, 1.32], [.97, 1.6], [.74, 1.86], [.44, 2.0],
+      [.32, 2.08], [.3, 2.2], [.36, 2.3], [.5, 2.36], [.52, 2.4], [.46, 2.43], [.3, 2.4], [0, 2.4]], true, 40)
   };
 
   /* ------------------------------- shading ------------------------------ */
@@ -156,7 +158,7 @@ const BalanceScene = (() => {
      far its shade reaches): the plinth under the stand, a pan under its load. */
   const FRAG = "precision highp float; varying vec3 vP; varying vec3 vN; varying vec3 vL;" +
     "uniform vec3 uEye; uniform vec3 uLamp; uniform vec3 uBase; uniform vec3 uDeep; uniform vec3 uWarm; uniform vec3 uHi;" +
-    "uniform vec4 uOcc; uniform float uKind; uniform float uLift;" +
+    "uniform vec4 uOcc; uniform vec4 uBand; uniform float uKind; uniform float uLift;" +
     "float hash(vec3 p){ p = fract(p * .3183099 + .1); p *= 17.; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }" +
     "float noise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);" +
       "return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y)," +
@@ -176,12 +178,20 @@ const BalanceScene = (() => {
         "col = mix(col, uWarm, smoothstep(.55, .8, t));" +
         "col = mix(col, uHi, smoothstep(.88, .975, t));" +
         "col *= mix(.5, 1., smoothstep(-.7, .4, r.y)) * (1. - edge * .45) * (.88 + .24 * noise(vL * vec3(24., 4., 24.)));" +
+        // Its patina: darker and a little green where the metal has been left alone.
+        "col = mix(col, vec3(.13, .15, .1) * (.6 + d), smoothstep(.56, .82, noise(vP * 3.3 + 11.)) * .3);" +
       "} else if (uKind < 1.5) {" +
         "col = mix(uDeep, uBase, d * .75 + .25 + .1 * max(n.y, 0.)) * (.9 + .2 * noise(vL * 9.)) * (1. - edge * .3);" +
       "} else {" +
         "float w = fbm(vP * 1.7 + fbm(vP * .9 + 3.) * 2.6);" +
         "col = mix(uBase, uDeep, smoothstep(.04, 0., abs(w - .5)) * .5 + (noise(vP * 7.) - .5) * .1);" +
         "col *= (d * .5 + .46 + .1 * max(n.y, 0.)) * (1. - edge * .18);" +
+      "}" +
+      // What is painted or cut round a turned piece: a band of slip between two heights, and two fine lines.
+      "if (uKind > .5) {" +
+        "float band = uBand.y > 0. ? smoothstep(uBand.x - .02, uBand.x + .02, vL.y) * smoothstep(uBand.y + .02, uBand.y - .02, vL.y) : 0.;" +
+        "float cutl = (uBand.z > 0. ? smoothstep(.035, .01, abs(vL.y - uBand.z)) : 0.) + (uBand.w > 0. ? smoothstep(.035, .01, abs(vL.y - uBand.w)) : 0.);" +
+        "col = mix(col, col * .3, clamp(band * .82 + cutl * .7, 0., 1.));" +
       "}" +
       "gl_FragColor = vec4(col * occ * uLift, 1.); }";
 
@@ -221,10 +231,12 @@ const BalanceScene = (() => {
       this.look = [0, 0]; this.lookTo = [0, 0];
       this.held = null;                    // a lean the hand holds the beam at, or null
       this.lit = -1;                       // the jar pointed at, shown lighter
+      this.glow = null;                    // the piece being changed, which pulses: "base", "training", "jars" or "beam"
+      this.par = 0;                        // how far the pointer turns the view: not at all seen whole, a little seen close
       this.raf = 0; this.last = 0;
       this.age = 1e9;                      // ms since it arrived: its load is set down piece by piece
       this.shot = "whole"; this.cam = null; // the shot asked for, and the camera on its way there
-      this.clock = 0; this.arrested = false;
+      this.clock = 0;
       let gl = null;
       try { gl = canvas.getContext("webgl", { alpha: true, antialias: true, premultipliedAlpha: true }); } catch (e) { gl = null; }
       this.gl = gl;
@@ -239,7 +251,7 @@ const BalanceScene = (() => {
       gl.useProgram(prog);
       this.at = { pos: gl.getAttribLocation(prog, "aPos"), nor: gl.getAttribLocation(prog, "aNor") };
       this.un = {};
-      for (const u of ["uView", "uModel", "uEye", "uLamp", "uBase", "uDeep", "uWarm", "uHi", "uOcc", "uKind", "uLift"])
+      for (const u of ["uView", "uModel", "uEye", "uLamp", "uBase", "uDeep", "uWarm", "uHi", "uOcc", "uBand", "uKind", "uLift"])
         this.un[u] = gl.getUniformLocation(prog, u);
       this.mesh = {};
       for (const [name, make] of Object.entries(SHAPES)) {
@@ -268,20 +280,17 @@ const BalanceScene = (() => {
     /** Goes to a shot: "whole", "burn", "eat" or "set"; `now` cuts to it. */
     shotTo(name, now = false) {
       if (this.shot === name && !now) return;
-      this.arrested = false;
       this.shot = name;
       // The camera travels there in one eased move, from wherever it now is.
       this.travel = now || !this.cam || this.still ? null : { from: { ...this.cam, at: [...this.cam.at] }, t: 0 };
       if (!this.travel) this.cam = null;
       this.wake();
     }
-    /** The beam's arrest is turned: it comes to rest where it leans and is held there. */
-    arrest() { this.arrested = true; this.wake(); }
     /** The hand takes the beam (a lean, as `set`'s tilt) or lets it go (null). */
     hold(tilt) { this.held = tilt; this.wake(); }
     /** Sets it swinging from level and empty: the stage arriving. */
     arrive() {
-      this.tilt = 0; this.spin = 0; this.arrested = false;
+      this.tilt = 0; this.spin = 0;
       this.sizes = { base: 0, training: 0, jars: [] };
       this.age = 0;
       this.wake();
@@ -308,13 +317,14 @@ const BalanceScene = (() => {
       if (this.still) { this.tilt = g.tilt; this.spin = 0; this.sway = [0, 0]; }
       else {
         // The beam on its knife-edge: a spring toward its lean, lightly damped, so it swings and settles.
-        const firm = this.held !== null || this.arrested;
-        const stiff = firm ? 120 : 15, damp = firm ? 20 : 4.4;
+        const firm = this.held !== null;
+        // Critically damped: the beam goes to its lean and stays, it does not swing.
+        const stiff = firm ? 120 : 15, damp = firm ? 20 : 7.8;
         const acc = stiff * (g.tilt - this.tilt) - damp * this.spin;
         this.spin += acc * s; this.tilt += this.spin * s;
         // The pans hang: each swings a little against the beam's turn.
         for (const i of [0, 1]) {
-          this.swayV[i] += (-30 * this.sway[i] - 2.4 * this.swayV[i] + acc * (i ? -.22 : .22)) * s;
+          this.swayV[i] += (-30 * this.sway[i] - 9 * this.swayV[i] + acc * (i ? -.1 : .1)) * s;
           this.sway[i] = Math.max(-.3, Math.min(.3, this.sway[i] + this.swayV[i] * s));
         }
         if (Math.abs(g.tilt - this.tilt) > 2e-4 || Math.abs(this.spin) > 2e-4 || Math.abs(this.sway[0]) > 1e-3 || Math.abs(this.swayV[0]) > 1e-3) moving = true;
@@ -331,6 +341,8 @@ const BalanceScene = (() => {
       for (let i = 0; i < jars.length; i++)
         jars[i] = ease(jars[i], here(BalanceScene.SET_DOWN.jar + i * BalanceScene.SET_DOWN.each) ? g.jars[i] || 0 : 0, ms);
       while (jars.length > g.jars.length && jars[jars.length - 1] < 1e-3) jars.pop();
+      this.par = ease(this.par, this.shot === "burn" || this.shot === "eat" ? 1 : 0, 400);
+      if (this.glow && !this.still) moving = true;
       this.look[0] = ease(this.look[0], this.lookTo[0], 260);
       this.look[1] = ease(this.look[1], this.lookTo[1], 260);
       // The camera: at its shot (a close one follows its pan), or on its way there.
@@ -343,7 +355,6 @@ const BalanceScene = (() => {
         if (tr.t >= 1) this.travel = null;
         moving = true;
       } else { this.travel = null; this.cam = to; }
-      if (this.shot === "set" && !this.still && !this.arrested) moving = true;
       return moving;
     }
 
@@ -365,14 +376,14 @@ const BalanceScene = (() => {
     /** Where the shot asked for puts the camera now. */
     shotGoal() {
       const [burn, eat] = this.pans(), s = this.shot;
-      if (s === "burn") return { at: [burn.at[0] + .8, burn.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: -.24 };
-      if (s === "eat") return { at: [eat.at[0] - .8, eat.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: .24 };
-      if (s === "set") return { at: [0, 1.18, 0], dist: 11, pitch: .1, yaw: this.still || this.arrested ? 0 : Math.sin(this.clock / 4600) * .34 };
+      if (s === "burn") return { at: [burn.at[0] + .82, burn.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: -.24 };
+      if (s === "eat") return { at: [eat.at[0] - .82, eat.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: .24 };
+      if (s === "set") return { at: [0, 1.18, 0], dist: 11, pitch: .1, yaw: 0 };
       return { at: [0, 1.16, 0], dist: 11.6, pitch: .15, yaw: 0 };
     }
     camera() {
       const c = this.canvas, aspect = (c.clientWidth || 1) / (c.clientHeight || 1), k = this.cam || this.shotGoal();
-      const yaw = k.yaw + this.look[0] * .07, pitch = k.pitch - this.look[1] * .02, dist = k.dist, at = k.at;
+      const yaw = k.yaw + this.look[0] * .07 * this.par, pitch = k.pitch - this.look[1] * .02 * this.par, dist = k.dist, at = k.at;
       const eye = [at[0] + dist * Math.sin(yaw) * Math.cos(pitch), at[1] + dist * Math.sin(pitch), at[2] + dist * Math.cos(yaw) * Math.cos(pitch)];
       const tanY = Math.max(1.4 / BASE_DIST, 2.05 / BASE_DIST / aspect);
       return { eye, view: mul(lens(tanY, aspect, 1.5, 30), lookAt(eye, at)) };
@@ -442,16 +453,18 @@ const BalanceScene = (() => {
       this.view = cam.view;
       gl.uniformMatrix4fv(u.uView, false, cam.view);
       gl.uniform3fv(u.uEye, cam.eye);
-      gl.uniform3fv(u.uLamp, unit([-.5 + this.look[0] * .5, .72 + this.look[1] * .25, .62]));
+      gl.uniform3fv(u.uLamp, unit([-.5 + this.look[0] * .5 * this.par, .72 + this.look[1] * .25 * this.par, .62]));
+      // The piece being changed pulses, as a muscle pointed at does on Targets.
+      const pulse = this.still ? 1.14 : 1.1 + .1 * Math.sin(this.clock / 210), glow = what => this.glow === what ? pulse : 1;
 
       /* A piece, in what it is made of; `occ` is where something stands on it ([x, y, z, reach]); `lift` shows it lighter (the jar pointed at). */
       const NONE = [0, 0, 0, 0];
-      const put = (name, model, mat, occ = NONE, lift = 1) => {
+      const put = (name, model, mat, occ = NONE, lift = 1, band = NONE) => {
         const m = this.mesh[name], bind = (loc, buf, n) => { gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); };
         gl.uniformMatrix4fv(u.uModel, false, model);
         gl.uniform3fv(u.uBase, mat.base); gl.uniform3fv(u.uDeep, mat.deep);
         gl.uniform3fv(u.uWarm, mat.warm || mat.base); gl.uniform3fv(u.uHi, mat.hi || mat.base);
-        gl.uniform4fv(u.uOcc, occ);
+        gl.uniform4fv(u.uOcc, occ); gl.uniform4fv(u.uBand, band);
         gl.uniform1f(u.uKind, mat.kind); gl.uniform1f(u.uLift, lift);
         bind(this.at.pos, m.pos, 3); bind(this.at.nor, m.nor, 3);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.idx);
@@ -471,9 +484,9 @@ const BalanceScene = (() => {
       }
       // The beam on its fulcrum, the needle hanging from it.
       const lean = chain(move(0, PIVOT, 0), turnZ(-this.tilt));
-      put("beam", chain(lean, turnZ(-Math.PI / 2)), B);
+      put("beam", chain(lean, turnZ(-Math.PI / 2)), B, NONE, glow("beam"));
       put("ball", chain(move(0, PIVOT, 0), size(.1)), B);
-      put("needle", chain(move(0, 0, .1), lean, turnZ(Math.PI), size(1, 1.56, 1)), B);
+      put("needle", chain(move(0, 0, .1), lean, turnZ(Math.PI), size(1, 1.56, 1)), B, NONE, glow("beam"));
 
       const pans = this.pans();
       pans.forEach((p, i) => {
@@ -487,13 +500,13 @@ const BalanceScene = (() => {
         if (i === 0) {
           // What is burned: the day's weight, and training's beside it.
           const b = this.sizes.base, tr = this.sizes.training;
-          if (b > .005) put("weight", chain(move(p.at[0] - (tr > .005 ? .1 : 0), floor, 0), size(b)), W);
-          if (tr > .005) put("weight", chain(move(p.at[0] + Math.min(.33, b - .1 + tr + .04), floor, .1), size(tr)), W);
+          if (b > .005) put("weight", chain(move(p.at[0] - (tr > .005 ? .1 : 0), floor, 0), size(b)), W, NONE, glow("base"), [0, 0, .1, .6]);
+          if (tr > .005) put("weight", chain(move(p.at[0] + Math.min(.33, b - .1 + tr + .04), floor, .1), size(tr)), W, NONE, glow("training"), [0, 0, .1, .6]);
         } else {
           // What is eaten: a jar a meal.
           const n = this.sizes.jars.length, spots = this.jarSpots(n);
           this.sizes.jars.forEach((s, k) => {
-            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), C, NONE, k === this.lit ? 1.25 : 1);
+            if (s > .004) put("jar", chain(move(p.at[0] + spots[k][0], floor, spots[k][1]), size(s)), C, NONE, k === this.lit ? 1.25 : glow("jars"), [1.02, 1.56, .62, 1.78]);
           });
         }
       });

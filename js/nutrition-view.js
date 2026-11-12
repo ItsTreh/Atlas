@@ -14,11 +14,14 @@
    press on a pan:
 
      whole   the balance and all it says
-     burn    close on what is burned; beside it, You (weight, the day
-             outside training, the burn) and Training (how often, how long)
-     eat     close on what is eaten; beside it, Targets (the calorie change
-             and the protein) and Rhythm (meals, the eating window, diet)
-     set     the balance alone, slowly seen round, and the key that sets it
+     burn    close on what is burned; beside it its readings (weight, the
+             day outside training, the burn, how often and how long you
+             train), set large as Measure's are
+     eat     close on what is eaten; beside it its readings (the calorie
+             change, protein, meals, the eating window, diet). The piece
+             of the balance a reading changes pulses while it is in hand
+     set     the balance alone, and two plain answers: it weighs right, or
+             weigh it again
 
    The beam can be taken by the hand: pulling a pan down eats more or less
    against the burn, a percent at a time. A meal's line (or its jar, seen
@@ -43,9 +46,82 @@ const fmtK = n => Math.round(n).toLocaleString("en-US");
 /* What is open: the shot the balance is seen in (and, where there is no
    balance, the one row being edited); the day view and its meal; whether
    the key has been turned. */
-const nut = { shot: "whole", row: null, day: false, meal: 0, dir: 1, reasons: false, turned: false, fresh: false, set: false };
+const nut = { shot: "whole", row: null, day: false, meal: 0, dir: 1, reasons: false, turned: false, fresh: false };
 const NUT_SHOTS = ["whole", "burn", "eat", "set"];
 const NUT_SHOT_NAMES = { whole: "The whole balance", burn: "What you burn", eat: "What you eat", set: "Weigh it" };
+
+/* A coin, as the footer's and Measure's: a beaded rim, a fine ring, the sign struck in the field. */
+const nuCoinSVG = d => '<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="mzc-beads" cx="26" cy="26" r="24.2" pathLength="40"/>' +
+  '<circle class="mzc-ring" cx="26" cy="26" r="20.5"/><path class="mzc-arr" d="' + d + '"/></svg>';
+/* The two coins that step a reading: less, more. */
+const nuCoins = (attr, less, more, lessLabel, moreLabel) => '<span class="nu-coins">' +
+  '<button type="button" class="arm-coin" ' + attr + '="' + less + '" data-key="' + attr + less + '" aria-label="' + lessLabel + '">' + nuCoinSVG("M19 26h14") + '</button>' +
+  '<button type="button" class="arm-coin" ' + attr + '="' + more + '" data-key="' + attr + more + '" aria-label="' + moreLabel + '">' + nuCoinSVG("M19 26h14M26 19v14") + '</button></span>';
+/* A choice among words, the one chosen underlined. */
+const nuWords = (label, items) => '<span class="nu-words" role="radiogroup" aria-label="' + label + '">' + items.join("") + '</span>';
+const nuWord = (on, attr, value, text, extra = "") =>
+  '<button type="button" role="radio" aria-checked="' + on + '" ' + attr + '="' + value + '" data-key="' + attr + '-' + value + '"' + extra + '>' + text + '</button>';
+/* A reading beside the balance: its name, its figure with what steps it, a note; `piece` is the part of the balance it changes. */
+const nuRead = (piece, name, fig, note = "", wide = false) => '<div class="nu-read' + (wide ? ' wide' : '') + '" data-piece="' + piece + '">' +
+  '<span class="nu-read-n">' + name + '</span><div class="nu-read-v">' + fig + '</div>' + (note ? '<p class="nu-read-note">' + note + '</p>' : '') + '</div>';
+
+/** What is burned, as readings: weight, the day outside training, the burn, the training. */
+function burnReadings(n) {
+  const muscles = routine.selectedMuscles(), load = n.load;
+  return nuRead("base", '<label for="n-weight">Body weight</label>',
+      '<input id="n-weight" class="nu-fig" type="number" min="' + weightBound(n, 0) + '" max="' + weightBound(n, 1) + '" step="0.5" inputmode="decimal" ' +
+        'aria-describedby="weight-error"' + (n.isValid() ? '' : ' aria-invalid="true"') + ' value="' + (n.weight ?? "") + '">' +
+      nuWords("Weight unit", ["kg", "lb"].map(u => nuWord(n.unit === u, "data-unit", u, u))) +
+      nuCoins("data-weight-step", -0.5, 0.5, "Half a " + n.unit + " less", "Half a " + n.unit + " more")) +
+    nuRead("base", '<label for="n-burn">Daily burn</label>',
+      '<input id="n-burn" class="nu-fig" type="number" min="1000" max="6000" step="10" inputmode="numeric" value="' + (n.burnIsEstimate && !n.isValid() ? "" : n.burn) + '">' +
+      '<span class="nu-unit-w">kcal</span>' + nuCoins("data-burn-step", -50, 50, "50 kcal less", "50 kcal more"),
+      '<span id="burn-note">' + burnNoteHTML(n) + '</span>') +
+    nuRead("base", '<span id="act-label">Outside training</span>',
+      nuWords("Outside training", Object.entries(ACTIVITY_LEVELS).map(([key, a]) =>
+        nuWord(n.burnIsEstimate && n.activity === key, "data-activity", key, a.label, ' title="' + esc(a.hint) + '"'))), "", true) +
+    nuRead("training", '<span id="days-label">Training</span>',
+      '<output class="nu-fig" aria-labelledby="days-label">' + routine.sessionsPerWeek + '</output><span class="nu-unit-w">days a week</span>' +
+      nuCoins("data-days-step", -1, 1, "One day fewer", "One day more"),
+      (muscles.length && !load.muscles.length ? 'No exercises in the database yet for these muscles, so no training is counted.'
+        : !muscles.length ? 'No target muscles yet, so no training is counted. <button type="button" class="text-link" data-goto="targets">Pick targets</button>'
+        : !load.kcalPerDay || (n.burnIsEstimate && !n.isValid()) ? 'The same numbers as the Week plan.'
+        : n.burnIsEstimate ? tag(false, "Estimate") + ' ≈ ' + fmtK(load.kcalPerDay) + ' kcal a day on average: about ' + trainingHours(load.hours) + ' of lifting a week' + fewerDays(load.sessionsPerWeek) + '.'
+        : 'Your own burn number already includes this training.')) +
+    nuRead("training", 'Each session',
+      nuWords("Session length", SESSION_LENGTH_OPTIONS.map(m => nuWord(routine.sessionMinutes === m, "data-len", m, m))) + '<span class="nu-unit-w">min</span>');
+}
+
+/** What is eaten, as readings: the calorie change, protein, meals, the eating window, the diet. */
+function eatReadings(n) {
+  const rec = n.recommended, goal = GOALS[n.goal].label.toLowerCase(), ok = n.isValid();
+  const [plo, phi] = n.proteinRange;
+  const mi = MEAL_COUNTS.indexOf(n.mealsPerDay);
+  return nuRead("beam", '<span id="adjust-label">Calories against your burn</span>',
+      '<output class="nu-fig" aria-labelledby="adjust-label">' + (n.adjust ? adjustLabel(n.adjust) : "level") + '</output>' +
+      nuCoins("data-adjust-step", -0.01, 0.01, "1% fewer calories", "1% more calories"),
+      n.adjustIsRecommended ? tag(false, "Recommended") + ' for ' + goal + ' with your training.'
+        : tag(true, "Your setting") + ' Recommended: ' + adjustLabel(rec.adjust) + '. <button type="button" class="text-link" data-tune-reset="adjust" data-key="reset-adjust">Use it</button>') +
+    nuRead("jars", '<span id="protein-label">Protein</span>',
+      '<output class="nu-fig" aria-labelledby="protein-label">' + fmtGkg(n.proteinPerKg) + '</output><span class="nu-unit-w">g per kg</span>' +
+      nuCoins("data-protein-step", -0.1, 0.1, "0.1 g per kg less", "0.1 g per kg more"),
+      (n.proteinIsRecommended ? tag(false, "Recommended") + ' for ' + goal + '.'
+        : tag(true, "Your setting") + ' Recommended: ' + fmtGkg(rec.protein) + '. <button type="button" class="text-link" data-tune-reset="protein" data-key="reset-protein">Use it</button>') +
+      (ok ? ' ≈ ' + n.protein + ' g a day; the usual range is ' + plo + '–' + phi + ' g.' : '')) +
+    nuRead("jars", '<span id="meals-label">Meals a day</span>',
+      '<output class="nu-fig" aria-labelledby="meals-label">' + n.mealsPerDay + '</output>' +
+      nuCoins("data-meals-to", MEAL_COUNTS[Math.max(0, mi - 1)], MEAL_COUNTS[Math.min(MEAL_COUNTS.length - 1, mi + 1)], "One meal fewer", "One meal more"),
+      !ok ? "" : n.suggestedMeals !== n.mealsPerDay
+        ? 'Suggested: ' + n.suggestedMeals + ', about ' + Math.round(n.protein / n.suggestedMeals) + ' g protein each. <button type="button" class="text-link" data-use-meals="' + n.suggestedMeals + '" data-key="use-meals">Use ' + n.suggestedMeals + '</button>'
+        : 'The suggested number for your protein target.') +
+    nuRead("jars", 'Eating between',
+      '<span class="nu-span"><output class="nu-fig small">' + hourLabel(n.firstMeal) + '</output>' +
+        nuCoins("data-first-to", Math.max(FIRST_HOUR, n.firstMeal - 1), Math.min(13, n.firstMeal + 1), "First meal an hour earlier", "First meal an hour later") + '</span>' +
+      '<span class="nu-span"><span class="nu-unit-w">and</span><output class="nu-fig small">' + hourLabel(n.lastMeal) + '</output>' +
+        nuCoins("data-last-to", Math.max(14, n.lastMeal - 1), Math.min(LAST_HOUR, n.lastMeal + 1), "Last meal an hour earlier", "Last meal an hour later") + '</span>') +
+    nuRead("jars", 'Diet style',
+      nuWords("Diet style", Object.entries(DIETS).map(([key, d]) => nuWord(n.diet === key, "data-diet", key, d.label))), "", true);
+}
 
 /* The example plate the user asked for on a meal ("Other ideas"), by meal
    index. Only that meal changes; the others keep the plates suggested. */
@@ -136,26 +212,23 @@ function scaleParts() {
         '<span class="goal-adj">' + goalAdjust(key, n) + '</span></span>' +
       '<span class="goal-blurb">' + g.blurb + '</span>' +
     '</button>').join("");
-  const part = (title, key) => '<section class="nu-part"><h2 class="nu-part-h">' + title + '</h2>' +
-    '<div class="row-body" id="row-' + key + '">' + ROW_BODIES[key](n) + '</div></section>';
   const panel = shot === "burn"
-    ? '<aside class="nu-panel" data-side="burn" data-reveal="1" aria-label="What you burn">' + part("You", "body") + part("Training", "training") + '</aside>'
+    ? '<aside class="nu-panel" data-side="burn" data-reveal="1" aria-label="What you burn">' + burnReadings(n) + '</aside>'
     : shot === "eat"
-    ? '<aside class="nu-panel" data-side="eat" data-reveal="1" aria-label="What you eat">' + part("Targets", "targets") + part("Rhythm", "rhythm") + '</aside>'
+    ? '<aside class="nu-panel" data-side="eat" data-reveal="1" aria-label="What you eat">' + eatReadings(n) + '</aside>'
     : '';
   const head = shot === "set"
-    ? ['Does it weigh right?', ok ? 'An estimate to eat against, in ' + n.mealsPerDay + ' meals a day.' : 'Nothing is weighed yet: it needs your body weight.']
+    ? ['Does it weigh right?', ok ? '≈ ' + fmtK(n.kcal) + ' kcal and ' + n.protein + ' g protein a day, in ' + n.mealsPerDay + ' meals. An estimate to eat against.' : 'Nothing is weighed yet: it needs your body weight.']
     : ['Fuel the training', fuelsText(n)];
   const empty = routine.selection.isEmpty();
   const foot = shot === "set"
-    ? '<div class="nu-set' + (nut.set ? ' done' : '') + '">' +
-        '<button type="button" class="nu-key" id="nu-key" data-key="nu-key"' + (ok ? '' : ' disabled') + ' aria-pressed="' + nut.set + '">' +
-          '<span class="nu-key-knob" aria-hidden="true"><i></i></span>' +
-          '<span class="nu-key-t">' + (nut.set ? "Set" : "Turn the key to set it") + '</span></button>' +
-        '<p class="nu-set-note">' + (nut.set
-          ? (empty ? 'Held. <button type="button" class="text-link" data-goto="targets">Pick your muscles</button> to plan a week round it.' : 'Held. On to your week.')
-          : 'It holds the beam where it leans' + (empty ? '.' : ' and takes you on to your week.') +
-            ' <button type="button" class="text-link" data-shot="whole" data-key="shot-whole">Not yet, weigh it again</button>') + '</p>' +
+    ? '<div class="nu-set">' +
+        '<div class="nu-answers">' +
+          (empty ? '<button type="button" class="nu-answer" data-goto="targets" data-key="nu-yes">It weighs right: pick my muscles</button>'
+                 : '<button type="button" class="nu-answer" id="nu-yes" data-key="nu-yes"' + (ok ? '' : ' disabled') + '>It weighs right</button>') +
+          '<button type="button" class="nu-answer quiet" data-shot="whole" data-key="shot-whole">Weigh it again</button>' +
+        '</div>' +
+        '<p class="nu-set-note">' + (empty ? 'A week is planned round the muscles you pick.' : 'On to your week, planned round it.') + '</p>' +
       '</div>'
     : (shot === "whole" ? '<div class="goals' + (nut.turned ? ' turned' : '') + '" role="radiogroup" aria-label="Your goal">' + goals + '</div>' : '') +
       '<div class="nu-figures" id="nu-figures">' + figuresHTML(n) + '</div>' +
@@ -633,7 +706,7 @@ function paintNutritionFigures() {
   for (const b of nutritionEl.querySelectorAll("[data-goal]"))
     b.querySelector(".goal-adj").textContent = goalAdjust(b.dataset.goal, n);
   const out = nutritionEl.querySelector('output[aria-labelledby="adjust-label"]');
-  if (out) out.textContent = adjustLabel(n.adjust);
+  if (out) out.textContent = out.classList.contains("nu-fig") && !n.adjust ? "level" : adjustLabel(n.adjust);
   for (const [key, text] of Object.entries(sums)) {
     const el = nutritionEl.querySelector('[data-row-sum="' + key + '"]');
     if (el) el.textContent = text;
@@ -735,7 +808,6 @@ function paintBalance(arrive = false) {
   if (!scales.ok) return;
   if (arrive) scales.arrive();
   scales.shotTo(nut.shot, arrive);
-  if (nut.set) scales.arrest();
   scales.set({
     tilt: ok ? (n.atFloor ? n.kcal / n.burn - 1 : n.adjust) : null,
     base: n.burnIsEstimate ? n.baseBurn : n.burn,
@@ -805,7 +877,7 @@ function goShot(name) {
   if (!NUT_SHOTS.includes(name) || name === nut.shot || nut.day) return;
   // The camera leaves at once, while the words step out; they are redrawn for the new shot on the way.
   if (!Stages.busy) { scales.shotTo(name); balanceEl.dataset.shot = name; balanceEl.classList.add("travel"); }
-  Stages.relayout(() => { nut.shot = name; nut.set = false; }, 700);
+  Stages.relayout(() => { nut.shot = name; }, 700);
 }
 const stepShot = dir => { const to = NUT_SHOTS[NUT_SHOTS.indexOf(nut.shot) + dir]; if (to) goShot(to); return !!to; };
 
@@ -851,15 +923,15 @@ addEventListener("resize", () => scales.wake());
 
 const openDay = meal => Stages.relayout(() => { nut.day = true; nut.row = null; nut.meal = meal; }, 500);
 
-/** The key turned: the beam is held where it leans, and the week is next. */
-function setBalance() {
-  if (nut.set || !nutrition().isValid()) return;
-  nut.set = true;
-  scales.arrest();
-  renderNutritionStage();
-  announce("Your balance is set");
-  if (!routine.selection.isEmpty()) setTimeout(() => { if (Stages.current === "nutrition" && nut.set && !Stages.busy) Stages.go("plan"); }, reducedMotion() ? 300 : 1100);
+/* The reading in hand lights the piece of the balance it changes, as a muscle pointed at lights on Targets. */
+function lightPiece(e) {
+  const r = e.type === "pointerout" || e.type === "focusout" ? null : e.target.closest && e.target.closest(".nu-read");
+  const piece = r ? r.dataset.piece : null;
+  if (scales.glow === piece) return;
+  scales.glow = piece;
+  scales.wake();
 }
+for (const type of ["pointerover", "pointerout", "focusin", "focusout"]) nutritionEl.addEventListener(type, lightPiece);
 
 function changed(fn) {
   fn(nutrition());
@@ -876,7 +948,11 @@ nutritionEl.addEventListener("click", e => {
   if (d.goal) changed(n => n.setGoal(d.goal));
   else if (d.shot) goShot(d.shot);
   else if (d.mealOpen) openDay(Number(d.mealOpen));
-  else if (b.id === "nu-key") setBalance();
+  else if (b.id === "nu-yes") Stages.go("plan");
+  else if (d.weightStep) changed(n => n.setWeight(Math.max(weightBound(n, 0), Math.min(weightBound(n, 1), (n.weight ?? (n.unit === "lb" ? 154 : 70)) + Number(d.weightStep)))));
+  else if (d.mealsTo) changed(n => { n.setMealCount(Number(d.mealsTo)); nut.meal = 0; });
+  else if (d.firstTo) changed(n => n.setWindow(Number(d.firstTo), n.lastMeal));
+  else if (d.lastTo) changed(n => n.setWindow(n.firstMeal, Number(d.lastTo)));
   else if (d.row) { nut.row = nut.row === d.row ? null : d.row; nut.turned = true; renderNutritionStage(); }
   else if (d.unit) changed(n => n.setUnit(d.unit));
   else if (d.activity) changed(n => n.setActivity(d.activity));
@@ -936,7 +1012,7 @@ nutritionEl.addEventListener("keydown", e => {
 SCULPTURE_SHOTS["nutrition-plan"] = { ...SCULPTURE_SHOTS["nutrition"], az: -10, d: 640, sx: .5 };
 
 Stages.register("nutrition", {
-  arrive() { nut.fresh = true; nut.set = false; if (Stages.from !== "plan") nut.shot = "whole"; },
+  arrive() { nut.fresh = true; if (Stages.from !== "plan") nut.shot = "whole"; },
   enter() {
     // Without a weight there is nothing to plan from: open where it goes.
     if (!nutrition().isValid()) { nut.day = false; nut.row = "body"; if (nut.fresh) nut.shot = "burn"; }
