@@ -129,8 +129,8 @@ moved through. The marble is one mesh, one renderer and one material.
 | Stage | The room | How it is laid out | How it is moved |
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
-| II Measure | an instrument: four bronze rings round the figure, one a fact | the figure in the middle; each ring carries a tag (its name and reading) and the ring in hand has its reading written out beside it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends looking straight down on the rings |
-| III Nutrition | a balance drawn as a live engraved plate, and no statue | as the balance is: what is burned on its left, what is eaten on its right, each side riding with its pan; the goal under its plinth | pull a pan down; press a jar for its meal; a row is edited under the plinth |
+| II Measure | an instrument: four rings round the figure, one a fact, each its own metal | the figure in the middle; each ring carries a tag (its name, reading and gauge), and what the ring in hand says goes round the body with it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends on your mark |
+| III Nutrition | a balance in bronze, marble, stone and glaze, and no statue | everything is written on the balance: each side's total over its end of the beam, what a pan holds beside its rim, the goal cut in the plinth | pull a pan down; press a pan (or scroll) and the camera closes on it, with what sets it beside it; last, turn the key that sets it |
 | IV Week plan | a frieze: seven figures, one a day, each beside its day's hours | the whole week in one row; the settings under it | drag down a day's hours to say when you are busy; the session moves |
 
 How each is built:
@@ -141,40 +141,61 @@ How each is built:
   (`room()`), so they follow every move of it. A ring's scale is engraved
   round its face and read under an index at the front. On a phone there
   are no rings; the facts stack.
-  - *Each fact has its own shot*: close under the crown for stature, level
-    with the waist for mass, the whole figure for the years, from higher
-    up for physiology (a fourth ring, round the feet, with three stops).
-  - *Nothing is a list.* Each ring carries a tag, a button that goes where
-    the ring goes; the ring in hand has no tag, its reading being written
-    out large, its lines arriving one after another.
+  - *Each fact has its own shot*, framed so no ring reaches the top bar.
+  - *Each ring is its own metal* (`METAL`), all four close to the bronze:
+    pale gold, bronze, copper, verdigris. Its tag, its rule and its words
+    take that tone (`--m-…`), which is how the page's colour ties a word
+    to its ring. The scale is inlaid bright from its low end up to the
+    reading, and each tag carries the same thing as a gauge.
+  - *The reading goes round the body* (`drawOrbit`). What the ring in hand
+    says (its reading, the other unit, one phrase) is set letter by letter
+    on a wider circle in the ring's plane: the near half crosses the body
+    and is read, the far half passes behind it. It turns as the ring is
+    turned and drifts when left alone. The same words stay in the page for
+    a screen reader. The typed number and its rule (bronze, graduated)
+    stay at the side.
   - *The room moves.* The rings come down one after another on entering
-    and sway when left alone; the body turns with the ring in hand
-    (`setTurn` on the sculpture); the stature ring hangs as far over the
-    marble as the height given is over the marble's own 158 cm, and the
-    reading says so. Reduced motion stills all of it.
-  - *Your measure* (it was "the seal") is the last shot: the camera looks
-    straight down the axis, so the same four rings are four circles one
-    inside the other, each at its reading under one rule, the marble a
-    pale shape at the middle. Nothing is swapped for a medal.
+    and sway when left alone; the body turns with the ring in hand.
+    Reduced motion stills all of it.
+  - *Your mark* (first "the seal", then the rings seen from above, which
+    the user found too plain to keep in a profile). The camera still rises
+    to look straight down, but that is now only the way in: the four rings
+    close into the rim of a medal, each leaving a bead where its scale
+    begins, and the mark is struck as they meet. Its face is a disc of
+    polished stone whose veining is drawn from a seed kept with the
+    measure (`BodyMeasure.seed`: cut once, unchanged when a reading
+    changes, recut only on request), inscribed in gilt with the first
+    letter of the name, the name and the day. Five stones to choose from
+    (the keys the seal's inks had). Nothing on it depends on the chosen
+    muscles or on a symbol the app picked.
 - **Nutrition** (`js/balance.js`, `js/nutrition-view.js`). The balance is
   a small WebGL scene of its own (turned shapes, one shader, no library):
   the burn's weights in one pan, a jar a meal in the other, the beam
   leaning by how far eating is set from the burn. Sizes are the plan's own
-  kilocalories; nothing here stands for a body. Without WebGL the statue
-  stands in its place. *A day of eating* is as it was.
-  - *It is drawn as an engraved plate, hand-tinted*, not as a lit model:
-    lines cut round each form swell into its shade and cross in the
-    deepest of it, a contour is drawn round each piece, a wash of colour
-    lies under the ink. The lamp follows the pointer and the lines are cut
-    again for it. (The first version was plain shaded bronze, which read
-    as a prototype.)
-  - *The page moves with it.* Each side rides up and down with its pan, a
-    hairline from the pan's rim to its figure; the three large figures
-    turn to a new value instead of changing at once; arriving, the load
-    is set down piece by piece and the figures count up with it.
-  - *A row is edited under the plinth*, where the goals stand, with its
-    controls side by side; the sides never grow, and the balance stays in
-    view to answer each change. On a phone a row still opens in place.
+  kilocalories; nothing here stands for a body. *A day of eating* is as it
+  was. On a phone or without WebGL the two sides stand in columns.
+  - *It is solid*, in the gallery's own materials: bronze that shows the
+    room (light above, shade below, the lamp), a veined marble plinth,
+    grey stone weights, glazed jars. (First plain shaded bronze, which
+    read as a prototype; then an engraved, hand-tinted plate, which read
+    as a cartoon beside the stone and the rings.)
+  - *The text is part of it.* Labels are set where their piece is each
+    frame (`placeBalanceLabels`), so they swing with the beam: each side's
+    total over its end of the beam, the weights by name and a meal a jar
+    beside the pans' rims, the needle's reading on a bronze plate, the
+    goal cut in the plinth's face. All of it shows in the whole shot:
+    nothing waits for a zoom. There are no side columns.
+  - *Four shots* (`BalanceScene.shotTo`, `nut.shot`): the whole balance;
+    close on what is burned, with You and Training beside it; close on
+    what is eaten, with Targets and Rhythm beside it; and the balance
+    alone, slowly seen round. A press on a pan, the scroll or the footer
+    goes from one to the next (a `Stages.relayout`), the far side of the
+    balance fading out of a close shot. Nothing scrolls, at 760 px tall
+    either.
+  - *The key.* The last shot asks "Does it weigh right?" and is confirmed
+    by turning a bronze key under the plinth: the beam is held where it
+    leans, and the page goes on to the week (or says to pick muscles
+    first). The footer's Continue does the same without it.
 - **Week plan** (`js/week-view.js`). `plates(list)` on the sculpture draws
   the figure into each day's canvas (no second context, no second copy of
   the model). Beside each stands its day (`.staff`): busy hours, the
@@ -192,8 +213,8 @@ Open, for the user:
   to delete, once this direction is accepted.
 - *A day of eating* and *Your week* (the generated calendar) have not been
   re-imagined yet.
-- On a screen under about 860 px high, a row being edited under the
-  plinth needs a scroll.
+- The rings, the mark and the balance have no tests of their own beyond
+  the mark's seed (`tests/measure.test.js`).
 - The phone keeps plain versions of all three rooms.
 
 ### Type
