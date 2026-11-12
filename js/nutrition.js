@@ -101,7 +101,7 @@ const FULL_BODY_SETS = MUSCLES.reduce((t, m) => t + weeklyCeiling(m), 0);
  * weekly targets; the most each muscle takes when it gives none), warm-ups
  * included — the planner's one time model (muscleWeekMinutes, estimate.js).
  */
-function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = null }, weightKg) {
+function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = null, priorities = new Map() }, weightKg) {
   if (!muscles.length || !sessionsPerWeek)
     return { muscles, sessionsPerWeek: 0, sessionMinutes, hours: 0, bigShare: 0,
              kcalPerDay: 0, coverage: 0, load: 0 };
@@ -109,8 +109,11 @@ function trainingLoad({ muscles, sessionsPerWeek, sessionMinutes, weeklySets = n
   const setsOf = m => weeklySets && weeklySets.has(m.id) ? weeklySets.get(m.id) : weeklyCeiling(m);
   const sets = muscles.reduce((t, m) => t + setsOf(m), 0);
   const bigSets = muscles.reduce((t, m) => t + (m.recoveryDays >= 2 ? setsOf(m) : 0), 0);
+  // Timed on the direct sets that deliver those sets (directSetsFor), as the plan books them.
+  const { direct } = directSetsFor(new Map(muscles.map(m => [m.id, setsOf(m)])), muscles,
+    priorities, sessionsPerWeek);
   const minutes = Math.min(sessionsPerWeek * sessionMinutes,
-    muscles.reduce((t, m) => t + muscleWeekMinutes(setsOf(m), sessionsPerWeek, m.id), 0) +
+    muscles.reduce((t, m) => t + muscleWeekMinutes(direct.get(m.id), sessionsPerWeek, m.id), 0) +
     sessionsPerWeek * ESTIMATE.warmupMinutes);
   const hours = minutes / 60;
   const bigShare = bigSets / sets;

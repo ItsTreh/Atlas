@@ -79,7 +79,8 @@ class WeeklyRoutine {
       muscles: this.selectedMuscles().filter(m => exercisesFor(m.id).length > 0),
       sessionsPerWeek: this.plannedSessions(),
       sessionMinutes: this.sessionMinutes,
-      weeklySets: this.plannedWeeklySets()
+      weeklySets: this.plannedWeeklySets(),
+      priorities: new Map(this.selectedMuscles().map(m => [m.id, this.selection.priority(m.id)]))
     }));
     this.sessions = [];
     this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
@@ -159,62 +160,19 @@ class WeeklyRoutine {
     let fit, blocks, placements, limit, days = askedDays;
     for (; days >= 1; days--) {
       fit = fitToTime(raw, muscles, priorities, days, this.sessionMinutes);
-      blocks = this.split === "auto" ? this.distributedBlocks(fit.targets, days) : this.splitBlocks();
+      blocks = this.split === "auto" ? this.distributedBlocks(fit.direct, days) : this.splitBlocks();
       ({ placements, limit } = new Scheduler(this.schedulingView(), blocks, this.blockUses(blocks.length))
         .plan(this.sessionsPerWeek));
       if (this.split !== "auto" || blocks.every(b => placements.some(p => p.block === b))) break;
     }
     days = Math.max(1, days);
 
-    // 4. Build on the placements and settle each target on what the week holds.
-    const targets = new Map(fit.targets);
-    const trial = () => {
-      const sessions = placements.map((p, i) => new WorkoutSession(i, p.day, p.start, p.block));
-      return buildWeek(sessions, this.sessionMinutes, targets, priorities).sessions;
-    };
-    const credit = (sessions, id) => sessions.reduce((t, s) =>
-      t + s.workout.directSets(id) + s.workout.assistedSets(id), 0);
+    // 4. Build on the placements. The targets are the time fit's: the
+    // exercises fill them and never change them (the user's rule, 2026-11-09).
+    const targets = fit.targets;
+    const sessions = placements.map((p, i) => new WorkoutSession(i, p.day, p.start, p.block));
+    const week = buildWeek(sessions, this.sessionMinutes, targets, priorities, fit.direct).sessions;
     const carried = id => placements.some(p => p.block.muscles.some(m => m.id === id && !p.block.riders.has(m)));
-    // How far the week misses the targets, in sets: under a floor, or over a
-    // ceiling (TARGET_MATCH) other than by assisting credit alone, which the
-    // page shows as "Covered by the lifts above".
-    const miss = sessions => muscles.map(m => {
-      if (!carried(m.id)) return 0;
-      const got = credit(sessions, m.id), target = targets.get(m.id);
-      const own = sessions.some(s => s.workout.entriesFor(m.id).length);
-      const assisted = sessions.reduce((a, s) => a + s.workout.assistedSets(m.id), 0);
-      const over = own || assisted < target ? Math.max(0, got - target - TARGET_MATCH.over) : 0;
-      return Math.max(0, targetFloor(m, target, priorities.get(m.id)) - got) + over;
-    });
-
-    let week = trial();
-    // A target the sessions cannot reach comes down to what they give, until
-    // the week built on the lowered targets reaches them all.
-    for (let round = 0; round < 10; round++) {
-      let lowered = false;
-      for (const m of muscles) {
-        if (!carried(m.id)) continue;
-        const got = Math.floor(credit(week, m.id));
-        if (got < targetFloor(m, targets.get(m.id), priorities.get(m.id))) { targets.set(m.id, got); lowered = true; }
-      }
-      if (!lowered) break;
-      week = trial();
-    }
-    // A trimmed target goes back up while no muscle misses its own by more than before.
-    const rank = { focus: 0, normal: 1, maintain: 2 };
-    const raise = muscles.filter(m => carried(m.id) && targets.get(m.id) < raw.get(m.id))
-      .sort((a, b) => rank[priorities.get(a.id)] - rank[priorities.get(b.id)] ||
-                      (raw.get(b.id) - targets.get(b.id)) - (raw.get(a.id) - targets.get(a.id)));
-    let missing = miss(week);
-    for (const m of raise) {
-      while (targets.get(m.id) < raw.get(m.id)) {
-        targets.set(m.id, targets.get(m.id) + 1);
-        const next = trial(), nextMissing = miss(next);
-        if (nextMissing.every((n, i) => n <= missing[i])) { week = next; missing = nextMissing; continue; }
-        targets.set(m.id, targets.get(m.id) - 1);
-        break;
-      }
-    }
 
     const unplaced = muscles.filter(m => !carried(m.id)).map(m => m.id);
     const trimmed = muscles.filter(m => carried(m.id) && targets.get(m.id) < raw.get(m.id)).map(m => m.id);
@@ -222,8 +180,10 @@ class WeeklyRoutine {
     const belowMinimum = muscles.filter(m => carried(m.id) && targets.get(m.id) < weeklyFloor(m, priorities.get(m.id))).map(m => m.id);
     const worked = week.reduce((t, s) => t + Math.max(0, s.workout.minutes - ESTIMATE.warmupMinutes), 0);
     return {
+      // `fits` is the time fit's own answer: a week that cannot hold every
+      // floor says so, however the sessions then share what time there is.
       fit: { ...fit, targets, trimmed, belowMinimum, unplaced, meetsMinimums: !belowMinimum.length,
-             fits: true, neededMinutes: worked,
+             fits: fit.fits, neededMinutes: worked,
              // The time of the sessions the week really has: a repeat taken out
              // for having nothing to do is not time the user can use.
              capacityMinutes: week.length * usableMinutes(this.sessionMinutes), days, askedDays },
@@ -423,16 +383,22 @@ class WeeklyRoutine {
    * The automatic plan: one block per training day, from the weekly targets
    * (fitted to the time) and the rules in distribution.js. A muscle the
    * exercise database has nothing for rides along in a block of its family,
-   * riding along as a rider. `targets` and `days` come from weekPlan.
+   * riding along as a rider. `direct` (the direct sets that deliver the
+   * targets, fitToTime) and `days` come from weekPlan.
    */
-  distributedBlocks(targets, days) {
+  distributedBlocks(direct, days) {
     const picked = this.selectedMuscles();
     const trainable = picked.filter(m => exercisesFor(m.id).length > 0);
     if (!trainable.length) return [];
     const priorities = new Map(trainable.map(m => [m.id, this.selection.priority(m.id)]));
     const free = this.availableDays();
     const timesCap = m => maxSpread(free, m.recoveryDays);
-    const plan = planDistribution(trainable, targets, priorities, days, this.sessionMinutes, timesCap);
+    // A day over what a session holds is trimmed no lower than the direct
+    // sets that deliver each muscle's floor.
+    const floors = directSetsFor(new Map(trainable.map(m => [m.id, weeklyFloor(m, priorities.get(m.id))])),
+                                 trainable, priorities, days).direct;
+    const plan = planDistribution(trainable, direct, priorities, days, this.sessionMinutes, timesCap,
+                                  m => floors.get(m.id));
 
     const blocks = plan.days.map(d => {
       const block = new TrainingBlock(d.muscles);
@@ -579,7 +545,10 @@ class WeeklyRoutine {
    */
   buildWorkouts() {
     const priorities = new Map(this.selectedMuscles().map(m => [m.id, this.selection.priority(m.id)]));
-    const { dropped } = buildWeek(this.sessions, this.sessionMinutes, this.plannedWeeklySets(), priorities);
+    // The same build as the plan's (weekPlan): its targets and the direct sets that deliver them.
+    const fit = this.weekPlan(this.experience || DEFAULT_EXPERIENCE).fit;
+    const { dropped } = buildWeek(this.sessions, this.sessionMinutes, this.plannedWeeklySets(), priorities,
+                                  fit.direct && fit.direct.size ? fit.direct : null);
     for (const s of dropped) this.removeSession(s);
     return dropped.length;
   }

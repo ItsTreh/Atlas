@@ -175,8 +175,10 @@ function directSetsFor(targets, muscles, priorities = new Map(), days = Infinity
 
 /**
  * Whether the weekly targets fit the time the user has, and what to do if
- * not. `targets` is a Map of muscle id -> sets; `muscles` are the Muscle
- * objects; `priorities` maps id -> "maintain" | "normal" | "focus".
+ * not. `targets` is a Map of muscle id -> effective sets; `muscles` are the
+ * Muscle objects; `priorities` maps id -> "maintain" | "normal" | "focus".
+ * Time is measured on the direct sets that deliver the targets
+ * (directSetsFor): a press booked for the chest also counts for the triceps.
  *
  * Over budget, sets come off one at a time: Normal muscles first, then Focus,
  * each from whichever is furthest above its floor (weeklyFloor), never below
@@ -186,14 +188,16 @@ function directSetsFor(targets, muscles, priorities = new Map(), days = Infinity
  * first sets on a muscle are worth the most, so the cheap floor is the last
  * thing to go. A muscle taken under its own priority's floor is listed in
  * `belowMinimum` so the page can say so. Returns
- *   { targets, fits, meetsMinimums, neededMinutes, requestedMinutes, capacityMinutes,
+ *   { targets, direct (the direct sets that deliver them), fits, meetsMinimums,
+ *     neededMinutes, requestedMinutes, capacityMinutes,
  *     trimmed: [muscle ids lowered], belowMinimum: [muscle ids under their
  *     usual minimum], fixes: { extraDay, sessionMinutes } }
  * where a fix is the change that would let the requested targets fit
  * (null when it would not, or is unavailable).
  */
 function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes) {
-  const minutesOver = (map, days) => [...map].reduce((t, [id, n]) => t + muscleWeekMinutes(n, days, id), 0);
+  const minutesOver = (map, days) => [...directSetsFor(map, muscles, priorities, days).direct]
+    .reduce((t, [id, n]) => t + muscleWeekMinutes(n, days, id), 0);
   const minutesFor = (map, perWeek, len) => minutesOver(map, perWeek) <= perWeek * usableMinutes(len);
   const total = map => minutesOver(map, sessionsPerWeek);
   const level = id => priorities.get(id) || "normal";
@@ -238,7 +242,8 @@ function fitToTime(targets, muscles, priorities, sessionsPerWeek, sessionMinutes
       len > sessionMinutes && minutesFor(targets, sessionsPerWeek, len)) || null;
   }
   return {
-    targets: out, fits: total(out) <= capacity, neededMinutes: total(out),
+    targets: out, direct: directSetsFor(out, muscles, priorities, sessionsPerWeek).direct,
+    fits: total(out) <= capacity, neededMinutes: total(out),
     requestedMinutes: total(targets), capacityMinutes: capacity,
     trimmed: [...trimmed], belowMinimum: [...belowMinimum],
     meetsMinimums: belowMinimum.size === 0, fixes
@@ -274,10 +279,12 @@ function estimateTraining(muscles, sessionMinutes, priorityOf = () => "normal") 
     high: muscles.reduce((t, m) => t + high(m), 0)
   };
   // The same time model as fitToTime, so this note and the fit note agree.
-  const minutes = {
-    low:  Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(low(m), Infinity, m.id), 0)),
-    high: Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(high(m), Infinity, m.id), 0))
+  const priorities = new Map(muscles.map(m => [m.id, priorityOf(m)]));
+  const time = level => {
+    const { direct } = directSetsFor(new Map(muscles.map(m => [m.id, level(m)])), muscles, priorities);
+    return Math.round(muscles.reduce((t, m) => t + muscleWeekMinutes(direct.get(m.id), Infinity, m.id), 0));
   };
+  const minutes = { low: time(low), high: time(high) };
   const usable = usableMinutes(sessionMinutes);
   const sessions = {
     low:  Math.max(1, Math.ceil(minutes.low  / usable)),

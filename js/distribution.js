@@ -87,6 +87,8 @@ function splitSets(target, times) {
  * @param sessionMinutes  the planned session length
  * @param timesCap    function(muscle) -> the most sessions a week its recovery
  *                    allows on the free days (see maxSpread); defaults to `days`
+ * @param floorOf     function(muscle) -> the fewest weekly sets an overfull day
+ *                    may trim it to; its priority's floor (weeklyFloor) by default
  * @returns { days: [{ muscles: Muscle[], sets: Map id -> sets }], frequency: Map id -> times }
  */
 /**
@@ -107,7 +109,8 @@ function sessionSetCap(muscleId) {
   return sessionCapCache.get(muscleId);
 }
 
-function planDistribution(muscles, targets, priorities, days, sessionMinutes, timesCap = () => Infinity) {
+function planDistribution(muscles, targets, priorities, days, sessionMinutes, timesCap = () => Infinity,
+                          floorOf = m => weeklyFloor(m, priorities.get(m.id) || "normal")) {
   const level = m => priorities.get(m.id) || "normal";
   const rank = m => ({ focus: 0, normal: 1, maintain: 2 })[level(m)];
   const target = m => targets.get(m.id) || 0;
@@ -127,12 +130,12 @@ function planDistribution(muscles, targets, priorities, days, sessionMinutes, ti
 
   // 2. Place the days; while one is empty, give a muscle one more session.
   for (;;) {
-    const week = place(wanted, frequency, targets, priorities, D, sessionMinutes);
+    const week = place(wanted, frequency, targets, priorities, D, sessionMinutes, false, floorOf);
     const pool = wanted.filter(canGrow);
     if (week.days.length >= D || !pool.length) {
       // Final pass: fold tiny sessions into the others (changes frequency).
       const final = new Map(frequency);
-      const folded = place(wanted, final, targets, priorities, D, sessionMinutes, true);
+      const folded = place(wanted, final, targets, priorities, D, sessionMinutes, true, floorOf);
       return { ...folded, frequency: final };
     }
     const chosen = [...pool].sort((a, b) =>
@@ -243,15 +246,15 @@ function consolidate(day, frequency, capacity) {
  * Step 5: a day that still holds more than a session can take (its muscles
  * could not be moved) loses sets, one at a time from the muscle with the
  * most on that day, never taking a muscle below the floor for its priority
- * (weeklyFloor) or WORKOUT.minDirectSets in the day.
+ * (floorOf) or WORKOUT.minDirectSets in the day.
  */
-function trimOverfullDays(day, frequency, capacity, level) {
+function trimOverfullDays(day, frequency, capacity, floorOf) {
   const week = new Map();
   for (const d of day) for (const [id, n] of d.sets) week.set(id, (week.get(id) || 0) + n);
   for (const d of day) {
     while (dayMinutes(d) > capacity) {
       const candidates = d.muscles.filter(m =>
-        d.sets.get(m.id) > WORKOUT.minDirectSets && week.get(m.id) > weeklyFloor(m, level(m)));
+        d.sets.get(m.id) > WORKOUT.minDirectSets && week.get(m.id) > floorOf(m));
       if (!candidates.length) break;
       const m = candidates.reduce((a, b) => d.sets.get(b.id) > d.sets.get(a.id) ? b : a);
       d.sets.set(m.id, d.sets.get(m.id) - 1);
@@ -261,7 +264,8 @@ function trimOverfullDays(day, frequency, capacity, level) {
 }
 
 /** Step 3 of the rules: put each muscle's sessions on days. */
-function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold = false) {
+function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold = false,
+               floorOf = m => weeklyFloor(m, priorities.get(m.id) || "normal")) {
   const level = m => priorities.get(m.id) || "normal";
   const rank = m => ({ focus: 0, normal: 1, maintain: 2 })[level(m)];
   const target = m => targets.get(m.id) || 0;
@@ -301,7 +305,7 @@ function place(wanted, frequency, targets, priorities, D, sessionMinutes, fold =
 
   balance(day, frequency);
   if (fold) consolidate(day, frequency, capacity);
-  trimOverfullDays(day, frequency, capacity, level);
+  trimOverfullDays(day, frequency, capacity, floorOf);
 
   // Days nothing landed on are rest days. Biggest muscles first inside a day.
   const used = day.filter(d => d.muscles.length);
