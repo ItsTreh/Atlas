@@ -126,8 +126,8 @@ const needleText = n => !n.isValid() ? "" : n.adjust ? adjustLabel(n.adjust) : "
 /** True where the page is laid out on the balance itself; false on a phone or without WebGL, where the sides stand in columns. */
 const onScale = () => !Stages.narrow && scales.ok;
 
-/** The plan on the balance: the head, the balance with the shot's panel beside it, and what stands under the plinth. */
-function scaleHTML() {
+/** The plan on the balance, in the three parts drawn round it: the head, the shot's panel beside the balance, and what stands under the plinth. */
+function scaleParts() {
   const n = nutrition(), ok = n.isValid(), shot = nut.shot;
   const goals = Object.entries(GOALS).map(([key, g]) =>
     '<button type="button" class="goal" role="radio" aria-checked="' + (n.goal === key) + '" ' +
@@ -160,19 +160,15 @@ function scaleHTML() {
     : (shot === "whole" ? '<div class="goals' + (nut.turned ? ' turned' : '') + '" role="radiogroup" aria-label="Your goal">' + goals + '</div>' : '') +
       '<div class="nu-figures" id="nu-figures">' + figuresHTML(n) + '</div>' +
       (shot === "whole" ? '' : '<p class="nu-caveat">' + CAVEAT + '</p>');
-  return '<div class="nu-plan scale" data-shot="' + shot + '">' +
-    '<div class="nu-head" data-reveal="0">' +
-      '<p class="eyebrow"><span><span class="n">' + STAGE_NUMERALS.nutrition + '</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
+  return {
+    head: '<p class="eyebrow"><span><span class="n">' + STAGE_NUMERALS.nutrition + '</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
       '<h1 class="display nu-title" id="nutrition-title" tabindex="-1">' + head[0] + '</h1>' +
-      '<p class="nu-lede" id="nu-fuels">' + esc(head[1]) + '</p>' +
-    '</div>' +
-    '<div class="nu-mid" id="nu-mid">' + panel + '</div>' +
-    '<div class="nu-foot" data-reveal="2">' + foot + '</div>' +
-  '</div>';
+      '<p class="nu-lede" id="nu-fuels">' + esc(head[1]) + '</p>',
+    panel, foot
+  };
 }
 
 function planHTML() {
-  if (onScale()) return scaleHTML();
   const n = nutrition(), sums = rowSummaries(n), ok = n.isValid();
   const goals = Object.entries(GOALS).map(([key, g]) =>
     '<button type="button" class="goal" role="radio" aria-checked="' + (n.goal === key) + '" ' +
@@ -592,12 +588,29 @@ function renderNutritionStage() {
   const day = nut.day && nutrition().isValid();
   // The balance is one element, kept through every redraw: it steps out
   // while the panel is rebuilt and back into its place in the plan.
-  balanceEl.remove();
-  nutritionEl.innerHTML = day ? dayHTML() : planHTML();
+  if (!day && onScale()) {
+    // On the balance only the words round it are redrawn: the balance stays where it is, mid-move or not.
+    let plan = nutritionEl.querySelector(".nu-plan.scale");
+    if (!plan) {
+      balanceEl.remove();
+      nutritionEl.innerHTML = '<div class="nu-plan scale"><div class="nu-head" data-reveal="0"></div>' +
+        '<div class="nu-mid" id="nu-mid"><div class="nu-slot"></div></div><div class="nu-foot" data-reveal="2"></div></div>';
+      plan = nutritionEl.firstChild;
+      $("nu-mid").append(balanceEl);
+    }
+    const parts = scaleParts();
+    plan.dataset.shot = nut.shot;
+    plan.querySelector(".nu-head").innerHTML = parts.head;
+    plan.querySelector(".nu-slot").innerHTML = parts.panel;
+    plan.querySelector(".nu-foot").innerHTML = parts.foot;
+  } else {
+    balanceEl.remove();
+    nutritionEl.innerHTML = day ? dayHTML() : planHTML();
+    const mid = $("nu-mid");
+    if (mid) mid.append(balanceEl);
+  }
   $("stage-nutrition").dataset.view = Stages.root.dataset.nview = day ? "day" : "plan";
   balanceEl.dataset.shot = nut.shot;
-  const mid = $("nu-mid");
-  if (mid) mid.append(balanceEl);
   nut.turned = false;
   if (!day) rollFigures();
   paintBalance();
@@ -670,6 +683,13 @@ function rollFigures(arrive = false) {
 
 /* ------------------------------- the balance ------------------------------- */
 
+/* The way in to a side: a coin, as the footer's and Measure's, and what it does in words. */
+function balGo(side, text) {
+  return '<button type="button" class="bal-go" data-shot="' + side + '" data-key="go-' + side + '">' +
+    '<svg viewBox="0 0 52 52" aria-hidden="true"><circle class="mzc-beads" cx="26" cy="26" r="24.2" pathLength="40"/>' +
+    '<circle class="mzc-ring" cx="26" cy="26" r="20.5"/><path class="mzc-arr" d="M19 26h14M26 19v14"/></svg><span>' + text + '</span></button>';
+}
+
 /* The balance (balance.js) and what is written on it. The labels are made
    once and kept through every redraw, each set where its piece of the
    balance is as it draws, so the words swing with the beam. */
@@ -679,11 +699,11 @@ balanceEl.insertAdjacentHTML("beforeend",
     '<span class="bal-total-n"><b id="bal-burn-n"></b><i>kcal a day</i></span></div>' +
   '<div class="bal-total" id="bal-total-eat"><span class="bal-total-h">What you eat</span>' +
     '<span class="bal-total-n"><b id="bal-eat-n"></b><i>kcal a day</i></span>' +
-    '<span class="bal-total-p"><b id="bal-prot-n"></b> g protein</span></div>' +
+    '<span class="bal-total-p"><b id="bal-prot-n"></b> g protein<span class="bal-total-l" id="bal-lean-eat"></span></span></div>' +
+  '<div class="bal-lean" id="bal-lean"><b></b><small></small></div>' +
   '<div class="bal-legend" id="bal-legend-burn" data-side="burn"></div>' +
   '<div class="bal-legend" id="bal-legend-eat" data-side="eat"></div>' +
-  '<span class="bal-label bal-plinth" id="bal-plinth"></span>' +
-  '<span class="bal-label bal-needle" id="bal-needle"></span>');
+  '<span class="bal-label bal-plinth" id="bal-plinth"></span>');
 /* Its labels by name: the balance is out of the page while a day of eating is open, where $() cannot find them. */
 const balPart = name => balanceEl.querySelector("#bal-" + name);
 const scales = new BalanceScene(balanceEl.querySelector("canvas"));
@@ -698,13 +718,15 @@ function legendHTML(side, n) {
     return side === "burn" ? '<button type="button" class="bal-row bal-ask" data-shot="burn" data-key="ask-weight"><i>Add your body weight</i><small>to weigh the day</small></button>' : '';
   if (side === "burn") {
     const load = n.load;
-    if (!n.burnIsEstimate) return row("Your own number", "≈ " + fmtK(n.burn), "training included");
+    if (!n.burnIsEstimate) return row("Your own number", "≈ " + fmtK(n.burn), "training included") + balGo("burn", "Change what you burn");
     return row("The day itself", "≈ " + fmtK(Math.round(n.baseBurn / 10) * 10), fmtWeight(n) + ", " + ACTIVITY_LEVELS[n.activity].label.toLowerCase()) +
-      (load.kcalPerDay ? row("Your training", "≈ " + fmtK(load.kcalPerDay), load.sessionsPerWeek + " × " + load.sessionMinutes + " min a week") : '');
+      (load.kcalPerDay ? row("Your training", "≈ " + fmtK(load.kcalPerDay), load.sessionsPerWeek + " × " + load.sessionMinutes + " min a week") : '') +
+      balGo("burn", "Change what you burn");
   }
   return n.meals.map((m, i) => row(esc(m.name), fmtK(m.kcal), hourLabel(m.hour) + ", " + m.protein + " g protein",
       ' data-meal-open="' + i + '" data-key="meal-open-' + i + '" aria-label="' + esc(m.name) + ", " + hourLabel(m.hour) + ", " + fmtK(m.kcal) + ' kcal: see it in a day of eating"')).join("") +
-    '<span class="bal-row bal-sum"><small>' + adjustLabel(n.adjust) + ' calories, ' + fmtGkg(n.proteinPerKg) + ' g protein per kg, ' + DIETS[n.diet].label.toLowerCase() + '</small></span>';
+    '<span class="bal-row bal-sum"><small>' + adjustLabel(n.adjust) + ' calories, ' + fmtGkg(n.proteinPerKg) + ' g protein per kg, ' + DIETS[n.diet].label.toLowerCase() + '</small></span>' +
+    balGo("eat", "Change what you eat");
 }
 
 /** Loads the pans from the plan and writes its labels; `arrive` sets the beam swinging from level and empty. */
@@ -720,7 +742,11 @@ function paintBalance(arrive = false) {
     training: n.burnIsEstimate ? n.load.kcalPerDay : 0,
     meals: ok ? n.meals.map(m => m.share) : []
   });
-  balPart("needle").textContent = needleText(n);
+  // How far eating is set from the burn, over the fulcrum between the two totals (and under the eating total, seen close).
+  const lean = balPart("lean");
+  lean.firstChild.textContent = needleText(n);
+  lean.lastChild.textContent = !ok ? "" : n.adjust ? (n.adjust > 0 ? "eaten over the burn" : "eaten under the burn") : "eating equals the burn";
+  balPart("lean-eat").textContent = ok ? ", " + (n.adjust ? adjustLabel(n.adjust) + " against the burn" : "level with the burn") : "";
   balPart("plinth").textContent = GOALS[n.goal].label;
   balPart("legend-burn").innerHTML = legendHTML("burn", n);
   balPart("legend-eat").innerHTML = legendHTML("eat", n);
@@ -733,9 +759,11 @@ function paintBalance(arrive = false) {
  * room instead (its end of the beam is out of the shot).
  */
 function placeBalanceLabels() {
-  const at = (el, p, how = "") => { el.style.transform = "translate(" + Math.round(p.x) + "px, " + Math.round(p.y) + "px) " + how; };
+  const at = (el, p, how = "") => { el.style.transform = "translate(" + p.x.toFixed(1) + "px, " + p.y.toFixed(1) + "px) " + how; };
   const close = nut.shot === "burn" || nut.shot === "eat";
-  at(balPart("needle"), scales.anchor("needle"));
+  // While the camera travels the words stand back, and come in where it lands.
+  balanceEl.classList.toggle("travel", scales.travelling);
+  at(balPart("lean"), scales.anchor("pivot"), "translate(-50%, -100%)");
   const px = scales.unitPx(), plinth = balPart("plinth");
   plinth.style.fontSize = Math.max(8, px * .082).toFixed(1) + "px";
   at(plinth, scales.anchor("plinth"), "translate(-50%, -50%)");
@@ -775,6 +803,8 @@ balanceEl.addEventListener("focusout", () => lightJar(-1));
 /** Goes to a shot of the balance: the words step out, the camera travels, they come back. */
 function goShot(name) {
   if (!NUT_SHOTS.includes(name) || name === nut.shot || nut.day) return;
+  // The camera leaves at once, while the words step out; they are redrawn for the new shot on the way.
+  if (!Stages.busy) { scales.shotTo(name); balanceEl.dataset.shot = name; balanceEl.classList.add("travel"); }
   Stages.relayout(() => { nut.shot = name; nut.set = false; }, 700);
 }
 const stepShot = dir => { const to = NUT_SHOTS[NUT_SHOTS.indexOf(nut.shot) + dir]; if (to) goShot(to); return !!to; };

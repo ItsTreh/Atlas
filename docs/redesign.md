@@ -174,23 +174,31 @@ How each is built:
   leaning by how far eating is set from the burn. Sizes are the plan's own
   kilocalories; nothing here stands for a body. *A day of eating* is as it
   was. On a phone or without WebGL the two sides stand in columns.
-  - *It is solid*, in the gallery's own materials: bronze that shows the
-    room (light above, shade below, the lamp), a veined marble plinth,
-    grey stone weights, glazed jars. (First plain shaded bronze, which
-    read as a prototype; then an engraved, hand-tinted plate, which read
-    as a cartoon beside the stone and the rings.)
+  - *It is solid*, in the gallery's own materials. The bronze is the
+    Measure rings' own (the same four tones, shaded by how nearly a face
+    mirrors the lamp, dark toward the floor and at its edges); the plinth
+    is marble toned to the statue, not to white; the weights are grey
+    stone and the jars fired clay, both matte. Where something stands (the
+    stand on the plinth, a load in a pan) it shades what it stands on.
+    (Before: plain shaded bronze, which read as a prototype; an engraved,
+    hand-tinted plate, which read as a cartoon; a brighter reflective
+    bronze with glazed jars, which read as plastic.)
   - *The text is part of it.* Labels are set where their piece is each
-    frame (`placeBalanceLabels`), so they swing with the beam: each side's
-    total over its end of the beam, the weights by name and a meal a jar
-    beside the pans' rims, the needle's reading on a bronze plate, the
-    goal cut in the plinth's face. All of it shows in the whole shot:
-    nothing waits for a zoom. There are no side columns.
+    frame (`placeBalanceLabels`): each side's total over its end of the
+    beam, how far eating is set from the burn between them over the
+    fulcrum, the weights by name and a meal a jar beside the pans' rims,
+    the goal cut in the plinth's face. They follow the beam's lean but not
+    the pans' swing, and the beam settles in one swing, so the words do
+    not shake. All of it shows in the whole shot: nothing waits for a
+    zoom. Beside each pan a coin says how to change that side.
   - *Four shots* (`BalanceScene.shotTo`, `nut.shot`): the whole balance;
     close on what is burned, with You and Training beside it; close on
     what is eaten, with Targets and Rhythm beside it; and the balance
     alone, slowly seen round. A press on a pan, the scroll or the footer
-    goes from one to the next (a `Stages.relayout`), the far side of the
-    balance fading out of a close shot. Nothing scrolls, at 760 px tall
+    goes from one to the next: the camera leaves at once, in one eased
+    move (`BalanceScene.TRAVEL`), the words stand back until it lands, and
+    only the words round the balance are redrawn. The far side of the
+    balance fades out of a close shot. Nothing scrolls, at 760 px tall
     either.
   - *The key.* The last shot asks "Does it weigh right?" and is confirmed
     by turning a bronze key under the plinth: the beam is held where it
