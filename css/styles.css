@@ -1714,42 +1714,120 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 [data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
 .bal-label { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; }
-/* What the needle reads: a slip of the plate's paper, pinned under its point. */
+/* What is written on the balance (nutrition-view.js sets each where its
+   piece is as the balance draws). What the needle reads: a small bronze
+   plate under its point. */
 .bal-needle {
-  translate: -50% 0; margin-top: 2px; padding: 3px 9px 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
-  font: italic 400 19px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink);
+  translate: -50% 0; margin-top: 3px; padding: 3px 10px 4px; border-radius: 2px;
+  background: linear-gradient(170deg, #e9cf92, #b98a3c 55%, #8a5c1e); box-shadow: 0 1px 0 rgba(255,244,214,.6) inset, 0 2px 5px rgba(40,25,5,.3);
+  font: italic 500 18px/1 var(--serif); font-variant-numeric: lining-nums; color: #2c1a04; text-shadow: 0 1px 0 rgba(255,236,190,.55);
 }
 .bal-needle:empty { display: none; }
-.bal-tip {
-  margin: -36px 0 0 0; translate: -50% 0; padding: 4px 9px 5px; background: var(--bg); border: 1px solid var(--line); border-radius: 2px;
-  font: 400 15px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink);
+/* The goal, cut in the plinth's face. */
+.bal-plinth {
+  font: 600 12px/1 var(--serif); letter-spacing: .34em; text-transform: uppercase; padding-left: .34em;
+  color: rgba(74,64,48,.62); text-shadow: 0 1px 0 rgba(255,255,255,.85), 0 -1px 0 rgba(60,50,35,.25);
 }
-.bal-tip i { font-size: 17px; margin-right: 4px; }
-/* A hairline from each pan's rim to its side of the page. */
-.bal-lead { position: absolute; left: 0; top: 0; height: 0; border-top: 1px dotted var(--ink-faint); pointer-events: none; opacity: .8; transform-origin: 0 0; }
+[data-theme="dark"] .bal-plinth { color: rgba(20,16,10,.7); text-shadow: 0 1px 0 rgba(255,244,220,.22), 0 -1px 0 rgba(0,0,0,.4); }
+/* A side's total, over its end of the beam, a hairline down to it. */
+.bal-total {
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 26px;
+  white-space: nowrap; pointer-events: none; transition: opacity .4s ease;
+}
+.bal-total::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 1px; height: 16px; background: var(--cast, var(--ink-faint)); opacity: .7; }
+.bal-total-h { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
+.bal-total-n { display: flex; align-items: baseline; gap: 8px; }
+.bal-total-n b { font: 400 clamp(42px, 4.1vw, 62px)/.9 var(--serif); letter-spacing: -.015em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.bal-total-n i { font: 400 13px/1 var(--font); color: var(--ink-soft); }
+.bal-total-p { font-size: 13px; color: var(--ink-soft); }
+.bal-total-p b { font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); margin-right: 2px; }
+/* What a pan holds, beside its rim: the weights by name, a meal a jar. */
+.bal-legend { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 7px; white-space: nowrap; transition: opacity .4s ease; }
+.bal-legend:empty { display: none; }
+.bal-legend[data-side="burn"] { padding-right: 34px; align-items: flex-end; text-align: right; }
+.bal-legend[data-side="eat"] { padding-left: 34px; align-items: flex-start; text-align: left; }
+.bal-legend::before { content: ""; position: absolute; top: 50%; width: 22px; height: 1px; background: var(--cast, var(--ink-faint)); opacity: .8; }
+.bal-legend[data-side="burn"]::before { right: 6px; }
+.bal-legend[data-side="eat"]::before { left: 6px; }
+.bal-row {
+  display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 1px 0; margin: 0; border: 0; background: none;
+  color: var(--ink); text-align: inherit; font: inherit;
+}
+.bal-legend[data-side="burn"] .bal-row { justify-content: end; }
+.bal-legend[data-side="eat"] .bal-row { justify-content: start; }
+.bal-row i { font: italic 400 18px/1.05 var(--serif); color: var(--ink-soft); transition: color .25s ease; }
+.bal-row b { font: 400 21px/1.05 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
+.bal-row small { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.35; color: var(--ink-faint); }
+button.bal-row { cursor: pointer; }
+button.bal-row:hover i, button.bal-row.lit i, button.bal-row:focus-visible i { color: var(--ink); text-decoration: underline 1px; text-underline-offset: 4px; }
+button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.bal-sum { margin-top: 2px; }
+/* Seen close: the side's total stands at the head of the room, its words are larger, the other side's step back. */
+.balance[data-shot="burn"] #bal-total-burn { align-items: flex-start; padding-bottom: 0; }
+.balance[data-shot="eat"] #bal-total-eat { left: auto; right: 0; align-items: flex-end; padding-bottom: 0; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-total::after { display: none; }
+.balance[data-shot="burn"] :is(#bal-total-eat, #bal-legend-eat), .balance[data-shot="eat"] :is(#bal-total-burn, #bal-legend-burn) { opacity: 0; pointer-events: none; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row i, .balance[data-shot="eat"] #bal-legend-eat .bal-row i { font-size: 23px; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row b, .balance[data-shot="eat"] #bal-legend-eat .bal-row b { font-size: 28px; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row small, .balance[data-shot="eat"] #bal-legend-eat .bal-row small { font-size: 12.5px; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-legend { gap: 12px; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-plinth { display: none; }
+/* Seen close, the balance runs out of the shot: its lower edge fades into the ground. */
+.balance:is([data-shot="burn"], [data-shot="eat"]) canvas {
+  -webkit-mask-image: linear-gradient(var(--to, to right), #000 54%, transparent 68%), linear-gradient(to bottom, #000 80%, transparent 99%);
+  mask-image: linear-gradient(var(--to, to right), #000 54%, transparent 68%), linear-gradient(to bottom, #000 80%, transparent 99%);
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+}
+.balance[data-shot="eat"] canvas { --to: to left; }
+.balance:is([data-shot="burn"], [data-shot="eat"])::before { display: none; }
+.bal-sum small { white-space: normal; max-width: 190px; }
+.balance[data-shot="set"] { cursor: default; }
+.balance[data-shot="set"] .bal-legend { opacity: .0; pointer-events: none; }
 .atlas[data-layout="mobile"] .nu-side { translate: none !important; }
-/* A row being edited, under the plinth where the goals stand: its controls
-   side by side, coming out one after another. Its row in the side stays
-   marked, and the balance stays in view to answer every change. */
-.nu-edit { width: min(100%, 1040px); display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--ink-faint); }
-.nu-edit-h { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
-.nu-edit-h span { font: italic 400 24px/1 var(--serif); color: var(--ink); }
-.nu-edit .row-body { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; gap: 12px 30px; padding: 0; }
-.nu-edit .kv > .kv-label { flex-basis: 100%; min-width: 0; padding-top: 0; }
-.nu-edit .kv-note { margin-left: 0; }
-.nu-edit .row-body > * { margin: 0; }
-.nu-edit .row-body > .kv-note, .nu-edit .row-body > .row-note { flex-basis: 100%; }
-.nu-edit .tunes { display: flex; gap: 12px 56px; flex-wrap: wrap; }
-.nu-edit.turned .nu-edit-h, .nu-edit.turned .row-body > * { animation: nuOut .55s var(--ease-out) both; }
+
+/* Beside the pan seen close: what sets it, where the far side of the
+   balance fades out of the shot. */
+.nu-panel {
+  position: absolute; top: 0; bottom: 0; z-index: 2; width: min(46%, 560px); display: flex; flex-direction: column; justify-content: center; gap: 22px;
+  overflow: auto; cursor: auto;
+}
+.nu-panel[data-side="burn"] { right: 0; padding-left: 110px; }
+.nu-panel[data-side="eat"] { left: 0; padding-right: 110px; }
+.nu-part { display: flex; flex-direction: column; gap: 12px; }
+.nu-part-h { margin: 0; font: italic 400 25px/1 var(--serif); color: var(--ink); }
+.nu-panel .row-body { padding: 0; gap: 12px; }
+.nu-panel .kv > .kv-label { min-width: 0; flex-basis: 100%; padding-top: 0; }
+.nu-panel .kv-note { margin-left: 0; }
+.nu-caveat { margin: 0; max-width: 104ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-align: center; text-wrap: pretty; }
+
+/* The key that sets the balance: a bronze knob with its bar, turned a quarter. */
+.nu-set { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-bottom: 6px; }
+.nu-key { display: flex; align-items: center; gap: 18px; padding: 6px 12px; border: 0; background: none; color: var(--ink); cursor: pointer; }
+.nu-key:disabled { opacity: .45; cursor: default; }
+.nu-key-knob {
+  position: relative; flex: none; width: 62px; height: 62px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #f6e2ae, #c0924a 42%, #7a5116 78%, #4b320f);
+  box-shadow: 0 7px 16px rgba(40,25,5,.38), inset 0 0 0 2px rgba(255,240,200,.3), inset 0 0 0 7px rgba(70,40,5,.22);
+  transition: transform .9s var(--ease-out), box-shadow .3s ease;
+}
+.nu-key-knob i {
+  position: absolute; left: 50%; top: 9%; width: 7px; height: 82%; translate: -50% 0; border-radius: 4px;
+  background: linear-gradient(90deg, #4b320f, #8a5c1e 45%, #e9cf92 55%, #6b4819); box-shadow: 0 1px 2px rgba(0,0,0,.4);
+}
+.nu-key:not(:disabled):hover .nu-key-knob, .nu-key:focus-visible .nu-key-knob { transform: rotate(20deg); }
+.nu-set.done .nu-key-knob, .nu-set.done .nu-key:hover .nu-key-knob { transform: rotate(90deg); }
+.nu-key-t { font: italic 400 28px/1 var(--serif); }
+.nu-key:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+.nu-set-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+.nu-set-note .text-link { font-size: 13px; margin-left: 6px; }
+
 /* The goals only fade: the chosen one's line is set against the whole row, which a moved goal would take from it. */
 .goals.turned .goal { animation: nuFade .55s ease both; }
 @keyframes nuFade { from { opacity: 0; } }
-.nu-edit.turned .row-body > :nth-child(1), .goals.turned .goal:nth-child(2) { animation-delay: .07s; }
-.nu-edit.turned .row-body > :nth-child(2), .goals.turned .goal:nth-child(3) { animation-delay: .14s; }
-.nu-edit.turned .row-body > :nth-child(3), .goals.turned .goal:nth-child(4) { animation-delay: .21s; }
-.nu-edit.turned .row-body > :nth-child(n+4) { animation-delay: .28s; }
-@keyframes nuOut { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .nu-edit.turned *, .goals.turned .goal { animation: none !important; } }
+.goals.turned .goal:nth-child(2) { animation-delay: .07s; }
+.goals.turned .goal:nth-child(3) { animation-delay: .14s; }
+.goals.turned .goal:nth-child(4) { animation-delay: .21s; }
+@media (prefers-reduced-motion: reduce) { .goals.turned .goal { animation: none !important; } .nu-key-knob { transition: none; } }
 .nu-side .nu-row.open .row-label, .nu-side .nu-row.open .row-sum { color: var(--ink); }
 .nu-side .nu-row { transition: opacity .3s ease; }
 .nu-rows:has(.open) .nu-row:not(.open) { opacity: .45; }
@@ -1765,6 +1843,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .atlas[data-layout="desktop"] .nu-plan .nu-head { grid-area: head; align-items: center; text-align: center; gap: 10px; }
   .atlas[data-layout="desktop"] .nu-plan .nu-title { font-size: clamp(34px, 3.2vw, 46px); }
   .atlas[data-layout="desktop"] .nu-plan .nu-lede { max-width: 70ch; }
+  /* On the balance: one column, the balance across it. */
+  .atlas[data-layout="desktop"] .nu-plan.scale { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(360px, 1fr) auto; grid-template-areas: "head" "mid" "foot"; }
+  .nu-plan.scale .nu-mid { position: relative; }
   .nu-burn { grid-area: burn; align-self: center; }
   .nu-eat { grid-area: eat; align-self: center; }
   .nu-mid { grid-area: mid; }
@@ -2663,4 +2744,19 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .lf.new, .tr { animation: none !important; }
   #foot-next.fresh .fx-coin::after { animation: none; }
   .fx-key, .fx-coin, .fx-beads, .fx-arr { transition: none !important; }
+}
+
+/* Nutrition on a short screen: the balance keeps the room. The lede and the
+   standing caveat step out (the estimate tag and "How it's worked out"
+   stay), and the panel beside a pan sets its controls closer. */
+@media (max-height: 820px) {
+  .atlas[data-layout="desktop"] .nu-plan.scale .nu-lede, .nu-plan.scale .nu-caveat { display: none; }
+  .atlas[data-layout="desktop"] .nu-plan.scale .nu-title { font-size: 34px; }
+  .bal-total-n b { font-size: 40px; }
+  .bal-total { gap: 3px; padding-bottom: 22px; }
+  .nu-panel { gap: 12px; justify-content: flex-start; }
+  .nu-part { gap: 8px; }
+  .nu-part-h { font-size: 21px; }
+  .nu-panel .row-body { gap: 8px; }
+  .nu-panel .kv { gap: 6px 10px; }
 }

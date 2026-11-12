@@ -3,24 +3,32 @@
 
    The room has no statue. Its centrepiece is a balance (balance.js): what
    the day burns stands in one pan, what the day eats in the other, and the
-   beam leans by how far eating is set from the burn. The page is laid out
-   as the balance is, read from the outside in:
+   beam leans by how far eating is set from the burn. What the page says is
+   written on the balance and moves with it: each side's total over its end
+   of the beam, what a pan holds beside its rim (the weights by name, a
+   meal a jar), what the needle reads under its point, the goal cut in the
+   plinth. Under the plinth, the goals to pick from and the sum that made
+   the numbers.
 
-     • left, what you burn: the figure, and the rows it is made from (You:
-       weight, the day outside training, the burn; Training: how often and
-       how long, the same numbers as the Week plan)
-     • right, what you eat: calories and protein, and the rows that set
-       them (Targets: the calorie change and the protein; Rhythm: meals,
-       the eating window, diet style)
-     • under the plinth, the goal, as four plans to pick from, and the sum
-       that made the numbers with, on demand, every reason behind it
+   It is seen in four shots, stepped through by the scroll, the footer or a
+   press on a pan:
+
+     whole   the balance and all it says
+     burn    close on what is burned; beside it, You (weight, the day
+             outside training, the burn) and Training (how often, how long)
+     eat     close on what is eaten; beside it, Targets (the calorie change
+             and the protein) and Rhythm (meals, the eating window, diet)
+     set     the balance alone, slowly seen round, and the key that sets it
 
    The beam can be taken by the hand: pulling a pan down eats more or less
-   against the burn, a percent at a time. A jar is a meal; pressing one
-   opens it in A day of eating: the day as a timeline with one meal open
-   at a time, its share of the day, how far the day's targets are met by
-   the end of it, and an example plate portioned to it. There the statue
+   against the burn, a percent at a time. A meal's line (or its jar, seen
+   close) opens it in A day of eating: the day as a timeline with one meal
+   open at a time, its share of the day, how far the day's targets are met
+   by the end of it, and an example plate portioned to it. There the statue
    stands by again.
+
+   On a phone, or without WebGL, there is no balance: the two sides stand
+   in columns and a row is edited in place.
 
    Everything is read from and written to routine.nutrition (nutrition.js)
    and the routine's training settings; goals, activity levels, meal
@@ -32,8 +40,12 @@ const nutrition = () => routine.nutrition;
 const nutritionEl = $("nutrition-panel");
 const fmtK = n => Math.round(n).toLocaleString("en-US");
 
-/* What is open: one row at a time; the day view and its meal. */
-const nut = { row: null, day: false, meal: 0, dir: 1, reasons: false, turned: false };
+/* What is open: the shot the balance is seen in (and, where there is no
+   balance, the one row being edited); the day view and its meal; whether
+   the key has been turned. */
+const nut = { shot: "whole", row: null, day: false, meal: 0, dir: 1, reasons: false, turned: false, fresh: false, set: false };
+const NUT_SHOTS = ["whole", "burn", "eat", "set"];
+const NUT_SHOT_NAMES = { whole: "The whole balance", burn: "What you burn", eat: "What you eat", set: "Weigh it" };
 
 /* The example plate the user asked for on a meal ("Other ideas"), by meal
    index. Only that meal changes; the others keep the plates suggested. */
@@ -111,7 +123,56 @@ function burnParts(n) {
 /** What the needle reads: how far eating is set from the burn. */
 const needleText = n => !n.isValid() ? "" : n.adjust ? adjustLabel(n.adjust) : "level";
 
+/** True where the page is laid out on the balance itself; false on a phone or without WebGL, where the sides stand in columns. */
+const onScale = () => !Stages.narrow && scales.ok;
+
+/** The plan on the balance: the head, the balance with the shot's panel beside it, and what stands under the plinth. */
+function scaleHTML() {
+  const n = nutrition(), ok = n.isValid(), shot = nut.shot;
+  const goals = Object.entries(GOALS).map(([key, g]) =>
+    '<button type="button" class="goal" role="radio" aria-checked="' + (n.goal === key) + '" ' +
+      'data-goal="' + key + '" data-key="goal-' + key + '">' +
+      '<span class="goal-top"><span class="goal-name">' + g.label + '</span>' +
+        '<span class="goal-adj">' + goalAdjust(key, n) + '</span></span>' +
+      '<span class="goal-blurb">' + g.blurb + '</span>' +
+    '</button>').join("");
+  const part = (title, key) => '<section class="nu-part"><h2 class="nu-part-h">' + title + '</h2>' +
+    '<div class="row-body" id="row-' + key + '">' + ROW_BODIES[key](n) + '</div></section>';
+  const panel = shot === "burn"
+    ? '<aside class="nu-panel" data-side="burn" data-reveal="1" aria-label="What you burn">' + part("You", "body") + part("Training", "training") + '</aside>'
+    : shot === "eat"
+    ? '<aside class="nu-panel" data-side="eat" data-reveal="1" aria-label="What you eat">' + part("Targets", "targets") + part("Rhythm", "rhythm") + '</aside>'
+    : '';
+  const head = shot === "set"
+    ? ['Does it weigh right?', ok ? 'An estimate to eat against, in ' + n.mealsPerDay + ' meals a day.' : 'Nothing is weighed yet: it needs your body weight.']
+    : ['Fuel the training', fuelsText(n)];
+  const empty = routine.selection.isEmpty();
+  const foot = shot === "set"
+    ? '<div class="nu-set' + (nut.set ? ' done' : '') + '">' +
+        '<button type="button" class="nu-key" id="nu-key" data-key="nu-key"' + (ok ? '' : ' disabled') + ' aria-pressed="' + nut.set + '">' +
+          '<span class="nu-key-knob" aria-hidden="true"><i></i></span>' +
+          '<span class="nu-key-t">' + (nut.set ? "Set" : "Turn the key to set it") + '</span></button>' +
+        '<p class="nu-set-note">' + (nut.set
+          ? (empty ? 'Held. <button type="button" class="text-link" data-goto="targets">Pick your muscles</button> to plan a week round it.' : 'Held. On to your week.')
+          : 'It holds the beam where it leans' + (empty ? '.' : ' and takes you on to your week.') +
+            ' <button type="button" class="text-link" data-shot="whole" data-key="shot-whole">Not yet, weigh it again</button>') + '</p>' +
+      '</div>'
+    : (shot === "whole" ? '<div class="goals' + (nut.turned ? ' turned' : '') + '" role="radiogroup" aria-label="Your goal">' + goals + '</div>' : '') +
+      '<div class="nu-figures" id="nu-figures">' + figuresHTML(n) + '</div>' +
+      (shot === "whole" ? '' : '<p class="nu-caveat">' + CAVEAT + '</p>');
+  return '<div class="nu-plan scale" data-shot="' + shot + '">' +
+    '<div class="nu-head" data-reveal="0">' +
+      '<p class="eyebrow"><span><span class="n">' + STAGE_NUMERALS.nutrition + '</span> / Nutrition</span><span class="eyebrow-note">optional</span></p>' +
+      '<h1 class="display nu-title" id="nutrition-title" tabindex="-1">' + head[0] + '</h1>' +
+      '<p class="nu-lede" id="nu-fuels">' + esc(head[1]) + '</p>' +
+    '</div>' +
+    '<div class="nu-mid" id="nu-mid">' + panel + '</div>' +
+    '<div class="nu-foot" data-reveal="2">' + foot + '</div>' +
+  '</div>';
+}
+
 function planHTML() {
+  if (onScale()) return scaleHTML();
   const n = nutrition(), sums = rowSummaries(n), ok = n.isValid();
   const goals = Object.entries(GOALS).map(([key, g]) =>
     '<button type="button" class="goal" role="radio" aria-checked="' + (n.goal === key) + '" ' +
@@ -120,8 +181,7 @@ function planHTML() {
         '<span class="goal-adj">' + goalAdjust(key, n) + '</span></span>' +
       '<span class="goal-blurb">' + g.blurb + '</span>' +
     '</button>').join("");
-  // On a wide screen a row is edited under the plinth, where the goals stand, so the sides never grow; on a phone, in place.
-  const below = !Stages.narrow && nut.row, label = key => ROWS.find(r => r[0] === key)[1];
+  const below = false, label = key => ROWS.find(r => r[0] === key)[1];
   const row = key => {
     const open = nut.row === key;
     return '<div class="nu-row' + (open ? ' open' : '') + '">' +
@@ -157,13 +217,7 @@ function planHTML() {
       '<button type="button" class="btn ghost" id="open-day" data-key="open-day"' + (ok ? '' : ' disabled') + '>See a day of eating →</button>' +
     '</div>' +
     '<div class="nu-foot" data-reveal="2">' +
-      (below
-        ? '<div class="nu-edit' + (nut.turned ? ' turned' : '') + '" data-side="' + (nut.row === "body" || nut.row === "training" ? "burn" : "eat") + '">' +
-            '<p class="nu-edit-h"><span>' + label(nut.row) + '</span>' +
-              '<button type="button" class="text-link" data-row="' + nut.row + '" data-key="row-done">Done</button></p>' +
-            '<div class="row-body" id="row-' + nut.row + '">' + ROW_BODIES[nut.row](n) + '</div>' +
-          '</div>'
-        : '<div class="goals' + (nut.turned ? ' turned' : '') + '" role="radiogroup" aria-label="Your goal">' + goals + '</div>') +
+      '<div class="goals' + (nut.turned ? ' turned' : '') + '" role="radiogroup" aria-label="Your goal">' + goals + '</div>' +
       '<div class="nu-figures" id="nu-figures">' + figuresHTML(n) + '</div>' +
     '</div>' +
   '</div>';
@@ -541,6 +595,7 @@ function renderNutritionStage() {
   balanceEl.remove();
   nutritionEl.innerHTML = day ? dayHTML() : planHTML();
   $("stage-nutrition").dataset.view = Stages.root.dataset.nview = day ? "day" : "plan";
+  balanceEl.dataset.shot = nut.shot;
   const mid = $("nu-mid");
   if (mid) mid.append(balanceEl);
   nut.turned = false;
@@ -558,9 +613,9 @@ function renderNutritionStage() {
  */
 function paintNutritionFigures() {
   const n = nutrition(), sums = rowSummaries(n), ok = n.isValid();
-  $("nu-figures").innerHTML = figuresHTML(n);
-  $("nu-fuels").textContent = fuelsText(n);
-  $("nu-burn-parts").textContent = burnParts(n);
+  if ($("nu-figures")) $("nu-figures").innerHTML = figuresHTML(n);
+  if ($("nu-fuels") && nut.shot !== "set") $("nu-fuels").textContent = fuelsText(n);
+  if ($("nu-burn-parts")) $("nu-burn-parts").textContent = burnParts(n);
   rollFigures();
   for (const b of nutritionEl.querySelectorAll("[data-goal]"))
     b.querySelector(".goal-adj").textContent = goalAdjust(b.dataset.goal, n);
@@ -573,7 +628,7 @@ function paintNutritionFigures() {
   const burn = $("n-burn");
   if (burn && document.activeElement !== burn) burn.value = n.burnIsEstimate && !n.isValid() ? "" : n.burn;
   if ($("burn-note")) $("burn-note").innerHTML = burnNoteHTML(n);
-  $("open-day").disabled = !ok;
+  if ($("open-day")) $("open-day").disabled = !ok;
   const weight = $("n-weight");
   if (weight) { if (ok) weight.removeAttribute("aria-invalid"); else weight.setAttribute("aria-invalid", "true"); }
   paintBalance();
@@ -585,7 +640,8 @@ const rolled = {};
 function rollTo(id, to, text, wait = 0) {
   const r = rolled[id] || (rolled[id] = { v: null, raf: 0, timer: 0 });
   cancelAnimationFrame(r.raf); clearTimeout(r.timer);
-  const put = v => { const el = $(id); if (el) el.textContent = v === null ? "—" : text(Math.round(v)); };
+  // The balance's own figures are looked up in it: it is out of the page while a day of eating is open.
+  const put = v => { const el = $(id) || balanceEl.querySelector("#" + id); if (el) el.textContent = v === null ? "—" : text(Math.round(v)); };
   if (to === null || r.v === null || reducedMotion()) { r.v = to; put(to); return; }
   const from = r.v;
   put(from);
@@ -603,30 +659,61 @@ function rollTo(id, to, text, wait = 0) {
 /** Turns the burn, the calories and the protein to the plan's; `arrive` counts them up as the pans are loaded. */
 function rollFigures(arrive = false) {
   const n = nutrition(), ok = n.isValid(), late = arrive ? BalanceScene.SET_DOWN.jar : 0;
-  if (arrive && ok) for (const id of ["nu-burn-n", "nu-eat-n", "nu-prot-n"]) (rolled[id] || (rolled[id] = {})).v = 0;
-  rollTo("nu-burn-n", ok ? n.burn : null, v => "≈ " + fmtK(v), arrive ? BalanceScene.SET_DOWN.base : 0);
-  rollTo("nu-eat-n", ok ? n.kcal : null, v => "≈ " + fmtK(v), late);
-  rollTo("nu-prot-n", ok ? n.protein : null, String, late);
+  // The same three figures stand in the columns (a phone) and on the balance.
+  for (const at of ["nu-", "bal-"]) {
+    if (arrive && ok) for (const id of ["burn-n", "eat-n", "prot-n"]) (rolled[at + id] || (rolled[at + id] = {})).v = 0;
+    rollTo(at + "burn-n", ok ? n.burn : null, v => "≈ " + fmtK(v), arrive ? BalanceScene.SET_DOWN.base : 0);
+    rollTo(at + "eat-n", ok ? n.kcal : null, v => "≈ " + fmtK(v), late);
+    rollTo(at + "prot-n", ok ? n.protein : null, String, late);
+  }
 }
 
 /* ------------------------------- the balance ------------------------------- */
 
-/* The balance (balance.js) and what is written on it: what the needle
-   reads, and the meal a jar pointed at stands for. For the eye only: the
-   same figures are in the columns either side, and the Targets row sets
-   the same lean from the keyboard. */
+/* The balance (balance.js) and what is written on it. The labels are made
+   once and kept through every redraw, each set where its piece of the
+   balance is as it draws, so the words swing with the beam. */
 const balanceEl = $("balance");
+balanceEl.insertAdjacentHTML("beforeend",
+  '<div class="bal-total" id="bal-total-burn"><span class="bal-total-h">What you burn</span>' +
+    '<span class="bal-total-n"><b id="bal-burn-n"></b><i>kcal a day</i></span></div>' +
+  '<div class="bal-total" id="bal-total-eat"><span class="bal-total-h">What you eat</span>' +
+    '<span class="bal-total-n"><b id="bal-eat-n"></b><i>kcal a day</i></span>' +
+    '<span class="bal-total-p"><b id="bal-prot-n"></b> g protein</span></div>' +
+  '<div class="bal-legend" id="bal-legend-burn" data-side="burn"></div>' +
+  '<div class="bal-legend" id="bal-legend-eat" data-side="eat"></div>' +
+  '<span class="bal-label bal-plinth" id="bal-plinth"></span>' +
+  '<span class="bal-label bal-needle" id="bal-needle"></span>');
 /* Its labels by name: the balance is out of the page while a day of eating is open, where $() cannot find them. */
 const balPart = name => balanceEl.querySelector("#bal-" + name);
 const scales = new BalanceScene(balanceEl.querySelector("canvas"));
 balanceEl.hidden = !scales.ok;
 const bal = { drag: null, jar: -1 };
 
-/** Loads the pans from the plan; `arrive` sets the beam swinging from level and empty. */
+/** What a pan holds, written beside its rim: the weights by name, a meal a jar. */
+function legendHTML(side, n) {
+  const row = (name, fig, note, attrs = "") => '<' + (attrs ? 'button type="button"' : 'span') + ' class="bal-row"' + attrs + '>' +
+    '<i>' + name + '</i><b>' + fig + '</b><small>' + note + '</small></' + (attrs ? 'button' : 'span') + '>';
+  if (!n.isValid())
+    return side === "burn" ? '<button type="button" class="bal-row bal-ask" data-shot="burn" data-key="ask-weight"><i>Add your body weight</i><small>to weigh the day</small></button>' : '';
+  if (side === "burn") {
+    const load = n.load;
+    if (!n.burnIsEstimate) return row("Your own number", "≈ " + fmtK(n.burn), "training included");
+    return row("The day itself", "≈ " + fmtK(Math.round(n.baseBurn / 10) * 10), fmtWeight(n) + ", " + ACTIVITY_LEVELS[n.activity].label.toLowerCase()) +
+      (load.kcalPerDay ? row("Your training", "≈ " + fmtK(load.kcalPerDay), load.sessionsPerWeek + " × " + load.sessionMinutes + " min a week") : '');
+  }
+  return n.meals.map((m, i) => row(esc(m.name), fmtK(m.kcal), hourLabel(m.hour) + ", " + m.protein + " g protein",
+      ' data-meal-open="' + i + '" data-key="meal-open-' + i + '" aria-label="' + esc(m.name) + ", " + hourLabel(m.hour) + ", " + fmtK(m.kcal) + ' kcal: see it in a day of eating"')).join("") +
+    '<span class="bal-row bal-sum"><small>' + adjustLabel(n.adjust) + ' calories, ' + fmtGkg(n.proteinPerKg) + ' g protein per kg, ' + DIETS[n.diet].label.toLowerCase() + '</small></span>';
+}
+
+/** Loads the pans from the plan and writes its labels; `arrive` sets the beam swinging from level and empty. */
 function paintBalance(arrive = false) {
   const n = nutrition(), ok = n.isValid();
   if (!scales.ok) return;
   if (arrive) scales.arrive();
+  scales.shotTo(nut.shot, arrive);
+  if (nut.set) scales.arrest();
   scales.set({
     tilt: ok ? (n.atFloor ? n.kcal / n.burn - 1 : n.adjust) : null,
     base: n.burnIsEstimate ? n.baseBurn : n.burn,
@@ -634,69 +721,79 @@ function paintBalance(arrive = false) {
     meals: ok ? n.meals.map(m => m.share) : []
   });
   balPart("needle").textContent = needleText(n);
+  balPart("plinth").textContent = GOALS[n.goal].label;
+  balPart("legend-burn").innerHTML = legendHTML("burn", n);
+  balPart("legend-eat").innerHTML = legendHTML("eat", n);
   placeBalanceLabels();
 }
 
-/* How far down a side its large figure's middle lies, in px, and how much of its pan's rise and fall the side follows. */
-const SIDE_FIGURE_Y = 74, SIDE_RIDE = .7;
 /**
  * Sets what is written where the balance now is: called as it draws, so it
- * all swings with it. Each side of the page rides with its pan (the burn's
- * side sinks as its pan does), a hairline from the pan's rim to its figure.
+ * all swings with it. Seen close, a side's total stands at the head of the
+ * room instead (its end of the beam is out of the shot).
  */
 function placeBalanceLabels() {
-  const at = (el, p) => { el.style.transform = "translate(" + Math.round(p.x) + "px, " + Math.round(p.y) + "px)"; };
+  const at = (el, p, how = "") => { el.style.transform = "translate(" + Math.round(p.x) + "px, " + Math.round(p.y) + "px) " + how; };
+  const close = nut.shot === "burn" || nut.shot === "eat";
   at(balPart("needle"), scales.anchor("needle"));
-  const plan = nutritionEl.querySelector(".nu-plan"), box = balanceEl.getBoundingClientRect();
-  if (plan && box.width) {
-    const level = scales.anchor("level");
-    for (const [side, from] of [["burn", -1], ["eat", 1]]) {
-      const rim = scales.anchor(side), el = plan.querySelector(".nu-" + side), lead = balPart("lead-" + side);
-      const ride = (rim.y - level.y) * SIDE_RIDE;
-      el.style.translate = "0 " + ride.toFixed(1) + "px";
-      // From the rim to the middle of the side's figure, wherever the page has put it.
-      const r = el.getBoundingClientRect(), fx = (from < 0 ? r.right : r.left) - box.left - from * 10, fy = r.top - box.top + SIDE_FIGURE_Y;
-      const x0 = rim.x + from * 10, dx = fx - x0, dy = fy - rim.y;
-      lead.style.width = Math.hypot(dx, dy).toFixed(1) + "px";
-      lead.style.transform = "translate(" + x0.toFixed(1) + "px, " + rim.y.toFixed(1) + "px) rotate(" + Math.atan2(dy, dx).toFixed(4) + "rad)";
-    }
+  const px = scales.unitPx(), plinth = balPart("plinth");
+  plinth.style.fontSize = Math.max(8, px * .082).toFixed(1) + "px";
+  at(plinth, scales.anchor("plinth"), "translate(-50%, -50%)");
+  for (const side of ["burn", "eat"]) {
+    const total = balPart("total-" + side);
+    if (close) total.style.transform = "";
+    else at(total, scales.anchor(side + "End"), "translate(-50%, -100%)");
+    // Beside its pan's rim, and never off the edge of the room.
+    const legend = balPart("legend-" + side), rim = scales.anchor(side), w = legend.offsetWidth;
+    rim.x = side === "burn" ? Math.max(rim.x, w) : Math.min(rim.x, balanceEl.clientWidth - w);
+    at(legend, rim, side === "burn" ? "translate(-100%, -50%)" : "translate(0, -50%)");
   }
-  const tip = balPart("tip");
-  tip.hidden = bal.jar < 0 || !!bal.drag;
-  if (!tip.hidden) at(tip, scales.anchor(bal.jar));
 }
 scales.onFrame = placeBalanceLabels;
 
-/* The eye and the lamp follow the pointer a little; a jar pointed at says its meal. */
+/* The eye and the lamp follow the pointer a little; a jar pointed at lights with its line. */
+function lightJar(i) {
+  if (i === bal.jar) return;
+  bal.jar = scales.lit = i;
+  for (const b of balanceEl.querySelectorAll("[data-meal-open]")) b.classList.toggle("lit", Number(b.dataset.mealOpen) === i);
+  balanceEl.classList.toggle("on-jar", i >= 0 && nut.shot === "eat");
+  scales.wake();
+}
 addEventListener("pointermove", e => {
   if (Stages.current !== "nutrition" || nut.day || !scales.ok || e.pointerType === "touch") return;
   scales.point(e.clientX / innerWidth * 2 - 1, 1 - e.clientY / innerHeight * 2);
 }, { passive: true });
 balanceEl.addEventListener("pointermove", e => {
   if (bal.drag) return;
-  const r = balanceEl.getBoundingClientRect(), jar = scales.jarAt(e.clientX - r.left, e.clientY - r.top);
-  if (jar === bal.jar) return;
-  bal.jar = scales.lit = jar;
-  const m = nutrition().meals[jar];
-  if (m) balPart("tip").innerHTML = '<i>' + esc(m.name) + '</i> ' + hourLabel(m.hour) + ', ' + fmtK(m.kcal) + ' kcal';
-  balanceEl.classList.toggle("on-jar", jar >= 0);
-  scales.wake();
+  const line = e.target.closest("[data-meal-open]"), r = balanceEl.getBoundingClientRect();
+  lightJar(line ? Number(line.dataset.mealOpen) : scales.jarAt(e.clientX - r.left, e.clientY - r.top));
 });
-balanceEl.addEventListener("pointerleave", () => { if (bal.jar >= 0) { bal.jar = scales.lit = -1; balanceEl.classList.remove("on-jar"); scales.wake(); } });
+balanceEl.addEventListener("pointerleave", () => lightJar(-1));
+balanceEl.addEventListener("focusin", e => { const b = e.target.closest("[data-meal-open]"); if (b) lightJar(Number(b.dataset.mealOpen)); });
+balanceEl.addEventListener("focusout", () => lightJar(-1));
+
+/** Goes to a shot of the balance: the words step out, the camera travels, they come back. */
+function goShot(name) {
+  if (!NUT_SHOTS.includes(name) || name === nut.shot || nut.day) return;
+  Stages.relayout(() => { nut.shot = name; nut.set = false; }, 700);
+}
+const stepShot = dir => { const to = NUT_SHOTS[NUT_SHOTS.indexOf(nut.shot) + dir]; if (to) goShot(to); return !!to; };
 
 /* The beam in the hand: a pan pulled down eats more (the eating pan) or
-   less (the burn's) against the burn, a percent every few pixels. */
+   less (the burn's) against the burn, a percent every few pixels. A pan
+   pressed and not pulled is gone to: the camera closes on it. */
 const BALANCE_PX_PER_PERCENT = 5;
 balanceEl.addEventListener("pointerdown", e => {
   const n = nutrition();
-  if (!n.isValid() || Stages.busy || (e.pointerType === "mouse" && e.button !== 0)) return;
-  const r = balanceEl.getBoundingClientRect();
-  bal.drag = { y: e.clientY, side: e.clientX - r.left < r.width / 2 ? -1 : 1, from: n.adjust, moved: false, jar: bal.jar };
+  if (Stages.busy || nut.shot === "set" || e.target.closest("button, a, input, select, label, .nu-panel") || (e.pointerType === "mouse" && e.button !== 0)) return;
+  const r = balanceEl.getBoundingClientRect(), jar = scales.jarAt(e.clientX - r.left, e.clientY - r.top);
+  const side = nut.shot === "burn" ? -1 : nut.shot === "eat" ? 1 : e.clientX - r.left < r.width / 2 ? -1 : 1;
+  bal.drag = { y: e.clientY, side, from: n.adjust, moved: false, jar, can: n.isValid() };
   e.preventDefault();
 });
 addEventListener("pointermove", e => {
   const d = bal.drag;
-  if (!d) return;
+  if (!d || !d.can) return;
   const dy = e.clientY - d.y;
   if (!d.moved && Math.abs(dy) < 4) return;
   d.moved = true;
@@ -713,13 +810,26 @@ function endBalanceDrag() {
   balanceEl.classList.remove("held");
   scales.hold(null);
   if (d.moved) changed(() => {});
-  // A jar pressed, not pulled: its meal, in the day of eating.
-  else if (d.jar >= 0) Stages.relayout(() => { nut.day = true; nut.row = null; nut.meal = d.jar; }, 500);
+  // Pressed, not pulled: seen whole, the camera goes to that pan; seen close, a jar opens its meal.
+  else if (nut.shot === "whole") goShot(d.side < 0 ? "burn" : "eat");
+  else if (nut.shot === "eat" && d.jar >= 0) openDay(d.jar);
 }
 addEventListener("pointerup", endBalanceDrag);
 addEventListener("pointercancel", endBalanceDrag);
 new MutationObserver(() => scales.wake()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 addEventListener("resize", () => scales.wake());
+
+const openDay = meal => Stages.relayout(() => { nut.day = true; nut.row = null; nut.meal = meal; }, 500);
+
+/** The key turned: the beam is held where it leans, and the week is next. */
+function setBalance() {
+  if (nut.set || !nutrition().isValid()) return;
+  nut.set = true;
+  scales.arrest();
+  renderNutritionStage();
+  announce("Your balance is set");
+  if (!routine.selection.isEmpty()) setTimeout(() => { if (Stages.current === "nutrition" && nut.set && !Stages.busy) Stages.go("plan"); }, reducedMotion() ? 300 : 1100);
+}
 
 function changed(fn) {
   fn(nutrition());
@@ -734,6 +844,9 @@ nutritionEl.addEventListener("click", e => {
   if (!b || b.disabled) return;
   const d = b.dataset;
   if (d.goal) changed(n => n.setGoal(d.goal));
+  else if (d.shot) goShot(d.shot);
+  else if (d.mealOpen) openDay(Number(d.mealOpen));
+  else if (b.id === "nu-key") setBalance();
   else if (d.row) { nut.row = nut.row === d.row ? null : d.row; nut.turned = true; renderNutritionStage(); }
   else if (d.unit) changed(n => n.setUnit(d.unit));
   else if (d.activity) changed(n => n.setActivity(d.activity));
@@ -751,8 +864,8 @@ nutritionEl.addEventListener("click", e => {
   else if (d.useMeals) changed(n => { n.setMealCount(Number(d.useMeals)); nut.meal = 0; });
   else if (d.diet) changed(n => { n.diet = d.diet; });
   else if (b.id === "nu-reasons") { nut.reasons = !nut.reasons; renderNutritionStage(); }
-  else if (b.id === "open-day") Stages.relayout(() => { nut.day = true; nut.row = null; nut.meal = 0; }, 500);
-  else if (b.id === "close-day") Stages.relayout(() => { nut.day = false; }, 500);
+  else if (b.id === "open-day") openDay(0);
+  else if (b.id === "close-day") Stages.relayout(() => { nut.day = false; nut.fresh = true; }, 500);
   else if (d.meal) pickMeal(Number(d.meal));
   else if (d.mealStep) pickMeal(nut.meal + Number(d.mealStep));
   else if (d.more) { nextIdea(Number(d.more)); renderNutritionStage(); }
@@ -793,21 +906,32 @@ nutritionEl.addEventListener("keydown", e => {
 SCULPTURE_SHOTS["nutrition-plan"] = { ...SCULPTURE_SHOTS["nutrition"], az: -10, d: 640, sx: .5 };
 
 Stages.register("nutrition", {
+  arrive() { nut.fresh = true; nut.set = false; if (Stages.from !== "plan") nut.shot = "whole"; },
   enter() {
     // Without a weight there is nothing to plan from: open where it goes.
-    if (!nutrition().isValid()) { nut.day = false; nut.row = "body"; }
+    if (!nutrition().isValid()) { nut.day = false; nut.row = "body"; if (nut.fresh) nut.shot = "burn"; }
+    if (!onScale()) nut.shot = "whole";
     renderNutritionStage();
-    // Arriving, the pans are loaded and the beam swings to rest; a redraw leaves it be.
-    if (Stages.phase !== "idle" && !nut.day) { paintBalance(true); rollFigures(true); }
+    // Arriving, the pans are loaded and the beam swings to rest; a redraw, or a change of shot, leaves it be.
+    if (nut.fresh && !nut.day) { paintBalance(true); rollFigures(true); }
+    nut.fresh = false;
   },
+  place: () => nut.day ? "day" : nut.shot,
   shot: () => nut.day || Stages.narrow ? "nutrition" : "nutrition-plan",
   // The balance has the room; in a day of eating, and on a phone, the statue stands by.
   dim: () => nut.day ? 0.45 : scales.ok && !Stages.narrow ? 0 : 1,
   focus: () => $("nutrition-title"),
-  footer: () => ({
-    back: "← Your measure",
-    skip: routine.selection.isEmpty() ? "" : Stages.narrow ? "Skip" : "Skip, training only",
-    next: Stages.narrow ? "Week plan →" : "Continue to week plan →",
-    nextDisabled: routine.selection.isEmpty()
-  })
+  footer() {
+    const empty = routine.selection.isEmpty(), i = NUT_SHOTS.indexOf(nut.shot), stepped = onScale() && !nut.day;
+    const last = !stepped || nut.shot === "set";
+    return {
+      back: stepped && i > 0 ? "← " + NUT_SHOT_NAMES[NUT_SHOTS[i - 1]] : "← Your measure",
+      skip: empty ? "" : Stages.narrow ? "Skip" : "Skip, training only",
+      next: last ? (Stages.narrow ? "Week plan →" : "Continue to week plan →") : NUT_SHOT_NAMES[NUT_SHOTS[i + 1]] + " →",
+      hint: last ? "" : "or scroll",
+      nextDisabled: last && empty
+    };
+  },
+  onNext() { if (onScale() && !nut.day && stepShot(1)) return true; },
+  onBack() { if (onScale() && !nut.day && stepShot(-1)) return true; }
 });
