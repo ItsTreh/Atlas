@@ -737,6 +737,19 @@ class AnatomySculpture {
     return s;
   }
 
+  /**
+   * Turns the body `deg` off its shot, as a drag does but asked by the page
+   * (Measure's rings turn it as they are turned); 0 lets it back. Ignored
+   * while the camera is travelling or a drag has it.
+   */
+  setTurn(deg) {
+    if (this.tween || this.offTween || this.drag) return;
+    const { orbit } = SCULPTURE_TURN, off = Math.max(-orbit, Math.min(orbit, deg || 0));
+    if (Math.abs(off - this.off) < 1e-3) return;
+    this.off = off;
+    this.schedule();
+  }
+
   /** With reduced motion a new shot fades in rather than travels. */
   flash() {
     const c = this.canvas;
