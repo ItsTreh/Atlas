@@ -119,7 +119,7 @@
     '<button type="button" class="arm-coin" data-step="-1" data-k="' + k + '" aria-label="Less ' + what + '">' + coin("M19 26h14") + '</button>' +
     '<button type="button" class="arm-coin" data-step="1" data-k="' + k + '" aria-label="More ' + what + '">' + coin("M19 26h14M26 19v14") + '</button></div>';
   const num = (f, label, ph) => '<input class="arm-num" data-f="' + f + '" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + label + '" placeholder="' + ph + '">';
-  const read = (k, title, body) => '<section class="arm-read" data-k="' + k + '" aria-labelledby="arm-h-' + k + '">' +
+  const read = (k, title, body) => '<section class="arm-read" data-k="' + k + '" style="--m: var(--m-' + k + ', var(--ink-soft))" aria-labelledby="arm-h-' + k + '">' +
     '<h2 class="arm-name" id="arm-h-' + k + '">' + title + '</h2>' + body + '</section>';
 
   doc.innerHTML =
@@ -132,8 +132,8 @@
     '</div>' +
     // A tag a ring: its name and its reading, hung from the ring by a hairline.
     '<nav class="arm-tags" aria-label="The four facts">' + RING_KEYS.map(k =>
-      '<button type="button" class="arm-tag" data-go="' + k + '"><span class="arm-tag-w">' + NAMES[k] + '</span>' +
-      '<span class="arm-tag-v" data-show="' + k + '"></span></button>').join("") + '</nav>' +
+      '<button type="button" class="arm-tag" data-go="' + k + '" style="--m: var(--m-' + k + ')"><span class="arm-tag-w">' + NAMES[k] + '</span>' +
+      '<span class="arm-tag-v" data-show="' + k + '"></span><span class="arm-tag-g" aria-hidden="true"><i></i></span></button>').join("") + '</nav>' +
     '<div class="arm-reads">' +
       read("stature", "How tall",
         '<div class="arm-val"><label class="arm-field" data-u="metric">' + num("cm", "Height in centimetres", "158") + '<span class="arm-unit">cm</span></label>' +
@@ -196,7 +196,13 @@
       const k = el.dataset.show;
       if (show[k]) { const v = show[k](); el.textContent = v; el.classList.toggle("none", !v); }
     }
-    for (const k of RING_KEYS) tags[k].setAttribute("aria-label", NAMES[k] + ", " + (show[k]() || "not given"));
+    for (const k of RING_KEYS) {
+      tags[k].setAttribute("aria-label", NAMES[k] + ", " + (show[k]() || "not given"));
+      // Its gauge: where the reading stands between the ends of its ring's scale.
+      const sc = RINGS[k].scale(), v = RINGS[k].get();
+      tags[k].classList.toggle("none", v === null);
+      tags[k].style.setProperty("--f", v === null ? 0 : ((v - sc.lo) / (sc.hi - sc.lo)).toFixed(3));
+    }
     for (const b of qa("[data-units]")) {
       const on = b.dataset.units === M.units;
       b.setAttribute("aria-checked", String(on));
@@ -378,9 +384,9 @@
      your measure. */
   const shots = docShots("measure-");
   shots.set("stature", { d: 560, ty: 112, sx: .5, sy: .56, el: 10, az: -12 });
-  shots.set("mass", { d: 540, ty: 92, sx: .5, sy: .5, el: 14, az: 24 });
+  shots.set("mass", { d: 690, ty: 84, sx: .5, sy: .55, el: 14, az: 24 });
   shots.set("years", { d: 760, ty: 80, sx: .5, sy: .52, el: 9, az: -30 });
-  shots.set("physis", { d: 720, ty: 70, sx: .5, sy: .47, el: 21, az: 8 });
+  shots.set("physis", { d: 820, ty: 70, sx: .5, sy: .55, el: 21, az: 8 });
   shots.set("dial", { d: 800, ty: 80, sx: .5, sy: .49, el: 88, az: 0 });
 
   /** Goes to a fact (or your measure); `into` also puts the keyboard in its first field. */
@@ -415,7 +421,7 @@
     const cam = r && r.live && r.size && r.height ? r.live() : null;
     const el = cam ? (cam.el || 0) * PI / 180 : .16, f = cam ? r.size.ch / (2 * Math.tan(cam.fov * PI / 360)) : 0;
     const g = {
-      cw, ch, el, H: cam ? r.height : 1,
+      cw, ch, el, cam: !!cam, H: cam ? r.height : 1,
       pt: cam ? t => {
         const dy = cam.ty - t * r.height, w = cam.d + dy * Math.sin(el);
         return { x: mount.offsetLeft + cam.sx * r.size.cw, y: mount.offsetTop + cam.sy * r.size.ch + f * dy * Math.cos(el) / w, s: f / w };
@@ -459,11 +465,27 @@
     light: { deep: "#452b0b", mid: "#8a5c1e", warm: "#b98a3c", hi: "#f4dca4", top: "#cfa85c", shade: "#6b4819", cut: "rgba(32,18,2,.92)", glint: "rgba(255,244,214,.6)" },
     dark: { deep: "#2c1b05", mid: "#7a5219", warm: "#ad7d31", hi: "#f8d891", top: "#c0924a", shade: "#4b320f", cut: "rgba(18,9,0,.94)", glint: "rgba(255,232,180,.5)" }
   };
+  /* Each ring is its own metal, all four close to the bronze: the tone it
+     leans toward and how far. Its words on the page take the same tone. */
+  const METAL = { stature: ["#f2dc98", .36], mass: null, years: ["#b24a26", .34], physis: ["#6c8676", .42] };
+  const hexMix = (a, b, t) => "#" + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, "0")).join("");
+  const metals = {};
+  /** A ring's metal by day or by lamp, with `ink`, the tone its words are set in. */
+  function metal(k, theme) {
+    const id = k + theme;
+    if (metals[id]) return metals[id];
+    const B = BRONZE[theme], m = METAL[k], P = { ...B };
+    if (m) for (const n of ["deep", "mid", "warm", "hi", "top", "shade"]) P[n] = hexMix(B[n], m[0], m[1] * (n === "deep" || n === "shade" ? .7 : 1));
+    P.ink = theme === "dark" ? hexMix(P.warm, P.hi, .45) : hexMix(P.mid, P.deep, .45);
+    return metals[id] = P;
+  }
+  let themeFor = "";
   const INK_VAR = { core: "--core-trace", pull: "--pull-trace", legs: "--legs-trace", push: "--push-trace", ink: "--ink" };
   const near = v => Math.abs(v - Math.round(v)) < 1e-6;
   const FONT = getComputedStyle(document.documentElement).getPropertyValue("--font").trim() || "system-ui, sans-serif";
 
   function drawRing(k, R, cb, cf, P) {
+    P = metal(k, P);
     const s = st[k], sc = RINGS[k].scale(), e = R.e, ri = R.r - R.w, pos = s.pos + s.drift;
     const given = RINGS[k].get() !== null, alpha = (given ? 1 : .7) * (.8 + .2 * Math.max(s.act, e)) * R.a;
     const hx = .5 + lamp * .3;
@@ -487,6 +509,13 @@
     strip(cf, -R.b / 2, R.r, -R.b / 2, ri, 0, PI, grad(cf, "lip"));
     if (R.b > .5) strip(cf, -R.b / 2, R.r, R.b / 2, R.r, 0, PI, grad(cf, "face"));
 
+    // What is given so far: the scale from its low end up to the reading, inlaid bright along the face's foot.
+    if (given && R.b > 6 && e < .5) {
+      const a1 = Math.min(PI, PI / 2 + (pos - sc.lo) * sc.deg * PI / 180);
+      cf.globalAlpha = alpha * (.55 + .45 * s.act) * (1 - e * 2);
+      strip(cf, R.b / 2 - 1 - 2.6 * R.zoom, R.r, R.b / 2 - 1, R.r, PI / 2, a1, P.hi);
+      cf.globalAlpha = alpha;
+    }
     // The scale: round the face while it hangs, across the ring's flat once it is seen from above.
     const dth = sc.deg * PI / 180, span = (e > .5 ? PI - .02 : PI - .1) / dth;
     const from = Math.max(sc.lo, Math.ceil((pos - span) / sc.tick) * sc.tick), to = Math.min(sc.hi, pos + span);
@@ -524,6 +553,58 @@
     cb.restore(); cf.restore();
   }
 
+  /* What the ring in hand says goes round the body with it: its reading and
+     two more phrases, twice round, set letter by letter on a wider circle in
+     the ring's own plane. The near half is read; the far half passes behind
+     the body, seen from the back as writing on glass is. It turns as the
+     ring is turned, and drifts when it is left alone. */
+  const ORBIT = {
+    stature: () => M.cm ? [show.stature(), M.imperial ? Math.round(M.cm) + " cm" : feetInches(M.cm)[0] + "′ " + feetInches(M.cm)[1] + "″", overMarble().replace(".", "")]
+      : ["how tall", "the marble stands " + MARBLE_CM + " cm", "and you"],
+    mass: () => M.kg ? [show.mass(), M.imperial ? kgText(M.kg) + " kg" : poundsOf(M.kg) + " lb", "read at the waist"] : ["how heavy", "turn the ring", "or type it"],
+    years: () => M.age ? [show.years(), romanNumeral(M.age), "a mark a year"] : ["how many years", "turn the ring", "a mark a year"],
+    physis: () => M.sex ? [show.physis(), { female: "the female constant", male: "the male constant", unspecified: "the midpoint of the two" }[M.sex], "for the resting burn"]
+      : ["which physiology", "three stops", "or leave it"]
+  };
+  const SERIF = '"Cormorant Garamond", serif', glyphW = new Map();
+  let spin = 0;
+  function drawOrbit(k, R, cb, cf, P, g) {
+    const s = st[k], a0 = s.act * (1 - Math.min(1, R.e * 3.3)) * R.a;
+    if (a0 < .02) return;
+    const words = ORBIT[k](), slots = words.length * 2, sc = RINGS[k].scale();
+    const ro = Math.max(R.r * 1.24, 250 * g.zoom), arc = 2 * PI * ro / slots;
+    const wide = (ch, f) => { const id = f + ch; let w = glyphW.get(id); if (w === undefined) { cf.font = f + " 100px " + SERIF; w = cf.measureText(ch).width / 100; glyphW.set(id, w); } return w; };
+    const style = i => i % words.length ? "italic 400" : "500";
+    const len = (w, f) => { let n = 0; for (const ch of w) n += wide(ch, f); return n; };
+    const fs = Math.min(54 * g.zoom, arc * .8 / Math.max(...words.map((w, i) => len(w, style(i)))));
+    // Raised so the near words stand just clear of the ring's upper edge, across the body.
+    const phase = (s.pos + s.drift) * sc.deg * PI / 180 + spin, lift = -(ro - R.r) * R.k - R.b / 2 - fs * .42;
+    const seen = sa => Math.max(0, Math.min(1, (Math.abs(sa) - .16) * 3.2));
+    for (const c of [cb, cf]) { c.save(); c.translate(R.cx, R.cy); c.rotate(R.roll); c.fillStyle = P.ink; c.textAlign = "center"; c.textBaseline = "alphabetic"; }
+    for (let i = 0; i < slots; i++) {
+      const w = words[i % words.length], f = style(i), mid = PI / 2 + phase - i * 2 * PI / slots;
+      let x = -len(w, f) * fs / 2;
+      const font = f + " " + fs.toFixed(1) + "px " + SERIF;
+      for (const ch of w) {
+        const cw = wide(ch, f) * fs, a = mid - (x + cw / 2) / ro, sa = Math.sin(a), ca = Math.cos(a);
+        x += cw;
+        if (ch === " " || Math.abs(sa) < .17) continue;
+        const c = sa > 0 ? cf : cb;
+        c.save();
+        c.globalAlpha = a0 * seen(sa) * (sa > 0 ? 1 : .3);
+        c.font = font;
+        c.transform(sa, -R.k * ca, 0, 1, ro * ca, ro * R.k * sa + lift);
+        c.fillText(ch, 0, 0);
+        c.restore();
+      }
+      // A bead between one phrase and the next.
+      const a = mid + PI / slots, sa = Math.sin(a), c = sa > 0 ? cf : cb;
+      c.globalAlpha = a0 * seen(sa) * (sa > 0 ? .8 : .25);
+      c.beginPath(); c.arc(ro * Math.cos(a), ro * R.k * sa + lift - fs * .25, 2.2, 0, 2 * PI); c.fill();
+    }
+    cb.restore(); cf.restore();
+  }
+
   /* Seen from above: one rule from the innermost ring out past the widest,
      under which every ring stands at its reading, and whose it is beneath. */
   function drawRule(c, geo, order, a) {
@@ -547,7 +628,6 @@
   const TAG_LEVEL = [.3, -.3, .9, -.9];
   function placeTags(cf, geo, order, g) {
     const r0 = geo[order[0]].r, outer = geo[order[order.length - 1]], e = g.e, L = (a, b) => a + (b - a) * e;
-    const faint = getComputedStyle(root).getPropertyValue("--ink-faint").trim();
     for (const k of RING_KEYS) {
       const R = geo[k], el = tags[k], dy = TAG_LEVEL[order.indexOf(k)] * r0;
       const fy = outer.cy + dy - R.cy;
@@ -561,9 +641,9 @@
       if (!on) continue;
       cf.save();
       cf.globalAlpha = show * .8;
-      cf.strokeStyle = cf.fillStyle = faint; cf.lineWidth = 1;
+      cf.strokeStyle = cf.fillStyle = metal(k, themeFor || "light").ink; cf.lineWidth = 1;
       cf.beginPath(); cf.moveTo(tx + 8, ty + .5); cf.lineTo(ax - 4, ay + .5); cf.stroke();
-      cf.beginPath(); cf.arc(ax, ay, 2, 0, 2 * PI); cf.fill();
+      cf.beginPath(); cf.arc(ax, ay, 2.5, 0, 2 * PI); cf.fill();
       cf.restore();
     }
   }
@@ -579,16 +659,19 @@
   function draw() {
     const g = room(), dpr = Math.min(devicePixelRatio || 1, 2), geo = {};
     for (const k of RING_KEYS) { geo[k] = ringGeom(k, g); geo[k].zoom = g.zoom; }
-    const now = [g.cw, g.ch, g.e, punch, lamp, M.ink, M.name, M.given, Stages.busy, document.documentElement.dataset.theme,
+    const now = [g.cw, g.ch, g.e, punch, lamp, spin, M.units, M.ink, M.name, M.given, Stages.busy, document.documentElement.dataset.theme,
       ...RING_KEYS.flatMap(k => [st[k].pos + st[k].drift, st[k].act, geo[k].cx, geo[k].cy, geo[k].r, geo[k].k, geo[k].roll, geo[k].a])]
       .map(v => typeof v === "number" ? v.toFixed(3) : v).join("|");
     if (now === sig && !dirty) return;
     sig = now; dirty = false;
     const cb = fitCanvas(back, g.cw, g.ch, dpr), cf = fitCanvas(front, g.cw, g.ch, dpr);
-    const P = BRONZE[document.documentElement.dataset.theme === "dark" ? "dark" : "light"];
+    const P = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    if (themeFor !== P) { themeFor = P; for (const k of RING_KEYS) doc.style.setProperty("--m-" + k, metal(k, P).ink); }
+    doc.classList.toggle("orbits", !!g.cam);
     // Widest first, so a nearer ring's face lies over a wider one's.
     const order = [...RING_KEYS].sort((a, b) => geo[a].r - geo[b].r);
     for (const k of [...order].reverse()) drawRing(k, geo[k], cb, cf, P);
+    for (const k of RING_KEYS) drawOrbit(k, geo[k], cb, cf, metal(k, P), g);
     if (g.e > .5) drawRule(cf, geo, order, Math.min(1, (g.e - .5) / .4));
     placeTags(cf, geo, order, g);
     // The reading stands level with the index it is read at, a hairline between them; from above, beside the dial.
@@ -599,10 +682,14 @@
     if (lead && g.e < .3) {
       const ix = lead.cx - (lead.r * lead.k) * Math.sin(lead.roll), x1 = reads.offsetLeft - 18;
       cf.save();
-      cf.globalAlpha = st[focus].act * (1 - g.e * 3.3) * .7 * lead.a;
-      cf.strokeStyle = getComputedStyle(root).getPropertyValue("--ink-faint").trim(); cf.lineWidth = 1;
-      cf.setLineDash([1, 4]);
-      cf.beginPath(); cf.moveTo(ix + 12, top + .5); cf.lineTo(ix + 12 + Math.max(0, x1 - ix - 12) * smooth(st[focus].act), top + .5); cf.stroke();
+      cf.globalAlpha = st[focus].act * (1 - g.e * 3.3) * .85 * lead.a;
+      // A rule in the ring's own metal, graduated like it, a bead where it ends.
+      const m = metal(focus, P), xe = ix + 12 + Math.max(0, x1 - ix - 12) * smooth(st[focus].act), y = Math.round(top) + .5;
+      cf.strokeStyle = cf.fillStyle = m.ink; cf.lineWidth = 1;
+      cf.beginPath(); cf.moveTo(ix + 12, y); cf.lineTo(xe, y);
+      for (let x = xe - 8, i = 1; x > ix + 14; x -= 8, i++) { cf.moveTo(Math.round(x) + .5, y); cf.lineTo(Math.round(x) + .5, y + (i % 5 ? 3 : 6)); }
+      cf.stroke();
+      cf.beginPath(); cf.arc(xe, y, 2.5, 0, 2 * PI); cf.fill();
       cf.restore();
     }
   }
@@ -619,6 +706,7 @@
     const still = Stages.still, toward = (v, to, ms) => Math.abs(to - v) < 1e-4 ? to : still ? to : v + (to - v) * (1 - Math.exp(-dt / ms));
     clock += dt;
     punch = toward(punch, 0, 170);
+    if (!still && !drag) spin = (spin + dt * .00007) % (2 * PI);
     lamp = toward(lamp, lampTo, 200);
     RING_KEYS.forEach((k, i) => {
       const s = st[k], R = RINGS[k], sc = R.scale(), mine = focus === k;
