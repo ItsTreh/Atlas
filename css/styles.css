@@ -2048,7 +2048,58 @@ input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
   border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none;
 }
 
-/* A day of eating: the day as a line of meals, one open at a time. */
+/* A day of eating: the day as a line of meals, one open at a time, and
+   beside it the vessel the day fills (dayVessel in nutrition-view.js). */
+.atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] { left: var(--pad); width: auto; padding-left: 0; }
+.atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .nu {
+  display: grid; grid-template-columns: minmax(300px, 1fr) min(760px, 56vw); grid-template-rows: auto 1fr; gap: 16px 48px; min-height: 100%;
+}
+.day-vessel-slot { grid-column: 1; grid-row: 1 / -1; display: grid; place-items: center; min-height: 0; }
+.atlas[data-layout="mobile"] .day-vessel-slot { display: none; }
+.day-head, .day-body { grid-column: 2; }
+.day-vessel { position: relative; height: min(100% - 34px, 560px); aspect-ratio: 330 / 520; touch-action: none; cursor: ns-resize; user-select: none; -webkit-user-select: none; }
+.day-vessel.held { cursor: grabbing; }
+.day-vessel svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.day-vessel { --water: #7d9fb1; --water-deep: #456b82; --water-top: #cfe0e8; }
+[data-theme="dark"] .day-vessel { --water: #5b8196; --water-deep: #2c4c60; --water-top: #a9c4d1; }
+.dv-b0 { stop-color: #452b0b; } .dv-b1 { stop-color: #b98a3c; } .dv-b2 { stop-color: #f4dca4; }
+.dv-shadow { fill: rgba(40,30,18,.16); }
+[data-theme="dark"] .dv-shadow { fill: rgba(0,0,0,.5); }
+.dv-back { fill: color-mix(in oklab, var(--ink) 5%, transparent); }
+.dv-wall { fill: none; stroke: var(--cast, var(--ink-faint)); stroke-width: 1.5; opacity: .75; }
+.dv-water, .dv-prot { transition: transform 1s cubic-bezier(.3, .7, .2, 1); }
+.dv-water .dv-body { fill: var(--water); opacity: .82; }
+.dv-water.was .dv-body { fill: var(--water-deep); opacity: .55; }
+.dv-wave { fill: var(--water-top); opacity: .5; animation: dvWave 5.5s linear infinite; }
+.dv-wave.a { transform: translateY(-5px); }
+.dv-wave.b { opacity: .3; animation-duration: 8s; animation-direction: reverse; }
+@keyframes dvWave { to { translate: 80px 0; } }
+.dv-prot { fill: var(--cast, #8a5a1f); opacity: .8; }
+.dv-pour { fill: var(--water-top); opacity: 0; transition: opacity .25s ease; }
+.day-vessel.pouring .dv-pour { opacity: .75; }
+.day-vessel.pouring .dv-wave { animation-duration: 1.6s; }
+.dv-tick { stroke: var(--ink-faint); stroke-width: 1; }
+.dv-tick.on { stroke: var(--ink); stroke-width: 1.5; }
+/* A mark a meal, level with where the water stands at the end of it. */
+.dv-marks { position: absolute; inset: 0; pointer-events: none; }
+.dv-mark {
+  position: absolute; left: 91%; translate: 0 -50%; display: flex; align-items: baseline; gap: 8px; padding: 3px 0; border: 0; background: none;
+  white-space: nowrap; cursor: pointer; pointer-events: auto; color: var(--ink-faint); transition: color .3s ease;
+}
+.dv-mark i { font: italic 400 18px/1 var(--serif); }
+.dv-mark b { font: 400 20px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
+.dv-mark.past { color: var(--ink-soft); }
+.dv-mark.on, .dv-mark:hover { color: var(--ink); }
+.dv-mark.on i { text-decoration: underline 1px; text-underline-offset: 4px; text-decoration-color: var(--cast, currentColor); }
+.dv-mark:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.dv-prot-l { position: absolute; left: 0; top: 100%; margin: 6px 0 0; font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; }
+.dv-prot-l i { font: italic 400 16px/1 var(--serif); color: var(--cast, var(--ink-soft)); margin-right: 3px; }
+.meal-sofar { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.meal-sofar b { font: 400 19px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); }
+.meal-nav { display: flex; gap: 6px; }
+.meal-nav .arm-coin:disabled { opacity: .35; cursor: default; background: none; color: var(--ink-faint); }
+@media (prefers-reduced-motion: reduce) { .dv-water, .dv-prot { transition: none; } .dv-wave { animation: none; } }
+
 .day-head .quiet-btn { align-self: flex-start; padding: 0; }
 .day-body { display: flex; flex-direction: column; gap: 14px; }
 .meal-line { position: relative; height: 52px; margin: 0 18px; }
@@ -2815,3 +2866,17 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .nu-words button { font-size: 21px; padding-bottom: 6px; }
 }
 .nu-slot { display: contents; }
+/* A day of eating on a wide screen: the meal is set on the page itself, no card round it, so the whole day fits without a scroll. */
+.atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .meal-card { background: none; border: 0; box-shadow: none; padding: 0; border-radius: 0; }
+.atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .meal-name { font-style: italic; }
+.idea-head .text-link { margin-left: 14px; font-size: 12.5px; white-space: nowrap; }
+.dv-water .dv-body { opacity: .9; }
+/* A day of eating on a short screen: the lede and the standing caveat step out (the estimate tag stays with the day's figures in the meal). */
+@media (max-height: 820px) {
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] :is(.day-head .nu-lede, .note-rule) { display: none; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .day-head .display { font-size: 34px; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .day-head { gap: 6px; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .nu { gap: 8px 48px; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .meal-line.named { height: 62px; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="day"] .day-body { gap: 8px; }
+}
