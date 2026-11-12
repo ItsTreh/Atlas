@@ -828,7 +828,7 @@
   let last = 0;
   (function frame(t) {
     requestAnimationFrame(frame);
-    const dt = Math.min(48, t - (last || t)); last = t;
+    const dt = Math.min(100, t - (last || t)); last = t;
     if (!live() || Stages.narrow) return;
     const still = Stages.still, toward = (v, to, ms) => Math.abs(to - v) < 1e-4 ? to : still ? to : v + (to - v) * (1 - Math.exp(-dt / ms));
     clock += dt;
