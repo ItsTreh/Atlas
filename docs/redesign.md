@@ -130,7 +130,7 @@ moved through. The marble is one mesh, one renderer and one material.
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
 | II Measure | an instrument: four rings round the figure, one a fact, each its own metal | the figure in the middle; each ring carries a tag (its name, reading and gauge), and what the ring in hand says goes round the body with it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends on your mark |
-| III Nutrition | a balance in bronze, marble, stone and clay, and no statue; in a day of eating, an urn the day fills | everything is written on the balance: each side's total over its end of the beam, what a pan holds beside its rim, the goal cut in the plinth | pull a pan down; press a pan or its coin (or scroll) and the camera closes on it, with its readings beside it; last, one of two plain answers |
+| III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the figure in a niche at the end | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the wall | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
 | IV Week plan | a frieze: seven figures, one a day, each beside its day's hours | the whole week in one row; the settings under it | drag down a day's hours to say when you are busy; the session moves |
 
 How each is built:
@@ -168,62 +168,31 @@ How each is built:
     letter of the name, the name and the day. Five stones to choose from
     (the keys the seal's inks had). Nothing on it depends on the chosen
     muscles or on a symbol the app picked.
-- **Nutrition** (`js/balance.js`, `js/nutrition-view.js`). The balance is
-  a small WebGL scene of its own (turned shapes, one shader, no library):
-  the burn's weights in one pan, a jar a meal in the other, the beam
-  leaning by how far eating is set from the burn. Sizes are the plan's own
-  kilocalories; nothing here stands for a body. *A day of eating* is as it
-  was. On a phone or without WebGL the two sides stand in columns.
-  - *It is solid*, in the gallery's own materials. The bronze is the
-    Measure rings' own (the same four tones, shaded by how nearly a face
-    mirrors the lamp, dark toward the floor and at its edges); the plinth
-    is marble toned to the statue, not to white; the weights are grey
-    stone and the jars fired clay, both matte. Where something stands (the
-    stand on the plinth, a load in a pan) it shades what it stands on.
-    (Before: plain shaded bronze, which read as a prototype; an engraved,
-    hand-tinted plate, which read as a cartoon; a brighter reflective
-    bronze with glazed jars, which read as plastic.)
-  - *The text is part of it.* Labels are set where their piece is each
-    frame (`placeBalanceLabels`): each side's total over its end of the
-    beam, how far eating is set from the burn between them over the
-    fulcrum, the weights by name and a meal a jar beside the pans' rims,
-    the goal cut in the plinth's face. They follow the beam's lean but not
-    the pans' swing, and the beam settles in one swing, so the words do
-    not shake. All of it shows in the whole shot: nothing waits for a
-    zoom. Beside each pan a coin says how to change that side.
-  - *Four shots* (`BalanceScene.shotTo`, `nut.shot`): the whole balance;
-    close on what is burned; close on what is eaten; and the balance
-    alone. A press on a pan, the coin beside it, the scroll or the footer
-    goes from one to the next: the camera leaves at once, in one eased
-    move (`BalanceScene.TRAVEL`), the words stand back until it lands, and
-    only the words round the balance are redrawn. The far side of the
-    balance fades out of a close shot. Nothing scrolls, at 760 px tall
-    either.
-  - *Seen whole it stands still.* The beam goes to its lean without
-    swinging and the pointer does not turn the view (the user: the scale
-    "would work better if it's fixed", 3D "works for the zoom"). Seen
-    close the view follows the pointer a little.
-  - *Readings, not a form.* Beside a pan seen close stand its readings,
-    in Measure's type: a name in the bronze, the figure large, coins to
-    step it, a choice as words with the chosen one underlined. The reading
-    in hand makes its piece of the balance pulse (`scales.glow`), as a
-    muscle pointed at does on Targets. The rule the user gave: the data
-    stays text; the visual is there to show what the text changes, never
-    to stand in for it.
-  - *The last shot* asks "Does it weigh right?" and takes one of two plain
-    answers, "It weighs right" (on to the week) or "Weigh it again". (A
-    bronze key to turn was tried and found too much.)
-  - *A day of eating* keeps its text (the day's line of meals, the open
-    meal's figures and example plate) and gains an urn beside it
-    (`dayVessel`, drawn in SVG, so it costs nothing to run): the water
-    stands at what is eaten by the end of the open meal, that meal's part
-    lighter over what was there, a mark a meal with its running total, a
-    slim tube for protein. Pressing or dragging in it goes to the meal at
-    that level; it is poured when the level rises. Every figure it shows
-    is in the text too. The meal is set on the page without a card and the
-    day fits without a scroll. Water was the user's idea for the balance;
-    it is here instead, where a quantity that builds through the day is
-    what is being shown, and the balance keeps its solid weights.
+- **Nutrition** (`js/nutrition-view.js`): *the day, in perspective*,
+  from the user's Claude Design file "Nutrition - Perspectiva" (2026-11-14),
+  which replaced the balance and the urn. A room drawn each frame in a 2D
+  canvas under the sculpture: a marble floor laid to a vanishing point, a
+  gilt meridian inlaid with the hours from six to eleven (their Roman
+  numerals in the floor), an arch over each meal at its hour, a sun that
+  crosses the sky as the day goes, and at the end a wall whose niche holds
+  the figure. The user walks the day: the wheel, the arrow keys, the
+  footer's way on or its beads (the day's index, `#foot-day`), or a press
+  on an arch. Stations: the sum; a meal each; the day laid out at the wall.
+  - *The figure is the marble.* `AnatomySculpture.standAt` stands the live
+    sculpture in the niche each frame (its soles on the niche's floor, as
+    tall as the niche allows), fading with the room's haze; a change of
+    stage travels to it. No render or image of the figure is shipped.
+  - *The words are set in the room.* A 1440 × 900 plate scaled to the
+    screen; each station's words (`data-p`) are placed at its depth each
+    frame, so walking carries them. The template is merged into the page
+    on every change (`pvMorph`), so focus and transitions survive.
+  - *The numbers are the plan's.* Every figure is `NutritionPlan`'s: the
+    burn from Measure's weight and the planned training's load, the goal's
+    recommendation, the meals and their shares, the dishes from `foods.js`.
+    Pointing at a goal previews what it would come to; "How it's worked
+    out" is the sum line by line. Body weight is asked only on Measure.
+  - On a phone the plate is only scaled down for now (the phone gets its
+    own redesign later), and without WebGL the niche stands empty.
 - **Week plan** (`js/week-view.js`). `plates(list)` on the sculpture draws
   the figure into each day's canvas (no second context, no second copy of
   the model). Beside each stands its day (`.staff`): busy hours, the
@@ -240,7 +209,7 @@ Open, for the user:
   `tests/sculpture-technique.test.js` tests them. Nothing calls them now:
   to delete, once this direction is accepted.
 - *Your week* (the generated calendar) has not been re-imagined yet.
-- The rings, the mark and the balance have no tests of their own beyond
+- The rings, the mark and the room have no tests of their own beyond
   the mark's seed (`tests/measure.test.js`).
 - The phone keeps plain versions of all three rooms.
 
