@@ -379,7 +379,7 @@ const BalanceScene = (() => {
       if (s === "burn") return { at: [burn.at[0] + .82, burn.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: -.24 };
       if (s === "eat") return { at: [eat.at[0] - .82, eat.at[1] + .34, 0], dist: 5.2, pitch: .27, yaw: .24 };
       if (s === "set") return { at: [0, 1.18, 0], dist: 11, pitch: .1, yaw: 0 };
-      return { at: [0, 1.16, 0], dist: 11.6, pitch: .15, yaw: 0 };
+      return { at: [0, 1.04, 0], dist: 10.5, pitch: .15, yaw: 0 };
     }
     camera() {
       const c = this.canvas, aspect = (c.clientWidth || 1) / (c.clientHeight || 1), k = this.cam || this.shotGoal();
