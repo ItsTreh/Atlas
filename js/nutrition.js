@@ -13,6 +13,9 @@
    span the recommendation lands (see recommendTargets). The user can then
    set either number themselves; clearing it goes back to the recommendation.
 
+   The body weight is the one given on the Measure stage (measure.js);
+   the plan's own, from before Measure asked for it, is the fallback.
+
    Every number here is an ESTIMATE to eat against, not a prescription.
    A real figure would need age, height, sex, body composition and a few
    weeks of tracking; the page says so wherever the numbers appear.
@@ -208,8 +211,9 @@ class NutritionPlan {
    *                  sessionMinutes }. The routine passes its own, read live
    *                  so there is nothing to keep in sync.
    */
-  constructor(training = () => NO_TRAINING) {
+  constructor(training = () => NO_TRAINING, measured = () => null) {
     this.training = training;
+    this.measured = measured;
     this.weight = 70; this.unit = "kg"; this.goal = "maintain";
     this.activity = "light";
     this.burnInput = null;          // the user's own daily burn, or null to estimate
@@ -222,7 +226,18 @@ class NutritionPlan {
     this.showMeals = true;
   }
 
-  get weightKg() { return this.unit === "lb" ? this.weight * KG_PER_LB : this.weight; }
+  /**
+   * The body weight the plan uses: the one given on the Measure stage
+   * (`measured`, in kg), else the one this plan kept itself, which is all
+   * an older visit's Nutrition page asked for.
+   */
+  get weightKg() {
+    const kg = this.measured();
+    if (typeof kg === "number" && Number.isFinite(kg)) return kg;
+    return this.unit === "lb" ? this.weight * KG_PER_LB : this.weight;
+  }
+  /** True when the weight comes from the Measure stage. */
+  get weightMeasured() { const kg = this.measured(); return typeof kg === "number" && Number.isFinite(kg); }
   isValid() {
     return this.weightKg >= WEIGHT_KG_RANGE[0] && this.weightKg <= WEIGHT_KG_RANGE[1];
   }

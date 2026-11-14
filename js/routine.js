@@ -81,7 +81,7 @@ class WeeklyRoutine {
       sessionMinutes: this.sessionMinutes,
       weeklySets: this.plannedWeeklySets(),
       priorities: new Map(this.selectedMuscles().map(m => [m.id, this.selection.priority(m.id)]))
-    }));
+    }), () => bodyMeasure.kg);   // the body weight given on the Measure stage (measure.js)
     this.sessions = [];
     this.leftOut = [];          // blocks the last generate() could not give a day (see generate)
     this.plannedFor = new Set(); // ids of the muscles the last generated week was planned for

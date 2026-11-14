@@ -327,3 +327,35 @@ describe("found in the 2026-10-22 sweep", () => {
     expect(n.burnHeld).toBe(false);
   });
 });
+
+describe("the weight from Measure", () => {
+  test("the measured weight wins over the plan's own, and the plan's own is the fallback", () => {
+    let kg = null;
+    const n = new app.NutritionPlan(undefined, () => kg);
+    n.weight = 70;
+    expect(n.weightMeasured).toBe(false);
+    expect(n.weightKg).toBe(70);
+    kg = 82.5;
+    expect(n.weightMeasured).toBe(true);
+    expect(n.weightKg).toBe(82.5);
+    expect(n.protein).toBe(Math.round(82.5 * n.proteinPerKg));
+    n.unit = "lb";                      // the plan's unit is for its own weight only
+    expect(n.weightKg).toBe(82.5);
+  });
+
+  test("with no weight anywhere the plan is not valid", () => {
+    const n = new app.NutritionPlan(undefined, () => null);
+    n.weight = null;
+    expect(n.isValid()).toBe(false);
+  });
+
+  test("a routine's plan reads the weight given on Measure", () => {
+    const app2 = loadApp({ exports: ["bodyMeasure"] });
+    const routine = new app2.WeeklyRoutine();
+    routine.nutrition.weight = 70;
+    app2.bodyMeasure.set("kg", 91);
+    expect(routine.nutrition.weightKg).toBe(91);
+    app2.bodyMeasure.set("kg", null);
+    expect(routine.nutrition.weightKg).toBe(70);
+  });
+});
