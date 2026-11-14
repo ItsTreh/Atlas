@@ -4,9 +4,9 @@
    stage between Targets and Nutrition (measure-view.js).
 
    They are meant to turn Nutrition's estimates from an average into the
-   user's own. Nothing reads them yet: Nutrition still plans from the weight
-   it asks for itself (nutrition.js). Kept in this browser only
-   (storage.js, saveMeasure), with the seal's name and ink.
+   user's own. So far Nutrition reads the weight (NutritionPlan.weightKg);
+   height, age and physiology wait for the resting-burn maths. Kept in this
+   browser only (storage.js, saveMeasure), with the seal's name and ink.
    ========================================================================= */
 
 /* What the page accepts, in cm, kg and years. The weights match Nutrition's
