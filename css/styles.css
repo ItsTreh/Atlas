@@ -24,6 +24,8 @@
   --ink-faint:   #6b6459;   /* metadata — still 4.5:1 on every surface */
   --line:        #dcd5c9;
   --line-soft:   #e8e3da;
+  --gilt:        #8a5c1e;   /* Nutrition's gilt: words */
+  --gilt-line:   #b98a3c;   /* and lines, inlaid */
 
   --busy:        #ddd6ca;
   --busy-hatch:  rgba(40,30,18,.07);
@@ -75,6 +77,8 @@
   --ink-faint:   #9c9283;
   --line:        #37322a;
   --line-soft:   #28241e;
+  --gilt:        #d9b26a;
+  --gilt-line:   #ad7d31;
 
   --busy:        #2f2a23;
   --busy-hatch:  rgba(255,240,215,.05);
@@ -1645,187 +1649,51 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* ------------------------------- nutrition -------------------------------- */
 
-/* The stage has the screen between the masthead and the footer: the sum
-   beside the balance, or a day of eating across it. */
-.stage-nutrition { left: var(--pad); right: var(--pad); top: 84px; bottom: 84px; overflow: auto; }
-/* The gallery light: a soft pool where the figure stands, daylight on the
-   paper by day, a lamp's warmth by night. It follows the figure from stage
-   to stage, and the figure itself (--gx) on Targets' movements. */
-.anatomy-stage::before {
-  content: ""; position: absolute; z-index: -1; pointer-events: none;
-  top: 2%; height: 112%; width: min(84vw, 1150px); left: var(--lamp-x, 62%); transform: translateX(-50%);
-  background: radial-gradient(closest-side, rgba(255,254,250,.9), rgba(255,253,247,.45) 50%, transparent);
-  transition: left .9s var(--ease-out), opacity .6s ease;
+/* The day in perspective (js/nutrition-view.js). A room drawn in a canvas
+   under the sculpture: a marble floor laid to a vanishing point, a gilt
+   meridian inlaid with the hours, an arch a meal over it, and at its end a
+   wall whose niche holds the figure. The stage's words are set in a
+   1440 × 900 plate scaled to the screen; those of each station are placed
+   at its depth in the room each frame, so the walk carries them. */
+.stage-nutrition { inset: 0; overflow: hidden; }
+.atlas[data-stage="nutrition"] .anatomy-stage::before { opacity: 0; }
+.pv { position: absolute; inset: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+.pv-stage { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
+.pv-hit { position: absolute; inset: 0; }
+.pv button { font: inherit; }
+.pv button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.pv-room { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
+.atlas[data-stage="nutrition"] .pv-room { opacity: 1; transition: opacity .9s ease .15s; }
+.atlas[data-layout="mobile"] .pv-room { display: none; }
+/* A coin to step a figure: a beaded rim, a fine ring, the sign struck in it. */
+.pv-coin {
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: transparent;
+  color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; flex: none;
 }
-[data-theme="dark"] .anatomy-stage::before {
-  background: radial-gradient(closest-side, rgba(255,232,196,.06), rgba(255,232,196,.02) 55%, transparent);
+.pv-coin.big { width: 36px; height: 36px; }
+.pv-coin svg { width: 100%; height: 100%; display: block; overflow: visible; fill: none; stroke: currentColor; }
+.pv-coin:hover:not(:disabled) { background: var(--ink); color: var(--bg); }
+.pv-coin:disabled { opacity: .35; cursor: default; }
+/* A plain underlined action; and a word of the day's sentence that opens its chooser. */
+.pv-link {
+  padding: 0; background: none; border: 0; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line);
 }
-.atlas[data-stage="targets"][data-sub="how"] { --lamp-x: 74%; }
-.atlas[data-stage="targets"]:is([data-sub="focus"], [data-sub="train"]) { --lamp-x: calc(var(--gx, .64) * 100%); }
-.atlas[data-stage="measure"] { --lamp-x: 50%; }
-.atlas[data-stage="nutrition"] { --lamp-x: 50%; }
-.atlas[data-layout="desktop"][data-stage="nutrition"][data-nview="plan"] { --lamp-x: 74%; }
-.atlas[data-stage="plan"] { --lamp-x: 50%; }
-.atlas[data-opening] { --lamp-x: 50%; }
-
-/* The sum: the page is the working of the day's calories, read from the
-   top, in a column beside the balance (nutrition-view.js). One grid for
-   every line: its name, what sets it, what it comes to, the unit. The
-   figures stand in one column down the page. */
-.nu { display: flex; flex-direction: column; min-height: 100%; }
-.nu-plan { display: flex; flex-direction: column; justify-content: center; gap: 16px; flex: 1; width: min(660px, 100%); }
-.nu-head { display: flex; flex-direction: column; gap: 12px; }
-.nu-head .eyebrow { display: flex; align-items: baseline; gap: 10px; }
-.eyebrow-note { font: italic 500 14px/1 var(--serif); letter-spacing: 0; text-transform: none; color: var(--ink-faint); }
-.nu-title { font-size: clamp(38px, 3.5vw, 52px); }
-.nu-lede { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
-
-.sum { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 20px; }
-.sum-row {
-  position: relative; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
-  padding: 10px 0 9px; border-top: 1px solid var(--line-soft);
+.pv-link:hover { text-decoration-color: var(--ink); }
+.pv-word {
+  padding: 0 2px; background: none; border: 0; cursor: pointer; font: italic 400 30px/1.3 var(--serif) !important;
+  font-variant-numeric: lining-nums; color: var(--ink); text-decoration: underline; text-decoration-color: var(--gilt-line);
+  text-decoration-thickness: 1px; text-underline-offset: 7px;
 }
-/* The line in hand: a bronze point before its name, as its piece of the balance pulses. */
-.sum-row::before {
-  content: ""; position: absolute; left: -15px; top: 50%; width: 5px; height: 5px; margin-top: -2px; border-radius: 50%;
-  background: var(--cast); opacity: 0; transform: scale(.4); transition: opacity .25s ease, transform .35s var(--ease-out);
-}
-.sum-row:is(:hover, :focus-within)::before { opacity: 1; transform: none; }
-.sum-l, .sum-l label { font: italic 400 19px/1.2 var(--serif); color: var(--ink-soft); white-space: nowrap; transition: color .25s ease; }
-.sum-row:is(:hover, :focus-within) .sum-l, .sum-row:is(:hover, :focus-within) .sum-l label { color: var(--cast); }
-.sum-c { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; min-width: 0; }
-.sum-w { font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
-.sum-n { flex: 1 1 170px; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--ink-faint); text-wrap: pretty; }
-.sum-n:empty { display: none; }
-.sum-n.warn { color: var(--warn); }
-.sum-n .pill-tag { margin-right: 8px; }
-.sum-n .text-link { font-size: 12px; margin-left: 6px; }
-/* What a line comes to: the figures end on one edge all the way down. */
-.sum-f {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 5px; white-space: nowrap; color: var(--ink);
-  font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; transition: opacity .3s ease;
-}
-.sum-f small { font: 400 12px/1 var(--font); color: var(--ink-faint); }
-.sum-f .mid { font-size: 34px; line-height: .9; }
-.sum-row.off .sum-f { opacity: .35; }
-/* A total: the rule a sum is drawn under, its name upright with its note under it, its figure large. */
-.sum-row.total { grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; row-gap: 5px; padding: 13px 0 12px; border-top-color: var(--ink-faint); }
-.sum-row.total .sum-l, .sum-row.total .sum-l label { font: 400 26px/1.1 var(--serif); color: var(--ink); }
-.sum-row.total :is(.sum-l, .sum-c) { grid-column: 1; }
-.sum-row.total .sum-c { grid-row: 2; }
-.sum-row.total .sum-f { grid-column: 2; grid-row: 1 / 3; align-self: center; }
-.sum-big { display: flex; align-items: baseline; }
-.sum-approx { margin-right: 7px; font-size: 26px; color: var(--ink-faint); }
-.sum-f .big { font-size: clamp(44px, 3.9vw, 56px); line-height: .9; letter-spacing: -.015em; }
-/* The goal has no figure of its own: its words take the line. */
-.sum-row.wide .sum-c { grid-column: 2 / -1; }
-.sum-row.wide .sum-f { display: none; }
-
-/* A figure stepped down or up: two plain signs, the figure between. */
-.nu-step { display: inline-flex; align-items: baseline; gap: 1px; }
-.nu-pm {
-  display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
-  background: none; color: var(--ink-faint); cursor: pointer; transition: color .2s ease, background .2s ease;
-}
-.nu-pm i { position: relative; display: block; width: 11px; height: 11px; }
-.nu-pm i::before, .nu-pm i.pm-plus::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; margin-top: -.75px; border-radius: 1px; background: currentColor; }
-.nu-pm i.pm-plus::after { transform: rotate(90deg); }
-.nu-pm:hover { color: var(--ink); background: var(--raised); }
-.nu-pm:active { background: var(--line); }
-.nu-pm:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
-/* The signs have no text to sit on the line by: they are set level with the figure's middle. */
-.nu-step .nu-pm { align-self: center; }
-.nu-out, .nu-in {
-  box-sizing: content-box; min-width: 1.5ch; padding: 0 2px 1px; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0;
-  background: none; text-align: center; color: var(--ink);
-  font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums;
-}
-.nu-out.wide { min-width: 3.3ch; }
-.nu-in { width: 3.4ch; outline: none; caret-color: var(--ink); border-bottom-color: var(--line); transition: border-color .25s ease; -moz-appearance: textfield; appearance: textfield; }
-.nu-in::-webkit-outer-spin-button, .nu-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.nu-in:hover { border-bottom-color: var(--ink-faint); }
-.nu-in:focus { border-bottom-color: var(--ink); }
-.nu-in[aria-invalid="true"] { border-bottom-color: var(--warn); }
-.nu-in.big { width: 2.6em; min-width: 2ch; padding: 0 0 2px; text-align: right; field-sizing: content; }
-@supports (field-sizing: content) { .nu-in.big { width: auto; } }
-
-/* A choice among words: the one chosen in ink, a bronze line under it. */
-.nu-words { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
-.nu-words button {
-  position: relative; padding: 2px 0 5px; border: 0; background: none; cursor: pointer; white-space: nowrap;
-  font: 400 20px/1.15 var(--serif); font-variant-numeric: lining-nums; color: var(--ink-faint); transition: color .25s ease;
-}
-.nu-words button::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 1px; background: var(--cast);
-  transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease-out);
-}
-.nu-words button:hover { color: var(--ink); }
-.nu-words button[aria-checked="true"] { color: var(--ink); }
-.nu-words button[aria-checked="true"]::after { transform: scaleX(1); }
-.nu-words button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
-.nu-words.small { gap: 2px 12px; }
-.nu-words.small button { font-size: 18px; }
-/* The suggested one of a set: a point over it. */
-.nu-words button.sug::before { content: ""; position: absolute; left: 50%; top: -4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--cast); }
-
-.nu-after { display: flex; flex-direction: column; gap: 8px; }
-.nu-est { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 12.5px; color: var(--ink-faint); }
-.nu-est .text-link { font-size: 12.5px; align-self: auto; }
-.nu-warn { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--warn); }
-#nu-warns:empty { display: none; }
-#nu-warns { display: flex; flex-direction: column; gap: 6px; }
-
-/* How it's worked out: read where the balance stands, which steps back for it. */
-.nu-why { display: flex; flex-direction: column; gap: 14px; }
-.nu-why-h { margin: 0; font: italic 400 26px/1.1 var(--serif); color: var(--ink); }
-.nu-reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13px; line-height: 1.55; color: var(--ink-soft); max-width: 62ch; }
-.nu-reasons li { padding-top: 10px; border-top: 1px solid var(--line-soft); }
-.nu-reasons b { color: var(--ink); font-weight: 600; }
-.nu-reasons-none { margin: 0; font-size: 13px; color: var(--ink-soft); }
-.nu-caveat { margin: 0; max-width: 62ch; font-size: 12px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
-
-/* The balance: beside the sum, seen whole and still. It takes no pointer. */
-.balance { display: none; }
-.balance canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-/* The plinth's shadow on the floor. */
-.balance::before {
-  content: ""; position: absolute; left: 6%; right: 6%; bottom: 3%; height: 15%; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(40,30,18,.2), transparent);
-}
-[data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
-/* The goal, cut in the plinth's face. */
-.bal-plinth {
-  position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap;
-  font: 600 12px/1 var(--serif); letter-spacing: .34em; text-transform: uppercase; padding-left: .34em;
-  color: rgba(74,64,48,.62); text-shadow: 0 1px 0 rgba(255,255,255,.85), 0 -1px 0 rgba(60,50,35,.25);
-}
-[data-theme="dark"] .bal-plinth { color: rgba(20,16,10,.7); text-shadow: 0 1px 0 rgba(255,244,220,.22), 0 -1px 0 rgba(0,0,0,.4); }
-@media (min-width: 1000px) {
-  .atlas[data-layout="desktop"] .stage-nutrition { --sum-w: min(660px, 48%); }
-  .atlas[data-layout="desktop"] .nu-plan { width: var(--sum-w); }
-  .atlas[data-layout="desktop"] .stage-nutrition[data-view="plan"] .balance:not([hidden]) {
-    display: block; position: absolute; top: 0; bottom: 0; right: 0; left: calc(var(--sum-w) + 28px);
-    pointer-events: none; user-select: none; -webkit-user-select: none;
-  }
-  .atlas[data-layout="desktop"] .stage-nutrition[data-why] .balance { opacity: .07 !important; }
-  .atlas[data-layout="desktop"] .nu-why {
-    position: absolute; top: 0; bottom: 0; right: 0; left: calc(var(--sum-w) + 88px); justify-content: center;
-    animation: nuWhy .5s var(--ease-out) both;
-  }
-}
-/* A narrower screen: the sum takes more of it, and its words are set smaller, so each line still reads in one. */
-@media (min-width: 1000px) and (max-width: 1239px) {
-  .atlas[data-layout="desktop"] .stage-nutrition { --sum-w: 57%; }
-  .atlas[data-layout="desktop"] .sum { column-gap: 14px; }
-  .atlas[data-layout="desktop"] .sum .nu-words { gap: 2px 11px; }
-  .atlas[data-layout="desktop"] .sum .nu-words button { font-size: 18px; }
-  .atlas[data-layout="desktop"] .sum .nu-words.small button { font-size: 16.5px; }
-  .atlas[data-layout="desktop"] .sum-row:not(.total) :is(.sum-l, .sum-l label) { font-size: 17.5px; }
-  .atlas[data-layout="desktop"] .table { gap: 0 36px; }
-  .atlas[data-layout="desktop"] .serve { padding-left: 36px; }
-}
-@keyframes nuWhy { from { opacity: 0; transform: translateY(8px); } }
-@media (prefers-reduced-motion: reduce) { .nu-why { animation: none !important; } }
+.pv-word:hover, .pv-word[aria-expanded="true"] { color: var(--gilt); }
+.pv-label { margin: 0; font-size: 10px; font-weight: 500; line-height: 1; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
+/* The day's index in the footer: the hours from six to eleven, a bead a meal. */
+.foot-day { grid-column: 2; grid-row: 1; position: relative; width: 360px; height: 52px; pointer-events: auto; }
+.atlas:not([data-stage="nutrition"]) .foot-day { display: none; }
+.foot-day button { position: absolute; top: 12px; width: 28px; height: 28px; padding: 0; background: none; border: 0; cursor: pointer; display: grid; place-items: center; }
+.foot-day button span { display: block; border-radius: 50%; }
+.foot-day .fd-h { position: absolute; left: -20px; width: 40px; top: 40px; text-align: center; font-size: 10px; line-height: 1; letter-spacing: .04em; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+@media (prefers-reduced-motion: reduce) { .pv *, .pv-room { transition: none !important; } }
 
 /* A small label: an estimate, or the user's own number. */
 .pill-tag {
@@ -1864,117 +1732,6 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none;
 }
 
-/* A day of eating: the day's meals as courses across the top; under them
-   the open meal, every dish that fits it on a menu, and beside the menu
-   the dish itself, its ingredients set out one by one (nutrition-view.js).
-   The page is its words: nothing stands beside them. */
-.day { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 100%; }
-.day-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 40px; }
-.day-head .display { font-size: clamp(34px, 3vw, 44px); }
-.day-sum { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-soft); }
-.day-sum b { font: 400 21px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
-.day-sum .pill-tag { align-self: center; }
-.day-plated { color: var(--ink-faint); }
-.day-plated b { color: var(--ink-soft); }
-.day-head .nu-warn { flex-basis: 100%; }
-
-/* The day's own settings: how many meals, between which hours, which foods. */
-.day-set { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 40px; }
-.day-set-i { display: inline-flex; align-items: baseline; gap: 12px; }
-.day-set-l { font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
-.day-set-n { font-size: 12px; color: var(--ink-faint); }
-/* An hour to pick, set as a word: a real select under it (.picker). */
-.picker.word { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 2px 0 3px; font: 400 18px/1.15 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); transition: border-color .25s ease; }
-.picker.word:hover { background: none; border-bottom-color: var(--ink); }
-.picker.word:focus-within { outline: 2px solid var(--ink); outline-offset: 3px; }
-
-/* The courses: a meal a column, its hour, its name, the dish on it. */
-.courses { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0 22px; }
-.course {
-  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0;
-  padding: 12px 0 2px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none;
-  text-align: left; cursor: pointer; color: var(--ink-faint); transition: color .25s ease;
-}
-.course::before {
-  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--cast);
-  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
-}
-.course:hover { color: var(--ink-soft); }
-.course[aria-selected="true"] { color: var(--ink); }
-.course[aria-selected="true"]::before { transform: scaleX(1); }
-.course:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
-.course-t { font: 600 11px/1 var(--font); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
-.course-n { font: 400 25px/1.05 var(--serif); white-space: nowrap; }
-.course[aria-selected="true"] .course-n { font-style: italic; }
-.course-d.new { animation: courseNew 1.4s ease both; }
-@keyframes courseNew { from { color: var(--cast); } }
-.course-d { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; line-height: 1.3; }
-
-/* The open meal: the menu, and the dish set out beside it. */
-.table { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 8fr); gap: 0 56px; align-items: start; padding-top: 10px; }
-.menu { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.menu-h { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
-.menu-aim { margin-left: auto; font: 400 12px/1.3 var(--font); color: var(--ink-faint); }
-.dishes { display: flex; flex-direction: column; }
-.dish {
-  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 14px;
-  padding: 7px 0 7px 20px; border: 0; border-radius: 0; background: none; text-align: left; cursor: pointer;
-  color: var(--ink-faint); transition: color .2s ease;
-}
-/* The dish on the day: a bronze stroke before its name. */
-.dish::before {
-  content: ""; position: absolute; left: 0; top: 50%; width: 12px; height: 1.5px; margin-top: -1px; border-radius: 1px; background: var(--cast);
-  transform: scaleX(0); transform-origin: left; transition: transform .4s var(--ease-out);
-}
-.dish[aria-checked="true"]::before { transform: scaleX(1); }
-.dish[aria-checked="true"], .dish.peek, .dish:hover { color: var(--ink); }
-.dish:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
-.dish-n { font: 400 23px/1.15 var(--serif); transition: translate .35s var(--ease-out); }
-.dish.peek .dish-n { translate: 5px 0; }
-.dish[aria-checked="true"] .dish-n { font-style: italic; }
-.dish-e { grid-column: 1; grid-row: 2; font-size: 11.5px; line-height: 1.3; color: var(--ink-faint); }
-.dish-f { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-faint); }
-.dish-f i { display: inline-block; min-width: 4ch; margin-left: 10px; text-align: right; font-style: normal; color: var(--cast); }
-
-.serve { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-left: 56px; border-left: 1px solid var(--line-soft); }
-.serve-when { margin: 0; font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
-.serve.peek .serve-when { color: var(--cast); }
-.serve-n { margin: 0; font: italic 400 clamp(44px, 4.5vw, 66px)/.98 var(--serif); letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
-.serve-f { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 22px; font-size: 13px; color: var(--ink-soft); }
-.serve-f b { margin-right: 5px; font: 400 30px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
-.serve-aim { font-size: 12px; color: var(--ink-faint); }
-.serve-none { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
-/* The ingredients: how much, of what, and what it brings (its calories as a bar, the protein's part of them in bronze). */
-.foods { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: auto auto minmax(48px, 1fr) auto auto; column-gap: 18px; }
-.food { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: 10px 0 9px; border-top: 1px solid var(--line-soft); }
-.food:last-child { border-bottom: 1px solid var(--line-soft); }
-.food-a { font: 400 25px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; text-align: right; white-space: nowrap; color: var(--cast); }
-.food-n { font: 400 28px/1.05 var(--serif); color: var(--ink); }
-.food-n small { margin-left: 9px; font: italic 400 17px/1 var(--serif); color: var(--ink-faint); }
-.food-b { align-self: center; height: 5px; }
-.food-b i {
-  display: block; height: 100%; width: calc(var(--k) * 100%); min-width: 3px; border-radius: 3px; transform-origin: left;
-  background: linear-gradient(to right, var(--cast) calc(var(--p) * 100%), color-mix(in oklab, var(--ink) 20%, transparent) calc(var(--p) * 100%));
-}
-.food-k, .food-p { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; color: var(--ink-soft); }
-.food-p { min-width: 4ch; color: var(--cast); }
-.serve-key { margin: 2px 0 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 11.5px; color: var(--ink-faint); }
-.serve-key i { width: 14px; height: 5px; border-radius: 3px; }
-.serve-key .key-k { background: color-mix(in oklab, var(--ink) 20%, transparent); }
-.serve-key .key-p { margin-left: 10px; background: var(--cast); }
-.day-caveat { margin: 0; max-width: 150ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
-
-/* A meal opened deals its menu out, a dish at a time; a dish shown is set out, an ingredient at a time. */
-.atlas[data-shown] .table.deal .dish { animation: dishIn .55s var(--ease-out) both; animation-delay: calc(var(--i) * 36ms); }
-.atlas[data-shown] :is(.table.deal, .serve.deal) :is(.serve-when, .serve-n, .serve-f) { animation: foodIn .5s var(--ease-out) both; }
-.atlas[data-shown] :is(.table.deal, .serve.deal) .food { animation: foodIn .55s var(--ease-out) both; animation-delay: calc(70ms + var(--i) * 60ms); }
-.atlas[data-shown] :is(.table.deal, .serve.deal) .food-b i { animation: barIn .8s var(--ease-out) both; animation-delay: calc(170ms + var(--i) * 60ms); }
-@keyframes dishIn { from { opacity: 0; transform: translateX(-12px); } }
-@keyframes foodIn { from { opacity: 0; transform: translateY(10px); } }
-@keyframes barIn { from { transform: scaleX(0); } }
-@media (prefers-reduced-motion: reduce) {
-  .dish, .dish *, .serve *, .course::before, .dish::before, .nu-words button::after, .sum-row::before { animation: none !important; transition: none !important; }
-}
 
 /* -------------------------------- week plan -------------------------------- */
 
@@ -2590,29 +2347,6 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .atlas[data-sub="train"] .turn { flex-direction: row; align-items: center; }
   .atlas[data-sub="train"] .turn-line { width: 22px; height: 1px; margin: 0; }
 
-  .stage-nutrition {
-    left: 0; right: 0; width: auto; top: calc(var(--bar) + 28vh); bottom: 64px;
-    padding: 20px 20px 32px;
-  }
-  /* The sum on a phone: a line's name over what sets it, its figure beside them. */
-  .sum-row, .sum-row.total { grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 4px; }
-  .sum-row :is(.sum-l, .sum-c) { grid-column: 1; }
-  .sum-row .sum-c { grid-row: 2; }
-  .sum-row .sum-f { grid-column: 2; grid-row: 1 / 3; align-self: center; }
-  .sum-row.wide .sum-c { grid-column: 1 / -1; }
-  .sum-row::before { display: none; }
-  /* A day of eating on a phone: the courses in a row to swipe, the menu over the dish. */
-  .courses { display: flex; gap: 0 18px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px; }
-  .course { flex: 0 0 auto; min-width: 118px; max-width: 170px; }
-  .table { display: flex; flex-direction: column; gap: 22px; }
-  .menu-aim { margin-left: 0; }
-  .serve { padding: 18px 0 0; border-left: 0; border-top: 1px solid var(--line-soft); }
-  .serve-n { font-size: 40px; }
-  .foods { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 12px; }
-  .food { row-gap: 7px; }
-  .food-a { font-size: 21px; }
-  .food-n { font-size: 23px; }
-  .food-b { grid-column: 1 / -1; grid-row: 2; }
   /* The Measure: the parts stacked in one column under the figure's band. */
   .atlas[data-stage="measure"] .anatomy-stage { height: 52vh; }
   .stage-measure {
@@ -2655,7 +2389,6 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
 @media (prefers-reduced-motion: reduce) {
   [data-reveal], .atlas[data-shown] .stage.is-current [data-reveal] { transform: none; }
   .atlas[data-shown] .stage.is-current [data-reveal] { transition: opacity .25s ease; }
-  .atlas[data-shown][data-stage="nutrition"][data-nview="day"] .anatomy-stage::after { transition: --veil .25s ease; }
   .anatomy-stage::before { transition: none; }
   .flow-front { transition: none; }
   .figure-controls, .js .figure-controls { transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s linear .25s; }
@@ -2672,25 +2405,4 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .lf.new, .tr { animation: none !important; }
   #foot-next.fresh .fx-coin::after { animation: none; }
   .fx-key, .fx-coin, .fx-beads, .fx-arr { transition: none !important; }
-}
-
-/* Nutrition on a short screen: the lede and the standing notes step out,
-   the lines close up, and nothing scrolls. */
-@media (max-height: 820px) {
-  .atlas[data-layout="desktop"] :is(.nu-lede, .day-caveat, .serve-key) { display: none; }
-  .atlas[data-layout="desktop"] .nu-plan { gap: 12px; }
-  .atlas[data-layout="desktop"] .nu-title { font-size: 36px; }
-  .atlas[data-layout="desktop"] .sum-row { padding: 6px 0 5px; }
-  .atlas[data-layout="desktop"] .sum-row.total { padding: 9px 0 7px; }
-  .atlas[data-layout="desktop"] .sum-f .big { font-size: 40px; }
-  .atlas[data-layout="desktop"] .day { gap: 10px; }
-  .atlas[data-layout="desktop"] .day-head .display { font-size: 32px; }
-  .atlas[data-layout="desktop"] .course { padding-top: 9px; gap: 2px; }
-  .atlas[data-layout="desktop"] .course-n { font-size: 21px; }
-  .atlas[data-layout="desktop"] .dish { padding-top: 4px; padding-bottom: 4px; }
-  .atlas[data-layout="desktop"] .dish-n { font-size: 20px; }
-  .atlas[data-layout="desktop"] .serve { gap: 6px; }
-  .atlas[data-layout="desktop"] .serve-n { font-size: 44px; }
-  .atlas[data-layout="desktop"] .food { padding: 6px 0 5px; }
-  .atlas[data-layout="desktop"] .food-n { font-size: 24px; }
 }
