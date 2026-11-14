@@ -122,6 +122,8 @@ class AnatomyStage {
   plates(list) { return !!(this.renderer && this.renderer.plates) && this.renderer.plates(list); }
   /** Where the figure's axis lies on the stage at a share of its height, in CSS px; null without a camera. */
   axisPoint(t) { return this.renderer && this.renderer.axisPoint ? this.renderer.axisPoint(t) : null; }
+  /** Stands the figure at a place on the stage each frame (AnatomySculpture.standAt); a flat figure does not move. */
+  standAt(at) { if (this.renderer && this.renderer.standAt) this.renderer.standAt(at); }
   /** Turns the sculpture a few degrees off its shot (AnatomySculpture.setTurn); a flat figure does not turn. */
   setTurn(deg) { if (this.renderer && this.renderer.setTurn) this.renderer.setTurn(deg); }
   /** Moves the sculpture's key light, -1 … 1 across and up; 0, 0 at rest (a flat figure has none). */

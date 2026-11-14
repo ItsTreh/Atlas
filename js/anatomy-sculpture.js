@@ -750,6 +750,27 @@ class AnatomySculpture {
     this.schedule();
   }
 
+  /**
+   * Stands the whole figure `h` CSS px tall with its soles at (`x`, `y`) on
+   * the canvas, seen level from `az`: for a page that draws its own room
+   * round the figure each frame (Nutrition's niche at the end of the day).
+   * Its shot stays the one set; while a move to it runs, this is where the
+   * move ends, so the figure travels into its place rather than jumping.
+   */
+  standAt({ x, y, h, az = 0, fov = 20 }) {
+    if (!this.size || !this.height || !(h > 1)) return;
+    const { cw, ch } = this.size, f = ch / (2 * Math.tan(fov * Math.PI / 360)), H = this.height;
+    const s = { az, el: 0, ty: H / 2, d: f * H / h, sx: x / cw, sy: (y - h / 2) / ch, fov };
+    if (this.tween) { this.tween.to = { ...s, az: this.tween.to.az }; return; }
+    if (this.drag || this.offTween || this.between) return;
+    const c = this.cur;
+    if (c && Math.abs(c.d - s.d) < c.d * 1e-4 && Math.abs(c.sx - s.sx) < 1e-4 && Math.abs(c.sy - s.sy) < 1e-4 &&
+        c.az === s.az && c.el === 0 && c.ty === s.ty && c.fov === s.fov && !this.off) return;
+    this.cur = s;
+    this.off = 0;
+    this.schedule();
+  }
+
   /** With reduced motion a new shot fades in rather than travels. */
   flash() {
     const c = this.canvas;
