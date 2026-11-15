@@ -34,10 +34,14 @@ const planEl = $("stage-plan");
 /* The plate's geometry. The ring: its centre and radius. The figure: its
    axis on the ring's centre, where its soles stand, how tall, how far
    round. The generated week: columns of COL from WX, the arches' horizon
-   WY and radius WR. */
-const LM = { CX: 980, CY: 640, R: 410, SOLE: 788, TALL: 532, AZ: 30, WX: 48, WY: 348, WR: 80, COL: 192 };
+   WY and radius WR. The figure faces the page, as on Targets, so the day's
+   name low behind it runs between its legs. */
+const LM = { CX: 980, CY: 640, R: 410, SOLE: 788, TALL: 532, AZ: 0, WX: 48, WY: 348, WR: 80, COL: 192 };
 /* The camera a change of stage travels to; standAt moves its end onto the ring's centre as it goes. */
 SCULPTURE_SHOTS["plan-ring"] = { az: LM.AZ, el: 0, ty: 79, d: 756, sx: .68, sy: .58, fov: 20 };
+
+/* The muscles read from behind: a day that mostly trains them turns the figure round, as Targets turns it to the side a muscle is on. */
+const LM_BEHIND = new Set(["traps", "upper-back", "lats", "triceps", "hamstrings", "glutes", "calves", "lower-back"]);
 
 const LM_NUM = ["None", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
   "Thirteen", "Fourteen", "Fifteen", "Sixteen"];
@@ -85,8 +89,6 @@ const LM_SKY = {
  */
 const LM_TINT = { light: { key: .6, fill: .65, haze: .1 }, dark: { key: .45, fill: .45, haze: .1 } };
 const LM_KEY = [[6, .86], [9, .97], [13, 1], [17, .97], [20, .9], [24, .8]];
-/* The day's word under the figure: how strongly it shows with a session's hues, and without. */
-const LM_WORD = { light: { hue: .2, ink: .09 }, dark: { hue: .24, ink: .1 } };
 
 /* What is on screen: the step (a day, or the week), what is pointed at or open, the drag. */
 const lm = {
@@ -364,8 +366,12 @@ function lmTemplate() {
   // The figure follows the day in hand, or the ring or column pointed at.
   const fd = isWeek ? lm.hoverDay : focus, fx = fd ? W.byDay[fd] : null;
   const all = fx ? fx.ids : [], hm = lm.hoverMuscle && all.includes(lm.hoverMuscle) ? lm.hoverMuscle : null;
-  lm.F = { ids: hm ? [hm] : all, fams: fx ? fx.fams : [], off: !!(fd && routine.offDays.has(fd)),
-           word: fd ? DayOfWeek.name[fd] : "Week", hour: fx ? fx.start + fx.hours / 2 : 13, sun: !isWeek, wg };
+  // The day's name for the ghost word, with its session under it, as Targets names a muscle.
+  const off = !!(fd && routine.offDays.has(fd));
+  const shown = hm ? [hm] : all;
+  lm.F = { ids: all, pointed: hm, fams: fx ? fx.fams : [], off, behind: shown.filter(id => LM_BEHIND.has(id)).length * 2 >= shown.length && shown.length > 0,
+           word: fd ? DayOfWeek.name[fd] : null, meta: fx ? fx.name + " · " + lmPad(fx.start) + ":00–" + lmPad(fx.end) + ":00" : off ? "Off" : "Rest",
+           hour: fx ? fx.start + fx.hours / 2 : 13, sun: !isWeek, wg };
 
   const kc = l => lm.keyHot === l ? "var(--ink)" : "var(--ink-soft)";
   let left = "";
@@ -699,11 +705,6 @@ lmArcEl.setAttribute("aria-hidden", "true");
   stage.insertBefore(lmArcEl, stage.firstChild);
   stage.insertBefore(lmSkyEl, stage.firstChild);
 }
-/* The day's name under the figure, in the ground the Targets words use, so
-   flow-front.js weaves it through the legs as theirs are. */
-const lmWordEl = document.createElement("div");
-lmWordEl.className = "lm-word";
-document.querySelector(".flow-ground").appendChild(lmWordEl);
 
 /** The week's message (what Generate did, what an edit changed); null to clear. */
 function setStatus(text, kind = "") {
@@ -722,7 +723,8 @@ function renderWeek() {
   pvMorph(lmFoot, lmFootTemplate());
   lmFoot.hidden = Stages.narrow;
   planEl.dataset.view = wg ? "week" : lm.step === 7 ? "rings" : "day";
-  lmWordText(lm.F.word, lm.F.fams);
+  // The day's name, very large and quiet behind the figure: Targets' ghost word (targets.js), woven through the legs.
+  if (Stages.current === "plan") ghost(lm.F.word, lm.F.fams[0] || "", lm.F.word ? lm.F.meta : "");
   lm.needleEl = null;
   if (lm.scrubH != null && lm.step < 7) lmNeedle(lm.scrubH);
   Stages.refresh();
@@ -736,21 +738,6 @@ function lmFit() {
   lmStage.style.transform = t;
   lmArcEl.style.transform = t;
   lm.css = "";
-}
-
-/** The day's word: its letters, each in the hue between the session's first family and its last. */
-function lmWordText(word, fams) {
-  const key = word + "|" + fams.join();
-  if (key === lm.word) return;
-  const was = lm.word.split("|")[0];
-  lm.word = key;
-  const a = fams[0] || null, b = fams[fams.length - 1] || a, L = word.length;
-  lmWordEl.innerHTML = [...word].map((c, j) => {
-    const t = Math.max(0, Math.min(1, (L > 1 ? j / (L - 1) : 0) * 1.4 - 0.2));
-    const color = a ? "color-mix(in oklab, var(--" + b + ") " + Math.round(t * 100) + "%, var(--" + a + "))" : "var(--ink)";
-    return '<i style="--j:' + j + '; color:' + color + '">' + esc(c) + '</i>';
-  }).join("");
-  if (was !== word) { lmWordEl.classList.remove("swap"); void lmWordEl.offsetWidth; lmWordEl.classList.add("swap"); }
 }
 
 /* --------------------------------- the light -------------------------------- */
@@ -861,15 +848,23 @@ function lmFrame(now) {
   if (here && !flat && !Stages.narrow) {
     figure.setDim(lm.figOp);
     const x = lm.ox + lm.k * lm.aimX, y = lm.oy + lm.k * LM.SOLE, tall = lm.k * LM.TALL;
-    figure.standAt({ x, y, h: tall, az: LM.AZ });
+    // Facing the page, or turned round to the back when that is where the day's muscles are.
+    const azT = LM.AZ + (F.behind ? 180 : 0);
+    lm.az = lm.az == null || still ? azT : lm.az + (azT - lm.az) * (1 - Math.exp(-dt * 5));
+    if (Math.abs(lm.az - azT) < 0.05) lm.az = azT;
+    figure.standAt({ x, y, h: tall, az: lm.az });
     // The light comes from where the sun stands on the ring (view space: x right, y up, z toward the eye).
     const th = deg * Math.PI / 180;
     figure.setSun([Math.cos(th), -Math.sin(th) + 0.14, 0.62]);
-    // The word: low across the shins, as wide as the figure is tall would allow.
-    const T = LM_WORD[lmDark() ? "dark" : "light"];
-    const a = (F.fams.length ? T.hue : T.ink) * (F.off ? 0.6 : 1) * (F.wg ? 2.2 * lm.figOp : 1);
-    const ws = "left:" + x.toFixed(1) + "px; top:" + (y - tall * 0.043).toFixed(1) + "px; font-size:" + (tall * 0.335).toFixed(1) + "px; opacity:" + a.toFixed(3);
-    if (ws !== lm.ws) { lm.ws = ws; lmWordEl.setAttribute("style", ws); }
+    // Where the ghost word stands, as Targets' pages say it (holdFigure): the
+    // figure's axis, its middle, low at the shins (--gyl), how large the
+    // space beside it allows (--gs), how far its legs reach (--gbw).
+    const vw = planEl.clientWidth || innerWidth, vh = planEl.clientHeight || innerHeight, sx = x / vw, mid = (y - tall / 2) / vh;
+    const ws = [sx.toFixed(4), mid.toFixed(4), (mid + tall / vh * .2).toFixed(4), (2 * Math.min(sx, 1 - sx) * 100 / 3.9).toFixed(2) + "vw", Math.round(tall * .13) + "px"];
+    if (ws.join() !== lm.ws) {
+      lm.ws = ws.join();
+      ["--gx", "--gy", "--gyl", "--gs", "--gbw"].forEach((k, i) => Stages.root.style.setProperty(k, ws[i]));
+    }
   }
 }
 
@@ -881,7 +876,7 @@ function lmLoop(now) {
       lm.leftAt = 0; lm.lt = 0;
       Stages.root.style.removeProperty("--bg"); Stages.root.style.removeProperty("--lm-sun"); lm.bg = ""; lm.css = ""; lm.sunCol = "";
       if (typeof figure === "object") { figure.setSun(null); figure.setTint(null); }
-      lmWordEl.removeAttribute("style"); lm.ws = "";
+      lm.ws = "";
       return;
     }
   } else lm.leftAt = 0;
@@ -1179,14 +1174,15 @@ Stages.register("plan", {
     const at = /^s(\d)$/.exec(Stages.at || "");
     lm.step = at ? Math.min(7, Number(at[1])) : routine.sessions.length ? 7 : Stages.from === "nutrition" || Stages.from === null ? 0 : lm.step;
     lm.editing = false; lm.hoverDay = null; lm.hoverMuscle = null; lm.keyHot = null; lm.chooser = null; lm.preview = null;
-    lm.moveHover = null; lm.drag = null; lm.scrubH = null; lm.hourF = null; lm.aimX = null; lm.figOp = 0;
+    lm.moveHover = null; lm.drag = null; lm.scrubH = null; lm.hourF = null; lm.aimX = null; lm.az = null; lm.figOp = 0;
     if (lm.status && lm.status.kind !== "err" && !routine.sessions.length) lm.status = null;
   },
   enter() { lmFit(); renderWeek(); lmRun(); },
   place: () => "s" + lm.step,
   shot: () => Stages.narrow ? "plan" : "plan-ring",
   dim: () => Stages.narrow ? 0 : lm.figOp,
-  highlight: () => lm.F && lm.F.ids.length ? lm.F.ids : null,
+  // The day's muscles as Targets marks a selection; the one pointed at in the list, as one pointed at there.
+  highlight: () => lm.F && lm.F.ids.length ? { ids: lm.F.ids, selected: true, pointed: lm.F.pointed } : null,
   footer() {
     const s = lm.step, name = i => i === 7 ? "The week" : DayOfWeek.name[DayOfWeek.values[i]];
     return {

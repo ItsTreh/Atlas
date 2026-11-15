@@ -79,7 +79,8 @@ const Stages = {
    *   enter()       draw it, as it is entered or rearranged (before it is shown)
    *   shot()        the sculpture's shot (SCULPTURE_SHOTS), default the stage
    *   dim()         how strongly the sculpture shows, 0–1, default 1
-   *   highlight()   muscle ids to light, or null
+   *   highlight()   muscle ids to light, or null; or { ids, selected,
+   *                 pointed } to mark them as Targets marks a selection
    *   interactive() false while the sculpture is only shown, not picked
    *                 (Targets only; default true)
    *   footer()      { back, next, skip, hint }: each a label, or empty
@@ -292,7 +293,8 @@ const Stages = {
         figure.setShot(this.shot());
         const dim = this.call("dim");
         figure.setDim(dim === undefined ? 1 : dim);
-        figure.setHighlight(this.call("highlight") || null);
+        const lit = this.call("highlight") || null;
+        if (lit && !Array.isArray(lit)) figure.setHighlight(lit.ids, lit); else figure.setHighlight(lit);
       }
     }
     this.root.dataset.layout = this.narrow ? "mobile" : "desktop";

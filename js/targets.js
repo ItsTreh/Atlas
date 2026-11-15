@@ -85,6 +85,7 @@ function ghost(text, fam, line) {
 }
 
 function paintGhost() {
+  if (Stages.current === "plan") return;     // the Week plan writes the day's name there (week-view.js)
   const m = pointedAt;
   if (Stages.current !== "targets" || !flowDoc()) return ghost(null);
   if (m) {

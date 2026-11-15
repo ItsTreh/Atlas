@@ -78,7 +78,7 @@ class AnatomyStage {
         this.root.classList.toggle("flat", !this.moves);
         const s = this.state;
         this.setLayout(s.layout); this.setInteractive(s.interactive);
-        this.setHighlight(s.highlight); this.setDim(s.dim);
+        this.setHighlight(s.highlight, s.look); this.setDim(s.dim);
         this.onChange(this);
         return;
       } catch (e) {
@@ -115,7 +115,11 @@ class AnatomyStage {
   /** Turns the body to "front" or "back" on Targets. */
   turnTo(view) { if (this.renderer && this.renderer.turnTo) this.renderer.turnTo(view); }
   setInteractive(on) { this.state.interactive = on; if (this.renderer && this.renderer.setInteractive) this.renderer.setInteractive(on); }
-  setHighlight(ids) { this.state.highlight = ids; if (this.renderer && this.renderer.setHighlight) this.renderer.setHighlight(ids); }
+  /** Lights muscles whatever the stage (AnatomySculpture.setHighlight): `look` { selected, pointed } marks them as Targets marks a selection. */
+  setHighlight(ids, look) {
+    this.state.highlight = ids; this.state.look = look;
+    if (this.renderer && this.renderer.setHighlight) this.renderer.setHighlight(ids, look);
+  }
   setDim(v) { this.state.dim = v; if (this.renderer && this.renderer.setDim) this.renderer.setDim(v); }
   setLayout(mode) { this.state.layout = mode; if (this.renderer && this.renderer.setLayout) this.renderer.setLayout(mode); }
   /** Where the figure's axis lies on the stage at a share of its height, in CSS px; null without a camera. */

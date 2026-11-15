@@ -281,6 +281,7 @@ class AnatomySculpture {
     this.flowTime = 0;
     this.previewing = null;                  // a Set of muscle ids while a program is pointed at
     this.highlighting = null;                // a Set of muscle ids the page lights (setHighlight)
+    this.marked = null;                      // how it lights them: as Targets marks a selection, and the one pointed at
     this.interactive = true;                 // the selection shows and the pointer picks
     this.focused = null;                     // { view, id } while a muscle has keyboard focus
     this.hits = new Map();                   // "view:id" → its checkbox
@@ -587,7 +588,7 @@ class AnatomySculpture {
    */
   flowing(visible = !document.hidden) {
     const exploring = this.interactive && this.hovered && this.pointer && !this.focused && !this.previewing;
-    const showing = this.highlighting || (this.interactive && this.previewFamily);
+    const showing = (this.highlighting && (!this.marked || this.marked.pointed)) || (this.interactive && this.previewFamily);
     return !!(this.ready && (exploring || showing) && this.calm() && visible &&
       !(this.reducedMotion && this.reducedMotion.matches));
   }
@@ -917,11 +918,20 @@ class AnatomySculpture {
     this.schedule();
   }
 
-  /** Lights these muscles whatever the stage (a session pointed at); null for none. */
-  setHighlight(ids) {
+  /**
+   * Lights these muscles whatever the stage; null for none. By default they
+   * draw as a selected group hovered on Targets, in their families' hues.
+   * With `{ selected: true, pointed }` they are marked exactly as Targets
+   * marks a selection (the deeper modelling, the quiet traces, the border),
+   * still, and `pointed` (a muscle id, or null) as a selected muscle pointed
+   * at there, its traces moving.
+   */
+  setHighlight(ids, { selected = false, pointed = null } = {}) {
     const next = ids && ids.length ? new Set(ids) : null;
-    if (sameMuscleSet(next, this.highlighting)) return;
+    const marked = next && selected ? { pointed: next.has(pointed) ? pointed : null } : null;
+    if (sameMuscleSet(next, this.highlighting) && (marked && marked.pointed) === (this.marked && this.marked.pointed) && !marked === !this.marked) return;
     this.highlighting = next;
+    this.marked = marked;
     this.schedule();
   }
 
@@ -1057,7 +1067,7 @@ class AnatomySculpture {
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
     gl.uniform1f(u.uTraceVivid, c.vivid);
-    gl.uniform1f(u.uBorder, this.interactive ? 1 : 0);
+    gl.uniform1f(u.uBorder, this.interactive || this.marked ? 1 : 0);
     gl.uniform1f(u.uTraceScale, this.traceScale());
     this.uploadData();
     const k = this.castOf, { min, max } = this.model.bounds, tall = max[1] - min[1];
@@ -1264,7 +1274,10 @@ class AnatomySculpture {
       }
       // A session reads as a selected group hovered on Targets: still traces
       // under the moving ones (the border is Targets' alone, uBorder).
-      if (id && this.highlighting && this.highlighting.has(id)) selected = pointed = 1;
+      if (id && this.highlighting && this.highlighting.has(id)) {
+        selected = 1;
+        pointed = this.marked ? (id === this.marked.pointed ? 1 : 0) : 1;
+      }
       out[r * 3] = selected;
       out[r * 3 + 1] = pointed;
       out[r * 3 + 2] = lit;
@@ -1283,7 +1296,7 @@ class AnatomySculpture {
     for (let r = 0; r < n; r++) {
       const id = this.muscleOf[r];
       out[r] = id && ((this.interactive && this.previewFamily && this.previewing.has(id)) ||
-        (this.highlighting && this.highlighting.has(id))) ? 1 : 0;
+        (this.highlighting && !this.marked && this.highlighting.has(id))) ? 1 : 0;
     }
     return out;
   }
