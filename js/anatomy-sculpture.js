@@ -9,9 +9,12 @@
 
    One sculpture, every stage. The canvas fills the page behind the
    interface, and a single camera moves between named shots
-   (SCULPTURE_SHOTS): the whole figure, centred, for Targets; the torso from
-   below, on the left, for Nutrition; a three-quarter close-up of the upper
-   body, on the right, for the Week plan. Before them, the start screen
+   (SCULPTURE_SHOTS): the whole figure, centred, for Targets; the whole
+   figure on the left for Nutrition, where it is the measure the bronze is
+   read against; a three-quarter close-up of the upper body, on the right,
+   for the Week plan. Each stage also shows it by its own hand
+   (SCULPTURE_TECHNIQUES): marble, a drawing, a cast; and the Week plan
+   draws it seven times over, a plate a day (plates). Before them, the start screen
    (start.js) opens on one of five shots of its own and carries the camera
    from there to the stage's shot (scrubShot). Motion helps the user understand
    where they are going and stillness helps them concentrate, so the camera
@@ -89,7 +92,8 @@ const SCULPTURE_SHOTS = {
   "targets-how3":       { az: 36,  el: -6,  ty: 114, d: 330, sx: .76, sy: .50,  fov: 20 },
   "targets-train-front": { az: 0,  el: 2,   ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
   "targets-train-back":  { az: 180, el: 2,  ty: 82,  d: 540, sx: .27, sy: .52,  fov: 20 },
-  "nutrition":         { az: -18, el: -26, ty: 124, d: 250, sx: .19, sy: .40,  fov: 20 },
+  // The cast: the whole figure, since the bronze is read against its height.
+  "nutrition":         { az: -16, el: 3,   ty: 80,  d: 585, sx: .225, sy: .50, fov: 20 },
   "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
   "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
   "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 },
@@ -180,6 +184,19 @@ const SCULPTURE_LIGHT = { key: [-0.55, 0.62, 0.56], reach: [0.7, 0.4], tau: 420 
 /* Families whose summary preview draws its traces in the family's hue
    (`--<family>-trace`), as a hover rather than a lit preview. */
 const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
+
+/* The hands the figure is shown by (setTechnique). Each stage has its own:
+   the marble is the sculpture as carved (Targets, and the base of the
+   others); the drawing turns it into a study in ink on the page, hatched
+   where the marble is in shade, its contours and seams drawn, the height
+   divided in eighths as a canon of proportion (Measure); the cast pours
+   bronze into it, up to a level (setCast), as a founder fills a mould
+   (Nutrition). `draw` and `cast` are how long each takes to come and go,
+   `pour` and `slosh` how the bronze finds its level, all in ms. */
+const SCULPTURE_TECHNIQUES = { marble: [0, 0], drawing: [1, 0], cast: [0, 1] };
+const SCULPTURE_TECHNIQUE_MS = { draw: 1500, cast: 500, pour: 520, slosh: 1100 };
+/* A plate of the frieze (plates): the whole figure, upright, in a tall frame. */
+const SCULPTURE_PLATE_SHOT = { az: 0, el: 2, ty: 80, d: 505, sx: .5, sy: .5, fov: 20 };
 
 /* What the shaders know about each region and each flow guide, as rows of a
    float texture: one RGBA texel per region (or guide) in each row, read with
@@ -285,6 +302,14 @@ class AnatomySculpture {
     this.pickKey = null;                     // the camera the region buffer was drawn with
     this.resizedAt = -Infinity;              // when the size last changed (resizing)
     this.dim = "1";                          // how strongly the figure shows (setDim)
+    this.tech = [0, 0];                      // how far the drawing and the cast have come in, 0 … 1 (setTechnique)
+    this.techTo = [0, 0];
+    // The cast's bronze, as shares of the figure's height: where it stands
+    // (`level`, eased to `to`), where its hotter top band begins (`hot`), the
+    // line struck at the day's burn (`mark`), and the wave left on its
+    // surface by the last change (`slosh`, dying away over `time`).
+    this.castOf = { level: 0, to: 0, hot: 0, hotTo: 0, mark: 0, slosh: 0, time: 0 };
+    this.onFrame = null;                     // called after each frame is drawn (labels that follow the body)
 
     this.container = document.createElement("div");
     this.container.className = "anatomy-sculpture";
@@ -493,7 +518,7 @@ class AnatomySculpture {
    * the aim point at `az` round and `el` up, a perspective lens of `fov`,
    * and the aim point moved to (`sx`, `sy`) on the canvas. Column-major.
    */
-  camera(s) {
+  camera(s, size = this.size) {
     const r = Math.PI / 180, az = s.az * r, el = s.el * r;
     const tx = this.axis[0], ty = this.model.bounds.min[1] + s.ty, tz = this.axis[1];
     const eye = [tx + s.d * Math.sin(az) * Math.cos(el), ty + s.d * Math.sin(el),
@@ -506,7 +531,7 @@ class AnatomySculpture {
     const y = [x[1] * f[2] - x[2] * f[1], x[2] * f[0] - x[0] * f[2], x[0] * f[1] - x[1] * f[0]];
     const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-    const W = this.size ? this.size.cw : 1, H = this.size ? this.size.ch : 1;
+    const W = size ? size.cw : 1, H = size ? size.ch : 1;
     const t = Math.tan(s.fov * r / 2), aspect = W / H;
     const near = Math.max(1, s.d - this.reach), far = s.d + this.reach;
     const ox = 2 * (s.sx - 0.5), oy = -2 * (s.sy - 0.5);
@@ -896,13 +921,105 @@ class AnatomySculpture {
     this.canvas.style.opacity = this.dim;
   }
 
+  /* ------------------------------ techniques ------------------------------ */
+
+  /** Shows the figure by another hand: "marble", "drawing" or "cast" (SCULPTURE_TECHNIQUES). */
+  setTechnique(name) {
+    const to = SCULPTURE_TECHNIQUES[name] || SCULPTURE_TECHNIQUES.marble;
+    if (to[0] === this.techTo[0] && to[1] === this.techTo[1]) return;
+    this.techTo = to.slice();
+    this.schedule();
+  }
+
+  /**
+   * Where the cast's bronze stands, as shares of the figure's height (0 the
+   * soles, 1 the top): `level` its surface, `hot` where the hotter band at
+   * its top begins (the day's training, over the day's living), `mark` the
+   * line struck at the day's burn. `pour` empties it first, so it is poured
+   * again from the soles. A change of level leaves a wave that dies away.
+   */
+  setCast({ level = 0, hot = level, mark = 0 } = {}, pour = false) {
+    const c = this.castOf, clamp = v => Math.max(0, Math.min(1, v));
+    level = clamp(level); hot = clamp(Math.min(hot, level)); mark = clamp(mark);
+    if (pour) { c.level = 0; c.hot = 0; }
+    if (level === c.to && hot === c.hotTo && mark === c.mark && !pour) return;
+    c.to = level; c.hotTo = hot; c.mark = mark;
+    c.slosh = 1; c.time = 0;
+    this.schedule();
+  }
+
+  /** The drawing and the cast come and go, and the bronze finds its level; true while any is on its way. */
+  easeTechnique(dt, instant) {
+    const T = SCULPTURE_TECHNIQUE_MS, c = this.castOf;
+    let moving = false;
+    [T.draw, T.cast].forEach((ms, i) => {
+      const to = this.techTo[i], from = this.tech[i];
+      if (from === to) return;
+      const step = dt / ms;
+      this.tech[i] = instant || Math.abs(to - from) <= step ? to : from + Math.sign(to - from) * step;
+      moving = moving || this.tech[i] !== to;
+    });
+    if (!this.techTo[1] && !this.tech[1]) return moving;
+    const toward = (from, to) => {
+      const next = instant ? to : from + (to - from) * (1 - Math.exp(-dt / T.pour));
+      return Math.abs(next - to) < 0.0008 ? to : next;
+    };
+    c.level = toward(c.level, c.to);
+    c.hot = toward(c.hot, c.hotTo);
+    if (c.slosh > 0) {
+      c.time += dt / 1000;
+      c.slosh = instant ? 0 : c.slosh * Math.exp(-dt / T.slosh);
+      if (c.slosh < 0.01) c.slosh = 0;
+    }
+    return moving || c.level !== c.to || c.hot !== c.hotTo || c.slosh > 0;
+  }
+
+  /**
+   * Draws the figure into 2D canvases, one each: a plate of the frieze, lit
+   * and tinted where its muscles train. `list` is [{ canvas, ids, az }]:
+   * the canvas at its backing size, the muscle ids, and how far round the
+   * figure stands. Each is drawn in the sculpture's own canvas and copied
+   * out, then the stage is drawn again, all before the browser paints.
+   * False when there is nothing to draw with yet.
+   */
+  plates(list) {
+    if (!this.ready || !this.size) return false;
+    for (const plate of list) {
+      const w = Math.min(plate.canvas.width, this.canvas.width), h = Math.min(plate.canvas.height, this.canvas.height);
+      if (!w || !h) continue;
+      this.draw({ w, h, ids: new Set(plate.ids || []), az: plate.az || 0 });
+      const ctx = plate.canvas.getContext("2d");
+      ctx.clearRect(0, 0, plate.canvas.width, plate.canvas.height);
+      ctx.drawImage(this.canvas, 0, this.canvas.height - h, w, h, 0, 0, plate.canvas.width, plate.canvas.height);
+    }
+    this.draw();
+    return true;
+  }
+
+  /** A plate's per-region rows: its muscles lit, drawn in and tinted; everything else at rest. */
+  plateRows(ids) {
+    const n = this.model.regions.length;
+    const rows = this.plateBuffer || (this.plateBuffer = {
+      state: new Float32Array(n * 4), map: new Float32Array(n * 3), tint: new Float32Array(n), reveal: new Float32Array(n).fill(1)
+    });
+    for (let r = 0; r < n; r++) {
+      const id = this.muscleOf[r], on = id && ids.has(id) ? 1 : 0;
+      rows.state.set([SCULPTURE_TONE.highlight * on, 0, this.isForm[r] ? 1 : 0, SCULPTURE_TONE.highlightDepth * on], r * 4);
+      rows.map.set([0, 0, on], r * 3);
+      rows.tint[r] = on;
+    }
+    return rows;
+  }
+
   /* -------------------------------- drawing ------------------------------- */
 
-  draw() {
+  /** Draws the stage, or with `plate` ({ w, h, ids, az }, device px) one plate of the frieze into its corner. */
+  draw(plate = null) {
     if (!this.ready || !this.size) return;
     const gl = this.gl, dpr = this.dpr;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    if (plate) gl.viewport(0, 0, plate.w, plate.h);
+    else gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
@@ -918,9 +1035,18 @@ class AnatomySculpture {
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
     gl.uniform1f(u.uTraceVivid, c.vivid);
-    gl.uniform1f(u.uBorder, this.interactive ? 1 : 0);
-    gl.uniform1f(u.uTraceScale, this.traceScale());
-    this.uploadData();
+    gl.uniform1f(u.uBorder, this.interactive && !plate ? 1 : 0);
+    gl.uniform1f(u.uTraceScale, plate ? 0.7 : this.traceScale());
+    this.uploadData(plate && this.plateRows(plate.ids));
+    // The technique: a plate is always the marble.
+    const k = this.castOf, { min, max } = this.model.bounds, tall = max[1] - min[1];
+    gl.uniform1f(u.uPlate, plate ? 1 : 0);
+    gl.uniform2f(u.uTechnique, plate ? 0 : this.tech[0], plate ? 0 : this.tech[1]);
+    gl.uniform3f(u.uLevels, min[1] + k.level * tall, min[1] + k.hot * tall, min[1] + k.mark * tall);
+    gl.uniform2f(u.uSlosh, k.slosh, k.time);
+    gl.uniform1f(u.uChalk, c.ink[0] + c.ink[1] + c.ink[2] > 1.5 ? 1 : 0);
+    gl.uniform3fv(u.uBronze, c.bronze);
+    gl.uniform3fv(u.uBronzeHot, c.bronzeHot);
     gl.uniform2fv(u.uMapPointer, this.mapPointer);
     gl.uniform2f(u.uMapSize, this.size.cw, this.size.ch);
     gl.uniform1f(u.uMapPointerActive, this.pointer && !this.focused ? 1 : 0);
@@ -931,13 +1057,18 @@ class AnatomySculpture {
     gl.uniform1f(u.uDpr, this.dpr);
     gl.uniform1f(u.uLineWidth, Math.max(1, 0.75 * dpr));
     gl.bindVertexArray(this.vao);
-    const cam = this.camera(this.live());
+    const P = SCULPTURE_PLATE_SHOT;
+    const cam = plate
+      ? this.camera({ ...P, az: plate.az, ty: P.ty * this.scale, d: P.d * this.scale }, { cw: plate.w, ch: plate.h })
+      : this.camera(this.live());
     gl.uniformMatrix4fv(u.uMatrix, false, cam.matrix);
     gl.uniformMatrix3fv(u.uNormal, false, cam.normal);
     gl.drawElements(gl.TRIANGLES, this.model.indexCount, this.indexType, 0);
+    gl.bindVertexArray(null);
+    if (plate) return;
     // Surface traces share the sculpture's material, lighting and exact depth.
     this.drawAnnotation();
-    gl.bindVertexArray(null);
+    if (this.onFrame) this.onFrame();
   }
 
   /**
@@ -1059,12 +1190,12 @@ class AnatomySculpture {
    * and hues only after initGL or a theme change (readColors) has marked
    * them stale.
    */
-  uploadData() {
+  uploadData(plate = null) {
     const gl = this.gl, d = this.data, R = SCULPTURE_DATA_ROWS, w = d.width, t = d.texels;
-    writeSculptureData(t, w, R.state, this.regionStates(this.view.id), 4);
-    writeSculptureData(t, w, R.map, this.shown || this.targets(), 3);
-    writeSculptureData(t, w, R.map, this.tintShown || this.tintTargets(), 1, 3);
-    writeSculptureData(t, w, R.reveal, this.revealShown(), 1);
+    writeSculptureData(t, w, R.state, plate ? plate.state : this.regionStates(this.view.id), 4);
+    writeSculptureData(t, w, R.map, plate ? plate.map : this.shown || this.targets(), 3);
+    writeSculptureData(t, w, R.map, plate ? plate.tint : this.tintShown || this.tintTargets(), 1, 3);
+    writeSculptureData(t, w, R.reveal, plate ? plate.reveal : this.revealShown(), 1);
     if (!d.fresh) {
       writeSculptureData(t, w, R.center, this.flowFrames.centers, 4);
       writeSculptureData(t, w, R.axis, this.flowFrames.axes, 4);
@@ -1181,6 +1312,7 @@ class AnatomySculpture {
       this.litReveal[r] = instant ? 1 : Math.min(1, this.litReveal[r] + dt / SCULPTURE_EASE.reveal);
       if (this.litReveal[r] < 1) moving = true;
     }
+    if (this.tech && this.easeTechnique(dt, instant)) moving = true;   // as the hue above: a bare state has none
     for (let i = 0; i < shown.length; i++) {
       const to = target[i], from = shown[i];
       if (from === to) continue;
@@ -1232,6 +1364,7 @@ class AnatomySculpture {
     this.colors = {
       form: read("--sculpt-form"), muscle: read("--sculpt-muscle"),
       selected: read("--sculpt-selected"), ink: read("--ink"), mapInk: read("--cartography-ink"),
+      bronze: read("--cast"), bronzeHot: read("--cast-hot"),
       // Each region's family hue, or the map ink where it has none.
       regionInk: new Float32Array(this.muscleOf.length * 3),
       vivid: parseFloat(getComputedStyle(this.container).getPropertyValue("--trace-vivid")) || 0
@@ -1712,6 +1845,13 @@ uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlow
 uniform float uSelectedGain;
 uniform float uLineWidth;
 uniform vec3 uKey;                       // the key light, in view space (keyLight)
+uniform vec3 uMin;
+uniform float uPlate;                    // 1 for a plate of the frieze: lit muscles take a wash of their hue
+uniform vec2 uTechnique;                 // how far the drawing and the cast have come in (SCULPTURE_TECHNIQUES)
+uniform vec3 uLevels;                    // the cast: its surface, where its hot band begins, the burn mark (heights)
+uniform vec2 uSlosh;                     // the wave on its surface: its size, 0 … 1, and its time, s
+uniform vec3 uBronze, uBronzeHot;        // sRGB
+uniform float uChalk;                    // 1 where the drawing's ink is lighter than its ground (the dark theme)
 out vec4 outColor;
 
 vec3 toSrgb(vec3 c) {
@@ -1721,6 +1861,14 @@ vec3 toLinear(vec3 c) {
   return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
 }
 vec4 data(int index, int row) { return texelFetch(uData, ivec2(index, row), 0); }
+
+/* One direction of hatching, in screen space but leaning with the surface,
+   so its strokes bend round the form as a draughtsman's do: 1 on a stroke. */
+float hatch(vec2 at, vec2 dir, float gap, float width, vec3 n) {
+  float d = dot(at, dir) + 9.0 * dot(n.xy, dir);
+  float px = abs(fract(d / gap + 0.5) - 0.5) * gap;
+  return 1.0 - smoothstep(width - 0.45, width + 0.45, px);
+}
 /* Whether a guide's stored kind is k (a KIND_* define): whole numbers in a float. */
 bool isKind(float w, float k) { return abs(w - k) < 0.5; }
 
@@ -1751,10 +1899,13 @@ void main() {
   // traces, border or focus edge: each would mix in with weight exactly 0,
   // so it stops here. Both inputs are flat, so every fragment of a triangle,
   // including the helpers that give the derivatives below, branches alike.
-  if (vMapState == vec3(0.0) && vFocus == 0.0) {
+  if (vMapState == vec3(0.0) && vFocus == 0.0 && uTechnique == vec2(0.0)) {
     outColor = vec4(toSrgb(c), 1.0);
     return;
   }
+  // Under another hand (uTechnique) such a region goes on to it, past the
+  // traces: the same flat test, so each triangle still branches alike.
+  if (!(vMapState == vec3(0.0) && vFocus == 0.0)) {
 
   // Slow currents live in the material's surface coordinates. Their shared
   // direction comes from the authored shape; these are not muscle fibres.
@@ -1884,7 +2035,71 @@ void main() {
   float ring = (1.0 - smoothstep(2.4 * uLineWidth - 0.6, 2.4 * uLineWidth + 0.6, px)) *
                (1.0 - smoothstep(0.5, 0.8, vSeam)) * vFocus;
   c = mix(c, toLinear(uInk), ring);
-  outColor = vec4(toSrgb(c), 1.0);
+  // A plate of the frieze is small: its muscles also take a wash of their hue.
+  c = mix(c, ink, uPlate * lit * 0.42);
+  }
+
+  float alpha = 1.0;
+  float tall = (vSurface.y - uMin.y) / uExt.y;        // 0 at the soles, 1 at the top
+
+  // The cast. Below its surface the marble is bronze: darker in shade than
+  // stone, with a highlight, a brighter rim where it turns away, a hotter
+  // band at the top and a bright meniscus. The surface rocks, then rests.
+  if (uTechnique.y > 0.0) {
+    float wave = uSlosh.x * uExt.y * 0.011 *
+      (sin(vSurface.x * 0.19 + uSlosh.y * 6.5) + 0.5 * sin(vSurface.z * 0.31 - uSlosh.y * 9.0));
+    float surface = uLevels.x + wave;
+    float edge = max(fwidth(vSurface.y), 1e-4);
+    float under = 1.0 - smoothstep(-edge, edge, vSurface.y - surface);
+    vec3 half_ = normalize(key + vec3(0.0, 0.0, 1.0));
+    float gloss = pow(max(dot(n, half_), 0.0), 42.0);
+    float rim = pow(1.0 - max(n.z, 0.0), 3.0);
+    // Hotter toward the top of the band that training adds, never a stripe.
+    float band = max(surface - uLevels.y, edge);
+    float heat = clamp((vSurface.y - uLevels.y) / band, 0.0, 1.0);
+    vec3 metal = toLinear(mix(uBronze, uBronzeHot, heat * heat * 0.4));
+    vec3 bright = toLinear(uBronzeHot);
+    // Polished metal: deep where the stone was only grey, a sky's reflection
+    // on what faces up, the key's highlight, and light gathered at the rim.
+    float sky = smoothstep(-0.2, 0.9, n.y);
+    vec3 bronze = metal * (0.07 + 0.95 * shade * shade + 0.3 * sky * shade) +
+                  bright * (0.9 * gloss + 0.34 * rim * shade);
+    float meniscus = exp(-max(surface - vSurface.y, 0.0) / (uExt.y * 0.004));
+    bronze += bright * meniscus * 0.5;
+    c = mix(c, bronze, under * uTechnique.y);
+    // The burn mark, struck round the figure like the line inside a measure.
+    float line = abs(vSurface.y - uLevels.z) / edge;
+    float mark = (1.0 - smoothstep(0.6, 1.5, line)) * step(uMin.y + 1e-3, uLevels.z);
+    c = mix(c, toLinear(uInk), mark * 0.85 * uTechnique.y);
+  }
+
+  // The drawing: ink on the page, the stone left out. It is drawn from the
+  // top down as it comes in. Three directions of hatching answer three
+  // depths of shade; the contour, the seams between muscles and the canon's
+  // eighths are lines; a faint wash keeps the form in the lights.
+  if (uTechnique.x > 0.0) {
+    float t = clamp(uTechnique.x * 1.6 - (1.0 - tall) * 0.6, 0.0, 1.0);
+    t = t * t * (3.0 - 2.0 * t);
+    vec2 at = gl_FragCoord.xy / uDpr;
+    // Ink darkens the shade; chalk on a dark ground (uChalk) draws the light.
+    float dark = 1.0 - clamp(shade / 0.92, 0.0, 1.0);
+    dark = mix(dark, clamp(1.15 - dark * 1.35, 0.0, 1.0), uChalk);
+    float width = 0.5 + 0.55 * dark;
+    float strokes = hatch(at, vec2(0.7071, 0.7071), 5.0, width, n) * smoothstep(0.2, 0.36, dark);
+    strokes = max(strokes, hatch(at, vec2(-0.5, 0.866), 5.0, width, n) * smoothstep(0.42, 0.58, dark));
+    strokes = max(strokes, hatch(at, vec2(0.966, 0.259), 4.0, width, n) * smoothstep(0.62, 0.78, dark));
+    float contour = 1.0 - smoothstep(0.16, 0.4, n.z);
+    float eighth = abs(fract(tall * 8.0 + 0.5) - 0.5) / 8.0 / max(fwidth(tall), 1e-5);
+    float canon = (1.0 - smoothstep(0.5, 1.4, eighth)) * step(0.5, fract(at.x / 7.0));
+    float inked = max(max(strokes * 0.78, contour * 0.9), max(seam * 0.5, canon * 0.5));
+    float drawn = clamp(max(inked, dark * 0.1), 0.0, 1.0);
+    // The pen's line as it travels down: a little ink ahead of the drawing.
+    float pen = t * (1.0 - t) * 4.0;
+    drawn = max(drawn, pen * 0.35);
+    c = mix(c, toLinear(uInk), t);
+    alpha = mix(1.0, drawn, t);
+  }
+  outColor = vec4(toSrgb(c) * alpha, alpha);
 }
 `;
 

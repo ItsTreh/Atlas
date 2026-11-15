@@ -150,17 +150,23 @@
   </div>
 
   <!-- ============================ Stage 2: measure ========================= -->
-  <!-- Four facts for Nutrition's estimates, one page scrolled past the
-       figure; measure-view.js draws it into the page. -->
+  <!-- Four facts for Nutrition's estimates, set on three rings round the
+       figure; measure-view.js draws it. -->
   <section class="stage stage-measure" id="stage-measure" data-scroll aria-labelledby="mz-title">
-    <div class="mz" data-reveal="0"><div class="mz-view"><div class="mz-page"></div></div></div>
+    <div class="arm" data-reveal="0"></div>
   </section>
 
   <!-- =========================== Stage 3: nutrition ======================== -->
-  <!-- Optional. The plan sits right of the sculpture; nutrition-view.js
-       draws it, and "A day of eating", into the panel. -->
-  <section class="stage stage-nutrition" id="stage-nutrition" data-scroll aria-labelledby="nutrition-title">
+  <!-- Optional. The plan is laid out round a balance (balance.js draws it
+       in the canvas; nutrition-view.js sets it in the plan and draws the
+       rest, and "A day of eating", into the panel). -->
+  <section class="stage stage-nutrition" id="stage-nutrition" data-scroll data-view="plan" aria-labelledby="nutrition-title">
     <div class="nu" id="nutrition-panel"></div>
+    <div class="balance" id="balance" aria-hidden="true">
+      <canvas></canvas>
+      <span class="bal-label bal-needle" id="bal-needle"></span>
+      <span class="bal-label bal-tip" id="bal-tip" hidden></span>
+    </div>
   </section>
 
   <!-- =========================== Stage 4: week plan ======================== -->
@@ -249,6 +255,7 @@
 <script src="js/flow-front.js"></script>
 <script src="js/workout-view.js"></script>
 <script src="js/measure-view.js"></script>
+<script src="js/balance.js"></script>
 <script src="js/nutrition-view.js"></script>
 <script src="js/week-view.js"></script>
 <script src="js/paint.js"></script>

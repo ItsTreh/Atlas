@@ -5,14 +5,19 @@
    figure's left, and the plan takes the other side. Three screens, one at
    a time, each the whole task in front of the user:
 
-     • Fit it into your life   the muscles chosen, the week as seven days
-                               (the real plan the planner would place, before
-                               Generate), how many days and how the week is
-                               split, what fits and what will not, Generate
-     • Shape your week         when the user can train and for how long: the
-                               hours they are busy, painted on a full-width
-                               calendar, session length, preferred time, days
-                               off and meals. The sculpture recedes.
+     • Fit it into your life   the week as a frieze: seven figures on one
+                               ground line, one a day, each lit where that
+                               day trains (the real plan the planner would
+                               place, before Generate). Beside each figure
+                               stands its day, from morning at the top to
+                               night at the foot: drag down it to say when
+                               you are busy, and the session moves to the
+                               hours left. Under it, how many days, the
+                               split, how long and when; then Generate.
+     • Shape your week         the same hours as a full-width calendar, where
+                               the frieze cannot be drawn (a phone, or no
+                               WebGL): there the days are cards and this is
+                               where busy hours are painted.
      • Your week               the generated week as a calendar. Pointing at a
                                session lights its muscles on the sculpture;
                                opening one shows it in full (workout-view.js),
@@ -29,11 +34,11 @@ const planEl = $("stage-plan");
 
 /* What is on screen: the screen, the session open or pointed at, the day
    tile pointed at, the last Generate's message, and what was just changed. */
-const wk = { view: "config", sel: null, hover: null, tile: null, status: null, changed: null };
+const wk = { view: "config", sel: null, hover: null, tile: null, status: null, changed: null, plates: false };
 
 /* The calendars' hours, and how tall a day's head is. */
 const WEEK_HOURS = [FIRST_HOUR, LAST_HOUR + 1];
-const WEEK_HEAD = 86;
+const WEEK_HEAD = 98;
 
 /** The week's message (what Generate did, what an edit changed); null to clear. */
 function setStatus(text, kind = "") {
@@ -167,17 +172,50 @@ function configHTML() {
   const muscles = routine.selectedMuscles(), src = routine.selection.source();
   const program = src.program ? " · " + src.program.name + (src.kind === "modified" ? " (edited)" : "") : "";
   const names = muscles.map(m => m.name);
+  // The frieze: the week as seven plates, the figure standing in each as
+  // that day trains it. A rest day's figure stands back; a day off has none.
+  // Beside each figure, its day: the hours from morning to night, as tall
+  // as the plate, with what is busy, where the session would go, and the
+  // meals. Each hour is a cell to paint (paint.js).
+  const [H0, H1] = WEEK_HOURS, rows = H1 - H0;
+  const ph = Math.round(Math.max(180, Math.min(360, innerHeight * .31))), rh = ph / rows;
+  wk.rh = rh;
+  const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
+  const mealPlan = mealsOn ? routine.mealPlan(slot => {
+    const p = pv.byDay.get(slot.day);
+    return !p || slot.hour < p.start || slot.hour >= p.end;
+  }) : { placed: [] };
+  const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
+  const marks = Array.from({ length: rows }, (_, k) => H0 + k).filter(h => h % 3 === 0 && h > H0)
+    .map(h => '<span class="staff-hour" style="top:' + px((h - H0) * rh) + '">' + hourLabel(h) + '</span>').join("");
+  const staff = (d, p) => '<div class="staff">' + marks +
+    (band ? '<i class="band" style="top:' + px((Math.max(band.from, H0) - H0) * rh) + ';height:' + px((Math.min(band.to, H1) - Math.max(band.from, H0)) * rh) + '"></i>' : '') +
+    '<div class="day-busy" data-busy="' + d + '">' + busyHTML(d, rh, WEEK_HOURS) + '</div>' +
+    (p ? '<i class="staff-sess" data-ghost="' + d + '" style="top:' + px((p.start - H0) * rh + 1) + ';height:' + px(Math.max(8, (p.end - p.start) * rh - 2)) + '"></i>' : '') +
+    mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(x =>
+      '<i class="staff-meal" style="top:' + px((x.hour - H0) * rh + rh / 2) + '"></i>').join("") +
+    Array.from({ length: rows }, (_, k) =>
+      '<div class="paint" role="button" data-day="' + d + '" data-hour="' + (H0 + k) + '" data-key="paint-' + d + '-' + (H0 + k) + '" ' +
+        'data-t="' + hourRange(H0 + k, H0 + k + 1) + '" tabindex="' + (paintCellKey() === "paint-" + d + "-" + (H0 + k) ? 0 : -1) + '" ' +
+        'aria-pressed="' + (routine.slot(d, H0 + k).state === SlotState.BUSY) + '" ' +
+        'aria-label="' + DAY_NAME[d] + ' ' + hourLabel(H0 + k) + ', busy" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("") +
+    '</div>';
   const tiles = DayOfWeek.values.map((d, i) => {
     const off = routine.isDayUnavailable(d), p = pv.byDay.get(d);
     const fams = p ? blockFamilies(p.block) : [];
     const cls = off ? " off" : p ? " on" : " rest";
     return '<div class="tile' + cls + (wk.tile === d ? ' pointed' : '') + '" data-tile="' + d + '" style="--i:' + i + '">' +
+      '<div class="plate">' + (off ? '' : staff(d, p) +
+        '<canvas class="plate-fig" data-plate="' + d + '" data-ids="' + (p ? workedIds(p.block).join(",") : "") + '" aria-hidden="true"></canvas>') + '</div>' +
       '<span class="tile-day">' + DayOfWeek.label[d] + '</span>' +
       '<span class="tile-name">' + (off ? "Off" : p ? esc(blockName(p.block)) : "Rest") + '</span>' +
       '<span class="tile-dots">' + familyDots(fams) + '</span>' +
-      '<span class="tile-meta">' + (p ? hourRange(p.start, p.end) : "") + '</span>' +
+      '<span class="tile-meta">' + (p ? hourRange(p.start, p.end) : off ? "" : "Free day") + '</span>' +
+      '<button type="button" class="tile-off" data-dayoff="' + d + '" data-key="off-' + d + '" aria-pressed="' + off + '" ' +
+        'aria-label="' + (off ? "Make " + DAY_NAME[d] + " available" : "Take " + DAY_NAME[d] + " off") + '">' + (off ? "Train this day" : "Take it off") + '</button>' +
     '</div>';
   }).join("");
+  const note = fitNote(fit);
   const unplacedBlocks = pv.plan.blocks.filter(b => !pv.plan.placements.some(p => p.block === b));
   const short = shortFitNote(fit), empty = routine.emptySplitDays();
   const busy = busySummary();
@@ -193,7 +231,10 @@ function configHTML() {
         '<button type="button" class="text-link" data-goto="targets">Change</button></p>' +
     '</div>' +
     '<div class="wk-week" data-reveal="1">' +
-      '<div class="tiles' + (wk.changed === "shuffle" ? " shuffle" : "") + '">' + tiles + '</div>' +
+      '<div class="tiles' + (wk.changed === "shuffle" ? " shuffle" : "") + '" style="--ph:' + ph + 'px">' + tiles + '</div>' +
+      '<p class="staff-hint"><span>Drag down a day’s hours to mark when you’re busy, and again to clear them. The session moves to the hours you leave.</span>' +
+        '<span class="legend-keys"><span><i class="k-session"></i>Session</span><span><i class="k-busy"></i>Busy</span>' +
+        (band ? '<span><i class="k-band"></i>Preferred time</span>' : '') + (mealsOn ? '<span><i class="k-meal"></i>Meal</span>' : '') + '</span></p>' +
       '<div class="wk-facts">' +
         '<span class="facts"><span>' + routine.sessionMinutes + '-minute sessions</span><span>' + windowWord() + '</span>' +
           '<span>' + (busy ? "Busy " + esc(busy) : "No busy hours set") + '</span></span>' +
@@ -229,11 +270,28 @@ function configHTML() {
           '<span class="field-note">It does not change your weekly sets yet.</span>' +
         '</div>' +
       '</div>' +
+      '<div class="wk-row wk-time">' +
+        '<div class="kv-col"><span class="eyebrow">Session length</span>' +
+          '<span class="segmented" role="radiogroup" aria-label="Session length">' + SESSION_LENGTH_OPTIONS.map(m =>
+            '<button type="button" role="radio" aria-checked="' + (routine.sessionMinutes === m) + '" data-len="' + m + '" data-key="len-' + m + '">' + m + ' min</button>').join("") +
+          '</span></div>' +
+        '<div class="kv-col"><span class="eyebrow">Preferred time</span>' +
+          '<span class="segmented" role="radiogroup" aria-label="Preferred time">' + ["morning", "midday", "evening", "any"].map(k =>
+            '<button type="button" role="radio" aria-checked="' + (routine.preferredWindow === k) + '" data-window="' + k + '" data-key="win-' + k + '">' +
+              (k === "any" ? "Any" : WINDOWS[k].label) + '</button>').join("") +
+          '</span></div>' +
+        '<div class="kv-col"><span class="eyebrow">I’m busy</span>' +
+          '<span class="presets">' + [["9-17", "Weekdays 9–5"], ["8-18", "Weekdays 8–6"], ["clear", "Never"]].map(([k, label]) =>
+            '<button type="button" class="preset" data-preset="' + k + '" data-key="preset-' + k + '">' + label + '</button>').join("") + '</span></div>' +
+        (n.isValid() ? '<div class="kv-col"><span class="eyebrow">Meals</span><span class="switch-row"><button type="button" role="switch" class="switch" id="meals-switch" data-key="meals-switch" ' +
+            'aria-checked="' + n.showMeals + '" aria-label="Show meals in the week"><i></i></button><span>' + (n.showMeals ? n.mealsPerDay + " a day" : "Hidden") + '</span></span></div>' : '') +
+      '</div>' +
       '<div class="wk-notes">' +
         (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
         (empty.length ? '<p class="warn">Nothing you selected goes on ' + empty.join(" or ") + ' days.</p>' : '') +
-        (short ? '<p class="warn">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
+        (short ? '<p class="warn fit-short">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
           'data-key="note-shape">See why</button></p>' : '') +
+        (note ? '<p class="fit-full' + (note.warn ? ' warn' : '') + '" aria-live="polite">' + esc(note.text) + '</p>' : '') +
       '</div>' +
       '<div class="wk-actions">' +
         '<button type="button" class="btn primary" id="generate" data-key="generate">Generate my week</button>' +
@@ -382,7 +440,7 @@ function busyHTML(day, rh, [H0, H1]) {
 
 /** Repaints only the busy blocks, while a drag is under way: cheap, on every move. */
 function paintBusy() {
-  const [H0, H1] = WEEK_HOURS, rh = rowHeight(H1 - H0, 470, 18, 30);
+  const [H0, H1] = WEEK_HOURS, rh = wk.view === "config" ? wk.rh : rowHeight(H1 - H0, 470, 18, 30);
   for (const el of weekEl.querySelectorAll("[data-busy]")) el.innerHTML = busyHTML(el.dataset.busy, rh, WEEK_HOURS);
 }
 
@@ -468,6 +526,8 @@ function genHTML() {
     const worked = x ? x.block.muscles.filter(m => !x.block.riders.has(m)) : [];
     const restText = !x ? restDayText(d) : "";
     const headEl = '<div class="cal-head static"' + (restText ? ' title="' + esc(restText) + '"' : '') + '>' +
+        // The frieze, carried into the week: the day's figure, lit where it trains.
+        (x && !narrow ? '<canvas class="cal-plate" data-plate="' + d + '" data-ids="' + workedIds(x.block).join(",") + '" aria-hidden="true"></canvas>' : '') +
         '<span class="cal-day">' + DayOfWeek.label[d] + '</span>' +
         '<span class="cal-name">' + (off ? "Off" : x ? esc(blockName(x.block)) : "Rest") + '</span>' +
         '<span class="cal-meta">' + familyDots(fams) + '<span>' + (narrow ? "" : off ? "Day off" : x ? worked.length +
@@ -545,9 +605,47 @@ function agendaHTML(sessions) {
   }).join("") + '</ol>';
 }
 
+/* --------------------------------- the frieze ------------------------------- */
+
+/* The muscles read from behind: a day that mostly trains them turns its figure round. */
+const PLATE_BEHIND = new Set(["traps", "upper-back", "lats", "triceps", "hamstrings", "glutes", "calves", "lower-back"]);
+/* How far round each day's figure stands, Monday to Sunday: one figure turning through the week. */
+const PLATE_TURN = [-33, -22, -11, 0, 11, 22, 33];
+
+/**
+ * Draws the week's plates (configHTML): the sculpture itself, once per day,
+ * lit where that day's session trains. The stage's own figure steps out
+ * while they stand (the view's dim). Where the sculpture cannot draw them
+ * (no WebGL, or not ready yet) the days stay as names and dots.
+ */
+function paintPlates(tries = 0) {
+  const canvases = [...weekEl.querySelectorAll("canvas[data-plate]")];
+  if (!canvases.length || typeof figure !== "object") return;
+  // The plates take their size from the frieze's layout, so that comes first.
+  const can = !!figure.moves && (tries < 20 || wk.plates);
+  if (can !== planEl.hasAttribute("data-plates")) planEl.toggleAttribute("data-plates", can);
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const list = can ? canvases.map(canvas => {
+    const day = canvas.dataset.plate, ids = canvas.dataset.ids ? canvas.dataset.ids.split(",") : [];
+    const behind = ids.filter(id => PLATE_BEHIND.has(id)).length > ids.length / 2;
+    canvas.width = Math.round(canvas.clientWidth * dpr);
+    canvas.height = Math.round(canvas.clientHeight * dpr);
+    return { canvas, ids, az: PLATE_TURN[DayOfWeek.indexOf(day)] + (behind ? 180 : 0) };
+  }) : [];
+  const drawn = can && figure.plates(list);
+  if (drawn !== wk.plates) { wk.plates = drawn; Stages.refresh(); }
+  // The sculpture lays itself out a frame after the page: ask again, briefly.
+  if (can && !drawn) requestAnimationFrame(() => paintPlates(tries + 1));
+}
+/* The plates are drawn in the theme's stone and hues. */
+new MutationObserver(() => requestAnimationFrame(() => { if (Stages.current === "plan") paintPlates(); }))
+  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
 /* --------------------------------- drawing --------------------------------- */
 
 function renderWeek() {
+  // Where each day's session stood on its staff, so it can travel from there.
+  const stood = new Map([...weekEl.querySelectorAll("[data-ghost]")].map(el => [el.dataset.ghost, parseFloat(el.style.top)]));
   const active = document.activeElement;
   const focusKey = active && weekEl.contains(active) ? active.dataset.key : null;
   const top = planEl.scrollTop;
@@ -562,6 +660,12 @@ function renderWeek() {
   if (side) side.scrollTop = sideTop;
   if (focusKey) focusAgain(weekEl.querySelector('[data-key="' + focusKey + '"]'));
   Stages.refresh();
+  paintPlates();
+  if (!Stages.still) for (const el of weekEl.querySelectorAll("[data-ghost]")) {
+    const was = stood.get(el.dataset.ghost), now = parseFloat(el.style.top);
+    if (was === undefined) el.animate([{ opacity: 0, transform: "scaleY(.2)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.7,.2,1)" });
+    else if (Math.abs(was - now) > .5) el.animate([{ transform: "translateY(" + (was - now) + "px)" }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" });
+  }
 }
 
 /** Closes the open session, back to the week. */
@@ -675,7 +779,10 @@ function paintPointed() {
 let weekResize = 0;
 addEventListener("resize", () => {
   clearTimeout(weekResize);
-  weekResize = setTimeout(() => { if (Stages.current === "plan" && wk.view !== "config") renderWeek(); }, 120);
+  weekResize = setTimeout(() => {
+    if (Stages.current !== "plan") return;
+    renderWeek();
+  }, 120);
 });
 
 /* --------------------------------- the stage -------------------------------- */
@@ -694,7 +801,8 @@ Stages.register("plan", {
   shot: () => wk.view === "shape" ? "plan-availability" : wk.view === "gen" ? "plan-generated" : "plan",
   dim() {
     if (wk.view === "shape") return 0;
-    if (wk.view !== "gen") return 1;
+    // Setting up, the frieze's seven figures are the body; the stage's own steps out.
+    if (wk.view !== "gen") return wk.plates && !Stages.narrow ? 0 : 1;
     if (Stages.narrow) return wk.sel !== null ? 1 : 0.5;
     return wk.sel !== null ? 0.35 : 1;
   },
