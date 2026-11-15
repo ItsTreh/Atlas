@@ -14,7 +14,7 @@ The body never leaves the screen. Moving to another stage moves the camera aroun
 It runs entirely in your browser. There is no account, no server and no build step: open `index.html` and it works. Nothing you enter leaves your machine.
 
 > [!NOTE]
-> ATLAS is a work in progress, built in the open. Targets, Measure and Nutrition have their new design; the Week plan is next. See [the roadmap](#roadmap).
+> ATLAS is a work in progress, built in the open. All four stages have their new design; the maths behind them is being evidenced next. See [the roadmap](#roadmap).
 
 <br>
 
@@ -27,7 +27,7 @@ Each new visit opens on the sculpture in one of five ways: the figure from below
 | **I** | Targets | Pick muscles on the sculpture, then set each to Focus, Normal or Maintain. | Redesigned. The maths isn't evidenced yet. |
 | **II** | Measure | Give your stature, mass, years and physiology on four bronze rings round the figure, then strike your mark. | Redesigned. Nutrition reads the weight. |
 | **III** | Nutrition | Get calorie and protein targets worked out from the training, then walk the day meal by meal. | Redesigned. The maths isn't evidenced yet. |
-| **IV** | Week plan | Get sessions, exercises and meals placed in your free hours. | Works. Its redesign is next. |
+| **IV** | Week plan | Mark your busy hours on each day's ring of hours, then get sessions, exercises and meals placed in what's left. | Redesigned. The maths isn't evidenced yet. |
 
 ### I · Targets
 
@@ -56,9 +56,12 @@ Nutrition is a room in perspective: a marble floor laid to a vanishing point, a 
 
 ### IV · Week plan
 
-- **Fit it into your life.** See the seven days the planner would place before you generate anything, with notes on what fits and what won't.
-- **Shape your week.** Drag down a full-width calendar to mark the hours you're busy (or start from Weekdays 9–5), take days off, and set session length, preferred time and experience.
-- **Your week.** Muscles are grouped into sessions with recovery tracked per muscle. Exercises are chosen from tiered ratings. Meals are placed around the workouts: busy hours block training but not meals, so a working day keeps its lunch. Point at a session to light its muscles on the sculpture, or open it to move it or to swap, add and remove exercises.
+The day is a ring of hours behind the figure, the sun's path from six in the morning at the left to midnight at the right. The week is told one day at a time, then all at once. Scroll, use the arrow keys or the footer's small suns to move between days.
+
+- **Each day.** Drag along its ring over the hours that aren't yours, and drag again to free them. The session the planner would place moves to the hours left, clear of your meals. Take the day off, copy the day before (or Monday to the whole working week), or clear it. The day's muscles are marked on the sculpture as Targets marks a selection, and its name is written low behind the figure, woven through the legs.
+- **The light.** The hour you point at is the hour of the light. The page takes that hour's colours (dawn rose, morning lemon, noon white, golden amber, sunset coral, dusk violet, night blue), the sun on the ring turns into a moon after dusk, and the sculpture is lit from where the sun stands, in that hour's colour.
+- **The week.** Seven rings, Monday at the centre, and the week's terms as one sentence: days a week, session length, time of day, split and experience, each word opening its chooser. Pointing at an option shows what the week would become. A note says whether the targets look like they'll fit (an estimate).
+- **Your week.** Generated, it fills the screen: seven arches on one horizon, each with its session, every exercise with its sets and reps, and the week's sessions, hours, hard sets, kcal and protein, all estimates. Pointing at a day names it under its column; opening it shows the session on its ring. Drag it to another hour, swap any exercise, or move it to another day that has room and lets every muscle recover. Busy hours block training but not meals, so a working day keeps its lunch.
 
 Your inputs are saved in the browser. Edits to a generated week aren't kept yet: a reload rebuilds the week from the same inputs.
 
@@ -162,8 +165,8 @@ js/                      ── data and logic: no page code, all tested ──
   flow-front.js          the words behind the body, woven in front of the nearer leg
   measure-view.js        Measure: the four rings and your mark
   nutrition-view.js      Nutrition: the room in perspective, the sum and the walk through the day
-  week-view.js, workout-view.js, paint.js
-                         the Week plan, a session in full, painting busy hours
+  week-view.js           the Week plan: the day's ring, the hour's light, the week
+  workout-view.js        what a generated week is missing, and how a session is named
   render.js, app.js      shared helpers; wiring and boot
 
 assets/anatomy/          the sculpture, its paint and its export (all rights reserved)
@@ -192,6 +195,7 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 - [x] Targets in three movements: How it works, Your muscles, Training focus
 - [x] Measure, as four bronze rings round the figure and your mark
 - [x] Nutrition, as the day in perspective: the sum, each meal in its arch, the day laid out at the figure's niche
+- [x] The Week plan, as the day's ring of hours in the hour's light: a day at a time, then the week
 - [x] An evidence register that labels where every planner value comes from
 - [x] The anatomical cartography: engraved traces for hover and selection
 - [x] AGPL licensing, a local font, and a Content-Security-Policy
@@ -205,8 +209,6 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 - [ ] Connect it to the Week plan, so changing a priority changes the plan predictably
 - [ ] Show whether each muscle is below, within or above its range, with credit marked as an estimate
 - [ ] Polish the painted borders, one muscle at a time
-
-**Next: the Week plan.** Measure and Nutrition now have their rooms, so the Week plan is the next stage to redesign. Its setup has a first pass (the week as a frieze of seven figures, one a day); the generated week itself hasn't been re-imagined yet.
 
 **After that**
 1. Make Measure's data affect the training algorithm.
