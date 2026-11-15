@@ -1009,10 +1009,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 @keyframes ghostMeta { from { opacity: 0; letter-spacing: .5em; } to { opacity: .8; } }
 .flow-ground[data-pointed] .ghost { opacity: 1; transition: opacity .25s ease; }
-/* It names what is pointed at on Targets only, and not while the start
+/* It names what is pointed at on Targets (and the day on the Week plan) only, and not while the start
    screen holds the page (reopening on Training focus pins "Emphasis"
    there): leaving lets it go, and coming back finds it where it was. */
-.atlas:not([data-stage="targets"]) .flow-ground .ghost { opacity: 0; transition: opacity .3s ease; }
+.atlas:not([data-stage="targets"]):not([data-stage="plan"]) .flow-ground .ghost { opacity: 0; transition: opacity .3s ease; }
 #atlas[data-opening] .flow-ground .ghost { opacity: 0; transition: none; }
 .atlas .flow-ground[data-pointed] > span { opacity: 0 !important; transition: opacity .3s ease !important; }
 
@@ -1741,17 +1741,14 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 /* Once landed, the stage sets the figure's opacity every frame (the generated week's ghost). */
 .atlas[data-stage="plan"][data-phase="idle"] .anatomy-sculpture canvas { transition: none; }
 
-/* The day's name, low across the figure's shins, woven through its legs (flow-front.js). */
-.lm-word {
-  position: absolute; left: -999px; top: -999px; white-space: nowrap; opacity: 0;
-  font: italic 400 160px/1 var(--serif); letter-spacing: -.02em;
-  transform: translate(-50%, -78%); pointer-events: none;
-  transition: opacity .6s ease;
+/* The day's name is Targets' ghost word (targets.js, ghost), standing low
+   at the figure's shins where flow-front.js weaves it through the legs, as
+   on Targets' pages; its session under it, beside the legs. */
+.atlas[data-stage="plan"] .flow-ground .ghost {
+  top: min(calc(var(--gyl, .7) * 100%), calc(100% - 96px - 17.2vh));
+  flex-direction: column-reverse;
 }
-.lm-word i { display: inline-block; font-style: inherit; }
-.lm-word.swap i { animation: ghostIn .9s var(--ease-out) both; animation-delay: calc(var(--j) * 26ms); }
-.atlas:not([data-stage="plan"]) .lm-word { opacity: 0 !important; transition: opacity .3s ease; }
-#atlas[data-opening] .lm-word { opacity: 0 !important; transition: none; }
+.atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
 
 /* The week's index in the footer: a small sun a day, and the week. */
 .foot-week { grid-column: 2; grid-row: 1; position: relative; width: 350px; height: 52px; pointer-events: auto; }
@@ -1764,7 +1761,6 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .foot-week span { font-size: 10px; line-height: 1; letter-spacing: .04em; transition: color .3s ease; }
 @media (prefers-reduced-motion: reduce) {
   .wk *, .lm-sky, .lm-arc, .lm-arc *, .foot-week * { transition: none !important; }
-  .lm-word.swap i { animation: none; }
 }
 
 /* ------------------------------ mid widths -------------------------------- */
