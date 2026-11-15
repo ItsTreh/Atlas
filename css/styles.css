@@ -1645,18 +1645,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* ------------------------------- nutrition -------------------------------- */
 
-/* The plan to the right of the sculpture, which looks up at the torso from
-   its left. Wide enough that the rows read in one line each. */
-.stage-nutrition {
-  right: var(--pad); width: calc(min(760px, 56vw) + 48px); top: 100px; bottom: 90px;
-  overflow: auto; padding: 0 12px 0 48px;
-}
-/* Where the figure reaches under the text, it recedes behind a veil of the
-   ground, fading in over the panel's margin. The veil is the sculpture's
-   own layer, the screen's full height, so no edge of it crosses the figure
-   (a hand reaching below the panel). It comes and goes with the text
-   (data-shown), so it never covers the figure while the camera travels.
-   How strongly it shows is a registered property, so it can fade. */
+/* The stage has the screen between the masthead and the footer: the sum
+   beside the balance, or a day of eating across it. */
+.stage-nutrition { left: var(--pad); right: var(--pad); top: 84px; bottom: 84px; overflow: auto; }
 /* The gallery light: a soft pool where the figure stands, daylight on the
    paper by day, a lamp's warmth by night. It follows the figure from stage
    to stage, and the figure itself (--gx) on Targets' movements. */
@@ -1673,288 +1664,168 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .atlas[data-stage="targets"]:is([data-sub="focus"], [data-sub="train"]) { --lamp-x: calc(var(--gx, .64) * 100%); }
 .atlas[data-stage="measure"] { --lamp-x: 50%; }
 .atlas[data-stage="nutrition"] { --lamp-x: 50%; }
-.atlas[data-stage="nutrition"][data-nview="day"] { --lamp-x: 22%; }
+.atlas[data-layout="desktop"][data-stage="nutrition"][data-nview="plan"] { --lamp-x: 74%; }
 .atlas[data-stage="plan"] { --lamp-x: 50%; }
 .atlas[data-opening] { --lamp-x: 50%; }
 
-@property --mr { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
-@property --ml { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
-@property --mb { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
-@property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
-.anatomy-stage::after {
-  content: ""; position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; pointer-events: none;
-  width: calc(min(760px, 56vw) + 48px + var(--pad));
-  background: linear-gradient(to right, transparent, color-mix(in srgb, var(--bg) var(--veil), transparent) 48px);
-  --veil: 0%;
-  transition: --veil .22s ease;
+/* The sum: the page is the working of the day's calories, read from the
+   top, in a column beside the balance (nutrition-view.js). One grid for
+   every line: its name, what sets it, what it comes to, the unit. The
+   figures stand in one column down the page. */
+.nu { display: flex; flex-direction: column; min-height: 100%; }
+.nu-plan { display: flex; flex-direction: column; justify-content: center; gap: 16px; flex: 1; width: min(660px, 100%); }
+.nu-head { display: flex; flex-direction: column; gap: 12px; }
+.nu-head .eyebrow { display: flex; align-items: baseline; gap: 10px; }
+.eyebrow-note { font: italic 500 14px/1 var(--serif); letter-spacing: 0; text-transform: none; color: var(--ink-faint); }
+.nu-title { font-size: clamp(38px, 3.5vw, 52px); }
+.nu-lede { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
+
+.sum { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 20px; }
+.sum-row {
+  position: relative; display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
+  padding: 10px 0 9px; border-top: 1px solid var(--line-soft);
 }
-.atlas[data-shown][data-stage="nutrition"][data-nview="day"] .anatomy-stage::after {
-  --veil: 84%;
-  transition: --veil .8s ease .06s;
+/* The line in hand: a bronze point before its name, as its piece of the balance pulses. */
+.sum-row::before {
+  content: ""; position: absolute; left: -15px; top: 50%; width: 5px; height: 5px; margin-top: -2px; border-radius: 50%;
+  background: var(--cast); opacity: 0; transform: scale(.4); transition: opacity .25s ease, transform .35s var(--ease-out);
 }
-/* The plan: the room is the balance's. The page takes the balance's own
-   shape: what is burned on its left, what is eaten on its right, the goal
-   and the sum under its plinth. No statue here (nutrition-view.js). */
-.atlas[data-layout="desktop"] .stage-nutrition[data-view="plan"] { left: var(--pad); width: auto; top: 84px; bottom: 84px; padding: 0 6px 0 0; }
-.nu-plan { display: flex; flex-direction: column; gap: 22px; flex: 1; }
-.atlas[data-layout="desktop"] .stage-nutrition[data-view="plan"] .nu { min-height: 100%; padding-bottom: 0; }
-.nu-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.nu-side-h { margin: 0; font: italic 400 22px/1 var(--serif); color: var(--ink-soft); }
-.nu-num { margin: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.nu-parts { margin: -2px 0 6px; font-size: 13px; line-height: 1.45; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.nu-parts .nu-prot { font-size: 30px; color: var(--ink); margin-right: 2px; }
-.nu-eat .btn { align-self: flex-start; margin-top: 6px; }
-.nu-foot { display: flex; flex-direction: column; gap: 14px; }
-.nu-side .note-rule { font-size: 11.5px; line-height: 1.5; margin: 6px 0 0; color: var(--ink-faint); }
-.balance { position: relative; width: 100%; height: 100%; min-height: 300px; touch-action: none; cursor: ns-resize; user-select: none; -webkit-user-select: none; }
-.balance.on-jar { cursor: pointer; }
-.balance.held { cursor: grabbing; }
+.sum-row:is(:hover, :focus-within)::before { opacity: 1; transform: none; }
+.sum-l, .sum-l label { font: italic 400 19px/1.2 var(--serif); color: var(--ink-soft); white-space: nowrap; transition: color .25s ease; }
+.sum-row:is(:hover, :focus-within) .sum-l, .sum-row:is(:hover, :focus-within) .sum-l label { color: var(--cast); }
+.sum-c { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; min-width: 0; }
+.sum-w { font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+.sum-n { flex: 1 1 170px; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--ink-faint); text-wrap: pretty; }
+.sum-n:empty { display: none; }
+.sum-n.warn { color: var(--warn); }
+.sum-n .pill-tag { margin-right: 8px; }
+.sum-n .text-link { font-size: 12px; margin-left: 6px; }
+/* What a line comes to: the figures end on one edge all the way down. */
+.sum-f {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 5px; white-space: nowrap; color: var(--ink);
+  font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; transition: opacity .3s ease;
+}
+.sum-f small { font: 400 12px/1 var(--font); color: var(--ink-faint); }
+.sum-f .mid { font-size: 34px; line-height: .9; }
+.sum-row.off .sum-f { opacity: .35; }
+/* A total: the rule a sum is drawn under, its name upright with its note under it, its figure large. */
+.sum-row.total { grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; row-gap: 5px; padding: 13px 0 12px; border-top-color: var(--ink-faint); }
+.sum-row.total .sum-l, .sum-row.total .sum-l label { font: 400 26px/1.1 var(--serif); color: var(--ink); }
+.sum-row.total :is(.sum-l, .sum-c) { grid-column: 1; }
+.sum-row.total .sum-c { grid-row: 2; }
+.sum-row.total .sum-f { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+.sum-big { display: flex; align-items: baseline; }
+.sum-approx { margin-right: 7px; font-size: 26px; color: var(--ink-faint); }
+.sum-f .big { font-size: clamp(44px, 3.9vw, 56px); line-height: .9; letter-spacing: -.015em; }
+/* The goal has no figure of its own: its words take the line. */
+.sum-row.wide .sum-c { grid-column: 2 / -1; }
+.sum-row.wide .sum-f { display: none; }
+
+/* A figure stepped down or up: two plain signs, the figure between. */
+.nu-step { display: inline-flex; align-items: baseline; gap: 1px; }
+.nu-pm {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+  background: none; color: var(--ink-faint); cursor: pointer; transition: color .2s ease, background .2s ease;
+}
+.nu-pm i { position: relative; display: block; width: 11px; height: 11px; }
+.nu-pm i::before, .nu-pm i.pm-plus::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1.5px; margin-top: -.75px; border-radius: 1px; background: currentColor; }
+.nu-pm i.pm-plus::after { transform: rotate(90deg); }
+.nu-pm:hover { color: var(--ink); background: var(--raised); }
+.nu-pm:active { background: var(--line); }
+.nu-pm:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+/* The signs have no text to sit on the line by: they are set level with the figure's middle. */
+.nu-step .nu-pm { align-self: center; }
+.nu-out, .nu-in {
+  box-sizing: content-box; min-width: 1.5ch; padding: 0 2px 1px; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0;
+  background: none; text-align: center; color: var(--ink);
+  font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums;
+}
+.nu-out.wide { min-width: 3.3ch; }
+.nu-in { width: 3.4ch; outline: none; caret-color: var(--ink); border-bottom-color: var(--line); transition: border-color .25s ease; -moz-appearance: textfield; appearance: textfield; }
+.nu-in::-webkit-outer-spin-button, .nu-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.nu-in:hover { border-bottom-color: var(--ink-faint); }
+.nu-in:focus { border-bottom-color: var(--ink); }
+.nu-in[aria-invalid="true"] { border-bottom-color: var(--warn); }
+.nu-in.big { width: 2.6em; min-width: 2ch; padding: 0 0 2px; text-align: right; field-sizing: content; }
+@supports (field-sizing: content) { .nu-in.big { width: auto; } }
+
+/* A choice among words: the one chosen in ink, a bronze line under it. */
+.nu-words { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; }
+.nu-words button {
+  position: relative; padding: 2px 0 5px; border: 0; background: none; cursor: pointer; white-space: nowrap;
+  font: 400 20px/1.15 var(--serif); font-variant-numeric: lining-nums; color: var(--ink-faint); transition: color .25s ease;
+}
+.nu-words button::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1.5px; border-radius: 1px; background: var(--cast);
+  transform: scaleX(0); transform-origin: left; transition: transform .45s var(--ease-out);
+}
+.nu-words button:hover { color: var(--ink); }
+.nu-words button[aria-checked="true"] { color: var(--ink); }
+.nu-words button[aria-checked="true"]::after { transform: scaleX(1); }
+.nu-words button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.nu-words.small { gap: 2px 12px; }
+.nu-words.small button { font-size: 18px; }
+/* The suggested one of a set: a point over it. */
+.nu-words button.sug::before { content: ""; position: absolute; left: 50%; top: -4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--cast); }
+
+.nu-after { display: flex; flex-direction: column; gap: 8px; }
+.nu-est { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 12.5px; color: var(--ink-faint); }
+.nu-est .text-link { font-size: 12.5px; align-self: auto; }
+.nu-warn { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--warn); }
+#nu-warns:empty { display: none; }
+#nu-warns { display: flex; flex-direction: column; gap: 6px; }
+
+/* How it's worked out: read where the balance stands, which steps back for it. */
+.nu-why { display: flex; flex-direction: column; gap: 14px; }
+.nu-why-h { margin: 0; font: italic 400 26px/1.1 var(--serif); color: var(--ink); }
+.nu-reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 13px; line-height: 1.55; color: var(--ink-soft); max-width: 62ch; }
+.nu-reasons li { padding-top: 10px; border-top: 1px solid var(--line-soft); }
+.nu-reasons b { color: var(--ink); font-weight: 600; }
+.nu-reasons-none { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.nu-caveat { margin: 0; max-width: 62ch; font-size: 12px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
+
+/* The balance: beside the sum, seen whole and still. It takes no pointer. */
+.balance { display: none; }
 .balance canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 /* The plinth's shadow on the floor. */
 .balance::before {
-  content: ""; position: absolute; left: 8%; right: 8%; bottom: 0; height: 15%; pointer-events: none;
-  background: radial-gradient(closest-side, rgba(40,30,18,.2), transparent); 
+  content: ""; position: absolute; left: 6%; right: 6%; bottom: 3%; height: 15%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(40,30,18,.2), transparent);
 }
 [data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
-.bal-label { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; }
-/* What is written on the balance (nutrition-view.js sets each where its
-   piece is as the balance draws). While the camera travels to a shot the
-   words stand back. */
-.balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: opacity .45s ease; }
-.balance.travel :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { opacity: 0; transition-duration: .2s; }
-/* How far eating is set from the burn: between the two totals, over the fulcrum. */
-.bal-lean { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 12px; white-space: nowrap; pointer-events: none; }
-.bal-lean b { font: italic 400 clamp(28px, 2.6vw, 38px)/1 var(--serif); font-variant-numeric: lining-nums; color: var(--cast, var(--ink)); }
-.bal-lean small { font-size: 11.5px; color: var(--ink-faint); }
-.bal-lean b:empty, .bal-lean small:empty { display: none; }
-.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-lean { display: none; }
-.bal-total-l { display: none; }
-.balance[data-shot="eat"] .bal-total-l { display: inline; }
-/* The way in to a side: a coin and what it does. */
-.bal-go {
-  display: flex; align-items: center; gap: 9px; margin-top: 4px; padding: 3px 4px 3px 0; border: 0; background: none; cursor: pointer; pointer-events: auto;
-  font: italic 400 17px/1 var(--serif); color: var(--ink-soft); transition: color .25s ease;
-}
-.bal-legend[data-side="burn"] .bal-go { flex-direction: row-reverse; padding: 3px 0 3px 4px; }
-.bal-go svg { width: 30px; height: 30px; flex: none; overflow: visible; fill: none; stroke: currentColor; border-radius: 50%; transition: background .35s var(--ease-out), color .35s var(--ease-out); }
-.bal-go:hover, .bal-go:focus-visible { color: var(--ink); }
-.bal-go:hover svg, .bal-go:focus-visible svg { background: var(--ink); color: var(--bg); }
-.bal-go:hover .mzc-beads { transform: rotate(27deg); }
-.bal-go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
-.balance:is([data-shot="burn"], [data-shot="eat"], [data-shot="set"]) .bal-go { display: none; }
 /* The goal, cut in the plinth's face. */
 .bal-plinth {
+  position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap;
   font: 600 12px/1 var(--serif); letter-spacing: .34em; text-transform: uppercase; padding-left: .34em;
   color: rgba(74,64,48,.62); text-shadow: 0 1px 0 rgba(255,255,255,.85), 0 -1px 0 rgba(60,50,35,.25);
 }
 [data-theme="dark"] .bal-plinth { color: rgba(20,16,10,.7); text-shadow: 0 1px 0 rgba(255,244,220,.22), 0 -1px 0 rgba(0,0,0,.4); }
-/* A side's total, over its end of the beam, a hairline down to it. */
-.bal-total {
-  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 26px;
-  white-space: nowrap; pointer-events: none;
-}
-.bal-total::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 1px; height: 16px; background: var(--cast, var(--ink-faint)); opacity: .7; }
-.balance.held, .balance.held .bal-go { cursor: grabbing; }
-.bal-total-h { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
-.bal-total-n { display: flex; align-items: baseline; gap: 8px; }
-.bal-total-n b { font: 400 clamp(42px, 4.1vw, 62px)/.9 var(--serif); letter-spacing: -.015em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
-.bal-total-n i { font: 400 13px/1 var(--font); color: var(--ink-soft); }
-.bal-total-p { font-size: 13px; color: var(--ink-soft); }
-.bal-total-p b { font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); margin-right: 2px; }
-/* What a pan holds, beside its rim: the weights by name, a meal a jar. */
-.bal-legend { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 7px; white-space: nowrap; }
-.bal-legend:empty { display: none; }
-.bal-legend[data-side="burn"] { padding-right: 34px; align-items: flex-end; text-align: right; }
-.bal-legend[data-side="eat"] { padding-left: 34px; align-items: flex-start; text-align: left; }
-.bal-legend::before { content: ""; position: absolute; top: 50%; width: 22px; height: 1px; background: var(--cast, var(--ink-faint)); opacity: .8; }
-.bal-legend[data-side="burn"]::before { right: 6px; }
-.bal-legend[data-side="eat"]::before { left: 6px; }
-.bal-row {
-  display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 1px 0; margin: 0; border: 0; background: none;
-  color: var(--ink); text-align: inherit; font: inherit;
-}
-.bal-legend[data-side="burn"] .bal-row { justify-content: end; }
-.bal-legend[data-side="eat"] .bal-row { justify-content: start; }
-.bal-row i { font: italic 400 18px/1.05 var(--serif); color: var(--ink-soft); transition: color .25s ease; }
-.bal-row b { font: 400 21px/1.05 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
-.bal-row small { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.35; color: var(--ink-faint); }
-button.bal-row { cursor: pointer; }
-button.bal-row:hover i, button.bal-row.lit i, button.bal-row:focus-visible i { color: var(--ink); text-decoration: underline 1px; text-underline-offset: 4px; }
-button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
-.bal-sum { margin-top: 2px; }
-/* Seen close: the side's total stands at the head of the room, its words are larger, the other side's step back. */
-.balance[data-shot="burn"] #bal-total-burn { align-items: flex-start; padding-bottom: 0; }
-.balance[data-shot="eat"] #bal-total-eat { left: auto; right: 0; align-items: flex-end; padding-bottom: 0; }
-.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-total::after { display: none; }
-.balance[data-shot="burn"] :is(#bal-total-eat, #bal-legend-eat), .balance[data-shot="eat"] :is(#bal-total-burn, #bal-legend-burn) { opacity: 0; pointer-events: none; }
-.balance[data-shot="burn"] #bal-legend-burn .bal-row i, .balance[data-shot="eat"] #bal-legend-eat .bal-row i { font-size: 23px; }
-.balance[data-shot="burn"] #bal-legend-burn .bal-row b, .balance[data-shot="eat"] #bal-legend-eat .bal-row b { font-size: 28px; }
-.balance[data-shot="burn"] #bal-legend-burn .bal-row small, .balance[data-shot="eat"] #bal-legend-eat .bal-row small { font-size: 12.5px; }
-.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-legend { gap: 12px; }
-.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-plinth { display: none; }
-/* Seen close, the balance runs out of the shot: its lower edge fades into the ground. */
-.balance canvas {
-  --mr: 130%; --ml: 130%; --mb: 130%;
-  -webkit-mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
-  mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
-  -webkit-mask-composite: source-in; mask-composite: intersect;
-  transition: --mr 1s var(--ease-out), --ml 1s var(--ease-out), --mb 1s var(--ease-out);
-}
-.balance[data-shot="burn"] canvas { --mr: 63%; --mb: 99%; }
-.balance[data-shot="eat"] canvas { --ml: 63%; --mb: 99%; }
-@media (prefers-reduced-motion: reduce) { .balance canvas, .balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: none; } }
-.balance:is([data-shot="burn"], [data-shot="eat"])::before { display: none; }
-.bal-sum small { white-space: normal; max-width: 190px; }
-.balance[data-shot="set"] { cursor: default; }
-.balance[data-shot="set"] .bal-legend { opacity: .0; pointer-events: none; }
-.atlas[data-layout="mobile"] .nu-side { translate: none !important; }
-
-/* Beside the pan seen close: what sets it, where the far side of the
-   balance fades out of the shot. */
-.nu-panel {
-  position: absolute; top: 0; bottom: 0; z-index: 2; width: min(46%, 580px); overflow: auto; cursor: auto;
-}
-.nu-panel[data-side="burn"] { right: 0; padding-left: 110px; }
-.nu-panel[data-side="eat"] { left: 0; padding-right: 110px; }
-.nu-caveat { margin: 0; max-width: 104ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-align: center; text-wrap: pretty; }
-
-/* The readings beside a pan: each a name in the bronze, its figure large,
-   the coins that step it, a note. Two abreast; a choice among words takes
-   the row. */
-.nu-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: center; gap: 22px 28px; }
-.nu-read { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.nu-read.wide { grid-column: 1 / -1; }
-.nu-read-n, .nu-read-n label { font: italic 400 20px/1 var(--serif); color: var(--cast, var(--ink-soft)); }
-.nu-read-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-.nu-fig {
-  box-sizing: content-box; min-width: 1.6ch; padding: 0 0 2px; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: none;
-  font: 400 clamp(40px, 3.8vw, 58px)/.95 var(--serif); letter-spacing: -.02em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink);
-  outline: none; transition: border-color .3s ease; -moz-appearance: textfield; appearance: textfield;
-}
-.nu-fig::-webkit-outer-spin-button, .nu-fig::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input.nu-fig { width: 3.4ch; caret-color: var(--ink); }
-input#n-burn.nu-fig { width: 4.2ch; }
-input.nu-fig:hover { border-bottom-color: var(--line); }
-input.nu-fig:focus { border-bottom-color: var(--ink); }
-input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
-.nu-fig.small { font-size: clamp(30px, 2.6vw, 40px); }
-.nu-unit-w { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
-.nu-coins { display: inline-flex; gap: 4px; align-self: center; margin-left: 2px; }
-.nu-coins .arm-coin { width: 36px; height: 36px; }
-.nu-span { display: inline-flex; align-items: baseline; gap: 8px; }
-.nu-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
-.nu-words button {
-  position: relative; padding: 3px 0 8px; border: 0; background: none; cursor: pointer;
-  font: 400 clamp(22px, 2vw, 28px)/1 var(--serif); color: var(--ink-faint); transition: color .3s ease;
-}
-.nu-words button::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink));
-  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
-}
-.nu-words button:hover { color: var(--ink-soft); }
-.nu-words button[aria-checked="true"] { color: var(--ink); font-style: italic; }
-.nu-words button[aria-checked="true"]::after { transform: scaleX(1); }
-.nu-words button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
-.nu-read-v > .nu-words:not(:first-child) button { font-size: 18px; }
-.nu-read-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-soft); text-wrap: pretty; }
-.nu-read-note .pill-tag { margin-right: 4px; }
-.nu-read-note .text-link { font-size: 12px; }
-
-/* The last shot: two plain answers under the balance. */
-.nu-set { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 6px; }
-.nu-answers { display: flex; align-items: baseline; gap: 12px 44px; flex-wrap: wrap; justify-content: center; }
-.nu-answer {
-  position: relative; padding: 4px 0 10px; border: 0; background: none; cursor: pointer;
-  font: italic 400 clamp(28px, 2.8vw, 40px)/1 var(--serif); color: var(--ink); transition: color .3s ease;
-}
-.nu-answer::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink)); transform-origin: left; transition: transform .5s var(--ease-out); }
-.nu-answer.quiet { font-style: normal; font-size: clamp(20px, 1.9vw, 26px); color: var(--ink-faint); }
-.nu-answer.quiet::after { transform: scaleX(0); }
-.nu-answer.quiet:hover, .nu-answer.quiet:focus-visible { color: var(--ink); }
-.nu-answer.quiet:hover::after, .nu-answer.quiet:focus-visible::after { transform: scaleX(1); }
-.nu-answer:disabled { opacity: .45; cursor: default; }
-.nu-answer:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 3px; }
-.nu-set-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
-
-/* The goals only fade: the chosen one's line is set against the whole row, which a moved goal would take from it. */
-.goals.turned .goal { animation: nuFade .55s ease both; }
-@keyframes nuFade { from { opacity: 0; } }
-.goals.turned .goal:nth-child(2) { animation-delay: .07s; }
-.goals.turned .goal:nth-child(3) { animation-delay: .14s; }
-.goals.turned .goal:nth-child(4) { animation-delay: .21s; }
-@media (prefers-reduced-motion: reduce) { .goals.turned .goal { animation: none !important; } }
-.nu-side .nu-row.open .row-label, .nu-side .nu-row.open .row-sum { color: var(--ink); }
-.nu-side .nu-row { transition: opacity .3s ease; }
-.nu-rows:has(.open) .nu-row:not(.open) { opacity: .45; }
-.nu-mid { min-height: 300px; }
-.atlas[data-layout="mobile"] .nu-mid, .balance[hidden] { display: none; }
 @media (min-width: 1000px) {
-  .atlas[data-layout="desktop"] .nu-plan {
-    display: grid; min-height: 100%; gap: 14px 30px;
-    grid-template-columns: minmax(270px, 330px) minmax(0, 1fr) minmax(270px, 330px);
-    grid-template-rows: auto minmax(340px, 1fr) auto;
-    grid-template-areas: "head head head" "burn mid eat" "foot foot foot";
+  .atlas[data-layout="desktop"] .stage-nutrition { --sum-w: min(660px, 48%); }
+  .atlas[data-layout="desktop"] .nu-plan { width: var(--sum-w); }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-view="plan"] .balance:not([hidden]) {
+    display: block; position: absolute; top: 0; bottom: 0; right: 0; left: calc(var(--sum-w) + 28px);
+    pointer-events: none; user-select: none; -webkit-user-select: none;
   }
-  .atlas[data-layout="desktop"] .nu-plan .nu-head { grid-area: head; align-items: center; text-align: center; gap: 10px; }
-  .atlas[data-layout="desktop"] .nu-plan .nu-title { font-size: clamp(34px, 3.2vw, 46px); }
-  .atlas[data-layout="desktop"] .nu-plan .nu-lede { max-width: 70ch; }
-  /* On the balance: one column, the balance across it. */
-  .atlas[data-layout="desktop"] .nu-plan.scale { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(360px, 1fr) auto; grid-template-areas: "head" "mid" "foot"; }
-  .nu-plan.scale .nu-mid { position: relative; }
-  .nu-burn { grid-area: burn; align-self: center; }
-  .nu-eat { grid-area: eat; align-self: center; }
-  .nu-mid { grid-area: mid; }
-  .nu-foot { grid-area: foot; align-items: center; }
-  .nu-foot .goals { width: min(100%, 860px); }
-  .nu-foot .nu-figures { align-items: center; }
-  .nu-foot .nu-reasons { text-align: left; }
-  .nu-plan .nu-kcal { font-size: clamp(56px, 5.4vw, 88px); }
-  /* The rows are read in a narrow column: the label over its line. */
-  .nu-side .row-toggle { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; }
-  .nu-side .row-label { grid-column: 1 / -1; }
-  .nu-side .kv > .kv-label { min-width: 0; flex-basis: 100%; }
-  .nu-side .kv-note { margin-left: 0; }
+  .atlas[data-layout="desktop"] .stage-nutrition[data-why] .balance { opacity: .07 !important; }
+  .atlas[data-layout="desktop"] .nu-why {
+    position: absolute; top: 0; bottom: 0; right: 0; left: calc(var(--sum-w) + 88px); justify-content: center;
+    animation: nuWhy .5s var(--ease-out) both;
+  }
 }
-
-.nu { display: flex; flex-direction: column; gap: 20px; padding-bottom: 8px; }
-.nu-head, .day-head { display: flex; flex-direction: column; gap: 14px; }
-.nu-head .eyebrow { display: flex; align-items: baseline; gap: 10px; }
-.eyebrow-note { font: italic 500 14px/1 var(--serif); letter-spacing: 0; text-transform: none; color: var(--ink-faint); }
-.nu-title { font-size: 44px; }
-.nu-lede { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-soft); max-width: 56ch; text-wrap: pretty; }
-
-/* The aim: four words on one rule, as the marks on the cast are. The one
-   chosen takes the bronze, and its reason is read under it. */
-.goals { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 18px; }
-.goal {
-  display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 11px 0 2px;
-  cursor: pointer; color: var(--ink-soft); background: none; border: 0; border-top: 1px solid var(--line);
-  border-radius: 0; transition: border-color .2s ease, color .2s ease;
+/* A narrower screen: the sum takes more of it, and its words are set smaller, so each line still reads in one. */
+@media (min-width: 1000px) and (max-width: 1239px) {
+  .atlas[data-layout="desktop"] .stage-nutrition { --sum-w: 57%; }
+  .atlas[data-layout="desktop"] .sum { column-gap: 14px; }
+  .atlas[data-layout="desktop"] .sum .nu-words { gap: 2px 11px; }
+  .atlas[data-layout="desktop"] .sum .nu-words button { font-size: 18px; }
+  .atlas[data-layout="desktop"] .sum .nu-words.small button { font-size: 16.5px; }
+  .atlas[data-layout="desktop"] .sum-row:not(.total) :is(.sum-l, .sum-l label) { font-size: 17.5px; }
+  .atlas[data-layout="desktop"] .table { gap: 0 36px; }
+  .atlas[data-layout="desktop"] .serve { padding-left: 36px; }
 }
-.goal:hover { color: var(--ink); border-top-color: var(--ink-faint); }
-.goal[aria-checked="true"] { color: var(--ink); border-top: 2px solid var(--cast); padding-top: 10px; }
-.goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.goal-name { font: 400 clamp(18px, 1.55vw, 23px)/1.05 var(--serif); }
-.goal[aria-checked="true"] .goal-name { font-style: italic; }
-.goal-adj { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.goals { position: relative; padding-bottom: 2.1em; }
-.goal-name { white-space: nowrap; }
-.goal-blurb { display: none; font-size: 12.5px; line-height: 1.4; color: var(--ink-soft); }
-.goal[aria-checked="true"] .goal-blurb { display: block; position: absolute; left: 0; right: 0; bottom: 0; }
-
-.nu-figures { display: flex; flex-direction: column; gap: 10px; }
-.nu-big { display: flex; align-items: baseline; gap: 10px 28px; flex-wrap: wrap; }
-.nu-fig { display: flex; align-items: baseline; gap: 10px; }
-.nu-kcal { font: 400 76px/.85 var(--serif); letter-spacing: -.015em; font-variant-numeric: lining-nums tabular-nums; }
-.nu-prot { font: 400 40px/.9 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
-.nu-unit { font-size: 14px; color: var(--ink-soft); }
-.nu-mathline { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
-.nu-math { margin: 0; font-size: 12.5px; color: var(--ink-faint); }
-.nu-mathline .text-link { font-size: 12.5px; }
-.nu-warn { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--warn); }
-.nu-reasons { list-style: none; margin: 0; padding: 2px 0 2px 12px; border-left: 2px solid var(--line);
-              display: grid; gap: 6px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); max-width: 66ch; }
-.nu-reasons b { color: var(--ink); font-weight: 600; }
+@keyframes nuWhy { from { opacity: 0; transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .nu-why { animation: none !important; } }
 
 /* A small label: an estimate, or the user's own number. */
 .pill-tag {
@@ -1963,44 +1834,9 @@ input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
 }
 .pill-tag.own { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 
-/* The rows: one line each until opened. */
-.nu-rows { display: flex; flex-direction: column; }
-.nu-row { border-top: 1px solid var(--line); display: flex; flex-direction: column; }
-.row-toggle {
-  display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: baseline; gap: 12px;
-  width: 100%; padding: 11px 0; background: none; border: 0; cursor: pointer; color: var(--ink); text-align: left;
-}
-.row-label { font: var(--t-label); letter-spacing: var(--track-label); text-transform: uppercase; color: var(--ink-faint); }
-.row-sum { font-size: 13.5px; }
-.row-act { font-size: 12.5px; color: var(--ink-soft); text-decoration: underline 1px; text-underline-offset: 3px; text-decoration-color: var(--line); }
-.row-toggle:hover .row-act { color: var(--ink); text-decoration-color: var(--ink); }
-.row-body { display: flex; flex-direction: column; gap: 16px; padding: 0 0 18px; }
-.row-note { margin: 0; font-size: 13px; color: var(--ink-soft); }
-.row-note b { color: var(--ink); font-weight: 600; }
-
 .kv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.kv.top { align-items: flex-start; }
-.kv > .kv-label { min-width: 110px; }
-.kv.top > .kv-label { padding-top: 6px; }
-.kv-label { font-size: 12px; font-weight: 700; color: var(--ink-soft); }
-.kv-row { display: flex; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; }
 .kv-col { display: flex; flex-direction: column; gap: 7px; }
-.kv-note { margin: 0 0 0 120px; font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); }
-/* Running text: the tag and the links keep their distance, the words none. */
-.kv-note > .pill-tag { margin-right: 8px; }
-.kv-note > :is(.text-link, button) { margin-left: 8px; }
-.kv-note.flush { margin-left: 0; }
-.kv-note b { color: var(--ink); }
-.kv-note .text-link { font-size: 12.5px; }
-.unit { font-size: 13px; color: var(--ink-soft); }
 
-.serif-input {
-  width: 96px; padding: 4px 8px; text-align: center; font: 400 26px/1.1 var(--serif);
-  font-variant-numeric: lining-nums; color: var(--ink); background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--r-md); -moz-appearance: textfield;
-}
-.serif-input.wide { width: 112px; }
-.serif-input::-webkit-inner-spin-button, .serif-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .serif-out { min-width: 72px; text-align: center; font: 400 28px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
 .serif-out.narrow { min-width: 28px; }
 .stepper {
@@ -2008,26 +1844,6 @@ input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
   color: var(--ink); background: var(--raised); border: 1px solid var(--line);
 }
 .stepper:hover { border-color: var(--ink-faint); }
-.pills { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
-.pill {
-  font: 600 12.5px/1.3 var(--font); padding: 5px 11px; border-radius: 999px; cursor: pointer;
-  color: var(--ink-soft); background: transparent; border: 1px solid var(--line);
-}
-.pill:hover { color: var(--ink); border-color: var(--ink-faint); }
-.pill[aria-checked="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
-.tunes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; }
-.tune { display: flex; flex-direction: column; gap: 8px; }
-.select {
-  font: 600 14px/1.3 var(--font); padding: 6px 9px; color: var(--ink);
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--r-sm);
-}
-.segmented button { position: relative; }
-.segmented .sug { position: absolute; top: 4px; right: 4px; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-
-.nu-cta { border-top: 1px solid var(--line); padding-top: 16px; display: flex; align-items: center; gap: 14px 24px; flex-wrap: wrap; }
-.nu-cta .btn { flex: none; }
-.nu-cta .note-rule { flex: 1; min-width: 240px; font-size: 12px; line-height: 1.55; }
-
 /* A label with an invisible native select stretched over it: a real,
    keyboard- and screen-reader-friendly select, only as wide as its text. */
 .picker {
@@ -2048,68 +1864,117 @@ input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
   border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); pointer-events: none;
 }
 
-/* A day of eating: the day as a line of meals, one open at a time. */
-.day-head .quiet-btn { align-self: flex-start; padding: 0; }
-.day-body { display: flex; flex-direction: column; gap: 14px; }
-.meal-line { position: relative; height: 52px; margin: 0 18px; }
-.meal-line.named { height: 72px; }
-.meal-line::before { content: ""; position: absolute; left: -18px; right: -18px; top: 13px; height: 1px; background: var(--line); }
-.stop {
-  position: absolute; top: 0; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 7px;
-  padding: 0 4px; background: none; border: 0; cursor: pointer; color: var(--ink-faint);
-}
-.stop[aria-selected="true"] { color: var(--ink); }
-.stop-dot-wrap { width: 27px; height: 27px; display: grid; place-items: center; }
-.stop-dot {
-  width: var(--s); height: var(--s); border-radius: 50%; background: var(--card);
-  border: 1.5px solid var(--ink-faint); box-shadow: 0 0 0 4px var(--bg);
-  transition: background .25s ease, border-color .25s ease;
-}
-.stop.past .stop-dot { background: color-mix(in srgb, var(--accent) 35%, var(--card)); border-color: var(--accent); }
-.stop[aria-selected="true"] .stop-dot { background: var(--accent); border-color: var(--accent); }
-.stop-time { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stop-name { margin-top: -6px; font: 500 16px/1 var(--serif); white-space: nowrap; }
+/* A day of eating: the day's meals as courses across the top; under them
+   the open meal, every dish that fits it on a menu, and beside the menu
+   the dish itself, its ingredients set out one by one (nutrition-view.js).
+   The page is its words: nothing stands beside them. */
+.day { display: flex; flex-direction: column; gap: 16px; flex: 1; min-height: 100%; }
+.day-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 40px; }
+.day-head .display { font-size: clamp(34px, 3vw, 44px); }
+.day-sum { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--ink-soft); }
+.day-sum b { font: 400 21px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.day-sum .pill-tag { align-self: center; }
+.day-plated { color: var(--ink-faint); }
+.day-plated b { color: var(--ink-soft); }
+.day-head .nu-warn { flex-basis: 100%; }
 
-.meal-segs-wrap { display: flex; flex-direction: column; gap: 6px; }
-.meal-segs { display: flex; gap: 3px; height: 6px; }
-.meal-segs .seg { height: 6px; padding: 0; border: 0; border-radius: 3px; cursor: pointer; background: var(--line-soft);
-                  transition: background .25s ease; min-width: 6px; }
-.meal-segs .seg.past { background: color-mix(in srgb, var(--accent) 35%, var(--line-soft)); }
-.meal-segs .seg.on { background: var(--accent); }
-.meal-share { font-size: 12px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+/* The day's own settings: how many meals, between which hours, which foods. */
+.day-set { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 40px; }
+.day-set-i { display: inline-flex; align-items: baseline; gap: 12px; }
+.day-set-l { font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
+.day-set-n { font-size: 12px; color: var(--ink-faint); }
+/* An hour to pick, set as a word: a real select under it (.picker). */
+.picker.word { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 2px 0 3px; font: 400 18px/1.15 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); transition: border-color .25s ease; }
+.picker.word:hover { background: none; border-bottom-color: var(--ink); }
+.picker.word:focus-within { outline: 2px solid var(--ink); outline-offset: 3px; }
 
-.meal-card {
-  --dir: 1;
-  display: flex; flex-direction: column; gap: 16px; padding: 20px 22px; border-radius: var(--r-lg);
-  background: var(--card); border: 1px solid var(--line-soft);
-  transition: opacity .18s ease, transform .3s var(--ease-out);
+/* The courses: a meal a column, its hour, its name, the dish on it. */
+.courses { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 0 22px; }
+.course {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0;
+  padding: 12px 0 2px; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none;
+  text-align: left; cursor: pointer; color: var(--ink-faint); transition: color .25s ease;
 }
-.js .meal-card.out { opacity: 0; transform: translateX(calc(var(--dir) * -10px)); }
-.meal-card.instant { transition: none; }
-.meal-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.meal-card-title { display: flex; flex-direction: column; gap: 6px; }
-.meal-when { display: flex; align-items: center; gap: 6px; }
-.meal-time { padding: 1px 6px; margin-left: -7px; color: var(--ink); }
-.meal-name { font: 400 38px/.95 var(--serif); }
-.meal-nav { display: flex; gap: 6px; }
-.round-btn.big { width: 36px; height: 36px; font-size: 15px; }
-.meal-figs { display: flex; align-items: baseline; gap: 8px 28px; flex-wrap: wrap; font-size: 13px; color: var(--ink-soft); }
-.meal-figs b { font: 400 40px/.9 var(--serif); font-variant-numeric: lining-nums tabular-nums; color: var(--ink); margin-right: 6px; }
-.meal-progress { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.bar-block { display: flex; flex-direction: column; gap: 6px; }
-.bar-label { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.bar { position: relative; height: 4px; border-radius: 2px; background: var(--line-soft); overflow: hidden; }
-.bar-before { position: absolute; left: 0; top: 0; bottom: 0; background: color-mix(in srgb, var(--accent) 35%, var(--line-soft)); }
-.bar-now { position: absolute; top: 0; bottom: 0; background: var(--accent); }
-.meal-idea { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
-.meal-focus { font-size: 12px; color: var(--ink-faint); }
-.idea-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.idea-name { font: 600 14.5px/1.3 var(--font); }
-.idea-nums { font-size: 12px; color: var(--ink-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.idea-foods { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; font-size: 13px; color: var(--ink-soft); }
-.idea-foods li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); }
-.idea-foods li span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.course::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--cast);
+  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
+}
+.course:hover { color: var(--ink-soft); }
+.course[aria-selected="true"] { color: var(--ink); }
+.course[aria-selected="true"]::before { transform: scaleX(1); }
+.course:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.course-t { font: 600 11px/1 var(--font); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.course-n { font: 400 25px/1.05 var(--serif); white-space: nowrap; }
+.course[aria-selected="true"] .course-n { font-style: italic; }
+.course-d.new { animation: courseNew 1.4s ease both; }
+@keyframes courseNew { from { color: var(--cast); } }
+.course-d { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; line-height: 1.3; }
+
+/* The open meal: the menu, and the dish set out beside it. */
+.table { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 5fr) minmax(0, 8fr); gap: 0 56px; align-items: start; padding-top: 10px; }
+.menu { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.menu-h { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
+.menu-aim { margin-left: auto; font: 400 12px/1.3 var(--font); color: var(--ink-faint); }
+.dishes { display: flex; flex-direction: column; }
+.dish {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 14px;
+  padding: 7px 0 7px 20px; border: 0; border-radius: 0; background: none; text-align: left; cursor: pointer;
+  color: var(--ink-faint); transition: color .2s ease;
+}
+/* The dish on the day: a bronze stroke before its name. */
+.dish::before {
+  content: ""; position: absolute; left: 0; top: 50%; width: 12px; height: 1.5px; margin-top: -1px; border-radius: 1px; background: var(--cast);
+  transform: scaleX(0); transform-origin: left; transition: transform .4s var(--ease-out);
+}
+.dish[aria-checked="true"]::before { transform: scaleX(1); }
+.dish[aria-checked="true"], .dish.peek, .dish:hover { color: var(--ink); }
+.dish:focus-visible { outline: 2px solid var(--ink); outline-offset: 0; }
+.dish-n { font: 400 23px/1.15 var(--serif); transition: translate .35s var(--ease-out); }
+.dish.peek .dish-n { translate: 5px 0; }
+.dish[aria-checked="true"] .dish-n { font-style: italic; }
+.dish-e { grid-column: 1; grid-row: 2; font-size: 11.5px; line-height: 1.3; color: var(--ink-faint); }
+.dish-f { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-faint); }
+.dish-f i { display: inline-block; min-width: 4ch; margin-left: 10px; text-align: right; font-style: normal; color: var(--cast); }
+
+.serve { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-left: 56px; border-left: 1px solid var(--line-soft); }
+.serve-when { margin: 0; font: italic 400 18px/1.2 var(--serif); color: var(--ink-soft); }
+.serve.peek .serve-when { color: var(--cast); }
+.serve-n { margin: 0; font: italic 400 clamp(44px, 4.5vw, 66px)/.98 var(--serif); letter-spacing: -.015em; color: var(--ink); text-wrap: balance; }
+.serve-f { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 22px; font-size: 13px; color: var(--ink-soft); }
+.serve-f b { margin-right: 5px; font: 400 30px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.serve-aim { font-size: 12px; color: var(--ink-faint); }
+.serve-none { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+/* The ingredients: how much, of what, and what it brings (its calories as a bar, the protein's part of them in bronze). */
+.foods { list-style: none; margin: 6px 0 0; padding: 0; display: grid; grid-template-columns: auto auto minmax(48px, 1fr) auto auto; column-gap: 18px; }
+.food { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: 10px 0 9px; border-top: 1px solid var(--line-soft); }
+.food:last-child { border-bottom: 1px solid var(--line-soft); }
+.food-a { font: 400 25px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; text-align: right; white-space: nowrap; color: var(--cast); }
+.food-n { font: 400 28px/1.05 var(--serif); color: var(--ink); }
+.food-n small { margin-left: 9px; font: italic 400 17px/1 var(--serif); color: var(--ink-faint); }
+.food-b { align-self: center; height: 5px; }
+.food-b i {
+  display: block; height: 100%; width: calc(var(--k) * 100%); min-width: 3px; border-radius: 3px; transform-origin: left;
+  background: linear-gradient(to right, var(--cast) calc(var(--p) * 100%), color-mix(in oklab, var(--ink) 20%, transparent) calc(var(--p) * 100%));
+}
+.food-k, .food-p { font-size: 12.5px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; color: var(--ink-soft); }
+.food-p { min-width: 4ch; color: var(--cast); }
+.serve-key { margin: 2px 0 0; display: flex; align-items: center; justify-content: flex-end; gap: 6px; font-size: 11.5px; color: var(--ink-faint); }
+.serve-key i { width: 14px; height: 5px; border-radius: 3px; }
+.serve-key .key-k { background: color-mix(in oklab, var(--ink) 20%, transparent); }
+.serve-key .key-p { margin-left: 10px; background: var(--cast); }
+.day-caveat { margin: 0; max-width: 150ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-wrap: pretty; }
+
+/* A meal opened deals its menu out, a dish at a time; a dish shown is set out, an ingredient at a time. */
+.atlas[data-shown] .table.deal .dish { animation: dishIn .55s var(--ease-out) both; animation-delay: calc(var(--i) * 36ms); }
+.atlas[data-shown] :is(.table.deal, .serve.deal) :is(.serve-when, .serve-n, .serve-f) { animation: foodIn .5s var(--ease-out) both; }
+.atlas[data-shown] :is(.table.deal, .serve.deal) .food { animation: foodIn .55s var(--ease-out) both; animation-delay: calc(70ms + var(--i) * 60ms); }
+.atlas[data-shown] :is(.table.deal, .serve.deal) .food-b i { animation: barIn .8s var(--ease-out) both; animation-delay: calc(170ms + var(--i) * 60ms); }
+@keyframes dishIn { from { opacity: 0; transform: translateX(-12px); } }
+@keyframes foodIn { from { opacity: 0; transform: translateY(10px); } }
+@keyframes barIn { from { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .dish, .dish *, .serve *, .course::before, .dish::before, .nu-words button::after, .sum-row::before { animation: none !important; transition: none !important; }
+}
 
 /* -------------------------------- week plan -------------------------------- */
 
@@ -2529,10 +2394,6 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .train-totals { padding: 10px 0; }
   .tt-sets { font-size: 36px; }
 }
-@media (max-width: 1179px) {
-  .goals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .goals { padding-bottom: 3.4em; gap: 6px 18px; }
-}
 
 /* ------------------------------ start screen ------------------------------ */
 
@@ -2733,6 +2594,25 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
     left: 0; right: 0; width: auto; top: calc(var(--bar) + 28vh); bottom: 64px;
     padding: 20px 20px 32px;
   }
+  /* The sum on a phone: a line's name over what sets it, its figure beside them. */
+  .sum-row, .sum-row.total { grid-template-columns: minmax(0, 1fr) auto; column-gap: 14px; row-gap: 4px; }
+  .sum-row :is(.sum-l, .sum-c) { grid-column: 1; }
+  .sum-row .sum-c { grid-row: 2; }
+  .sum-row .sum-f { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+  .sum-row.wide .sum-c { grid-column: 1 / -1; }
+  .sum-row::before { display: none; }
+  /* A day of eating on a phone: the courses in a row to swipe, the menu over the dish. */
+  .courses { display: flex; gap: 0 18px; overflow-x: auto; scrollbar-width: none; margin: 0 -20px; padding: 0 20px; }
+  .course { flex: 0 0 auto; min-width: 118px; max-width: 170px; }
+  .table { display: flex; flex-direction: column; gap: 22px; }
+  .menu-aim { margin-left: 0; }
+  .serve { padding: 18px 0 0; border-left: 0; border-top: 1px solid var(--line-soft); }
+  .serve-n { font-size: 40px; }
+  .foods { grid-template-columns: auto minmax(0, 1fr) auto auto; column-gap: 12px; }
+  .food { row-gap: 7px; }
+  .food-a { font-size: 21px; }
+  .food-n { font-size: 23px; }
+  .food-b { grid-column: 1 / -1; grid-row: 2; }
   /* The Measure: the parts stacked in one column under the figure's band. */
   .atlas[data-stage="measure"] .anatomy-stage { height: 52vh; }
   .stage-measure {
@@ -2744,13 +2624,6 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .arm-read { display: flex; padding-top: 24px; border-top: 1px solid var(--line-soft); animation: none !important; }
   .arm-read + .arm-read { margin-top: 28px; }
   .arm-num { font-size: 84px; }
-  .anatomy-stage::after { display: none; }
-  .nu-kcal { font-size: 60px; }
-  .row-toggle { grid-template-columns: 84px minmax(0, 1fr) auto; }
-  .kv > .kv-label { min-width: 100%; }
-  .kv-note { margin-left: 0; }
-  .meal-progress { grid-template-columns: 1fr; }
-  .meal-name { font-size: 32px; }
 
   .stage-plan, .stage-plan:is([data-view="shape"], [data-view="gen"]) {
     left: 0; right: 0; width: auto; top: calc(var(--bar) + 28vh); bottom: 64px;
@@ -2790,7 +2663,7 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
     transform: translate(-50%, 0); transition: opacity .25s ease, visibility 0s;
   }
   .anatomy-stage, .program, .pip span, .tab-line, .stage-nav button::after, .turn button,
-  .meal-card, .stop-dot, .meal-segs .seg, .plan-ghost, .session, .tile, .switch, .switch i { transition: none; }
+  .plan-ghost, .session, .tile, .switch, .switch i { transition: none; }
   .tiles.shuffle :is(.tile-name, .tile-dots, .tile-meta) { animation: none; }
   :is(.stage-targets, .stage-measure) [data-reveal], .atlas[data-shown] :is(.stage-targets, .stage-measure).is-current [data-reveal],
   .atlas:not([data-shown]) :is(.stage-targets, .stage-measure) [data-reveal] { transform: none; filter: none; }
@@ -2801,17 +2674,23 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   .fx-key, .fx-coin, .fx-beads, .fx-arr { transition: none !important; }
 }
 
-/* Nutrition on a short screen: the balance keeps the room. The lede and the
-   standing caveat step out (the estimate tag and "How it's worked out"
-   stay), and the panel beside a pan sets its controls closer. */
+/* Nutrition on a short screen: the lede and the standing notes step out,
+   the lines close up, and nothing scrolls. */
 @media (max-height: 820px) {
-  .atlas[data-layout="desktop"] .nu-plan.scale .nu-lede, .nu-plan.scale .nu-caveat { display: none; }
-  .atlas[data-layout="desktop"] .nu-plan.scale .nu-title { font-size: 34px; }
-  .bal-total-n b { font-size: 40px; }
-  .bal-total { gap: 3px; padding-bottom: 22px; }
-  .nu-panel { gap: 12px 24px; }
-  .nu-fig { font-size: 38px; }
-  .nu-fig.small { font-size: 28px; }
-  .nu-words button { font-size: 21px; padding-bottom: 6px; }
+  .atlas[data-layout="desktop"] :is(.nu-lede, .day-caveat, .serve-key) { display: none; }
+  .atlas[data-layout="desktop"] .nu-plan { gap: 12px; }
+  .atlas[data-layout="desktop"] .nu-title { font-size: 36px; }
+  .atlas[data-layout="desktop"] .sum-row { padding: 6px 0 5px; }
+  .atlas[data-layout="desktop"] .sum-row.total { padding: 9px 0 7px; }
+  .atlas[data-layout="desktop"] .sum-f .big { font-size: 40px; }
+  .atlas[data-layout="desktop"] .day { gap: 10px; }
+  .atlas[data-layout="desktop"] .day-head .display { font-size: 32px; }
+  .atlas[data-layout="desktop"] .course { padding-top: 9px; gap: 2px; }
+  .atlas[data-layout="desktop"] .course-n { font-size: 21px; }
+  .atlas[data-layout="desktop"] .dish { padding-top: 4px; padding-bottom: 4px; }
+  .atlas[data-layout="desktop"] .dish-n { font-size: 20px; }
+  .atlas[data-layout="desktop"] .serve { gap: 6px; }
+  .atlas[data-layout="desktop"] .serve-n { font-size: 44px; }
+  .atlas[data-layout="desktop"] .food { padding: 6px 0 5px; }
+  .atlas[data-layout="desktop"] .food-n { font-size: 24px; }
 }
-.nu-slot { display: contents; }

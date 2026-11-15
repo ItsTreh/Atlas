@@ -157,13 +157,13 @@
   </section>
 
   <!-- =========================== Stage 3: nutrition ======================== -->
-  <!-- Optional. The plan is laid out round a balance (balance.js draws it
-       in the canvas; nutrition-view.js sets it in the plan and draws the
-       rest, and "A day of eating", into the panel). -->
+  <!-- Optional. nutrition-view.js draws the sum, and "A day of eating",
+       into the panel; beside the sum stands a balance (balance.js draws it
+       in the canvas), which only shows what the text says. -->
   <section class="stage stage-nutrition" id="stage-nutrition" data-scroll data-view="plan" aria-labelledby="nutrition-title">
     <div class="nu" id="nutrition-panel"></div>
-    <div class="balance" id="balance">
-      <canvas aria-hidden="true"></canvas>
+    <div class="balance" id="balance" data-reveal="1" aria-hidden="true">
+      <canvas></canvas>
     </div>
   </section>
 

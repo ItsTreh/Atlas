@@ -130,7 +130,7 @@ moved through. The marble is one mesh, one renderer and one material.
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
 | II Measure | an instrument: four rings round the figure, one a fact, each its own metal | the figure in the middle; each ring carries a tag (its name, reading and gauge), and what the ring in hand says goes round the body with it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends on your mark |
-| III Nutrition | a balance in bronze, marble, stone and glaze, and no statue | everything is written on the balance: each side's total over its end of the beam, what a pan holds beside its rim, the goal cut in the plinth | pull a pan down; press a pan (or scroll) and the camera closes on it, with what sets it beside it; last, turn the key that sets it |
+| III Nutrition | a balance in bronze, marble, stone and clay, and no statue; in a day of eating, an urn the day fills | everything is written on the balance: each side's total over its end of the beam, what a pan holds beside its rim, the goal cut in the plinth | pull a pan down; press a pan or its coin (or scroll) and the camera closes on it, with its readings beside it; last, one of two plain answers |
 | IV Week plan | a frieze: seven figures, one a day, each beside its day's hours | the whole week in one row; the settings under it | drag down a day's hours to say when you are busy; the session moves |
 
 How each is built:
@@ -192,18 +192,38 @@ How each is built:
     not shake. All of it shows in the whole shot: nothing waits for a
     zoom. Beside each pan a coin says how to change that side.
   - *Four shots* (`BalanceScene.shotTo`, `nut.shot`): the whole balance;
-    close on what is burned, with You and Training beside it; close on
-    what is eaten, with Targets and Rhythm beside it; and the balance
-    alone, slowly seen round. A press on a pan, the scroll or the footer
+    close on what is burned; close on what is eaten; and the balance
+    alone. A press on a pan, the coin beside it, the scroll or the footer
     goes from one to the next: the camera leaves at once, in one eased
     move (`BalanceScene.TRAVEL`), the words stand back until it lands, and
     only the words round the balance are redrawn. The far side of the
     balance fades out of a close shot. Nothing scrolls, at 760 px tall
     either.
-  - *The key.* The last shot asks "Does it weigh right?" and is confirmed
-    by turning a bronze key under the plinth: the beam is held where it
-    leans, and the page goes on to the week (or says to pick muscles
-    first). The footer's Continue does the same without it.
+  - *Seen whole it stands still.* The beam goes to its lean without
+    swinging and the pointer does not turn the view (the user: the scale
+    "would work better if it's fixed", 3D "works for the zoom"). Seen
+    close the view follows the pointer a little.
+  - *Readings, not a form.* Beside a pan seen close stand its readings,
+    in Measure's type: a name in the bronze, the figure large, coins to
+    step it, a choice as words with the chosen one underlined. The reading
+    in hand makes its piece of the balance pulse (`scales.glow`), as a
+    muscle pointed at does on Targets. The rule the user gave: the data
+    stays text; the visual is there to show what the text changes, never
+    to stand in for it.
+  - *The last shot* asks "Does it weigh right?" and takes one of two plain
+    answers, "It weighs right" (on to the week) or "Weigh it again". (A
+    bronze key to turn was tried and found too much.)
+  - *A day of eating* keeps its text (the day's line of meals, the open
+    meal's figures and example plate) and gains an urn beside it
+    (`dayVessel`, drawn in SVG, so it costs nothing to run): the water
+    stands at what is eaten by the end of the open meal, that meal's part
+    lighter over what was there, a mark a meal with its running total, a
+    slim tube for protein. Pressing or dragging in it goes to the meal at
+    that level; it is poured when the level rises. Every figure it shows
+    is in the text too. The meal is set on the page without a card and the
+    day fits without a scroll. Water was the user's idea for the balance;
+    it is here instead, where a quantity that builds through the day is
+    what is being shown, and the balance keeps its solid weights.
 - **Week plan** (`js/week-view.js`). `plates(list)` on the sculpture draws
   the figure into each day's canvas (no second context, no second copy of
   the model). Beside each stands its day (`.staff`): busy hours, the
@@ -219,8 +239,7 @@ Open, for the user:
   (`SCULPTURE_TECHNIQUES`, `setTechnique`, `setCast`) and
   `tests/sculpture-technique.test.js` tests them. Nothing calls them now:
   to delete, once this direction is accepted.
-- *A day of eating* and *Your week* (the generated calendar) have not been
-  re-imagined yet.
+- *Your week* (the generated calendar) has not been re-imagined yet.
 - The rings, the mark and the balance have no tests of their own beyond
   the mark's seed (`tests/measure.test.js`).
 - The phone keeps plain versions of all three rooms.
