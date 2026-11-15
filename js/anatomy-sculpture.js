@@ -271,6 +271,7 @@ class AnatomySculpture {
     this.mapPresence = 0;
     this.light = [0, 0];                     // the key light's offset, eased toward lightTo (setLight)
     this.sun = null;                         // a key direction the page holds (setSun), over the lamp
+    this.tint = null;                        // the hour's colour on the light, and the sky's haze (setTint)
     this.lightTo = [0, 0];
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
@@ -949,6 +950,20 @@ class AnatomySculpture {
     this.schedule();
   }
 
+  /**
+   * Colours the light, as the hour does on the Week plan: `key` and `fill`
+   * multiply the key light and the ambient and fill (linear RGB, 1 is the
+   * marble's own white light), and `haze` ([r, g, b, amount], linear) draws
+   * the figure toward the sky round its turned edges, so it stands in the
+   * page's air rather than on it. Null gives back the plain light.
+   */
+  setTint(tint) {
+    const flat = t => t ? [...t.key, ...t.fill, ...t.haze].map(v => Math.round(v * 1e4)).join() : "";
+    if (flat(tint) === flat(this.tint)) return;
+    this.tint = tint ? { key: tint.key.slice(0, 3), fill: tint.fill.slice(0, 3), haze: tint.haze.slice(0, 4) } : null;
+    this.schedule();
+  }
+
   /** The key light's direction, in view space: the sun when the page holds one, else the rest key moved by the lamp. */
   keyLight() {
     if (this.sun) return this.sun;
@@ -1035,6 +1050,10 @@ class AnatomySculpture {
     gl.uniform3fv(u.uSelected, c.selected);
     gl.uniform1f(u.uSelectedGain, SCULPTURE_SELECTED_GAIN);
     gl.uniform3fv(u.uKey, this.keyLight());
+    const tint = this.tint;
+    gl.uniform3fv(u.uKeyTint, tint ? tint.key : [1, 1, 1]);
+    gl.uniform3fv(u.uFillTint, tint ? tint.fill : [1, 1, 1]);
+    gl.uniform4fv(u.uHaze, tint ? tint.haze : [0, 0, 0, 0]);
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
     gl.uniform1f(u.uTraceVivid, c.vivid);
@@ -1842,6 +1861,8 @@ uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlow
 uniform float uSelectedGain;
 uniform float uLineWidth;
 uniform vec3 uKey;                       // the key light, in view space (keyLight)
+uniform vec3 uKeyTint, uFillTint;        // the light's colour, linear, 1 for the marble's white (setTint)
+uniform vec4 uHaze;                      // the sky the turned edges go toward, linear, and how far
 uniform vec3 uMin;
 uniform vec2 uTechnique;                 // how far the drawing and the cast have come in (SCULPTURE_TECHNIQUES)
 uniform vec3 uLevels;                    // the cast: its surface, where its hot band begins, the burn mark (heights)
@@ -1881,6 +1902,10 @@ void main() {
   float turn = mix(0.8, 1.0, sqrt(max(n.z, 0.0)));
   float shade = light * turn * mix(1.0, vOcclusion, 0.95);
   vec3 c = vAlbedo * pow(shade, mix(1.0, uSelectedGain, vSelected));
+  // The hour's colour: the key's where the key falls, the sky's elsewhere;
+  // then the air between, strongest where the surface turns away.
+  c *= ((0.2 + 0.12 * sky + 0.12 * f) * uFillTint + 0.74 * k * uKeyTint) / max(light, 1e-3);
+  c = mix(c, uHaze.rgb, uHaze.a * mix(0.55, 1.0, 1.0 - max(n.z, 0.0)));
 
   // Anatomical seams: a thin, darker line where regions meet, the same
   // width on screen at any size.
