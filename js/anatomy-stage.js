@@ -126,6 +126,8 @@ class AnatomyStage {
   setTurn(deg) { if (this.renderer && this.renderer.setTurn) this.renderer.setTurn(deg); }
   /** Holds the key light at a direction in view space (AnatomySculpture.setSun); null gives it back to the lamp. */
   setSun(dir) { if (this.renderer && this.renderer.setSun) this.renderer.setSun(dir); }
+  /** Colours the light with the hour (AnatomySculpture.setTint); null for the plain light. */
+  setTint(tint) { if (this.renderer && this.renderer.setTint) this.renderer.setTint(tint); }
   /** Moves the sculpture's key light, -1 … 1 across and up; 0, 0 at rest (a flat figure has none). */
   setLight(x, y) { if (this.renderer && this.renderer.setLight) this.renderer.setLight(x, y); }
 }

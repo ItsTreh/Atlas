@@ -53,19 +53,38 @@ const LM_EXP = { beginner: ["Under 6 months", "under six months"], intermediate:
 /* The week's terms, each a word of the sentence, and the routine's value it sets. */
 const LM_TERMS = { days: "sessionsPerWeek", len: "sessionMinutes", win: "preferredWindow", split: "split", exp: "experience" };
 
-/* The sky by hour: the ground, the glow round the sun, the cooler light across from it. */
+/*
+ * The sky by hour, at the hours whose light people know: dawn, sunrise,
+ * morning, noon, afternoon, the golden hour, sunset, dusk, night and
+ * midnight. Each is the ground of the page, the glow round the sun, the
+ * cooler light across from it, and the sun itself, which becomes a pale
+ * moon after dusk. Morning is clear and cool-gold, evening amber to coral,
+ * so the two halves of the day no longer read alike; noon is the flattest
+ * and whitest. The light theme's ground stays light enough at night for
+ * the faint ink to keep 4.5:1.
+ */
 const LM_SKY = {
   light: {
-    base: [[6, "#eaecf0"], [9, "#f0efe9"], [13, "#f4f1ea"], [17, "#f4eee3"], [20, "#f1e7e2"], [24, "#e5e5ec"]],
-    glow: [[6, "#f3d6c8"], [9, "#f6e6c5"], [13, "#f9f0dc"], [17, "#f5d5a5"], [20, "#efbea7"], [24, "#dccfe0"]],
-    far:  [[6, "#d9e0ef"], [9, "#dfe8ed"], [13, "#ece8df"], [17, "#e9e0d2"], [20, "#d9d6ea"], [24, "#d3d8e8"]]
+    base: [[6, "#e6e5ee"], [7.5, "#ece8e6"], [9, "#eff0ec"], [12, "#f6f4ef"], [15, "#f6f1e5"], [17.5, "#f4e8d6"], [19, "#f2e0d7"], [20.5, "#e9e4ee"], [22, "#e4e6ef"], [24, "#e4e6f0"]],
+    glow: [[6, "#f0c9c0"], [7.5, "#f5d2b0"], [9, "#f4e7c0"], [12, "#fbf6e6"], [15, "#f7e3b3"], [17.5, "#f3c486"], [19, "#eca48c"], [20.5, "#d9b5cc"], [22, "#cbc9e2"], [24, "#c6c9e2"]],
+    far:  [[6, "#d4dcee"], [7.5, "#d8e2f0"], [9, "#d5e4f0"], [12, "#e6edf0"], [15, "#e6e5dd"], [17.5, "#e3d8d0"], [19, "#dcd2e3"], [20.5, "#d2d8ec"], [22, "#cfd7ea"], [24, "#ccd5ea"]],
+    sun:  [[6, "#e3907c"], [7.5, "#e9a25c"], [9, "#e2b84e"], [12, "#e2bd52"], [15, "#dca545"], [17.5, "#dc8a35"], [19, "#d66a52"], [20.5, "#a985b5"], [22, "#93a3d0"], [24, "#a4b1d8"]]
   },
   dark: {
-    base: [[6, "#121419"], [9, "#14140f"], [13, "#15130f"], [17, "#16120d"], [20, "#151016"], [24, "#0d0e15"]],
-    glow: [[6, "#3a2a2d"], [9, "#35301d"], [13, "#2c2819"], [17, "#3e2a14"], [20, "#43231f"], [24, "#282034"]],
-    far:  [[6, "#141b2c"], [9, "#121a1f"], [13, "#1a1813"], [17, "#1b1612"], [20, "#19142d"], [24, "#0b1023"]]
+    base: [[6, "#13141b"], [7.5, "#16141a"], [9, "#15161a"], [12, "#171612"], [15, "#18150f"], [17.5, "#1a140e"], [19, "#1a1012"], [20.5, "#141019"], [22, "#0f1018"], [24, "#0b0d16"]],
+    glow: [[6, "#3b2629"], [7.5, "#3e2c1f"], [9, "#35321e"], [12, "#33301f"], [15, "#3b301a"], [17.5, "#452c14"], [19, "#48231e"], [20.5, "#33213a"], [22, "#232540"], [24, "#1d2038"]],
+    far:  [[6, "#141a2b"], [7.5, "#151c2a"], [9, "#122028"], [12, "#1a1b19"], [15, "#1b1914"], [17.5, "#1d1713"], [19, "#1c1426"], [20.5, "#161632"], [22, "#0d1330"], [24, "#0a1028"]],
+    sun:  [[6, "#e0907c"], [7.5, "#e8a25e"], [9, "#e6c062"], [12, "#f0d27e"], [15, "#eab456"], [17.5, "#e8913c"], [19, "#e0705a"], [20.5, "#b58ad0"], [22, "#a9b6e6"], [24, "#b8c4ea"]]
   }
 };
+/*
+ * The figure in the hour's light (setTint): how much of the glow's hue the
+ * key takes and of the far light's the shade, how strong the key is as the
+ * day goes, and how far its turned edges go toward the page's ground.
+ * Enough to stand the marble in the hour, never to dye it.
+ */
+const LM_TINT = { light: { key: .6, fill: .65, haze: .1 }, dark: { key: .45, fill: .45, haze: .1 } };
+const LM_KEY = [[6, .86], [9, .97], [13, 1], [17, .97], [20, .9], [24, .8]];
 /* The day's word under the figure: how strongly it shows with a session's hues, and without. */
 const LM_WORD = { light: { hue: .2, ink: .09 }, dark: { hue: .24, ink: .1 } };
 
@@ -760,24 +779,42 @@ function lmSkyFrame(dt) {
     const x = lm.hoverDay && bd[lm.hoverDay];
     if (x) { const i = D.indexOf(lm.hoverDay), hm = x.start + x.hours / 2, t = ang(hm); tg.g = lmSkyAt(T.glow, hm); tg.gp = [WX + COL / 2 + COL * i + Math.cos(t) * WR, WY + Math.sin(t) * WR, 520]; tg.gA = 1; }
     else { tg.g = lm.sky ? lm.sky.g : lmSkyAt(T.glow, 13); tg.gp = lm.sky ? lm.sky.gp : [720, 300, 520]; tg.gA = 0; }
-    tg.f = lmSkyAt(T.far, 13); tg.fp = [720, 820, 900]; tg.fA = 0.35;
+    tg.f = lmSkyAt(T.far, 13); tg.fp = [720, 820, 900]; tg.fA = 0.35; tg.s = lm.sky ? lm.sky.s : lmSkyAt(T.sun, 13);
   } else {
     const b = lmSkyAt(T.base, H), t = ang(H); tg.cols = D.map(() => b);
     tg.g = lmSkyAt(T.glow, H); tg.gp = [CX + Math.cos(t) * R, CY + Math.sin(t) * R, 800]; tg.gA = 1;
     tg.f = lmSkyAt(T.far, H); tg.fp = [CX - Math.cos(t) * R * 1.15, CY + Math.sin(t) * R * 0.6 - 40, 860]; tg.fA = 0.8;
+    tg.s = lmSkyAt(T.sun, H);
   }
   if (!lm.sky) lm.sky = JSON.parse(JSON.stringify(tg));
   const e = Stages.still ? 1 : 1 - Math.exp(-dt * 3), L = (a, b) => a + (b - a) * e, LA = (a, b) => a.map((v, i) => L(v, b[i])), k = lm.sky;
-  k.cols = k.cols.map((c, i) => LA(c, tg.cols[i])); k.g = LA(k.g, tg.g); k.gp = LA(k.gp, tg.gp); k.gA = L(k.gA, tg.gA); k.f = LA(k.f, tg.f); k.fp = LA(k.fp, tg.fp); k.fA = L(k.fA, tg.fA);
+  k.cols = k.cols.map((c, i) => LA(c, tg.cols[i])); k.g = LA(k.g, tg.g); k.gp = LA(k.gp, tg.gp); k.gA = L(k.gA, tg.gA); k.f = LA(k.f, tg.f); k.fp = LA(k.fp, tg.fp); k.fA = L(k.fA, tg.fA); k.s = LA(k.s, tg.s);
   const K = lm.k, px = v => Math.round(v) + "px";
   const rgb = c => "rgb(" + c.map(v => Math.round(v)).join(",") + ")", rgba = (c, a) => "rgba(" + c.map(v => Math.round(v)).join(",") + "," + Math.max(0, a).toFixed(3) + ")";
   const rad = (c, a, p, sq) => "radial-gradient(" + px(p[2] * K) + " " + px(p[2] * sq * K) + " at " + px(lm.ox + p[0] * K) + " " + px(lm.oy + p[1] * K) + ", " + rgba(c, a) + " 0%, " + rgba(c, a * 0.5) + " 38%, " + rgba(c, 0) + " 100%)";
   const css = rad(k.g, k.gA, k.gp, 0.78) + ", " + rad(k.f, k.fA, k.fp, 0.7) + ", linear-gradient(90deg, " + k.cols.map((c, i) => rgb(c) + " " + px(lm.ox + (WX + COL / 2 + COL * i) * K)).join(", ") + ")";
+  lmTint(k, theme, F.wg ? 13 : H);
   if (css === lm.css) return;
   lm.css = css;
   lmSkyEl.firstChild.style.background = css;
   const hex = "#" + k.cols[3].map(v => Math.round(v).toString(16).padStart(2, "0")).join("");
   if (hex !== lm.bg) { lm.bg = hex; Stages.root.style.setProperty("--bg", hex); }
+  const sun = rgb(k.s);
+  if (sun !== lm.sunCol) { lm.sunCol = sun; Stages.root.style.setProperty("--lm-sun", sun); }
+}
+
+/**
+ * The figure takes the hour's light: the key the glow's hue, the shade the
+ * far light's, the key as strong as the hour allows, and its turned edges
+ * the ground's colour (AnatomySculpture.setTint). `k` is the eased sky.
+ */
+function lmTint(k, theme, h) {
+  if (typeof figure !== "object" || Stages.current !== "plan") return;
+  const P = LM_TINT[theme], lin = c => c.map(v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  const hue = (c, w) => { const l = lin(c), m = Math.max(...l, 1e-4); return l.map(v => 1 + (v / m - 1) * w); };
+  let i = 0; while (i < LM_KEY.length - 2 && h > LM_KEY[i + 1][0]) i++;
+  const a = LM_KEY[i], b = LM_KEY[i + 1], t = Math.max(0, Math.min(1, (h - a[0]) / (b[0] - a[0]))), strength = a[1] + (b[1] - a[1]) * t;
+  figure.setTint({ key: hue(k.g, P.key).map(v => v * strength), fill: hue(k.f, P.fill), haze: [...lin(k.cols[3]), P.haze] });
 }
 
 /* -------------------------------- each frame -------------------------------- */
@@ -842,8 +879,8 @@ function lmLoop(now) {
     if (!lm.leftAt) lm.leftAt = now;
     if (now - lm.leftAt > 900) {
       lm.leftAt = 0; lm.lt = 0;
-      Stages.root.style.removeProperty("--bg"); lm.bg = ""; lm.css = "";
-      if (typeof figure === "object" && figure.setSun) figure.setSun(null);
+      Stages.root.style.removeProperty("--bg"); Stages.root.style.removeProperty("--lm-sun"); lm.bg = ""; lm.css = ""; lm.sunCol = "";
+      if (typeof figure === "object") { figure.setSun(null); figure.setTint(null); }
       lmWordEl.removeAttribute("style"); lm.ws = "";
       return;
     }
