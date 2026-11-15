@@ -164,8 +164,8 @@
   </section>
 
   <!-- =========================== Stage 4: week plan ======================== -->
-  <!-- Fit it into your life, Shape your week, and Your week: week-view.js
-       draws whichever is open into the panel. -->
+  <!-- The day as a ring of hours round the figure, a day at a time, then
+       the week: week-view.js sets it on a plate, the ring behind the figure. -->
   <section class="stage stage-plan" id="stage-plan" data-scroll data-view="config" aria-labelledby="plan-title">
     <div class="wk" id="week-panel"></div>
   </section>
@@ -179,6 +179,8 @@
     <nav class="foot-dots" id="foot-dots" aria-label="Stages"></nav>
     <!-- Nutrition's day: the meals on the hours, a bead each (nutrition-view.js). -->
     <nav class="foot-day" id="foot-day" aria-label="The day's meals" hidden></nav>
+    <!-- The Week plan's index: a small sun a day, and the week (week-view.js). -->
+    <nav class="foot-week" id="foot-week" aria-label="The week's days" hidden></nav>
     <div class="foot-end">
       <button type="button" class="quiet-btn" id="foot-skip" hidden></button>
       <span class="foot-hint" id="foot-hint"></span>
@@ -253,7 +255,6 @@
 <script src="js/measure-view.js"></script>
 <script src="js/nutrition-view.js"></script>
 <script src="js/week-view.js"></script>
-<script src="js/paint.js"></script>
 <script src="js/start.js"></script>
 <script src="js/app.js"></script>
 </body>

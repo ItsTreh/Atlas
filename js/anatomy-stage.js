@@ -118,14 +118,14 @@ class AnatomyStage {
   setHighlight(ids) { this.state.highlight = ids; if (this.renderer && this.renderer.setHighlight) this.renderer.setHighlight(ids); }
   setDim(v) { this.state.dim = v; if (this.renderer && this.renderer.setDim) this.renderer.setDim(v); }
   setLayout(mode) { this.state.layout = mode; if (this.renderer && this.renderer.setLayout) this.renderer.setLayout(mode); }
-  /** Draws plates of the frieze into 2D canvases (AnatomySculpture.plates); false where it cannot. */
-  plates(list) { return !!(this.renderer && this.renderer.plates) && this.renderer.plates(list); }
   /** Where the figure's axis lies on the stage at a share of its height, in CSS px; null without a camera. */
   axisPoint(t) { return this.renderer && this.renderer.axisPoint ? this.renderer.axisPoint(t) : null; }
   /** Stands the figure at a place on the stage each frame (AnatomySculpture.standAt); a flat figure does not move. */
   standAt(at) { if (this.renderer && this.renderer.standAt) this.renderer.standAt(at); }
   /** Turns the sculpture a few degrees off its shot (AnatomySculpture.setTurn); a flat figure does not turn. */
   setTurn(deg) { if (this.renderer && this.renderer.setTurn) this.renderer.setTurn(deg); }
+  /** Holds the key light at a direction in view space (AnatomySculpture.setSun); null gives it back to the lamp. */
+  setSun(dir) { if (this.renderer && this.renderer.setSun) this.renderer.setSun(dir); }
   /** Moves the sculpture's key light, -1 … 1 across and up; 0, 0 at rest (a flat figure has none). */
   setLight(x, y) { if (this.renderer && this.renderer.setLight) this.renderer.setLight(x, y); }
 }

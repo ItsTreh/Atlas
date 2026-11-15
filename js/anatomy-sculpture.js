@@ -11,10 +11,9 @@
    interface, and a single camera moves between named shots
    (SCULPTURE_SHOTS): the whole figure, centred, for Targets; the whole
    figure on the left for Nutrition, where it is the measure the bronze is
-   read against; a three-quarter close-up of the upper body, on the right,
-   for the Week plan. Each stage also shows it by its own hand
-   (SCULPTURE_TECHNIQUES): marble, a drawing, a cast; and the Week plan
-   draws it seven times over, a plate a day (plates). Before them, the start screen
+   read against; the whole figure standing in the ring of the day's hours
+   for the Week plan (week-view.js, standAt). Each stage also shows it by its own hand
+   (SCULPTURE_TECHNIQUES): marble, a drawing, a cast. Before them, the start screen
    (start.js) opens on one of five shots of its own and carries the camera
    from there to the stage's shot (scrubShot). Motion helps the user understand
    where they are going and stillness helps them concentrate, so the camera
@@ -95,8 +94,6 @@ const SCULPTURE_SHOTS = {
   // The cast: the whole figure, since the bronze is read against its height.
   "nutrition":         { az: -16, el: 3,   ty: 80,  d: 585, sx: .225, sy: .50, fov: 20 },
   "plan":              { az: 36,  el: -7,  ty: 116, d: 270, sx: .75, sy: .50,  fov: 20 },
-  "plan-availability": { az: 36,  el: -7,  ty: 110, d: 460, sx: .98, sy: .42,  fov: 20 },
-  "plan-generated":    { az: 36,  el: -7,  ty: 118, d: 330, sx: .85, sy: .43,  fov: 20 },
   // The start screen's openings (start.js), one per variant.
   "start-cinematic":   { az: -16, el: -16, ty: 114, d: 310, sx: .30, sy: .50,  fov: 20 },
   "start-torso":       { az: 6,   el: 4,   ty: 142, d: 230, sx: .50, sy: .86,  fov: 20 },
@@ -115,9 +112,7 @@ const SCULPTURE_WIDE = 1.6;
 const SCULPTURE_MOBILE = {
   "targets":   { d: 1.02 },
   "nutrition": { d: 1.15 },
-  "plan":      { d: 1.15, ty: 122 },
-  "plan-generated": { d: 1.25, ty: 122 },
-  "plan-availability": { d: 1.15, ty: 122 }
+  "plan":      { d: 1.15, ty: 122 }
 };
 
 /* How the camera moves between shots, in ms: longer the further round the
@@ -195,8 +190,6 @@ const SCULPTURE_TINTED = ["push", "pull", "legs", "core"];
    `pour` and `slosh` how the bronze finds its level, all in ms. */
 const SCULPTURE_TECHNIQUES = { marble: [0, 0], drawing: [1, 0], cast: [0, 1] };
 const SCULPTURE_TECHNIQUE_MS = { draw: 1500, cast: 500, pour: 520, slosh: 1100 };
-/* A plate of the frieze (plates): the whole figure, upright, in a tall frame. */
-const SCULPTURE_PLATE_SHOT = { az: 0, el: 2, ty: 80, d: 505, sx: .5, sy: .5, fov: 20 };
 
 /* What the shaders know about each region and each flow guide, as rows of a
    float texture: one RGBA texel per region (or guide) in each row, read with
@@ -277,6 +270,7 @@ class AnatomySculpture {
     this.detailMode = !!opts.detailMode;     // training groups by default; precise picking is retained
     this.mapPresence = 0;
     this.light = [0, 0];                     // the key light's offset, eased toward lightTo (setLight)
+    this.sun = null;                         // a key direction the page holds (setSun), over the lamp
     this.lightTo = [0, 0];
     this.mapPointer = [0, 0];
     this.mapInfluence = 0;
@@ -943,8 +937,21 @@ class AnatomySculpture {
     this.schedule();
   }
 
-  /** The key light's direction, in view space: the rest key moved by the lamp. */
+  /**
+   * Holds the key light at a direction the page gives, in view space (x to
+   * the right, y up, z toward the eye): the sun standing on the Week plan's
+   * ring of hours. The page eases it; null gives the light back to the lamp.
+   */
+  setSun(dir) {
+    const next = dir ? dir.slice(0, 3) : null;
+    if (next === this.sun || (next && this.sun && next.every((v, i) => Math.abs(v - this.sun[i]) < 1e-4))) return;
+    this.sun = next;
+    this.schedule();
+  }
+
+  /** The key light's direction, in view space: the sun when the page holds one, else the rest key moved by the lamp. */
   keyLight() {
+    if (this.sun) return this.sun;
     const { key, reach } = SCULPTURE_LIGHT;
     return [key[0] + this.light[0] * reach[0], key[1] + this.light[1] * reach[1], key[2]];
   }
@@ -1008,52 +1015,14 @@ class AnatomySculpture {
     return moving || c.level !== c.to || c.hot !== c.hotTo || c.slosh > 0;
   }
 
-  /**
-   * Draws the figure into 2D canvases, one each: a plate of the frieze, lit
-   * and tinted where its muscles train. `list` is [{ canvas, ids, az }]:
-   * the canvas at its backing size, the muscle ids, and how far round the
-   * figure stands. Each is drawn in the sculpture's own canvas and copied
-   * out, then the stage is drawn again, all before the browser paints.
-   * False when there is nothing to draw with yet.
-   */
-  plates(list) {
-    if (!this.ready || !this.size) return false;
-    for (const plate of list) {
-      const w = Math.min(plate.canvas.width, this.canvas.width), h = Math.min(plate.canvas.height, this.canvas.height);
-      if (!w || !h) continue;
-      this.draw({ w, h, ids: new Set(plate.ids || []), az: plate.az || 0 });
-      const ctx = plate.canvas.getContext("2d");
-      ctx.clearRect(0, 0, plate.canvas.width, plate.canvas.height);
-      ctx.drawImage(this.canvas, 0, this.canvas.height - h, w, h, 0, 0, plate.canvas.width, plate.canvas.height);
-    }
-    this.draw();
-    return true;
-  }
-
-  /** A plate's per-region rows: its muscles lit, drawn in and tinted; everything else at rest. */
-  plateRows(ids) {
-    const n = this.model.regions.length;
-    const rows = this.plateBuffer || (this.plateBuffer = {
-      state: new Float32Array(n * 4), map: new Float32Array(n * 3), tint: new Float32Array(n), reveal: new Float32Array(n).fill(1)
-    });
-    for (let r = 0; r < n; r++) {
-      const id = this.muscleOf[r], on = id && ids.has(id) ? 1 : 0;
-      rows.state.set([SCULPTURE_TONE.highlight * on, 0, this.isForm[r] ? 1 : 0, SCULPTURE_TONE.highlightDepth * on], r * 4);
-      rows.map.set([0, 0, on], r * 3);
-      rows.tint[r] = on;
-    }
-    return rows;
-  }
-
   /* -------------------------------- drawing ------------------------------- */
 
-  /** Draws the stage, or with `plate` ({ w, h, ids, az }, device px) one plate of the frieze into its corner. */
-  draw(plate = null) {
+  /** Draws the stage. */
+  draw() {
     if (!this.ready || !this.size) return;
     const gl = this.gl, dpr = this.dpr;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    if (plate) gl.viewport(0, 0, plate.w, plate.h);
-    else gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+    gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
@@ -1069,13 +1038,11 @@ class AnatomySculpture {
     gl.uniform3fv(u.uInk, c.ink);
     gl.uniform3fv(u.uMapInk, c.mapInk);
     gl.uniform1f(u.uTraceVivid, c.vivid);
-    gl.uniform1f(u.uBorder, this.interactive && !plate ? 1 : 0);
-    gl.uniform1f(u.uTraceScale, plate ? 0.7 : this.traceScale());
-    this.uploadData(plate && this.plateRows(plate.ids));
-    // The technique: a plate is always the marble.
+    gl.uniform1f(u.uBorder, this.interactive ? 1 : 0);
+    gl.uniform1f(u.uTraceScale, this.traceScale());
+    this.uploadData();
     const k = this.castOf, { min, max } = this.model.bounds, tall = max[1] - min[1];
-    gl.uniform1f(u.uPlate, plate ? 1 : 0);
-    gl.uniform2f(u.uTechnique, plate ? 0 : this.tech[0], plate ? 0 : this.tech[1]);
+    gl.uniform2f(u.uTechnique, this.tech[0], this.tech[1]);
     gl.uniform3f(u.uLevels, min[1] + k.level * tall, min[1] + k.hot * tall, min[1] + k.mark * tall);
     gl.uniform2f(u.uSlosh, k.slosh, k.time);
     gl.uniform1f(u.uChalk, c.ink[0] + c.ink[1] + c.ink[2] > 1.5 ? 1 : 0);
@@ -1091,15 +1058,11 @@ class AnatomySculpture {
     gl.uniform1f(u.uDpr, this.dpr);
     gl.uniform1f(u.uLineWidth, Math.max(1, 0.75 * dpr));
     gl.bindVertexArray(this.vao);
-    const P = SCULPTURE_PLATE_SHOT;
-    const cam = plate
-      ? this.camera({ ...P, az: plate.az, ty: P.ty * this.scale, d: P.d * this.scale }, { cw: plate.w, ch: plate.h })
-      : this.camera(this.live());
+    const cam = this.camera(this.live());
     gl.uniformMatrix4fv(u.uMatrix, false, cam.matrix);
     gl.uniformMatrix3fv(u.uNormal, false, cam.normal);
     gl.drawElements(gl.TRIANGLES, this.model.indexCount, this.indexType, 0);
     gl.bindVertexArray(null);
-    if (plate) return;
     // Surface traces share the sculpture's material, lighting and exact depth.
     this.drawAnnotation();
     if (this.onFrame) this.onFrame();
@@ -1224,12 +1187,12 @@ class AnatomySculpture {
    * and hues only after initGL or a theme change (readColors) has marked
    * them stale.
    */
-  uploadData(plate = null) {
+  uploadData() {
     const gl = this.gl, d = this.data, R = SCULPTURE_DATA_ROWS, w = d.width, t = d.texels;
-    writeSculptureData(t, w, R.state, plate ? plate.state : this.regionStates(this.view.id), 4);
-    writeSculptureData(t, w, R.map, plate ? plate.map : this.shown || this.targets(), 3);
-    writeSculptureData(t, w, R.map, plate ? plate.tint : this.tintShown || this.tintTargets(), 1, 3);
-    writeSculptureData(t, w, R.reveal, plate ? plate.reveal : this.revealShown(), 1);
+    writeSculptureData(t, w, R.state, this.regionStates(this.view.id), 4);
+    writeSculptureData(t, w, R.map, this.shown || this.targets(), 3);
+    writeSculptureData(t, w, R.map, this.tintShown || this.tintTargets(), 1, 3);
+    writeSculptureData(t, w, R.reveal, this.revealShown(), 1);
     if (!d.fresh) {
       writeSculptureData(t, w, R.center, this.flowFrames.centers, 4);
       writeSculptureData(t, w, R.axis, this.flowFrames.axes, 4);
@@ -1880,7 +1843,6 @@ uniform float uSelectedGain;
 uniform float uLineWidth;
 uniform vec3 uKey;                       // the key light, in view space (keyLight)
 uniform vec3 uMin;
-uniform float uPlate;                    // 1 for a plate of the frieze: lit muscles take a wash of their hue
 uniform vec2 uTechnique;                 // how far the drawing and the cast have come in (SCULPTURE_TECHNIQUES)
 uniform vec3 uLevels;                    // the cast: its surface, where its hot band begins, the burn mark (heights)
 uniform vec2 uSlosh;                     // the wave on its surface: its size, 0 … 1, and its time, s
@@ -2069,8 +2031,6 @@ void main() {
   float ring = (1.0 - smoothstep(2.4 * uLineWidth - 0.6, 2.4 * uLineWidth + 0.6, px)) *
                (1.0 - smoothstep(0.5, 0.8, vSeam)) * vFocus;
   c = mix(c, toLinear(uInk), ring);
-  // A plate of the frieze is small: its muscles also take a wash of their hue.
-  c = mix(c, ink, uPlate * lit * 0.42);
   }
 
   float alpha = 1.0;
