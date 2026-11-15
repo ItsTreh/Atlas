@@ -1750,6 +1750,16 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 .atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
 
+/* On the generated week, the day pointed at is named under its column, in
+   the ghost word's hand (week-view.js, lmDayWord sets its place, size and tint). */
+.lm-dayword {
+  position: absolute; left: 0; top: 0; z-index: 2; opacity: 0; pointer-events: none; white-space: nowrap;
+  transform: translateX(-50%); font: italic 400 120px/1 var(--serif); letter-spacing: -.025em;
+  transition: opacity .35s ease, left .45s var(--ease-out), top .45s var(--ease-out), font-size .45s var(--ease-out);
+}
+.lm-dayword i { display: inline-block; font-style: inherit; }
+.lm-dayword.swap i { animation: ghostIn .9s var(--ease-out) both; animation-delay: calc(var(--j) * 26ms); }
+
 /* The week's index in the footer: a small sun a day, and the week. */
 .foot-week { grid-column: 2; grid-row: 1; position: relative; width: 350px; height: 52px; pointer-events: auto; }
 .atlas:not([data-stage="plan"]) .foot-week { display: none; }
@@ -1761,6 +1771,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .foot-week span { font-size: 10px; line-height: 1; letter-spacing: .04em; transition: color .3s ease; }
 @media (prefers-reduced-motion: reduce) {
   .wk *, .lm-sky, .lm-arc, .lm-arc *, .foot-week * { transition: none !important; }
+  .lm-dayword.swap i { animation: none; }
 }
 
 /* ------------------------------ mid widths -------------------------------- */

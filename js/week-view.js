@@ -370,7 +370,7 @@ function lmTemplate() {
   const off = !!(fd && routine.offDays.has(fd));
   const shown = hm ? [hm] : all;
   lm.F = { ids: all, pointed: hm, fams: fx ? fx.fams : [], off, behind: shown.filter(id => LM_BEHIND.has(id)).length * 2 >= shown.length && shown.length > 0,
-           word: fd ? DayOfWeek.name[fd] : null, meta: fx ? fx.name + " · " + lmPad(fx.start) + ":00–" + lmPad(fx.end) + ":00" : off ? "Off" : "Rest",
+           word: fd && !wg ? DayOfWeek.name[fd] : null, meta: fx ? fx.name + " · " + lmPad(fx.start) + ":00–" + lmPad(fx.end) + ":00" : off ? "Off" : "Rest",
            hour: fx ? fx.start + fx.hours / 2 : 13, sun: !isWeek, wg };
 
   const kc = l => lm.keyHot === l ? "var(--ink)" : "var(--ink-soft)";
@@ -653,12 +653,16 @@ function lmTemplate() {
             '<div style="display:flex; flex-direction:column; gap:6px; opacity:' + (wkIn ? 1 : 0) + '; transform:' + (wkIn ? "none" : "translateY(10px)") + '; transition:opacity .8s ease ' + (0.15 + j * 0.07).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.15 + j * 0.07).toFixed(2) + 's">' +
               '<span style="font:400 42px/.9 var(--serif); font-variant-numeric:lining-nums; color:var(--ink); white-space:nowrap">' + num + '</span>' +
               '<span style="font-size:11.5px; line-height:1.2; color:var(--ink-faint); white-space:nowrap">' + label + '</span></div>').join("") + '</div>' +
-          '<p style="margin:0; font-size:12px; color:var(--ink-faint)">Estimate. Point at a day to see it on the body; click to open it.</p>' +
+          '<p style="margin:0; font-size:12px; color:var(--ink-faint)">Estimate. Point at a day to see its name; click to open it.</p>' +
         '</div>' +
       '</div>' +
       '<div data-lm-cols style="position:relative; margin-top:24px; display:grid; grid-template-columns:repeat(7, 192px)">' +
         '<div style="position:absolute; left:0; right:0; top:96px; height:1px; background:var(--line); transform-origin:left center; transform:' + (wkIn ? "scaleX(1)" : "scaleX(0)") + '; transition:transform 1.6s cubic-bezier(.16,1,.3,1)"></div>' +
         cols +
+        // The day pointed at, named under its column (placed by lmDayWord once drawn).
+        (() => { const d = lm.hoverDay, x = d && W.byDay[d];
+          return '<div class="lm-dayword" data-lm-dayword data-p aria-hidden="true" data-word="' + (d || "") + '" data-fam="' + (x ? lmFam(x) : "") + '">' +
+            (d ? [...DayOfWeek.name[d]].map((c, j) => '<i style="--j:' + j + '">' + c + '</i>').join("") : "") + '</div>'; })() +
       '</div>' +
       '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="lm-soft-s" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="5"></feGaussianBlur></filter></defs></svg>' +
     '</div>';
@@ -726,8 +730,38 @@ function renderWeek() {
   // The day's name, very large and quiet behind the figure: Targets' ghost word (targets.js), woven through the legs.
   if (Stages.current === "plan") ghost(lm.F.word, lm.F.fams[0] || "", lm.F.word ? lm.F.meta : "");
   lm.needleEl = null;
+  if (wg) lmDayWord();
   if (lm.scrubH != null && lm.step < 7) lmNeedle(lm.scrubH);
   Stages.refresh();
+}
+
+/**
+ * Names the day pointed at on the generated week under its column, in the
+ * ghost word's hand (Targets' tint and arrival): as large as the space
+ * under the day's exercises allows, centred on the column, and gone when
+ * nothing is pointed at. Measured once drawn, since a column's list
+ * decides where it can stand.
+ */
+function lmDayWord() {
+  const el = lmStage.querySelector("[data-lm-dayword]"), d = el && el.dataset.word;
+  if (!el) return;
+  if (!d) { el.style.opacity = "0"; lm.dw = ""; return; }
+  const col = lmStage.querySelector('[data-lm-col="' + d + '"]'), body = col && col.lastElementChild;
+  if (!col || !body) return;
+  const L = DayOfWeek.name[d].length, under = col.offsetTop + body.offsetTop + body.offsetHeight;
+  // The column ends 540 down; the word may reach a little past it, its tails short of the footer's index.
+  const FLOOR = 548, room = FLOOR - under - 10, size = Math.max(44, Math.min(150, room / 0.92, 400 / (0.43 * L)));
+  const fam = el.dataset.fam;
+  // Shown afresh it appears where it stands; from one day to the next it travels.
+  el.style.transition = lm.dw ? "" : "opacity .35s ease";
+  // Centred on its column, but kept within the week's width (the first and last days).
+  const half = 0.45 * L * size / 2, span = 7 * LM.COL;
+  el.style.left = Math.max(half, Math.min(span - half, col.offsetLeft + col.offsetWidth / 2)) + "px";
+  el.style.top = (FLOOR - size * 0.92) + "px";
+  el.style.fontSize = size.toFixed(1) + "px";
+  el.style.color = fam ? "color-mix(in srgb, var(--" + fam + ") 22%, var(--bg))" : "color-mix(in srgb, var(--ink) 10%, var(--bg))";
+  el.style.opacity = "1";
+  if (lm.dw !== d) { lm.dw = d; el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); }
 }
 
 /** Fits the 1440 × 900 plate to the screen, centred. */
@@ -836,13 +870,10 @@ function lmFrame(now) {
   const flow = lmArcEl.querySelector("[data-lm-flow]");
   if (flow && !still) flow.setAttribute("patternTransform", "rotate(45) translate(" + ((now / 1000 * 3.2) % 7).toFixed(2) + " 0)");
 
-  // The figure stands on the ring's centre; on the generated week it steps behind the day pointed at, and leaves when nothing is.
-  const D = DayOfWeek.values, hi = F.wg && lm.hoverDay ? D.indexOf(lm.hoverDay) : -1;
-  const ax = F.wg ? (hi >= 0 ? LM.WX + LM.COL / 2 + LM.COL * hi : lm.aimX) : LM.CX;
-  lm.aimX = lm.aimX == null || still ? ax : lm.aimX + (ax - lm.aimX) * (1 - Math.exp(-dt * (F.wg && lm.figOp > 0.05 ? 4.5 : 2.6)));
-  if (F.wg && hi >= 0 && lm.figOp < 0.03) lm.aimX = ax;
+  // The figure stands on the ring's centre; the generated week has the screen to itself.
+  lm.aimX = LM.CX;
   const flat = typeof figure !== "object" || !figure.moves;
-  const opT = !here || Stages.narrow || flat ? 0 : F.wg ? (hi >= 0 ? (lmDark() ? 0.34 : 0.3) : 0) : 1;
+  const opT = !here || Stages.narrow || flat || F.wg ? 0 : 1;
   lm.figOp = still ? opT : lm.figOp + (opT - lm.figOp) * (1 - Math.exp(-dt * 2.2));
   if (Math.abs(lm.figOp - opT) < 0.004) lm.figOp = opT;
   if (here && !flat && !Stages.narrow) {
