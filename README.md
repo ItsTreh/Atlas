@@ -14,7 +14,7 @@ The body never leaves the screen. Moving to another stage moves the camera aroun
 It runs entirely in your browser. There is no account, no server and no build step: open `index.html` and it works. Nothing you enter leaves your machine.
 
 > [!NOTE]
-> ATLAS is a work in progress, built in the open. Targets and Measure have their new design; Nutrition and the Week plan still wear the old one. See [the roadmap](#roadmap).
+> ATLAS is a work in progress, built in the open. Targets, Measure and Nutrition have their new design; the Week plan still wears the old one. See [the roadmap](#roadmap).
 
 <br>
 
@@ -25,8 +25,8 @@ Each new visit opens on the sculpture in one of five ways: the figure from below
 | | Stage | What you do there | State |
 |:-:|---|---|---|
 | **I** | Targets | Pick muscles on the sculpture, then set each to Focus, Normal or Maintain. | Redesigned. The maths isn't evidenced yet. |
-| **II** | Measure | Give your stature, mass, years and physiology, sealed into one plate. | Designed. Nothing reads its data yet. |
-| **III** | Nutrition | Get calorie and protein targets worked out from the training. | Works, in the old design. |
+| **II** | Measure | Give your stature, mass, years and physiology, sealed into one plate. | Designed. Nutrition reads the weight. |
+| **III** | Nutrition | Get calorie and protein targets worked out from the training, then walk the day meal by meal. | Redesigned. The maths isn't evidenced yet. |
 | **IV** | Week plan | Get sessions, exercises and meals placed in your free hours. | Works, in the old design. |
 
 ### I · Targets
@@ -43,14 +43,16 @@ On the start screen, Targets and Measure, the light on the sculpture follows you
 
 Measure is one scrolled page, with an instrument for each fact. A stadiometer beside the figure, numbered in your own height. A steelyard whose poise slides along the beam. A frieze of decades for the years you've lived. Then a choice of physiology for the resting-burn equation. Once all four are given, they're struck into a **seal**: a beaded coin with each fact inscribed around it in Roman numerals, laid out like a catalogue plate.
 
-Measure doesn't affect the plan yet. Wiring it into training and nutrition is next on the roadmap.
+Nutrition plans from the weight given here. The rest of Measure doesn't affect the plan yet: wiring it into training and the resting-burn maths is next on the roadmap.
 
 ### III · Nutrition *(optional)*
 
-- **Goal:** fat loss, muscle gain, maintenance or general fitness, each showing what it would change for this training.
-- **Targets:** calories set against your daily burn, and protein per kilogram of body weight, both adjusted to the plan's training load. Each figure shows the sum behind it, and every reason is one click away.
-- **Rhythm:** meals a day, your eating window, and a diet style (everything, pescatarian, vegetarian or vegan).
-- **A day of eating:** the day as a timeline, one meal open at a time, with an example plate portioned to it.
+Nutrition is a room in perspective: a marble floor laid to a vanishing point, a gilt meridian inlaid with the hours, an arch over each meal at its hour, and at the far wall a niche where the sculpture stands. Scroll, use the arrow keys or the footer's beads to walk the day.
+
+- **The sum:** your goal (fat loss, muscle gain, maintenance or general fitness, each showing the change it makes for this training), the calories and protein to eat, steppers for both, and how it's worked out, line by line. Your body weight comes from Measure.
+- **The day in one sentence:** how many meals, from which hour to which, eating what. Each word opens its own chooser.
+- **Each meal:** its hour (move it earlier or later), its calories and protein with the day's running total, and an example plate portioned to it. Point at a food to see what it brings, or turn to other ideas.
+- **The day, laid:** every meal's calories and protein together, with the figure in the niche behind.
 
 ### IV · Week plan
 
@@ -159,7 +161,7 @@ js/                      ── data and logic: no page code, all tested ──
                          Your muscles and Training focus as scrolled pages, on a wide screen
   flow-front.js          the words behind the body, woven in front of the nearer leg
   measure-view.js        Measure: the instruments and the seal
-  nutrition-view.js      Nutrition
+  nutrition-view.js      Nutrition: the room in perspective, the sum and the walk through the day
   week-view.js, workout-view.js, paint.js
                          the Week plan, a session in full, painting busy hours
   render.js, app.js      shared helpers; wiring and boot
@@ -205,7 +207,7 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 
 **Next**
 1. Make Measure's data affect the training algorithm.
-2. Redesign Nutrition, then evidence its maths the same way as Targets.
+2. Evidence Nutrition's maths the same way as Targets.
 3. Evidence and redesign the Week plan.
 4. Redesign the full phone layout.
 5. Add a backend, then My Atlas for returning users, with saved data.

@@ -3,7 +3,7 @@
 ATLAS is a weekly training planner that runs in the browser. It has four stages:
 
 1. **Targets**: pick muscles on an anatomy figure.
-2. **Measure**: height, weight, age and physiology, for Nutrition's estimates (`measure.js`; nothing reads them yet, the maths comes later).
+2. **Measure**: height, weight, age and physiology, for Nutrition's estimates (`measure.js`; Nutrition reads the weight, the rest of the maths comes later).
 3. **Nutrition**: calorie and protein targets worked out from that training.
 4. **Week plan**: sessions, exercises and meals placed into the user's free hours.
 
