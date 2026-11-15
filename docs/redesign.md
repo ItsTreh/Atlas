@@ -91,9 +91,10 @@ fallback all keep working.
   |---|---|---|---|---|---|---|
   | `targets-front` / `-back` | Targets | 0 / 180 | 2 | 79 cm | 615 cm | centre |
   | `nutrition` | Nutrition | −18 | −26 | 124 cm | 250 cm | left |
-  | `plan` | Week plan, setting up | 36 | −7 | 116 cm | 270 cm | right |
-  | `plan-availability` | Shape your week | 36 | −7 | 110 cm | 460 cm | off right (hidden) |
-  | `plan-generated` | Your week | 36 | −7 | 118 cm | 330 cm | right column |
+  | `plan` | Week plan, on a phone | 36 | −7 | 116 cm | 270 cm | right |
+
+  On a wide screen the Week plan stands the figure on its ring each frame
+  (`standAt`, the shot `plan-ring` is only where a change of stage heads).
 
   `SCULPTURE_MOBILE` reframes them for the phone band.
 - **The move** lasts 1.35–2.3 s depending on how far round the body it goes,
@@ -131,7 +132,7 @@ moved through. The marble is one mesh, one renderer and one material.
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
 | II Measure | an instrument: four rings round the figure, one a fact, each its own metal | the figure in the middle; each ring carries a tag (its name, reading and gauge), and what the ring in hand says goes round the body with it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends on your mark |
 | III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the figure in a niche at the end | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the wall | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
-| IV Week plan | a frieze: seven figures, one a day, each beside its day's hours | the whole week in one row; the settings under it | drag down a day's hours to say when you are busy; the session moves |
+| IV Week plan | the sun's path: the day as a ring of hours behind the figure, in the hour's light | a day at a time on its ring, then the week as seven rings and one sentence; generated, seven arches on one horizon | drag along a day's ring over busy hours (the session moves); scroll, the arrow keys or the footer's suns from day to day |
 
 How each is built:
 
@@ -193,14 +194,42 @@ How each is built:
     out" is the sum line by line. Body weight is asked only on Measure.
   - On a phone the plate is only scaled down for now (the phone gets its
     own redesign later), and without WebGL the niche stands empty.
-- **Week plan** (`js/week-view.js`). `plates(list)` on the sculpture draws
-  the figure into each day's canvas (no second context, no second copy of
-  the model). Beside each stands its day (`.staff`): busy hours, the
-  preferred time, the meals, and where the session would go, which slides
-  to its new hours as busy time is painted (`paint.js`). Session length,
-  preferred time, the busy presets and the meals switch moved here from
-  *Shape your week*, which remains only where the frieze cannot be drawn
-  (a phone, no WebGL).
+- **Week plan** (`js/week-view.js`), from the user's Claude Design file
+  "Week Plan - Lumen v3" (2026-11-15), with the user's changes on top. A
+  1440 × 900 plate as Nutrition's; behind the figure, in the anatomy stage,
+  the ring (`.lm-arc`, SVG on the same plate) and the sky (`.lm-sky`).
+  Steps 0–6 are the days, 7 the week (`lm.step`, saved as the place).
+  - *The ring.* Busy hours are hatched capsules that drift slowly; the
+    session is a strand per family in its pigment, with a soft glow; meals
+    are dots with their names inside the ring. Dragging along it paints
+    busy hours on the routine as the stroke goes and gives back what it
+    leaves; the plan (`weekPlan`) answers at once. On a generated day the
+    session's band is dragged to another hour (`moveSession`). A row of
+    hour toggles stands in for the drag for the keyboard.
+  - *The light* (the user's change, 2026-11-15). The sun on the ring is a
+    now-line that follows the pointer and writes the hour and what it
+    holds. Its hour colours the page: `LM_SKY`, ten stops at the hours
+    whose light people know, each a ground, a glow at the sun, a cooler
+    light across from it and the sun's own colour, which turns into a pale
+    moon after dusk. Morning and evening no longer read alike. The figure
+    takes the same light (`setTint` on the renderer: the key the glow's
+    hue and the hour's strength, the shade the far light's, the turned
+    edges toward the ground) and is lit from the sun's place (`setSun`).
+  - *The figure* (the user's change). It faces the page as on Targets, its
+    feet on the ring's centre, and turns round when most of the day's
+    muscles are seen from behind. The day's muscles are marked as Targets
+    marks a selection (`setHighlight(ids, { selected, pointed })`), not in
+    the design's own look; a muscle pointed at in the day's list is marked
+    as one pointed at there. The day's name is Targets' ghost word, low at
+    the shins, woven through the legs by `flow-front.js`.
+  - *The week.* The terms as one sentence whose words open choosers;
+    pointing at an option previews the week (`lmPreviewed` sets it on the
+    routine for the one reading). Generated, seven arches on one horizon
+    with every exercise; there the figure leaves (the user's change) and
+    the day pointed at is named under its column in the ghost word's hand
+    (`lmDayWord`), as large as the room under its list allows.
+  - The frieze (`plates`), *Shape your week*, `paint.js` and the session
+    panel went with it. On a phone the plate is only scaled down.
 
 Open, for the user:
 
@@ -208,7 +237,6 @@ Open, for the user:
   (`SCULPTURE_TECHNIQUES`, `setTechnique`, `setCast`) and
   `tests/sculpture-technique.test.js` tests them. Nothing calls them now:
   to delete, once this direction is accepted.
-- *Your week* (the generated calendar) has not been re-imagined yet.
 - The rings, the mark and the room have no tests of their own beyond
   the mark's seed (`tests/measure.test.js`).
 - The phone keeps plain versions of all three rooms.
