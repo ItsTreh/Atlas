@@ -48,8 +48,8 @@ SCULPTURE_SHOTS["nutrition-niche"] = { az: PV_NICHE.az, el: 0, ty: 79, d: 3400, 
 
 /* Where the walk is, and what is open or pointed at. */
 const pv = {
-  station: 0, target: 0, cam: -0.6, cv: 0, acc: 0, edge: 0, locked: false, lastWheel: 0,
-  dh: [], ap: [], pvx: 0, pvy: 0, mx: -1e4, my: -1e4, overHit: false, hoverArch: -1,
+  station: 0, target: 0, cam: -0.6, cv: 0, acc: 0, edge: 0, locked: false, lastWheel: 0, lockDir: 0, peak: 0, low: 0,
+  dh: [], ap: [], mx: -1e4, my: -1e4, overHit: false, hoverArch: -1,
   k: 1, ox: 0, oy: 0, vw: 0, vh: 0, t0: 0, lt: 0, raf: 0, leftAt: 0, figOp: 0,
   chooser: null, hoverGoal: null, hoverFood: null, ledger: false, shift: {}
 };
@@ -428,7 +428,6 @@ function pvFrame(now) {
   const dt = Math.min(0.05, (now - (pv.lt || now)) / 1000); pv.lt = now;
   if (nutritionEl.clientWidth !== pv.vw || nutritionEl.clientHeight !== pv.vh) pvFit();
   const still = Stages.still, here = Stages.current === "nutrition";
-  if (pv.locked && now - pv.lastWheel > 240) pv.locked = false;
   pv.acc *= Math.exp(-dt * 5);
 
   const { K, EY, R, RI, YS, XR, TW } = PV_ROOM, TD = TW / 1080;
@@ -457,11 +456,8 @@ function pvFrame(now) {
   else if (ct >= last) camZ = cams[last] + (ct - last);
   else { const a = Math.floor(ct); camZ = cams[a] + (cams[a + 1] - cams[a]) * (ct - a); }
 
-  // The gaze: the eye drifts a little toward the pointer.
-  const gaze = !still && pv.mx > -1e3;
-  const tx = gaze ? (pv.mx - 720) / 720 * 22 : 0, ty = gaze ? (pv.my - 450) / 450 * 9 : 0;
-  pv.pvx += (tx - pv.pvx) * (1 - Math.exp(-dt * 2.5)); pv.pvy += (ty - pv.pvy) * (1 - Math.exp(-dt * 2.5));
-  const cx = 720 + pv.pvx, hy = 378 + pv.pvy;
+  // The eye looks straight down the meridian: the room holds still, as the figure at its end does.
+  const cx = 720, hy = 378;
   const P = (X, Y, z) => { const d = z - camZ; return [cx + X / d, hy + (EY - Y) / d]; };
 
   // What the pointer is over: the farthest arch it falls inside, or the niche.
@@ -475,7 +471,8 @@ function pvFrame(now) {
     }
   }
   if (hov !== pv.hoverArch) { pv.hoverArch = hov; pvHit.style.cursor = hov >= 0 ? "pointer" : "default"; }
-  const nextIdx = pv.target < cnt ? pv.target : -1;
+  // One arch is named at a time: the one pointed at, else the next, so two names never stack in the opening.
+  const named = hov >= 0 && hov < cnt ? hov : pv.target < cnt ? pv.target : -1;
 
   // The canvas, under the sculpture.
   const dpr = window.devicePixelRatio || 1, W = Math.round(pv.vw * dpr), H = Math.round(pv.vh * dpr);
@@ -574,7 +571,7 @@ function pvFrame(now) {
     const d = zm[i] + 0.18 - camZ; if (d < 0.4) continue;
     const lit = i === hov ? 1.35 : 1, a = pvFog(d) * pvSS(0.55, 1.05, d) * pv.ap[i] * (d < 1.5 ? 0.55 : 0.9) * lit;
     pvArch(ctx, cx, hy, d, R, RI, YS, rgba(pal.gilt, a), i === hov ? 1.6 : 1, true);
-    if (d > 1.5 && i !== hov && i !== nextIdx) {
+    if (d > 1.5 && i !== named) {
       ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
       ctx.font = "600 " + Math.max(9, 24 / d) + "px 'Cormorant Garamond', Georgia, serif";
       ctx.fillStyle = rgba(pal.deep, a); ctx.fillText(romanNumeral(Math.round(pv.dh[i])), cx, hy + (EY - YS - R - 26) / d);
@@ -588,7 +585,7 @@ function pvFrame(now) {
     if (el._ax == null) { el._ax = parseFloat(el.style.left) || 0; el._ay = parseFloat(el.style.top) || 0; }
     if (kind === "far") {
       const i = +el.dataset.i, d = i < cnt ? zm[i] + 0.18 - camZ : 0;
-      const want = i < cnt && d > 1.5 && (i === hov || i === nextIdx) ? pv.ap[i] : 0;
+      const want = i < cnt && d > 1.5 && i === named ? pv.ap[i] : 0;
       el._o = (el._o || 0) + (want - (el._o || 0)) * (still ? 1 : 1 - Math.exp(-dt * 7));
       // Over the keystone from the threshold; inside the opening once walking, clear of the meal's own name.
       const ly = pv.target === 0 ? EY - YS - R - 30 : EY - YS * 0.62;
@@ -637,9 +634,8 @@ function pvStand(here, dW, cx, hy) {
   if (Math.abs(op - pv.figOp) > 0.015 || (op === 0) !== (pv.figOp === 0)) { pv.figOp = op; figure.setDim(op); }
   if (dW <= 0.3) return;
   // The niche on the plate: centred under its arch, 496 tall from 91 above the horizon's mark to the floor.
-  const s = 1 / dW, X = cx - pv.pvx * s, Y = hy - pv.pvy * s;
-  const tall = 496 * s * pv.k, floor = pv.oy + pv.k * (Y + 405 * s);
-  figure.standAt({ x: pv.ox + pv.k * X, y: floor - tall * 0.012, h: tall * PV_NICHE.fill, az: PV_NICHE.az });
+  const s = 1 / dW, tall = 496 * s * pv.k, floor = pv.oy + pv.k * (hy + 405 * s);
+  figure.standAt({ x: pv.ox + pv.k * cx, y: floor - tall * 0.012, h: tall * PV_NICHE.fill, az: PV_NICHE.az });
 }
 
 function pvLoop(now) {
@@ -673,26 +669,44 @@ function pvGoTo(t) {
   else { const m = n.meals[t - 1]; announce(m.name + " at " + pvHH(m.hour) + ": about " + fmtK(m.kcal) + " kcal and " + m.protein + " g protein"); }
 }
 
+/*
+ * The wheel takes one step a gesture. After a step it is held, so a
+ * trackpad's momentum doesn't walk on by itself, until the gesture is over:
+ * the wheel pauses (`quiet` ms), turns back (at once, even mid-walk), or a
+ * fresh swipe rises out of the momentum's tail (a delta `rise` times the
+ * lowest since the tail began to fall, once it has fallen to half its peak).
+ */
+const PV_WHEEL = { step: 46, quiet: 160, rise: 2.5, min: 8 };
+
 nutritionEl.addEventListener("wheel", e => {
   if (Stages.current !== "nutrition" || Stages.busy || Stages.narrow || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-  const now = performance.now(), dir = Math.sign(e.deltaY), last = pvLast();
+  const now = performance.now(), dir = Math.sign(e.deltaY), mag = Math.abs(e.deltaY), last = pvLast();
+  if (!dir) return;
+  const gap = now - pv.lastWheel;
+  pv.lastWheel = now;
+  if (pv.locked) {
+    if (mag >= pv.peak) { pv.peak = mag; pv.low = mag; } else pv.low = Math.min(pv.low, mag);
+    const fresh = pv.low < pv.peak / 2 && mag > pv.low * PV_WHEEL.rise && mag > PV_WHEEL.min;
+    if (gap > PV_WHEEL.quiet || dir !== pv.lockDir || fresh) { pv.locked = false; pv.acc = 0; pv.edge = 0; }
+  }
+  const hold = () => { pv.locked = true; pv.lockDir = dir; pv.peak = pv.low = mag; };
   // At either end the wheel goes on to the next stage, as firmly as anywhere else.
   if ((pv.target === 0 && dir < 0) || (pv.target >= last && dir > 0)) {
-    if (now - pv.lastWheel > STAGE_WHEEL.gap) pv.edge = 0;
-    pv.lastWheel = now;
     if (pv.locked) return;
+    if (gap > STAGE_WHEEL.gap || Math.sign(pv.edge) !== dir) pv.edge = 0;
     pv.edge += e.deltaY;
     if (Math.abs(pv.edge) > STAGE_WHEEL.threshold) {
-      pv.edge = 0; pv.locked = true;
+      pv.edge = 0; hold();
       Stages.wheelAt = now; Stages.spent = true;
       if (dir < 0) Stages.back(); else Stages.next();
     }
     return;
   }
   pv.edge = 0;
-  if (pv.locked) { pv.lastWheel = now; return; }
+  if (pv.locked) return;
+  if (Math.sign(pv.acc) !== dir) pv.acc = 0;
   pv.acc += e.deltaY;
-  if (Math.abs(pv.acc) > 46) { pvGoTo(pv.target + Math.sign(pv.acc)); pv.acc = 0; pv.locked = true; pv.lastWheel = now; }
+  if (Math.abs(pv.acc) > PV_WHEEL.step) { pvGoTo(pv.target + dir); pv.acc = 0; hold(); }
 }, { passive: true });
 
 addEventListener("keydown", e => {
