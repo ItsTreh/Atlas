@@ -1677,6 +1677,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .atlas[data-stage="plan"] { --lamp-x: 50%; }
 .atlas[data-opening] { --lamp-x: 50%; }
 
+@property --mr { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
+@property --ml { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
+@property --mb { syntax: "<percentage>"; inherits: false; initial-value: 130%; }
 @property --veil { syntax: "<percentage>"; inherits: false; initial-value: 0%; }
 .anatomy-stage::after {
   content: ""; position: absolute; top: 0; bottom: 0; right: 0; z-index: 1; pointer-events: none;
@@ -1714,11 +1717,175 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 [data-theme="dark"] .balance::before { background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
 .bal-label { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; }
-.bal-needle { margin: 10px 0 0 -40px; width: 80px; text-align: center; text-shadow: 0 0 6px var(--bg), 0 0 12px var(--bg); font: italic 400 21px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); }
-.bal-tip {
-  margin: -34px 0 0 0; translate: -50% 0; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--accent-ink);
-  background: var(--accent); border-radius: 999px; font-variant-numeric: tabular-nums;
+/* What is written on the balance (nutrition-view.js sets each where its
+   piece is as the balance draws). While the camera travels to a shot the
+   words stand back. */
+.balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: opacity .45s ease; }
+.balance.travel :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { opacity: 0; transition-duration: .2s; }
+/* How far eating is set from the burn: between the two totals, over the fulcrum. */
+.bal-lean { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 12px; white-space: nowrap; pointer-events: none; }
+.bal-lean b { font: italic 400 clamp(28px, 2.6vw, 38px)/1 var(--serif); font-variant-numeric: lining-nums; color: var(--cast, var(--ink)); }
+.bal-lean small { font-size: 11.5px; color: var(--ink-faint); }
+.bal-lean b:empty, .bal-lean small:empty { display: none; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-lean { display: none; }
+.bal-total-l { display: none; }
+.balance[data-shot="eat"] .bal-total-l { display: inline; }
+/* The way in to a side: a coin and what it does. */
+.bal-go {
+  display: flex; align-items: center; gap: 9px; margin-top: 4px; padding: 3px 4px 3px 0; border: 0; background: none; cursor: pointer; pointer-events: auto;
+  font: italic 400 17px/1 var(--serif); color: var(--ink-soft); transition: color .25s ease;
 }
+.bal-legend[data-side="burn"] .bal-go { flex-direction: row-reverse; padding: 3px 0 3px 4px; }
+.bal-go svg { width: 30px; height: 30px; flex: none; overflow: visible; fill: none; stroke: currentColor; border-radius: 50%; transition: background .35s var(--ease-out), color .35s var(--ease-out); }
+.bal-go:hover, .bal-go:focus-visible { color: var(--ink); }
+.bal-go:hover svg, .bal-go:focus-visible svg { background: var(--ink); color: var(--bg); }
+.bal-go:hover .mzc-beads { transform: rotate(27deg); }
+.bal-go:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 3px; }
+.balance:is([data-shot="burn"], [data-shot="eat"], [data-shot="set"]) .bal-go { display: none; }
+/* The goal, cut in the plinth's face. */
+.bal-plinth {
+  font: 600 12px/1 var(--serif); letter-spacing: .34em; text-transform: uppercase; padding-left: .34em;
+  color: rgba(74,64,48,.62); text-shadow: 0 1px 0 rgba(255,255,255,.85), 0 -1px 0 rgba(60,50,35,.25);
+}
+[data-theme="dark"] .bal-plinth { color: rgba(20,16,10,.7); text-shadow: 0 1px 0 rgba(255,244,220,.22), 0 -1px 0 rgba(0,0,0,.4); }
+/* A side's total, over its end of the beam, a hairline down to it. */
+.bal-total {
+  position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding-bottom: 26px;
+  white-space: nowrap; pointer-events: none;
+}
+.bal-total::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 1px; height: 16px; background: var(--cast, var(--ink-faint)); opacity: .7; }
+.balance.held, .balance.held .bal-go { cursor: grabbing; }
+.bal-total-h { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
+.bal-total-n { display: flex; align-items: baseline; gap: 8px; }
+.bal-total-n b { font: 400 clamp(42px, 4.1vw, 62px)/.9 var(--serif); letter-spacing: -.015em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink); }
+.bal-total-n i { font: 400 13px/1 var(--font); color: var(--ink-soft); }
+.bal-total-p { font-size: 13px; color: var(--ink-soft); }
+.bal-total-p b { font: 400 24px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); margin-right: 2px; }
+/* What a pan holds, beside its rim: the weights by name, a meal a jar. */
+.bal-legend { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; gap: 7px; white-space: nowrap; }
+.bal-legend:empty { display: none; }
+.bal-legend[data-side="burn"] { padding-right: 34px; align-items: flex-end; text-align: right; }
+.bal-legend[data-side="eat"] { padding-left: 34px; align-items: flex-start; text-align: left; }
+.bal-legend::before { content: ""; position: absolute; top: 50%; width: 22px; height: 1px; background: var(--cast, var(--ink-faint)); opacity: .8; }
+.bal-legend[data-side="burn"]::before { right: 6px; }
+.bal-legend[data-side="eat"]::before { left: 6px; }
+.bal-row {
+  display: grid; grid-template-columns: auto auto; column-gap: 10px; align-items: baseline; padding: 1px 0; margin: 0; border: 0; background: none;
+  color: var(--ink); text-align: inherit; font: inherit;
+}
+.bal-legend[data-side="burn"] .bal-row { justify-content: end; }
+.bal-legend[data-side="eat"] .bal-row { justify-content: start; }
+.bal-row i { font: italic 400 18px/1.05 var(--serif); color: var(--ink-soft); transition: color .25s ease; }
+.bal-row b { font: 400 21px/1.05 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
+.bal-row small { grid-column: 1 / -1; font-size: 11.5px; line-height: 1.35; color: var(--ink-faint); }
+button.bal-row { cursor: pointer; }
+button.bal-row:hover i, button.bal-row.lit i, button.bal-row:focus-visible i { color: var(--ink); text-decoration: underline 1px; text-underline-offset: 4px; }
+button.bal-row:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.bal-sum { margin-top: 2px; }
+/* Seen close: the side's total stands at the head of the room, its words are larger, the other side's step back. */
+.balance[data-shot="burn"] #bal-total-burn { align-items: flex-start; padding-bottom: 0; }
+.balance[data-shot="eat"] #bal-total-eat { left: auto; right: 0; align-items: flex-end; padding-bottom: 0; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-total::after { display: none; }
+.balance[data-shot="burn"] :is(#bal-total-eat, #bal-legend-eat), .balance[data-shot="eat"] :is(#bal-total-burn, #bal-legend-burn) { opacity: 0; pointer-events: none; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row i, .balance[data-shot="eat"] #bal-legend-eat .bal-row i { font-size: 23px; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row b, .balance[data-shot="eat"] #bal-legend-eat .bal-row b { font-size: 28px; }
+.balance[data-shot="burn"] #bal-legend-burn .bal-row small, .balance[data-shot="eat"] #bal-legend-eat .bal-row small { font-size: 12.5px; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-legend { gap: 12px; }
+.balance:is([data-shot="burn"], [data-shot="eat"]) .bal-plinth { display: none; }
+/* Seen close, the balance runs out of the shot: its lower edge fades into the ground. */
+.balance canvas {
+  --mr: 130%; --ml: 130%; --mb: 130%;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
+  mask-image: linear-gradient(to right, #000 calc(var(--mr) - 14%), transparent var(--mr)), linear-gradient(to left, #000 calc(var(--ml) - 14%), transparent var(--ml)), linear-gradient(to bottom, #000 calc(var(--mb) - 19%), transparent var(--mb));
+  -webkit-mask-composite: source-in; mask-composite: intersect;
+  transition: --mr 1s var(--ease-out), --ml 1s var(--ease-out), --mb 1s var(--ease-out);
+}
+.balance[data-shot="burn"] canvas { --mr: 63%; --mb: 99%; }
+.balance[data-shot="eat"] canvas { --ml: 63%; --mb: 99%; }
+@media (prefers-reduced-motion: reduce) { .balance canvas, .balance :is(.bal-total, .bal-legend, .bal-lean, .bal-plinth) { transition: none; } }
+.balance:is([data-shot="burn"], [data-shot="eat"])::before { display: none; }
+.bal-sum small { white-space: normal; max-width: 190px; }
+.balance[data-shot="set"] { cursor: default; }
+.balance[data-shot="set"] .bal-legend { opacity: .0; pointer-events: none; }
+.atlas[data-layout="mobile"] .nu-side { translate: none !important; }
+
+/* Beside the pan seen close: what sets it, where the far side of the
+   balance fades out of the shot. */
+.nu-panel {
+  position: absolute; top: 0; bottom: 0; z-index: 2; width: min(46%, 580px); overflow: auto; cursor: auto;
+}
+.nu-panel[data-side="burn"] { right: 0; padding-left: 110px; }
+.nu-panel[data-side="eat"] { left: 0; padding-right: 110px; }
+.nu-caveat { margin: 0; max-width: 104ch; font-size: 11.5px; line-height: 1.5; color: var(--ink-faint); text-align: center; text-wrap: pretty; }
+
+/* The readings beside a pan: each a name in the bronze, its figure large,
+   the coins that step it, a note. Two abreast; a choice among words takes
+   the row. */
+.nu-panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: center; gap: 22px 28px; }
+.nu-read { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.nu-read.wide { grid-column: 1 / -1; }
+.nu-read-n, .nu-read-n label { font: italic 400 20px/1 var(--serif); color: var(--cast, var(--ink-soft)); }
+.nu-read-v { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.nu-fig {
+  box-sizing: content-box; min-width: 1.6ch; padding: 0 0 2px; margin: 0; border: 0; border-bottom: 1px solid transparent; border-radius: 0; background: none;
+  font: 400 clamp(40px, 3.8vw, 58px)/.95 var(--serif); letter-spacing: -.02em; font-variant-numeric: lining-nums tabular-nums; color: var(--ink);
+  outline: none; transition: border-color .3s ease; -moz-appearance: textfield; appearance: textfield;
+}
+.nu-fig::-webkit-outer-spin-button, .nu-fig::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input.nu-fig { width: 3.4ch; caret-color: var(--ink); }
+input#n-burn.nu-fig { width: 4.2ch; }
+input.nu-fig:hover { border-bottom-color: var(--line); }
+input.nu-fig:focus { border-bottom-color: var(--ink); }
+input.nu-fig[aria-invalid="true"] { border-bottom-color: var(--warn); }
+.nu-fig.small { font-size: clamp(30px, 2.6vw, 40px); }
+.nu-unit-w { font: italic 400 20px/1 var(--serif); color: var(--ink-soft); }
+.nu-coins { display: inline-flex; gap: 4px; align-self: center; margin-left: 2px; }
+.nu-coins .arm-coin { width: 36px; height: 36px; }
+.nu-span { display: inline-flex; align-items: baseline; gap: 8px; }
+.nu-words { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 18px; }
+.nu-words button {
+  position: relative; padding: 3px 0 8px; border: 0; background: none; cursor: pointer;
+  font: 400 clamp(22px, 2vw, 28px)/1 var(--serif); color: var(--ink-faint); transition: color .3s ease;
+}
+.nu-words button::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink));
+  transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease-out);
+}
+.nu-words button:hover { color: var(--ink-soft); }
+.nu-words button[aria-checked="true"] { color: var(--ink); font-style: italic; }
+.nu-words button[aria-checked="true"]::after { transform: scaleX(1); }
+.nu-words button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+.nu-read-v > .nu-words:not(:first-child) button { font-size: 18px; }
+.nu-read-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-soft); text-wrap: pretty; }
+.nu-read-note .pill-tag { margin-right: 4px; }
+.nu-read-note .text-link { font-size: 12px; }
+
+/* The last shot: two plain answers under the balance. */
+.nu-set { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-bottom: 6px; }
+.nu-answers { display: flex; align-items: baseline; gap: 12px 44px; flex-wrap: wrap; justify-content: center; }
+.nu-answer {
+  position: relative; padding: 4px 0 10px; border: 0; background: none; cursor: pointer;
+  font: italic 400 clamp(28px, 2.8vw, 40px)/1 var(--serif); color: var(--ink); transition: color .3s ease;
+}
+.nu-answer::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--cast, var(--ink)); transform-origin: left; transition: transform .5s var(--ease-out); }
+.nu-answer.quiet { font-style: normal; font-size: clamp(20px, 1.9vw, 26px); color: var(--ink-faint); }
+.nu-answer.quiet::after { transform: scaleX(0); }
+.nu-answer.quiet:hover, .nu-answer.quiet:focus-visible { color: var(--ink); }
+.nu-answer.quiet:hover::after, .nu-answer.quiet:focus-visible::after { transform: scaleX(1); }
+.nu-answer:disabled { opacity: .45; cursor: default; }
+.nu-answer:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 3px; }
+.nu-set-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink-soft); }
+
+/* The goals only fade: the chosen one's line is set against the whole row, which a moved goal would take from it. */
+.goals.turned .goal { animation: nuFade .55s ease both; }
+@keyframes nuFade { from { opacity: 0; } }
+.goals.turned .goal:nth-child(2) { animation-delay: .07s; }
+.goals.turned .goal:nth-child(3) { animation-delay: .14s; }
+.goals.turned .goal:nth-child(4) { animation-delay: .21s; }
+@media (prefers-reduced-motion: reduce) { .goals.turned .goal { animation: none !important; } }
+.nu-side .nu-row.open .row-label, .nu-side .nu-row.open .row-sum { color: var(--ink); }
+.nu-side .nu-row { transition: opacity .3s ease; }
+.nu-rows:has(.open) .nu-row:not(.open) { opacity: .45; }
 .nu-mid { min-height: 300px; }
 .atlas[data-layout="mobile"] .nu-mid, .balance[hidden] { display: none; }
 @media (min-width: 1000px) {
@@ -1731,6 +1898,9 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   .atlas[data-layout="desktop"] .nu-plan .nu-head { grid-area: head; align-items: center; text-align: center; gap: 10px; }
   .atlas[data-layout="desktop"] .nu-plan .nu-title { font-size: clamp(34px, 3.2vw, 46px); }
   .atlas[data-layout="desktop"] .nu-plan .nu-lede { max-width: 70ch; }
+  /* On the balance: one column, the balance across it. */
+  .atlas[data-layout="desktop"] .nu-plan.scale { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(360px, 1fr) auto; grid-template-areas: "head" "mid" "foot"; }
+  .nu-plan.scale .nu-mid { position: relative; }
   .nu-burn { grid-area: burn; align-self: center; }
   .nu-eat { grid-area: eat; align-self: center; }
   .nu-mid { grid-area: mid; }
@@ -2630,3 +2800,18 @@ button.cal-head:hover { background: color-mix(in srgb, var(--ink) 3%, transparen
   #foot-next.fresh .fx-coin::after { animation: none; }
   .fx-key, .fx-coin, .fx-beads, .fx-arr { transition: none !important; }
 }
+
+/* Nutrition on a short screen: the balance keeps the room. The lede and the
+   standing caveat step out (the estimate tag and "How it's worked out"
+   stay), and the panel beside a pan sets its controls closer. */
+@media (max-height: 820px) {
+  .atlas[data-layout="desktop"] .nu-plan.scale .nu-lede, .nu-plan.scale .nu-caveat { display: none; }
+  .atlas[data-layout="desktop"] .nu-plan.scale .nu-title { font-size: 34px; }
+  .bal-total-n b { font-size: 40px; }
+  .bal-total { gap: 3px; padding-bottom: 22px; }
+  .nu-panel { gap: 12px 24px; }
+  .nu-fig { font-size: 38px; }
+  .nu-fig.small { font-size: 28px; }
+  .nu-words button { font-size: 21px; padding-bottom: 6px; }
+}
+.nu-slot { display: contents; }
