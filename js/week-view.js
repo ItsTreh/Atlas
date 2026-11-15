@@ -1,51 +1,89 @@
 /* ===========================================================================
-   Week plan stage — fit it into your life.
+   Week plan stage — the day as the sun's path.
 
-   The camera comes in close on the upper body, three-quarter from the
-   figure's left, and the plan takes the other side. Three screens, one at
-   a time, each the whole task in front of the user:
+   From the user's Claude Design file "Week Plan - Lumen v3" (2026-11-15).
+   The day is a ring of hours behind the figure, six in the morning at the
+   left to midnight at the right, and the week is told one day at a time,
+   then all at once:
 
-     • Fit it into your life   the week as a frieze: seven figures on one
-                               ground line, one a day, each lit where that
-                               day trains (the real plan the planner would
-                               place, before Generate). Beside each figure
-                               stands its day, from morning at the top to
-                               night at the foot: drag down it to say when
-                               you are busy, and the session moves to the
-                               hours left. Under it, how many days, the
-                               split, how long and when; then Generate.
-     • Shape your week         the same hours as a full-width calendar, where
-                               the frieze cannot be drawn (a phone, or no
-                               WebGL): there the days are cards and this is
-                               where busy hours are painted.
-     • Your week               the generated week as a calendar. Pointing at a
-                               session lights its muscles on the sculpture;
-                               opening one shows it in full (workout-view.js),
-                               with everything that can be changed about it.
+     0 … 6   a day. Drag along its ring over the hours that aren't yours
+             (and again to free them); the session the planner would place
+             moves to the hours left. Once the week is generated the ring
+             holds the day's session: drag it to change its hour, swap its
+             exercises, or move it to another day.
+     7       the week: seven rings, Monday at the centre, and the week's
+             terms as one sentence whose words open their choosers; then
+             Generate. Generated, it takes the whole screen: seven arches on
+             one horizon, a day each, every exercise written out.
 
-   Hard limits come first: busy hours and days off are painted directly,
-   preferences after. Everything is read from and written to the routine
-   (routine.js); what the planner would do before Generate is
-   routine.weekPlan(), the same plan Generate places.
+   The hour pointed at on the ring is the hour of the light: the page's sky
+   takes that hour's colour, and the sculpture is lit from where the sun
+   stands on the ring. The stage's words are set in a 1440 × 900 plate
+   scaled to the screen, as Nutrition's are; the ring is drawn behind the
+   figure (#anatomy-stage), and the sky behind both.
+
+   Every number is the routine's: the plan the planner would place
+   (routine.weekPlan, the same plan Generate places), the generated
+   sessions and their workouts, the meals' hours, the daily targets.
+   Nothing is worked out here.
    ========================================================================= */
 
 const weekEl = $("week-panel");
 const planEl = $("stage-plan");
 
-/* What is on screen: the screen, the session open or pointed at, the day
-   tile pointed at, the last Generate's message, and what was just changed. */
-const wk = { view: "config", sel: null, hover: null, tile: null, status: null, changed: null, plates: false };
+/* The plate's geometry. The ring: its centre and radius. The figure: its
+   axis on the ring's centre, where its soles stand, how tall, how far
+   round. The generated week: columns of COL from WX, the arches' horizon
+   WY and radius WR. */
+const LM = { CX: 980, CY: 640, R: 410, SOLE: 788, TALL: 532, AZ: 30, WX: 48, WY: 348, WR: 80, COL: 192 };
+/* The camera a change of stage travels to; standAt moves its end onto the ring's centre as it goes. */
+SCULPTURE_SHOTS["plan-ring"] = { az: LM.AZ, el: 0, ty: 79, d: 756, sx: .68, sy: .58, fov: 20 };
 
-/* The calendars' hours, and how tall a day's head is. */
-const WEEK_HOURS = [FIRST_HOUR, LAST_HOUR + 1];
-const WEEK_HEAD = 98;
+const LM_NUM = ["None", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
+  "Thirteen", "Fourteen", "Fifteen", "Sixteen"];
+const LM_HOUR = ["midnight", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven",
+  "noon", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "midnight"];
+const LM_LEN = { 45: "forty-five minutes", 60: "an hour", 75: "seventy-five minutes", 90: "an hour and a half" };
+const LM_WIN = { morning: ["Morning", "in the morning"], midday: ["Midday", "around midday"],
+                 evening: ["Evening", "in the evening"], any: ["Any time", "whenever you’re free"] };
+const LM_SPLIT = { "auto": "split automatically", "upper-lower": "split upper and lower",
+                   "push-pull-legs": "split push, pull, legs", "full-body": "each one full body" };
+const LM_EXP = { beginner: ["Under 6 months", "under six months"], intermediate: ["6 mo – 2 yrs", "six months to two years"],
+                 advanced: ["2+ years", "more than two years"] };
+/* The week's terms, each a word of the sentence, and the routine's value it sets. */
+const LM_TERMS = { days: "sessionsPerWeek", len: "sessionMinutes", win: "preferredWindow", split: "split", exp: "experience" };
 
-/** The week's message (what Generate did, what an edit changed); null to clear. */
-function setStatus(text, kind = "") {
-  wk.status = text ? { text, kind } : null;
-  announce(text);
-  if (Stages.current === "plan") renderWeek();
-}
+/* The sky by hour: the ground, the glow round the sun, the cooler light across from it. */
+const LM_SKY = {
+  light: {
+    base: [[6, "#eaecf0"], [9, "#f0efe9"], [13, "#f4f1ea"], [17, "#f4eee3"], [20, "#f1e7e2"], [24, "#e5e5ec"]],
+    glow: [[6, "#f3d6c8"], [9, "#f6e6c5"], [13, "#f9f0dc"], [17, "#f5d5a5"], [20, "#efbea7"], [24, "#dccfe0"]],
+    far:  [[6, "#d9e0ef"], [9, "#dfe8ed"], [13, "#ece8df"], [17, "#e9e0d2"], [20, "#d9d6ea"], [24, "#d3d8e8"]]
+  },
+  dark: {
+    base: [[6, "#121419"], [9, "#14140f"], [13, "#15130f"], [17, "#16120d"], [20, "#151016"], [24, "#0d0e15"]],
+    glow: [[6, "#3a2a2d"], [9, "#35301d"], [13, "#2c2819"], [17, "#3e2a14"], [20, "#43231f"], [24, "#282034"]],
+    far:  [[6, "#141b2c"], [9, "#121a1f"], [13, "#1a1813"], [17, "#1b1612"], [20, "#19142d"], [24, "#0b1023"]]
+  }
+};
+/* The day's word under the figure: how strongly it shows with a session's hues, and without. */
+const LM_WORD = { light: { hue: .2, ink: .09 }, dark: { hue: .24, ink: .1 } };
+
+/* What is on screen: the step (a day, or the week), what is pointed at or open, the drag. */
+const lm = {
+  step: 0, editing: false, notes: false, hoverDay: null, hoverMuscle: null, keyHot: null, chooser: null, preview: null,
+  drag: null, moveHover: null, wkIn: false, status: null,
+  k: 1, ox: 0, oy: 0, vw: 0, vh: 0, raf: 0, lt: 0, leftAt: 0, t0: 0,
+  scrubH: null, hourF: null, sky: null, css: "", bg: "", beadR: 4.5, figOp: 0, aimX: null,
+  acc: 0, locked: false, lastWheel: 0, edge: 0,
+  F: null, byDay: {}, meals: {}, word: ""
+};
+
+const lmPad = h => String(h).padStart(2, "0");
+/* The hour's angle on the ring, in degrees: six at the left, noon high on the left, midnight at the right. */
+const lmAng = h => 180 + (h - FIRST_HOUR) * 10;
+const lmDark = () => document.documentElement.dataset.theme === "dark";
+const lmFam = x => (x && x.fams[0]) || "push";
 
 /* --------------------------------- reading -------------------------------- */
 
@@ -58,390 +96,919 @@ function weekPreview() {
 const isBusy = (day, h) => { const s = routine.slot(day, h); return !!s && s.state === SlotState.BUSY; };
 
 /** A day's busy hours as runs [from, to). */
-function busyRuns(day, [from, to] = WEEK_HOURS) {
+function busyRuns(day) {
   const runs = []; let a = null;
-  for (let h = from; h <= to; h++) {
-    const b = h < to && isBusy(day, h);
+  for (let h = FIRST_HOUR; h <= LAST_HOUR + 1; h++) {
+    const b = h <= LAST_HOUR && isBusy(day, h);
     if (b && a === null) a = h;
     if (!b && a !== null) { runs.push([a, h]); a = null; }
   }
   return runs;
 }
 
-/** "Mon–Fri", "Sat, Sun": a set of days, runs of three or more joined. */
-function dayRuns(days) {
-  const out = []; let run = [];
-  for (const d of days) {
-    const prev = run[run.length - 1];
-    if (prev && DayOfWeek.indexOf(d) === DayOfWeek.indexOf(prev) + 1) run.push(d);
-    else { if (run.length) out.push(run); run = [d]; }
-  }
-  if (run.length) out.push(run);
-  return out.map(r => r.length > 2 ? DayOfWeek.label[r[0]] + "–" + DayOfWeek.label[r[r.length - 1]]
-                                   : r.map(d => DayOfWeek.label[d]).join(", ")).join(", ");
+/** True while the week is being set up rather than shown generated. */
+const lmDraft = () => !routine.sessions.length || lm.editing;
+
+/** A day's session as the ring draws it: a placement the planner would make, or a generated session. */
+function lmSession(block, start, end, session = null) {
+  const muscles = block.muscles.filter(m => !block.riders.has(m));
+  return { name: blockName(block), fams: blockFamilies(block), muscles, ids: muscles.map(m => m.id),
+           start, end, hours: end - start, session };
 }
 
-/** The busy hours and days off in a line: "Mon–Fri 9am–5pm · Sun off". */
-function busySummary() {
-  const byDay = new Map();
-  for (const d of DayOfWeek.values) {
-    if (routine.isDayUnavailable(d)) continue;
-    const runs = busyRuns(d).map(([a, b]) => hourRange(a, b));
-    if (runs.length) byDay.set(d, runs.join(", "));
-  }
-  const groups = [];
-  for (const [d, r] of byDay) {
-    const g = groups.find(x => x.r === r);
-    if (g) g.days.push(d); else groups.push({ r, days: [d] });
-  }
-  const parts = groups.map(g => dayRuns(g.days) + " " + g.r);
-  const off = DayOfWeek.values.filter(d => routine.isDayUnavailable(d));
-  if (off.length) parts.push(dayRuns(off) + " off");
-  return parts.join(" · ");
+/** Runs `fn` with the chooser's option pointed at set on the routine, so the week shows what it would come to. */
+function lmPreviewed(fn) {
+  if (!lm.preview) return fn();
+  const prop = LM_TERMS[lm.preview.key], was = routine[prop];
+  routine[prop] = lm.preview.value;
+  try { return fn(); } finally { routine[prop] = was; }
 }
-
-const windowWord = () => routine.preferredWindow === "any" ? "Any time of day"
-  : WINDOWS[routine.preferredWindow].label + "s when free";
 
 /**
- * What the weekly targets look like against the week, and what would help if
- * not. A prediction made before Generate (WeeklyRoutine.weekPlan), so it says
- * "looks", "would" and "estimate", never "fits" as a fact.
+ * What the week holds, day by day: the planner's preview while it is set up
+ * (with a chooser's option pointed at, if any), else the generated week; and
+ * the meals at their hours, as Generate places them or has placed them.
+ */
+function lmWeek() {
+  const draft = lmDraft(), byDay = {};
+  let pv = null;
+  if (draft) {
+    pv = lmPreviewed(weekPreview);
+    for (const p of pv.plan.placements) byDay[p.day] = lmSession(p.block, p.start, p.end);
+  } else for (const s of routine.sessions) byDay[s.day] = lmSession(s.block, s.startHour, s.endHour(), s);
+  const n = routine.nutrition, meals = {};
+  if (n.isValid() && n.showMeals) {
+    const list = draft
+      ? routine.mealPlan(slot => { const x = byDay[slot.day]; return !x || slot.hour < x.start || slot.hour >= x.end; })
+          .placed.map(p => ({ day: p.day, hour: p.hour, name: p.meal.name }))
+      : routine.plannedMeals.map(m => ({ day: m.day, hour: m.hour, name: m.name }));
+    for (const m of list) (meals[m.day] = meals[m.day] || []).push(m);
+  }
+  return { draft, pv, byDay, meals };
+}
+
+/** True when two days have the same busy hours and are both off or both not. */
+function lmSameDay(a, b) {
+  if (routine.offDays.has(a) !== routine.offDays.has(b)) return false;
+  for (let h = FIRST_HOUR; h <= LAST_HOUR; h++) if (isBusy(a, h) !== isBusy(b, h)) return false;
+  return true;
+}
+
+/**
+ * What the weekly targets look like against the week, before Generate: a
+ * prediction, so it says "looks" and "estimate", never "fits" as a fact.
  */
 function fitNote(fit) {
   if (!fit || !routine.selection.size) return null;
   if (!routine.availableDays().length)
-    return { warn: true, text: "There is no day left to train: every day is marked off or fully busy. " +
-      "Turn a day back on or clear some hours." };
+    return { warn: true, text: "There is no day left to train: every day is off or fully busy. Give some hours back." };
   const h = min => (Math.round(min / 6) / 10) + " h";
-  const names = fit.trimmed.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
-  const fixes = [];
-  if (fit.fixes && fit.fixes.extraDay) fixes.push("one more training day (" + fit.fixes.extraDay + ")");
-  if (fit.fixes && fit.fixes.sessionMinutes) fixes.push("sessions of " + fit.fixes.sessionMinutes + " min");
-  const fix = fixes.length ? " With " + fixes.join(" or ") + " everything should fit (estimate)." : "";
-  // What the week the planner builds can hold: the days it really uses, and
-  // muscles a split leaves without a day.
+  const names = ids => nameList(ids.map(id => MUSCLE_BY_ID.get(id).name));
   const before = [];
   if (fit.days < fit.askedDays)
-    before.push("Recovery and your free hours look like room for " + fit.days + " of your " +
-                fit.askedDays + " training days (estimate).");
+    before.push("Recovery and your free hours look like room for " + fit.days + " of your " + fit.askedDays + " training days (estimate).");
   if (fit.unplaced.length)
-    before.push(SPLITS[routine.split].label + " would leave " +
-                nameList(fit.unplaced.map(id => MUSCLE_BY_ID.get(id).name)) + " without a day this week.");
+    before.push(SPLITS[routine.split].label + " would leave " + names(fit.unplaced) + " without a day this week.");
   const lead = before.length ? before.join(" ") + " " : "";
-  if (!fit.fits || !fit.meetsMinimums) {
-    const low = fit.belowMinimum.map(id => MUSCLE_BY_ID.get(id).name).join(", ");
+  if (!fit.fits || !fit.meetsMinimums)
     return { warn: true, text: lead + "Even the usual minimum for every muscle looks like more than your sessions can hold " +
-      "(about " + h(fit.capacityMinutes) + " a week, estimate). " + (low ? "So that every muscle is still trained, " + low +
-      " would get less than their usual minimum. " : "") + "Add a training day, make sessions longer, or drop a muscle." + fix };
-  }
+      "(about " + h(fit.capacityMinutes) + " a week, estimate). Add a training day, make sessions longer, or drop a muscle." };
   if (fit.trimmed.length)
     return { warn: true, text: lead + "Your sessions (about " + h(fit.capacityMinutes) + " a week, estimate) look too short " +
-      "for every target, so the plan lowers " + names + " (never below their minimum)." + fix };
-  return { warn: !!lead, text: lead + "Your settings look feasible (estimate): about " + h(fit.neededMinutes) +
-    " of working sets in about " + h(fit.capacityMinutes) + " of session time." };
+      "for every target, so the plan lowers " + names(fit.trimmed) + ", never below their minimum." };
+  return { warn: !!lead, text: lead + "Looks feasible (estimate): about " + h(fit.neededMinutes) +
+    " of working sets in " + h(fit.capacityMinutes) + " of session time." };
 }
 
-/**
- * The setup screen's one line about the fit: only when the plan would cut
- * something, the most serious thing first. The full reasoning is fitNote,
- * shown in Shape your week.
- */
-function shortFitNote(fit) {
-  if (!fit || !routine.selection.size) return null;
-  const list = ids => nameList(ids.map(id => MUSCLE_BY_ID.get(id).name));
-  if (!fit.fits || !fit.meetsMinimums)
-    return "Even the usual minimum for every muscle looks like more than your sessions can hold (estimate).";
-  if (fit.trimmed.length)
-    return "Your sessions look too short for every target, so " + list(fit.trimmed) +
-      (fit.trimmed.length === 1 ? " is" : " are") + " lowered (estimate).";
-  if (fit.unplaced.length)
-    return SPLITS[routine.split].label + " would leave " + list(fit.unplaced) + " without a day this week.";
-  if (fit.days < fit.askedDays)
-    return "There looks to be room for " + fit.days + " of your " + fit.askedDays + " training days (estimate).";
-  return null;
+/** A day in one line, for the rings of the week. */
+function lmBrief(d, byDay) {
+  if (routine.offDays.has(d)) return "Off. Left to you.";
+  const x = byDay[d];
+  if (x) {
+    const at = x.start === 12 ? "at noon" : "at " + LM_HOUR[x.start] +
+      (x.start < 12 ? " in the morning" : x.start < 17 ? " in the afternoon" : " in the evening");
+    return x.name + " " + at + ", for " + (LM_LEN[routine.sessionMinutes] || routine.sessionMinutes + " minutes") + ".";
+  }
+  const pv = byDay[lmPrevDay(d)];
+  return pv ? "Rest, while " + pv.muscles.map(m => m.name.toLowerCase()).join(", ") + " recover." : "Rest.";
+}
+const lmPrevDay = d => DayOfWeek.values[(DayOfWeek.indexOf(d) + 6) % 7];
+
+/** Why `session` can't move to `day`, in a few words, or null if it can. */
+function lmWhyNot(session, day) {
+  if (day === session.day) return null;
+  const b = routine.moveBlocker(session, day);
+  if (!b) return null;
+  return b.kind === "off" ? "Day off" : b.kind === "taken" ? "Has a session" : b.kind === "no-room" ? "No free time"
+    : b.muscle.name + " still recovering";
+}
+/** Where `session` would start on `day`: its own hour if that fits, else the nearest that does (as moveSession). */
+function lmStartOn(session, day) {
+  const starts = routine.startsFor(session, day);
+  return starts.length ? starts.reduce((a, b) => Math.abs(b - session.startHour) < Math.abs(a - session.startHour) ? b : a) : null;
 }
 
-/* ------------------------------ fit it in (config) ------------------------- */
+/* -------------------------------- the ring --------------------------------- */
 
-/* EXPERIENCE_LEVELS' labels, short enough to sit side by side in the setup row. */
-const EXPERIENCE_SHORT = { beginner: "Under 6 months", intermediate: "6 mo – 2 yrs", advanced: "2+ years" };
+/** A rounded arc from hour a to b on radius r, `w` wide: its caps inside the hours, a small gap at each end. */
+function lmCap(r, w, a, b, gap) {
+  const c = 2 * Math.PI * r, raw = Math.max(0, b - a) * c / 36, len = Math.max(0, raw - w - gap), off = (w / 2 + gap / 2) / r * 180 / Math.PI;
+  return { c, dash: len.toFixed(1) + " " + c.toFixed(1), rot: "rotate(" + (lmAng(a) + off).toFixed(2) + "deg)" };
+}
 
-function configHTML() {
-  const pv = weekPreview(), fit = pv.fit;
-  const muscles = routine.selectedMuscles(), src = routine.selection.source();
-  const program = src.program ? " · " + src.program.name + (src.kind === "modified" ? " (edited)" : "") : "";
-  const names = muscles.map(m => m.name);
-  // The frieze: the week as seven plates, the figure standing in each as
-  // that day trains it. A rest day's figure stands back; a day off has none.
-  // Beside each figure, its day: the hours from morning to night, as tall
-  // as the plate, with what is busy, where the session would go, and the
-  // meals. Each hour is a cell to paint (paint.js).
-  const [H0, H1] = WEEK_HOURS, rows = H1 - H0;
-  const ph = Math.round(Math.max(180, Math.min(360, innerHeight * .31))), rh = ph / rows;
-  wk.rh = rh;
-  const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
-  const mealPlan = mealsOn ? routine.mealPlan(slot => {
-    const p = pv.byDay.get(slot.day);
-    return !p || slot.hour < p.start || slot.hour >= p.end;
-  }) : { placed: [] };
-  const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
-  const marks = Array.from({ length: rows }, (_, k) => H0 + k).filter(h => h % 3 === 0 && h > H0)
-    .map(h => '<span class="staff-hour" style="top:' + px((h - H0) * rh) + '">' + hourLabel(h) + '</span>').join("");
-  const staff = (d, p) => '<div class="staff">' + marks +
-    (band ? '<i class="band" style="top:' + px((Math.max(band.from, H0) - H0) * rh) + ';height:' + px((Math.min(band.to, H1) - Math.max(band.from, H0)) * rh) + '"></i>' : '') +
-    '<div class="day-busy" data-busy="' + d + '">' + busyHTML(d, rh, WEEK_HOURS) + '</div>' +
-    (p ? '<i class="staff-sess" data-ghost="' + d + '" style="top:' + px((p.start - H0) * rh + 1) + ';height:' + px(Math.max(8, (p.end - p.start) * rh - 2)) + '"></i>' : '') +
-    mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(x =>
-      '<i class="staff-meal" style="top:' + px((x.hour - H0) * rh + rh / 2) + '"></i>').join("") +
-    Array.from({ length: rows }, (_, k) =>
-      '<div class="paint" role="button" data-day="' + d + '" data-hour="' + (H0 + k) + '" data-key="paint-' + d + '-' + (H0 + k) + '" ' +
-        'data-t="' + hourRange(H0 + k, H0 + k + 1) + '" tabindex="' + (paintCellKey() === "paint-" + d + "-" + (H0 + k) ? 0 : -1) + '" ' +
-        'aria-pressed="' + (routine.slot(d, H0 + k).state === SlotState.BUSY) + '" ' +
-        'aria-label="' + DAY_NAME[d] + ' ' + hourLabel(H0 + k) + ', busy" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("") +
-    '</div>';
-  const tiles = DayOfWeek.values.map((d, i) => {
-    const off = routine.isDayUnavailable(d), p = pv.byDay.get(d);
-    const fams = p ? blockFamilies(p.block) : [];
-    const cls = off ? " off" : p ? " on" : " rest";
-    return '<div class="tile' + cls + (wk.tile === d ? ' pointed' : '') + '" data-tile="' + d + '" style="--i:' + i + '">' +
-      '<div class="plate">' + (off ? '' : staff(d, p) +
-        '<canvas class="plate-fig" data-plate="' + d + '" data-ids="' + (p ? workedIds(p.block).join(",") : "") + '" aria-hidden="true"></canvas>') + '</div>' +
-      '<span class="tile-day">' + DayOfWeek.label[d] + '</span>' +
-      '<span class="tile-name">' + (off ? "Off" : p ? esc(blockName(p.block)) : "Rest") + '</span>' +
-      '<span class="tile-dots">' + familyDots(fams) + '</span>' +
-      '<span class="tile-meta">' + (p ? hourRange(p.start, p.end) : off ? "" : "Free day") + '</span>' +
-      '<button type="button" class="tile-off" data-dayoff="' + d + '" data-key="off-' + d + '" aria-pressed="' + off + '" ' +
-        'aria-label="' + (off ? "Make " + DAY_NAME[d] + " available" : "Take " + DAY_NAME[d] + " off") + '">' + (off ? "Train this day" : "Take it off") + '</button>' +
-    '</div>';
+/** The ring behind the figure: the dial, the seven days, the busy hours, the sessions, the meals, the words along it, the sun. */
+function lmArcTemplate(W, step) {
+  const { CX, CY, R } = LM, isWeek = step === 7, D = DayOfWeek.values, focus = isWeek ? null : D[step];
+  const draft = W.draft, kOp = l => !lm.keyHot || lm.keyHot === l ? 1 : 0.2;
+  const others = D.filter(d => d !== focus);
+  const circle = (r, style) => '<circle cx="' + CX + '" cy="' + CY + '" style="r:' + r + 'px; fill:none; transform-origin:' + CX + 'px ' + CY + 'px; ' + style + '"></circle>';
+  const ease = ".9s cubic-bezier(.16,1,.3,1)";
+
+  const rings = D.map((d, i) => {
+    const f = d === focus, off = routine.offDays.has(d);
+    let r, w, op, sessOn;
+    if (isWeek) { r = 278 + i * 22; w = 10; op = lm.hoverDay && lm.hoverDay !== d ? 0.38 : 1; sessOn = true; }
+    else if (f) { r = R; w = 22; op = 1; sessOn = true; }
+    else { r = R - 66 - others.indexOf(d) * 11; w = 3; op = 0.32; sessOn = false; }
+    const c = 2 * Math.PI * r, gap = f ? 4 : 2.5;
+    const runs = off ? [[FIRST_HOUR, 24]] : busyRuns(d), last = runs.length ? runs[runs.length - 1][1] : FIRST_HOUR;
+    const dur = lm.drag ? ".32s" : ".75s";
+    const busy = [0, 1, 2, 3, 4].map(k => {
+      const run = runs[k];
+      if (!run) return circle(r, "stroke:var(--lm-busy); stroke-width:0px; stroke-linecap:round; stroke-dasharray:0 " + c.toFixed(1) +
+        "; transform:rotate(" + lmAng(last) + "deg); transition:r " + ease + ", stroke-width .55s cubic-bezier(.16,1,.3,1), stroke-dasharray " + dur + " cubic-bezier(.16,1,.3,1), transform " + dur + " cubic-bezier(.16,1,.3,1)");
+      const q = lmCap(r, w, run[0], run[1], gap);
+      return circle(r, "stroke:" + (off ? "var(--lm-off)" : "url(#lm-flow)") + "; stroke-width:" + w + "px; stroke-linecap:round; stroke-dasharray:" + q.dash +
+        "; transform:" + q.rot + "; transition:r " + ease + ", stroke-width .55s cubic-bezier(.16,1,.3,1), stroke-dasharray " + dur + " cubic-bezier(.16,1,.3,1), transform " + dur + " cubic-bezier(.16,1,.3,1)");
+    }).join("");
+    const x = W.byDay[d], fams = x ? x.fams : [], n = fams.length, sw = w + (isWeek ? 3 : 4), sg = isWeek ? 1.2 : 2;
+    const stw = n ? (sw - (n - 1) * sg) / n : 0, a0 = x ? x.start : 18, a1 = x ? x.end : 18;
+    const sess = [0, 1, 2, 3].map(j => {
+      const on = !!x && sessOn && j < n, rr = on ? r - sw / 2 + stw / 2 + j * (stw + sg) : r, q = lmCap(rr, on ? stw : 0, a0, a1, gap);
+      return circle(rr.toFixed(2), "stroke:" + (on ? "var(--" + fams[j] + ")" : "transparent") + "; stroke-opacity:" + (on ? (draft ? 0.6 : 1) : 0) +
+        "; stroke-width:" + (on ? stw.toFixed(2) : 0) + "px; stroke-linecap:round; stroke-dasharray:" + (on ? q.dash : "0 " + q.c.toFixed(1)) +
+        "; transform:" + q.rot + "; transition:r " + ease + ", stroke-width " + ease + ", stroke-dasharray " + ease + ", transform " + ease +
+        ", stroke-opacity 1s ease " + (draft ? 0 : i * 0.09 + j * 0.05).toFixed(2) + "s");
+    }).join("");
+    const gq = x && sessOn ? lmCap(r, sw, a0, a1, gap) : null;
+    const glow = '<circle cx="' + CX + '" cy="' + CY + '" filter="url(#lm-soft)" style="r:' + r + 'px; fill:none; stroke:' + (x ? "var(--" + lmFam(x) + ")" : "transparent") +
+      '; stroke-opacity:' + (gq ? (draft ? (f ? 0.18 : 0.12) : 0.38) : 0) + '; stroke-width:' + (gq ? sw + 12 : 0) + 'px; stroke-linecap:round; stroke-dasharray:' +
+      (gq ? gq.dash : "0 " + c.toFixed(1)) + '; transform-origin:' + CX + 'px ' + CY + 'px; transform:' + (gq ? gq.rot : "rotate(" + lmAng(a0) + "deg)") +
+      '; transition:r ' + ease + ', stroke-width ' + ease + ', stroke-dasharray ' + ease + ', transform ' + ease + ', stroke-opacity .8s ease"></circle>';
+    return '<g style="opacity:' + (off && !f ? op * 0.7 : op) + '; transition:opacity .7s ease">' +
+      circle(r, "stroke:var(--ink-faint); stroke-opacity:.42; stroke-width:" + (f ? 1.2 : isWeek ? 1 : 0.8) + "px; stroke-dasharray:" + (c / 2).toFixed(1) + " " + c.toFixed(1) +
+        "; transform:rotate(180deg); transition:r " + ease + ", stroke-dasharray " + ease + ", stroke-width .6s ease") +
+      '<g style="opacity:' + (f ? kOp("busy") : 1) + '; transition:opacity .35s ease">' + busy + '</g>' +
+      '<g style="opacity:' + (f ? kOp("sess") : 1) + '; transition:opacity .35s ease">' + glow + sess + '</g>' +
+    '</g>';
   }).join("");
-  const note = fitNote(fit);
-  const unplacedBlocks = pv.plan.blocks.filter(b => !pv.plan.placements.some(p => p.block === b));
-  const short = shortFitNote(fit), empty = routine.emptySplitDays();
-  const busy = busySummary();
-  const status = wk.status && !routine.sessions.length ? wk.status : null;
-  const [lo, hi] = TRAINING_DAYS_RANGE;
 
-  return '<div class="wk-config">' +
-    '<div class="wk-head" data-reveal="0">' +
-      '<p class="eyebrow"><span class="n">' + STAGE_NUMERALS.plan + '</span> / Week plan</p>' +
-      '<h1 class="display" id="plan-title" tabindex="-1">Fit it into your life</h1>' +
-      '<p class="who"><b>' + muscles.length + (muscles.length === 1 ? " muscle group" : " muscle groups") + esc(program) + '</b>' +
-        '<span>' + esc(names.length > 5 ? names.slice(0, 4).join(", ") + " +" + (names.length - 4) : names.join(", ")) + '</span>' +
-        '<button type="button" class="text-link" data-goto="targets">Change</button></p>' +
-    '</div>' +
-    '<div class="wk-week" data-reveal="1">' +
-      '<div class="tiles' + (wk.changed === "shuffle" ? " shuffle" : "") + '" style="--ph:' + ph + 'px">' + tiles + '</div>' +
-      '<p class="staff-hint"><span>Drag down a day’s hours to mark when you’re busy, and again to clear them. The session moves to the hours you leave.</span>' +
-        '<span class="legend-keys"><span><i class="k-session"></i>Session</span><span><i class="k-busy"></i>Busy</span>' +
-        (band ? '<span><i class="k-band"></i>Preferred time</span>' : '') + (mealsOn ? '<span><i class="k-meal"></i>Meal</span>' : '') + '</span></p>' +
-      '<div class="wk-facts">' +
-        '<span class="facts"><span>' + routine.sessionMinutes + '-minute sessions</span><span>' + windowWord() + '</span>' +
-          '<span>' + (busy ? "Busy " + esc(busy) : "No busy hours set") + '</span></span>' +
-        '<button type="button" class="text-link" id="open-shape" data-key="open-shape">Customize week →</button>' +
-      '</div>' +
-      (unplacedBlocks.length && routine.split === "auto"
-        ? '<p class="warn-line">No free day fits ' + nameList(unplacedBlocks.map(b => blockName(b))) + ' yet: unblock some hours or take fewer days off.</p>' : '') +
-    '</div>' +
-    '<div class="wk-controls" data-reveal="2">' +
-      '<div class="wk-row">' +
-        '<div class="kv-col"><span class="eyebrow" id="days-label">Days a week</span>' +
-          '<span class="kv">' +
-            '<button type="button" class="stepper" data-days-step="-1" data-key="days-down" aria-label="One day fewer"' + (routine.sessionsPerWeek <= lo ? ' disabled' : '') + '>−</button>' +
-            '<output class="serif-out narrow big" aria-labelledby="days-label">' + routine.sessionsPerWeek + '</output>' +
-            '<button type="button" class="stepper" data-days-step="1" data-key="days-up" aria-label="One day more"' + (routine.sessionsPerWeek >= hi ? ' disabled' : '') + '>+</button>' +
-          '</span></div>' +
-        '<div class="kv-col"><span class="eyebrow" id="split-label">Split</span>' +
-          '<span class="segmented" role="radiogroup" aria-labelledby="split-label">' +
-            Object.entries(SPLITS).map(([id, sp]) => {
-              const gaps = routine.emptySplitDays(id);
-              return '<button type="button" role="radio" aria-checked="' + (routine.split === id) + '" data-split="' + id + '" ' +
-                'data-key="split-' + id + '"' + (gaps.length ? ' title="No muscles for ' + gaps.join(" or ") + '"' : '') + '>' +
-                sp.label + '</button>';
-            }).join("") +
-          '</span></div>' +
-        '<div class="kv-col"><span class="eyebrow" id="experience-label">Training experience</span>' +
-          '<span class="segmented" role="radiogroup" aria-labelledby="experience-label">' +
-            EXPERIENCE_LEVELS.map(lv =>
-              '<button type="button" role="radio" aria-checked="' + (routine.experience === lv.id) + '" ' +
-                'data-experience="' + lv.id + '" data-key="exp-' + lv.id + '" aria-label="' + esc(lv.label) + '" ' +
-                'title="' + esc(lv.label) + '">' + esc(EXPERIENCE_SHORT[lv.id] || lv.label) + '</button>').join("") +
-          '</span>' +
-          '<span class="field-note">It does not change your weekly sets yet.</span>' +
+  const ticks = Array.from({ length: 19 }, (_, k) => {
+    const h = FIRST_HOUR + k, t = lmAng(h) * Math.PI / 180, a = R + 16, b = R + (h % 3 === 0 ? 28 : 22);
+    return '<line x1="' + (CX + Math.cos(t) * a).toFixed(1) + '" y1="' + (CY + Math.sin(t) * a).toFixed(1) + '" x2="' + (CX + Math.cos(t) * b).toFixed(1) +
+      '" y2="' + (CY + Math.sin(t) * b).toFixed(1) + '" style="stroke:var(--ink-faint); stroke-width:1; stroke-linecap:round; stroke-opacity:' + (h < 7 || h > 21 ? 0.45 : 0.9) + '"></line>';
+  }).join("");
+
+  const pct = h => ((h - FIRST_HOUR) / 18 * 100).toFixed(2) + "%";
+  const fOff = !isWeek && routine.offDays.has(focus), fRuns = !isWeek && !fOff ? busyRuns(focus) : [];
+  const fMeals = isWeek || fOff ? [] : (W.meals[focus] || []);
+  const fx = !isWeek ? W.byDay[focus] : null;
+  const win = routine.preferredWindow, W0 = WINDOWS[win], winR = isWeek ? 344 : R, winC = 2 * Math.PI * winR;
+  const text = (path, off, style, body) => '<text style="' + style + '"><textPath href="#' + path + '" startOffset="' + off + '">' + body + '</textPath></text>';
+  const mono = "font:500 10px/1 var(--mono); letter-spacing:.12em; fill:var(--ink-faint); text-anchor:middle";
+  const curved =
+    '<g style="opacity:' + (isWeek ? 0.55 : kOp("arc")) + '; transition:opacity .4s ease">' +
+      [6, 9, 12, 15, 18, 21, 24].map(h => text("lm-p-hours", h === 6 ? "2.4%" : h === 24 ? "97.6%" : pct(h), mono, lmPad(h) + ":00")).join("") + '</g>' +
+    '<g style="opacity:' + kOp("busy") + '; transition:opacity .35s ease">' +
+      (fOff ? [[50, "DAY OFF"]] : fRuns.filter(([a, b]) => b - a >= 2).map(([a, b]) => [((a + b) / 2 - FIRST_HOUR) / 18 * 100, "BUSY " + lmPad(a) + "–" + lmPad(b)]))
+        .map(([o, l]) => '<text dominant-baseline="central" style="font:500 9px/1 var(--mono); letter-spacing:.2em; fill:var(--ink-soft); text-anchor:middle"><textPath href="#lm-p-mid" startOffset="' + o.toFixed(2) + '%">' + l + '</textPath></text>').join("") + '</g>' +
+    '<g style="opacity:' + kOp("meal") + '; transition:opacity .35s ease">' +
+      fMeals.map(m => text("lm-p-meal", pct(m.hour + 0.5), "font:italic 400 15px/1 var(--serif); fill:var(--ink-soft); text-anchor:middle", esc(m.name.toLowerCase()))).join("") + '</g>' +
+    '<g data-lm-sesslabel style="transition:opacity .3s ease"><g style="opacity:' + kOp("sess") + '; transition:opacity .35s ease">' +
+      (fx ? '<text style="fill:var(--' + lmFam(fx) + '-trace); text-anchor:middle"><textPath href="#lm-p-sess" startOffset="' + pct(fx.start + fx.hours / 2) + '">' +
+        '<tspan style="font:italic 400 25px/1 var(--serif)">' + esc(fx.name) + '</tspan><tspan dx="12" style="font:500 10px/1 var(--mono); letter-spacing:.14em">' +
+        lmPad(fx.start) + "–" + lmPad(fx.end) + '</tspan></textPath></text>' : '') + '</g></g>' +
+    '<g style="opacity:' + (isWeek ? 1 : 0) + '; transition:opacity .6s ease">' +
+      D.map((d, i) => '<text x="' + (CX - (278 + i * 22)) + '" y="' + (CY + 17) + '" style="font:500 9px/1 var(--mono); letter-spacing:.08em; text-anchor:middle; fill:' +
+        (lm.hoverDay === d ? "var(--ink)" : "var(--ink-faint)") + '">' + DayOfWeek.label[d].slice(0, 2).toUpperCase() + '</text>').join("") + '</g>' +
+    '<text data-lm-needle style="opacity:0; transition:opacity .25s ease; text-anchor:middle; fill:var(--ink); pointer-events:none"><textPath href="#lm-p-sess" startOffset="50%" data-lm-needle-at>' +
+      '<tspan data-lm-time style="font:500 11px/1 var(--mono); letter-spacing:.1em"></tspan><tspan data-lm-state dx="10" style="font:italic 400 19px/1 var(--serif); fill:var(--ink-soft)"></tspan></textPath></text>';
+
+  const mealDots = fMeals.map(m => {
+    const t = lmAng(m.hour + 0.5) * Math.PI / 180, cx = (CX + Math.cos(t) * (R - 23)).toFixed(1), cy = (CY + Math.sin(t) * (R - 23)).toFixed(1);
+    return '<g><circle cx="' + cx + '" cy="' + cy + '" r="6.5" style="fill:none; stroke:var(--ink-faint); stroke-opacity:.5; stroke-width:1"></circle>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="2.8" style="fill:var(--ink-soft)"></circle></g>';
+  }).join("");
+
+  return '<svg width="1440" height="900" viewBox="0 0 1440 900" style="position:absolute; left:0; top:0; display:block; overflow:visible">' +
+    '<defs>' +
+      '<pattern id="lm-flow" data-lm-flow patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" style="fill:var(--lm-busy)"></rect><rect width="1.3" height="7" style="fill:var(--lm-busy-line)"></rect></pattern>' +
+      '<radialGradient id="lm-glow"><stop offset="0" style="stop-color:var(--lm-sun); stop-opacity:.5"></stop><stop offset=".4" style="stop-color:var(--lm-sun); stop-opacity:.15"></stop><stop offset="1" style="stop-color:var(--lm-sun); stop-opacity:0"></stop></radialGradient>' +
+      '<linearGradient id="lm-ray" gradientUnits="userSpaceOnUse" x1="398" y1="0" x2="214" y2="0"><stop offset="0" style="stop-color:var(--lm-sun); stop-opacity:.9"></stop><stop offset="1" style="stop-color:var(--lm-sun); stop-opacity:0"></stop></linearGradient>' +
+      '<filter id="lm-soft" x="-7%" y="-7%" width="114%" height="114%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>' +
+      '<path id="lm-p-hours" d="M 530 640 A 450 450 0 0 1 1430 640"></path>' +
+      '<path id="lm-p-sess" d="M 506 640 A 474 474 0 0 1 1454 640"></path>' +
+      '<path id="lm-p-mid" d="M 570 640 A 410 410 0 0 1 1390 640"></path>' +
+      '<path id="lm-p-meal" d="M 612 640 A 368 368 0 0 1 1348 640"></path>' +
+    '</defs>' +
+    circle(winR, "stroke:var(--ink); stroke-opacity:" + (win === "any" ? 0 : (lmDark() ? 0.06 : 0.045) * (isWeek ? 1 : kOp("arc"))) + "; stroke-width:" + (isWeek ? 150 : 52) +
+      "px; stroke-dasharray:" + ((W0.to - W0.from) * winC / 36).toFixed(1) + " " + winC.toFixed(1) + "; transform:rotate(" + lmAng(W0.from) + "deg); transition:r " + ease +
+      ", stroke-width " + ease + ", stroke-dasharray " + ease + ", transform " + ease + ", stroke-opacity .5s ease") +
+    '<g style="opacity:' + (isWeek ? 0.55 : kOp("arc")) + '; transition:opacity .5s ease">' + ticks + '</g>' +
+    rings +
+    '<g style="opacity:' + kOp("meal") + '; transition:opacity .35s ease">' + mealDots + '</g>' +
+    '<g>' + curved + '</g>' +
+    // The now-line: the hour pointed at, and the light it sends to the body.
+    '<g data-lm-sun data-p transform="translate(' + LM.CX + ' ' + LM.CY + ') rotate(' + lmAng(Math.max(FIRST_HOUR, Math.min(24, lm.hourF == null ? 13 : lm.hourF))).toFixed(2) + ')" style="opacity:0; transition:opacity .5s ease; pointer-events:none">' +
+      '<circle cx="410" cy="0" r="78" fill="url(#lm-glow)"></circle>' +
+      '<polygon points="397,-3.2 397,3.2 214,0" fill="url(#lm-ray)"></polygon>' +
+      '<line x1="424" y1="0" x2="447" y2="0" style="stroke:var(--ink); stroke-width:1.3; stroke-linecap:round"></line>' +
+      '<circle data-lm-halo data-p cx="410" cy="0" r="10" style="fill:none; stroke:var(--ink); stroke-opacity:.3; stroke-width:1"></circle>' +
+      '<circle data-lm-bead cx="410" cy="0" r="' + lm.beadR.toFixed(2) + '" style="fill:var(--ink); stroke:var(--bg); stroke-width:2"></circle>' +
+    '</g>' +
+  '</svg>';
+}
+
+/* ------------------------------- the template ------------------------------ */
+
+const lmEyebrow = tail => '<p style="margin:0; font-size:11px; font-weight:600; line-height:1.3; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint)">' +
+  '<span style="font:600 13px/1 var(--serif); letter-spacing:.06em; color:var(--ink)">' + STAGE_NUMERALS.plan + '</span> / Week plan · ' + tail + '</p>';
+const lmLabel = (t, color = "var(--ink-faint)", style = "") => '<p style="margin:0; font:500 10px/1 var(--mono); letter-spacing:.16em; color:' + color + '; ' + style + '">' + t + '</p>';
+const lmLink = (act, label, extra = "", color = "var(--ink)", size = "13px") => '<button type="button" class="lm-link" data-lm="' + act + '"' + extra +
+  ' style="font-size:' + size + '; color:' + color + '">' + label + '</button>';
+
+function lmTemplate() {
+  const W = lmWeek(), D = DayOfWeek.values, step = lm.step, isWeek = step === 7, draft = W.draft, wg = isWeek && !draft;
+  const focus = isWeek ? null : D[step], n = routine.nutrition;
+  lm.byDay = W.byDay; lm.meals = W.meals;
+
+  // The figure follows the day in hand, or the ring or column pointed at.
+  const fd = isWeek ? lm.hoverDay : focus, fx = fd ? W.byDay[fd] : null;
+  const all = fx ? fx.ids : [], hm = lm.hoverMuscle && all.includes(lm.hoverMuscle) ? lm.hoverMuscle : null;
+  lm.F = { ids: hm ? [hm] : all, fams: fx ? fx.fams : [], off: !!(fd && routine.offDays.has(fd)),
+           word: fd ? DayOfWeek.name[fd] : "Week", hour: fx ? fx.start + fx.hours / 2 : 13, sun: !isWeek, wg };
+
+  const kc = l => lm.keyHot === l ? "var(--ink)" : "var(--ink-soft)";
+  let left = "";
+
+  if (!wg) {
+    const dn = focus ? DayOfWeek.name[focus] : "";
+    left += '<div style="position:absolute; left:48px; top:100px; width:432px; pointer-events:auto">' +
+      lmEyebrow(isWeek ? "The week" : dn + ", " + (step + 1) + " of 7");
+
+    if (!isWeek && draft) {
+      // A day, being told.
+      const pd = lmPrevDay(focus), isMon = focus === "MON", wk4 = ["TUE", "WED", "THU", "FRI"], off = routine.offDays.has(focus);
+      const copyOn = isMon ? wk4.some(t => !lmSameDay("MON", t)) : !lmSameDay(pd, focus);
+      const lede = off ? "Off. Nothing will be planned on " + dn + "." : !isMon && !copyOn ? "Shaped like " + DayOfWeek.name[pd] + " so far. Change only what’s different."
+        : "Mark the hours that aren’t yours. We’ll find the best of what’s left.";
+      const x = W.byDay[focus], pv = W.byDay[pd];
+      let eyebrow, name, time = "", note, color = "var(--ink-faint)", muscles = "";
+      if (off) { eyebrow = "OFF"; name = "Not a training day"; note = "Give it back with “Train on " + dn + "”."; }
+      else if (x) {
+        eyebrow = "WE’D TRAIN HERE"; name = x.name; time = lmPad(x.start) + ":00–" + lmPad(x.end) + ":00"; color = "var(--" + lmFam(x) + "-trace)";
+        const W0 = WINDOWS[routine.preferredWindow], inWin = routine.preferredWindow === "any" || (x.start >= W0.from && x.end <= W0.to);
+        note = routine.preferredWindow === "any" ? "The best free hour this day has, clear of your meals."
+          : inWin ? "In your " + LM_WIN[routine.preferredWindow][0].toLowerCase() + ", clear of your meals."
+          : "Outside your " + LM_WIN[routine.preferredWindow][0].toLowerCase() + ": the best hour this day has left.";
+        muscles = x.muscles.map(m => '<button type="button" data-lm-muscle="' + m.id + '" style="display:inline-flex; align-items:center; gap:7px; padding:3px 0; background:none; border:0; cursor:default; font-size:13px; color:' +
+          (lm.hoverMuscle === m.id ? "var(--ink)" : "var(--ink-soft)") + '; transition:color .25s ease"><span style="width:6px; height:6px; border-radius:50%; background:var(--' + m.family + ')"></span>' + esc(m.name) + '</button>').join("");
+      } else {
+        eyebrow = "REST"; name = "A day to recover";
+        note = pv ? "Recovering from " + DayOfWeek.name[pd] + ": " + pv.muscles.map(m => m.name).join(", ") + "." : "Nothing to recover from yet.";
+      }
+      const key = (l, icon, body) => '<div data-lm-key="' + l + '" style="display:grid; grid-template-columns:40px minmax(0,1fr); gap:14px; align-items:center; padding:8px 0; border-top:1px solid var(--line-soft)">' +
+        '<svg width="40" height="22" viewBox="0 0 40 22" style="display:block; overflow:visible" aria-hidden="true">' + icon + '</svg>' +
+        '<span style="font-size:13.5px; line-height:1.4; color:' + kc(l) + '; transition:color .25s ease">' + body + '</span></div>';
+      const mealsOn = n.isValid() && n.showMeals;
+      left +=
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">Where does <em>' + dn + '</em> go?</h1>' +
+        '<p style="margin:16px 0 0; font:italic 400 22px/1.3 var(--serif); color:var(--ink-soft); text-wrap:pretty">' + lede + '</p>' +
+        '<div data-lm-keys style="margin-top:26px; display:flex; flex-direction:column; opacity:' + (off ? 0.4 : 1) + '; transition:opacity .4s ease">' +
+          lmLabel("READING THE ARC", "var(--ink-faint)", "margin:0 0 6px") +
+          key("arc", '<path d="M4 20 A16 16 0 0 1 36 20" style="fill:none; stroke:var(--ink-faint); stroke-width:1.2"></path><circle cx="20" cy="4" r="2.6" style="fill:var(--ink)"></circle>',
+            '<b style="font-weight:600; color:var(--ink)">The arc is your day</b>, six in the morning to midnight.') +
+          key("busy", '<line x1="9" y1="11" x2="31" y2="11" style="stroke:url(#lm-flow); stroke-width:11; stroke-linecap:round"></line>',
+            '<b style="font-weight:600; color:var(--ink)">Drag along it</b> over busy hours. Drag again to free them.') +
+          key("sess", '<line x1="9" y1="6.5" x2="31" y2="6.5" style="stroke:var(--push); stroke-width:3.4; stroke-linecap:round"></line><line x1="9" y1="11" x2="31" y2="11" style="stroke:var(--pull); stroke-width:3.4; stroke-linecap:round"></line><line x1="9" y1="15.5" x2="31" y2="15.5" style="stroke:var(--legs); stroke-width:3.4; stroke-linecap:round"></line>',
+            '<b style="font-weight:600; color:var(--ink)">The coloured band</b> is training, in the muscles’ pigments.') +
+          key("meal", '<circle cx="20" cy="11" r="6.5" style="fill:none; stroke:var(--ink-faint); stroke-opacity:.6; stroke-width:1"></circle><circle cx="20" cy="11" r="2.8" style="fill:var(--ink-soft)"></circle>',
+            mealsOn ? '<b style="font-weight:600; color:var(--ink)">Dots are meals.</b> Training stays clear of them.'
+              : n.isValid() ? '<b style="font-weight:600; color:var(--ink)">Meals are hidden.</b> Show them again on the week.'
+              : '<b style="font-weight:600; color:var(--ink)">Meals come from Nutrition.</b> Set it up to see them here.') +
+        '</div>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:16px">' +
+          lmLink("off", off ? "Train on " + dn : "Take " + dn + " off", ' aria-pressed="' + off + '"') +
+          (copyOn ? lmLink("copy", isMon ? "Same for Tue–Fri" : "Same as " + DayOfWeek.name[pd]) : "") +
+          (!off && busyRuns(focus).length ? lmLink("clear", "Clear " + dn, "", "var(--ink-soft)") : "") +
+        '</div>' +
+        // The ring's hours for the keyboard: out of sight until one has the focus.
+        (off ? '' : '<div class="lm-hours" role="group" aria-label="' + dn + '’s busy hours">' +
+          Array.from({ length: LAST_HOUR - FIRST_HOUR + 1 }, (_, j) => FIRST_HOUR + j).map(h =>
+            '<button type="button" data-lm="hour" data-h="' + h + '" aria-pressed="' + isBusy(focus, h) + '" aria-label="' + hourRange(h, h + 1) + ', busy">' + lmPad(h) + '</button>').join("") +
+        '</div>') +
+        '<div style="margin-top:30px; padding-top:16px; border-top:1px solid var(--line)">' +
+          lmLabel(eyebrow, color) +
+          '<div style="display:flex; align-items:baseline; gap:12px; margin-top:10px">' +
+            '<span style="font:italic 400 34px/1 var(--serif); color:var(--ink)">' + esc(name) + '</span>' +
+            '<span style="font:500 10.5px/1 var(--mono); letter-spacing:.1em; color:var(--ink-faint)">' + time + '</span></div>' +
+          (muscles ? '<div data-lm-muscles style="display:flex; flex-wrap:wrap; gap:2px 16px; margin-top:10px">' + muscles + '</div>' : '') +
+          '<p style="margin:10px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty">' + esc(note) + '</p>' +
+        '</div>';
+    }
+
+    if (!isWeek && !draft) {
+      // A day, planned.
+      const x = W.byDay[focus], off = routine.offDays.has(focus);
+      const h1b = off ? "off." : x ? "at " + LM_HOUR[x.start] + "." : "at rest.";
+      let sub, body = "";
+      if (x) {
+        const s = x.session, w = s.workout, sets = w ? w.sets : 0;
+        sub = x.name + ", " + lmPad(x.start) + ":00 to " + lmPad(x.end) + ":00 · " + sets + " hard sets.";
+        body += '<div data-lm-muscles style="margin-top:16px; display:flex; flex-direction:column">' +
+          (w ? w.entries : []).map((e, i) => {
+            const m = MUSCLE_BY_ID.get(e.muscleId), fam = m ? m.family : "push";
+            return '<div data-lm-muscle="' + e.muscleId + '" style="display:grid; grid-template-columns:8px minmax(0,1fr) 72px 52px; gap:12px; align-items:center; padding:6px 0; border-top:1px solid var(--line-soft); background:' +
+              (lm.hoverMuscle === e.muscleId ? "color-mix(in oklab, var(--" + fam + ") 9%, transparent)" : "transparent") + '; transition:background .25s ease">' +
+              '<span style="width:7px; height:7px; border-radius:50%; background:var(--' + fam + ')"></span>' +
+              '<span style="min-width:0; font-size:14px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="' + esc(e.exercise.name + (m ? " · " + m.name : "")) + '">' + esc(e.exercise.name) + '</span>' +
+              '<span style="font:500 11px/1 var(--mono); letter-spacing:.04em; color:var(--ink-soft)">' + e.sets + ' × ' + e.reps + '</span>' +
+              '<button type="button" class="lm-link" data-lm="swap" data-i="' + i + '" style="justify-self:end; font-size:12px; color:var(--ink-soft)" aria-label="Swap ' + esc(e.exercise.name) + ' for another ' + esc(m ? m.name.toLowerCase() : "") + ' exercise">Swap ↻</button>' +
+            '</div>';
+          }).join("") + '</div>';
+        const mh = lm.moveHover, why = D.map(d => lmWhyNot(s, d));
+        body += lmLabel("MOVE TO", "var(--ink-faint)", "margin-top:22px") +
+          '<div data-lm-moves style="display:flex; gap:4px; margin-top:10px">' + D.map((d, i) => {
+            const cur = d === s.day, ok = !cur && !why[i];
+            return '<button type="button" data-lm="move" data-d="' + d + '" data-lm-move="' + d + '"' + (cur ? ' aria-current="true"' : '') + (!ok && !cur ? ' aria-disabled="true"' : '') +
+              ' aria-label="' + DayOfWeek.name[d] + (cur ? ", where it is now" : why[i] ? ": " + why[i].toLowerCase() : "") + '" style="width:42px; height:32px; padding:0; border-radius:999px; border:1px solid ' +
+              (cur ? "var(--ink)" : ok ? "var(--line)" : "var(--line-soft)") + '; background:' + (cur ? "var(--ink)" : "transparent") + '; color:' + (cur ? "var(--bg)" : ok ? "var(--ink)" : "var(--ink-faint)") +
+              '; cursor:' + (ok ? "pointer" : "default") + '; font-size:11px; font-weight:500; opacity:' + (cur || ok ? 1 : 0.55) + '; transition:background .25s ease, color .25s ease">' + DayOfWeek.label[d] + '</button>';
+          }).join("") + '</div>';
+        const mi = mh ? D.indexOf(mh) : -1, at = mh && !why[mi] && mh !== s.day ? lmStartOn(s, mh) : null;
+        body += '<p style="margin:8px 0 0; min-height:18px; font-size:12px; color:' + (mh && mh !== s.day && why[mi] ? "var(--warn)" : "var(--ink-faint)") + '">' +
+          (mh ? (mh === s.day ? "Where it is now." : why[mi] ? DayOfWeek.name[mh] + ": " + why[mi].toLowerCase() + "." : "Move it to " + DayOfWeek.name[mh] + ", " + lmPad(at) + ":00.") : "Point at a day to see if it fits.") + '</p>' +
+          '<p style="margin:4px 0 0; font-size:12px; color:var(--ink-faint)">Or drag the band along the arc to change its hour.</p>';
+      } else {
+        const pd = lmPrevDay(focus), pv = W.byDay[pd];
+        sub = off ? "No training on " + dn + "." : pv ? "Recovering from " + DayOfWeek.name[pd] + ": " + pv.muscles.map(m => m.name).join(", ") + "." : "Nothing to recover from yet.";
+      }
+      left +=
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">' + dn + ', <em>' + h1b + '</em></h1>' +
+        '<p style="margin:16px 0 0; font:italic 400 22px/1.3 var(--serif); color:var(--ink-soft); text-wrap:pretty">' + esc(sub) + '</p>' + body +
+        '<div style="display:flex; gap:18px; margin-top:16px">' +
+          lmLink("edit-hours", "Change " + dn + "’s hours", "", "var(--ink)", "12.5px") +
+          (x ? lmLink("remove", "Remove session", "", "var(--warn)", "12.5px") : "") +
+        '</div>';
+    }
+
+    if (isWeek) {
+      // The week, told.
+      const ch = lm.chooser, cur = k => lm.preview && lm.preview.key === k ? lm.preview.value : routine[LM_TERMS[k]];
+      const exp = routine.experience || DEFAULT_EXPERIENCE;
+      const word = (k, label) => '<button type="button" data-lm="chooser" data-k="' + k + '" aria-expanded="' + (ch === k) + '" style="padding:0 2px; background:none; border:0; cursor:pointer; font:italic 400 25px/1.32 var(--serif); color:var(--ink); text-decoration:underline; text-decoration-color:' +
+        (ch === k ? "var(--ink)" : "var(--ink-faint)") + '; text-decoration-thickness:1px; text-underline-offset:6px">' + label + '</button>';
+      const days = cur("days"), len = cur("len"), win = cur("win"), split = cur("split");
+      const opt = (k, v, label, size, tag = "") => {
+        const on = routine[LM_TERMS[k]] === v || (k === "exp" && !routine.experience && v === DEFAULT_EXPERIENCE);
+        const pre = lm.preview && lm.preview.key === k && lm.preview.value === v;
+        return '<button type="button" data-lm="pick" data-k="' + k + '" data-v="' + v + '" data-lm-opt="' + k + ':' + v + '" aria-pressed="' + on + '" style="position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; padding:0 2px 9px; background:none; border:0; cursor:pointer; color:' +
+          (on ? "var(--ink)" : pre ? "var(--ink-soft)" : "var(--ink-faint)") + '; transition:color .25s ease">' +
+          '<span style="font-family:var(--serif); font-weight:400; font-size:' + size + '; line-height:1; font-style:' + (on ? "italic" : "normal") + '">' + label + '</span>' +
+          '<span style="font:500 9px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-faint); min-height:9px">' + tag + '</span>' +
+          '<span style="position:absolute; left:0; right:0; bottom:0; height:2px; border-radius:1px; background:var(--ink); transform:' + (on ? "scaleX(1)" : "scaleX(0)") + '; transition:transform .45s cubic-bezier(.16,1,.3,1)"></span></button>';
+      };
+      const CH = {
+        days: () => [1, 2, 3, 4, 5, 6, 7].map(v => opt("days", v, String(v), "32px")),
+        len: () => SESSION_LENGTH_OPTIONS.map(v => opt("len", v, String(v), "32px", "min")),
+        win: () => ["morning", "midday", "evening", "any"].map(v => opt("win", v, LM_WIN[v][0], "24px")),
+        split: () => Object.keys(SPLITS).map(v => opt("split", v, SPLITS[v].label, "22px")),
+        exp: () => EXPERIENCE_LEVELS.map(lv => opt("exp", lv.id, LM_EXP[lv.id][0], "22px"))
+      };
+      const fit = fitNote(lmPreviewed(weekPreview).fit);
+      const status = lm.status && lm.status.kind === "err" ? lm.status : null;
+      const hd = lm.hoverDay, hx = hd ? W.byDay[hd] : null;
+      const mealsOn = n.isValid() && n.showMeals;
+      left +=
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>told.</em></h1>' +
+        '<div style="position:relative">' +
+          '<p style="margin:20px 0 0; font:400 25px/1.32 var(--serif); color:var(--ink-soft)">' +
+            word("days", LM_NUM[days]) + ' ' + (days === 1 ? "day a week" : "days a week") + ', ' + word("len", LM_LEN[len] || len + " minutes") + ' each, ' +
+            word("win", LM_WIN[win][1]) + ', ' + word("split", LM_SPLIT[split]) + '.</p>' +
+          (ch && ch !== "exp" ? '<div data-lm-chooser style="position:absolute; left:-12px; top:calc(100% + 8px); z-index:20; display:flex; align-items:flex-end; gap:20px; padding:12px 18px 10px; background:var(--bg); box-shadow:0 0 28px 18px var(--bg); white-space:nowrap">' + CH[ch]().join("") + '</div>' : '') +
+        '</div>' +
+        '<div style="position:relative">' +
+          '<p style="margin:10px 0 0; font-size:13.5px; color:var(--ink-soft)">' + (LM_NUM[routine.selection.size] || String(routine.selection.size)).replace(/^None$/, "No") + (routine.selection.size === 1 ? " muscle group" : " muscle groups") +
+            ' from Targets, for someone training <button type="button" data-lm="chooser" data-k="exp" aria-expanded="' + (ch === "exp") + '" style="padding:0 1px; background:none; border:0; cursor:pointer; font-size:13.5px; font-weight:500; color:var(--ink); text-decoration:underline; text-decoration-color:' +
+            (ch === "exp" ? "var(--ink)" : "var(--ink-faint)") + '; text-underline-offset:3px">' + LM_EXP[cur("exp") || exp][1] + '</button>.</p>' +
+          (ch === "exp" ? '<div data-lm-chooser style="position:absolute; left:-12px; top:calc(100% + 8px); z-index:20; display:flex; align-items:flex-end; gap:20px; padding:12px 18px 10px; background:var(--bg); box-shadow:0 0 28px 18px var(--bg); white-space:nowrap">' + CH.exp().join("") + '</div>' : '') +
+        '</div>' +
+        (status ? '<p style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:13px; line-height:1.45; color:var(--warn)"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:var(--warn); transform:translateY(-1px)"></span><span>' + esc(status.text) + '</span></p>'
+          : fit ? '<p aria-live="polite" style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:13px; line-height:1.45; color:' + (fit.warn ? "var(--warn)" : "var(--ink-soft)") + '"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:' +
+            (fit.warn ? "var(--warn)" : "var(--legs)") + '; transform:translateY(-1px)"></span><span>' + esc(fit.text) + '</span></p>' : '') +
+        '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-top:16px; font-size:12px; color:var(--ink-faint)">' +
+          '<span>Fill busy</span>' + [["9-17", "Weekdays 9–5"], ["8-18", "8–6"], ["clear", "Clear all"]].map(([k, l]) => lmLink("preset", l, ' data-k="' + k + '"', "var(--ink-soft)", "12px")).join("") +
+          '<span style="width:1px; height:12px; background:var(--line)"></span>' +
+          (n.isValid()
+            ? '<button type="button" data-lm="meals" aria-pressed="' + n.showMeals + '" style="display:inline-flex; align-items:center; gap:7px; padding:0; background:none; border:0; cursor:pointer; font-size:12px; font-weight:500; color:var(--ink-soft)">' +
+                '<span style="display:block; width:7px; height:7px; border-radius:50%; background:' + (mealsOn ? "var(--ink-faint)" : "transparent") + '; box-shadow:0 0 0 1px var(--ink-faint)"></span>' + (mealsOn ? "Meals shown" : "Meals hidden") + '</button>'
+            : '<button type="button" class="lm-link" data-goto="nutrition" style="font-size:12px; color:var(--ink-soft)">Set up meals in Nutrition</button>') +
+        '</div>' +
+        (routine.sessions.length && lm.editing ? '<button type="button" class="lm-link" data-lm="return" style="margin-top:12px; font-size:12.5px">Keep the week as it was</button>' : '') +
+        '<div style="margin-top:34px; padding-top:16px; border-top:1px solid var(--line)">' +
+          lmLabel(hd ? DayOfWeek.name[hd].toUpperCase() + (routine.offDays.has(hd) ? " · OFF" : hx ? " · " + esc(hx.name.toUpperCase()) + " · " + lmPad(hx.start) + ":00" : " · REST") : "SEVEN RINGS, MONDAY AT THE CENTRE",
+            hx ? "var(--" + lmFam(hx) + "-trace)" : "var(--ink-faint)") +
+          '<p style="margin:10px 0 0; min-height:56px; font:italic 400 21px/1.32 var(--serif); color:var(--ink-soft); text-wrap:pretty">' +
+            esc(hd ? lmBrief(hd, W.byDay) : "Point at a ring to see its day on the body. Click it to open the day.") + '</p>' +
+        '</div>';
+    }
+    left += '</div>';
+  }
+
+  // The week, planned: the whole screen, seven suns on one horizon.
+  let week = "";
+  if (wg) {
+    const g = [...routine.sessions].sort(byWeekOrder), wkIn = lm.wkIn;
+    const sets = g.reduce((t, s) => t + (s.workout ? s.workout.sets : 0), 0);
+    const v = routine.weeklyVolume(), tv = [...new Set(v.rows.map(r => r.times).filter(Boolean))].sort((a, b) => a - b);
+    const tw = { 1: "once", 2: "twice", 3: "three times" };
+    const sub = LM_NUM[g.length] + (g.length === 1 ? " session " : " sessions ") + LM_WIN[routine.preferredWindow][1] +
+      (tv.length ? ", each muscle " + tv.map(t => tw[t] || t + " times").join(" or ") + " a week." : ".");
+    const hrs = Math.round(g.reduce((t, s) => t + sessionMinutes(s), 0) / 30) / 2;
+    const stats = [[String(g.length), g.length === 1 ? "session" : "sessions"], [String(hrs), "hours"], [String(sets), "hard sets"]];
+    if (n.isValid()) stats.push([n.kcal.toLocaleString("en-US"), "kcal a day"], [n.protein + " g", "protein a day"]);
+    const gaps = weekGaps(), stale = weekIsStale(), outdated = !stale && mealsOutdated();
+    // What the week falls short of, in one line; the reasons open under it.
+    const said = lm.status && lm.status.kind ? lm.status.text.replace(/ Some muscles get less than they usually need this week — see the notes below\./, "") : "";
+    const notes = [
+      stale && !/changed since/.test(said) ? "Your targets, training or nutrition changed since this week was generated. Generate again to plan for them." : "",
+      outdated ? "The meals no longer match your daily targets. Generate again to update them." : "",
+      said, ...gaps
+    ].filter(Boolean);
+    const short = stale ? "Your targets or settings changed since this week was generated." : outdated ? "The meals no longer match your daily targets."
+      : "Some of your targets fall short this week (estimate).";
+    const AR = LM.WR, AC = 2 * Math.PI * AR, any = !!lm.hoverDay, ang = lmAng;
+    const cap = (r, w, a, b, gap) => lmCap(r, w, a, b, gap);
+    const cols = D.map((d, i) => {
+      const x = W.byDay[d], off = routine.offDays.has(d), hot = lm.hoverDay === d, runs = off ? [[FIRST_HOUR, 24]] : busyRuns(d), pv = W.byDay[lmPrevDay(d)];
+      const bDelay = (0.2 + i * 0.07).toFixed(2) + "s";
+      const arc = (r, style) => '<circle cx="96" cy="96" style="r:' + r + 'px; fill:none; stroke-linecap:round; transform-origin:96px 96px; ' + style + '"></circle>';
+      const busy = [0, 1, 2, 3].map(k => {
+        const run = runs[k];
+        if (!run) return arc(AR, "stroke:transparent; stroke-width:0px; stroke-dasharray:0 " + AC.toFixed(1) + "; transform:rotate(180deg); transition:stroke-dasharray 1.1s cubic-bezier(.16,1,.3,1) " + bDelay);
+        const q = cap(AR, 7, run[0], run[1], 2);
+        return arc(AR, "stroke:" + (off ? "var(--lm-off)" : "var(--lm-busy-line)") + "; stroke-width:7px; stroke-dasharray:" + (wkIn ? q.dash : "0 " + AC.toFixed(1)) + "; transform:" + q.rot + "; transition:stroke-dasharray 1.1s cubic-bezier(.16,1,.3,1) " + bDelay);
+      }).join("");
+      // On the small arch a session reads as a band: at least 2.4 h of arc, centred on its hour.
+      const fams = x ? x.fams : [], nf = fams.length, sw = 12, sg = 1.4, stw = nf ? (sw - (nf - 1) * sg) / nf : 0;
+      const vm = x ? x.start + x.hours / 2 : 18, vs = x ? Math.max(2.4, x.hours) / 2 : 0, a0 = Math.max(FIRST_HOUR, vm - vs), a1 = Math.min(24, vm + vs);
+      const sess = [0, 1, 2, 3].map(j => {
+        const on = !!x && j < nf, rr = on ? AR - sw / 2 + stw / 2 + j * (stw + sg) : AR, q = cap(rr, on ? stw : 0, a0, a1, 1);
+        return arc(rr.toFixed(2), "stroke:" + (on ? "var(--" + fams[j] + ")" : "transparent") + "; stroke-width:" + (on ? stw.toFixed(2) : 0) + "px; stroke-dasharray:" + (on && wkIn ? q.dash : "0 " + q.c.toFixed(1)) +
+          "; transform:" + q.rot + "; transition:stroke-dasharray 1.1s cubic-bezier(.16,1,.3,1) " + (0.55 + i * 0.08 + j * 0.05).toFixed(2) + "s");
+      }).join("");
+      const gq = x ? cap(AR, 4, a0, a1, 0) : null;
+      const mt = ang(x ? vm : 13) * Math.PI / 180, SR = AR + 14, sx = (96 + Math.cos(mt) * SR).toFixed(1), sy = (96 + Math.sin(mt) * SR).toFixed(1);
+      const dm = (W.meals[d] || []).map(m => { const t = ang(m.hour + 0.5) * Math.PI / 180;
+        return '<circle cx="' + (96 + Math.cos(t) * (AR - 13)).toFixed(1) + '" cy="' + (96 + Math.sin(t) * (AR - 13)).toFixed(1) + '" r="2.3" style="fill:var(--ink-soft); opacity:' + (wkIn ? 1 : 0) + '; transition:opacity .6s ease ' + (0.9 + i * 0.07).toFixed(2) + 's"></circle>'; }).join("");
+      let items = "", bar = "", total = "";
+      if (x) {
+        const w = x.session.workout, entries = w ? w.entries : [], fs = {};
+        entries.forEach(e => { const f = MUSCLE_BY_ID.get(e.muscleId).family; fs[f] = (fs[f] || 0) + e.sets; });
+        items = entries.map(e => { const m = MUSCLE_BY_ID.get(e.muscleId);
+          return '<div title="' + esc(e.exercise.name + " · " + m.name + " · " + e.sets + " × " + e.reps) + '" style="display:grid; grid-template-columns:5px minmax(0,1fr) auto; align-items:start; gap:8px; padding:5px 0; border-top:1px solid var(--line-soft)">' +
+            '<span style="width:5px; height:5px; margin-top:6px; border-radius:50%; background:var(--' + m.family + ')"></span>' +
+            '<span style="min-width:0; font-size:12.5px; line-height:1.3; color:var(--ink); text-wrap:pretty">' + esc(e.exercise.name) + '</span>' +
+            '<span style="padding-top:3px; font:500 10.5px/1 var(--mono); color:var(--ink-faint); white-space:nowrap">' + e.sets + '×' + e.reps + '</span></div>'; }).join("");
+        bar = fams.map((f, j) => '<span style="flex:' + (wkIn ? fs[f] || 1 : 0.001) + ' 1 0; min-width:0; border-radius:3px; background:var(--' + f + '); transition:flex-grow 1s cubic-bezier(.16,1,.3,1) ' + (0.7 + i * 0.07 + j * 0.05).toFixed(2) + 's"></span>').join("");
+        total = (w ? w.sets : 0) + " hard sets · " + sessionMinutes(x.session) + " min";
+      }
+      const note = off ? "No training. The day is yours." : pv ? "Recovering from " + DayOfWeek.name[lmPrevDay(d)] + ": " + pv.muscles.map(m => m.name.toLowerCase()).join(", ") + "." : "A quiet day.";
+      const inOp = wkIn ? 1 : 0, inTf = wkIn ? "none" : "translateY(14px)";
+      return '<button type="button" data-lm="open" data-i="' + i + '" data-lm-col="' + d + '" title="Open ' + DayOfWeek.name[d] + '" style="position:relative; display:flex; flex-direction:column; justify-content:flex-start; align-items:stretch; width:192px; height:540px; padding:0; margin:0; background:none; border:0; text-align:left; color:var(--ink); cursor:pointer; opacity:' +
+          (any && !hot ? 0.45 : 1) + '; transition:opacity .4s ease">' +
+        '<div style="position:absolute; left:4px; right:4px; top:-12px; bottom:0; border-radius:16px; background:' + (hot ? "color-mix(in oklab, var(--bg) 58%, transparent)" : "transparent") +
+          '; backdrop-filter:' + (hot ? "blur(14px)" : "none") + '; -webkit-backdrop-filter:' + (hot ? "blur(14px)" : "none") + '; box-shadow:' + (hot ? "0 0 0 1px var(--line-soft)" : "none") + '; transition:background .35s ease, box-shadow .35s ease"></div>' +
+        '<svg width="192" height="104" viewBox="0 0 192 104" style="position:relative; display:block; overflow:visible" aria-hidden="true">' +
+          '<path d="M 16 96 A 80 80 0 0 1 176 96" style="fill:none; stroke:var(--ink-faint); stroke-opacity:.42; stroke-width:1"></path>' +
+          '<circle cx="' + sx + '" cy="' + sy + '" r="34" fill="url(#lm-glow)" style="opacity:' + (x && wkIn ? (hot ? 1 : 0.55) : 0) + '; transition:opacity .6s ease"></circle>' +
+          busy +
+          '<circle cx="96" cy="96" r="80" filter="url(#lm-soft-s)" style="fill:none; stroke:' + (x ? "var(--" + lmFam(x) + ")" : "transparent") + '; stroke-opacity:' + (x ? (hot ? 0.55 : 0.3) : 0) +
+            '; stroke-width:16; stroke-linecap:round; stroke-dasharray:' + (gq && wkIn ? gq.dash : "0 " + AC.toFixed(1)) + '; transform-origin:96px 96px; transform:' + (gq ? gq.rot : "rotate(180deg)") +
+            '; transition:stroke-dasharray 1.1s cubic-bezier(.16,1,.3,1) ' + (0.6 + i * 0.08).toFixed(2) + 's, stroke-opacity .4s ease"></circle>' +
+          sess + dm +
+          '<circle cx="' + sx + '" cy="' + sy + '" r="4.2" style="fill:var(--ink); stroke:var(--bg); stroke-width:1.6; opacity:' + (x && wkIn ? 1 : 0) + '; transition:opacity .6s ease ' + (0.9 + i * 0.07).toFixed(2) + 's"></circle>' +
+        '</svg>' +
+        '<div style="position:absolute; left:0; width:192px; top:54px; text-align:center; font:italic 400 36px/1 var(--serif); color:' + (x ? "var(--ink)" : "var(--ink-faint)") + '; opacity:' + inOp + '; transform:' + inTf +
+          '; transition:opacity .8s ease ' + (0.25 + i * 0.06).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.25 + i * 0.06).toFixed(2) + 's, color .3s ease">' + DayOfWeek.label[d] + '</div>' +
+        '<div style="position:relative; padding:22px 16px 0 16px; opacity:' + inOp + '; transform:' + inTf + '; transition:opacity .8s ease ' + (0.4 + i * 0.06).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.4 + i * 0.06).toFixed(2) + 's">' +
+          '<p style="margin:0; font:500 10px/1 var(--mono); letter-spacing:.14em; color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--ink-faint)") + '">' + (x ? lmPad(x.start) + ":00 – " + lmPad(x.end) + ":00" : off ? "OFF" : "REST") + '</p>' +
+          '<p style="margin:9px 0 0; font:italic 400 26px/1.05 var(--serif); color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--ink-soft)") + '; text-wrap:balance">' + esc(x ? x.name : off ? "Left to you" : "Rest") + '</p>' +
+          (x ? '<div style="display:flex; gap:3px; height:5px; margin-top:14px">' + bar + '</div>' +
+               '<div style="display:flex; flex-direction:column; margin-top:12px">' + items + '</div>' +
+               '<p style="margin:8px 0 0; padding-top:8px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-soft)">' + total + '</p>'
+             : '<p style="margin:12px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty">' + esc(note) + '</p>') +
+        '</div>' +
+      '</button>';
+    }).join("");
+    week = '<div style="position:absolute; left:48px; top:96px; width:1344px; height:700px; pointer-events:auto">' +
+      '<div style="height:132px; display:flex; align-items:flex-end; justify-content:space-between; gap:32px">' +
+        '<div style="display:flex; flex-direction:column">' + lmEyebrow("Your week") +
+          '<h1 id="plan-title" tabindex="-1" style="margin:10px 0 0; font:400 76px/.9 var(--serif); letter-spacing:-.02em; color:var(--ink)">Your <em>week.</em></h1>' +
+          '<p style="margin:10px 0 0; font:italic 400 22px/1.25 var(--serif); color:var(--ink-soft)">' + esc(sub) + '</p>' +
+          (notes.length ? '<div style="position:relative; margin-top:6px">' +
+            '<p style="margin:0; display:flex; align-items:baseline; gap:9px; font-size:12.5px; line-height:1.45; color:var(--warn)"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:var(--warn); transform:translateY(-1px)"></span>' +
+              '<span>' + esc(short) + '</span><button type="button" class="lm-link" data-lm="notes" aria-expanded="' + !!lm.notes + '" style="font-size:12.5px; color:var(--ink)">' + (lm.notes ? "Hide" : "Why") + '</button></p>' +
+            (lm.notes ? '<div style="position:absolute; left:-18px; top:calc(100% + 8px); z-index:20; width:620px; display:flex; flex-direction:column; gap:8px; padding:14px 18px; background:var(--bg); box-shadow:0 0 28px 18px var(--bg)">' +
+              notes.map(t => '<p style="margin:0; font-size:12.5px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty">' + esc(t) + '</p>').join("") + '</div>' : '') +
+          '</div>' : '') +
+        '</div>' +
+        '<div style="display:flex; flex-direction:column; align-items:flex-end; gap:12px; padding-bottom:4px">' +
+          '<div style="display:flex; align-items:flex-end; gap:34px">' + stats.map(([num, label], j) =>
+            '<div style="display:flex; flex-direction:column; gap:6px; opacity:' + (wkIn ? 1 : 0) + '; transform:' + (wkIn ? "none" : "translateY(10px)") + '; transition:opacity .8s ease ' + (0.15 + j * 0.07).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.15 + j * 0.07).toFixed(2) + 's">' +
+              '<span style="font:400 42px/.9 var(--serif); font-variant-numeric:lining-nums; color:var(--ink); white-space:nowrap">' + num + '</span>' +
+              '<span style="font-size:11.5px; line-height:1.2; color:var(--ink-faint); white-space:nowrap">' + label + '</span></div>').join("") + '</div>' +
+          '<p style="margin:0; font-size:12px; color:var(--ink-faint)">Estimate. Point at a day to see it on the body; click to open it.</p>' +
         '</div>' +
       '</div>' +
-      '<div class="wk-row wk-time">' +
-        '<div class="kv-col"><span class="eyebrow">Session length</span>' +
-          '<span class="segmented" role="radiogroup" aria-label="Session length">' + SESSION_LENGTH_OPTIONS.map(m =>
-            '<button type="button" role="radio" aria-checked="' + (routine.sessionMinutes === m) + '" data-len="' + m + '" data-key="len-' + m + '">' + m + ' min</button>').join("") +
-          '</span></div>' +
-        '<div class="kv-col"><span class="eyebrow">Preferred time</span>' +
-          '<span class="segmented" role="radiogroup" aria-label="Preferred time">' + ["morning", "midday", "evening", "any"].map(k =>
-            '<button type="button" role="radio" aria-checked="' + (routine.preferredWindow === k) + '" data-window="' + k + '" data-key="win-' + k + '">' +
-              (k === "any" ? "Any" : WINDOWS[k].label) + '</button>').join("") +
-          '</span></div>' +
-        '<div class="kv-col"><span class="eyebrow">I’m busy</span>' +
-          '<span class="presets">' + [["9-17", "Weekdays 9–5"], ["8-18", "Weekdays 8–6"], ["clear", "Never"]].map(([k, label]) =>
-            '<button type="button" class="preset" data-preset="' + k + '" data-key="preset-' + k + '">' + label + '</button>').join("") + '</span></div>' +
-        (n.isValid() ? '<div class="kv-col"><span class="eyebrow">Meals</span><span class="switch-row"><button type="button" role="switch" class="switch" id="meals-switch" data-key="meals-switch" ' +
-            'aria-checked="' + n.showMeals + '" aria-label="Show meals in the week"><i></i></button><span>' + (n.showMeals ? n.mealsPerDay + " a day" : "Hidden") + '</span></span></div>' : '') +
+      '<div data-lm-cols style="position:relative; margin-top:24px; display:grid; grid-template-columns:repeat(7, 192px)">' +
+        '<div style="position:absolute; left:0; right:0; top:96px; height:1px; background:var(--line); transform-origin:left center; transform:' + (wkIn ? "scaleX(1)" : "scaleX(0)") + '; transition:transform 1.6s cubic-bezier(.16,1,.3,1)"></div>' +
+        cols +
       '</div>' +
-      '<div class="wk-notes">' +
-        (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
-        (empty.length ? '<p class="warn">Nothing you selected goes on ' + empty.join(" or ") + ' days.</p>' : '') +
-        (short ? '<p class="warn fit-short">' + esc(short) + '<button type="button" class="text-link small" data-shape="1" ' +
-          'data-key="note-shape">See why</button></p>' : '') +
-        (note ? '<p class="fit-full' + (note.warn ? ' warn' : '') + '" aria-live="polite">' + esc(note.text) + '</p>' : '') +
-      '</div>' +
-      '<div class="wk-actions">' +
-        '<button type="button" class="btn primary" id="generate" data-key="generate">Generate my week</button>' +
-        '<span class="wk-actions-note">Exercises come from tiered ratings. You can swap any of them afterwards.</span>' +
-        '<span class="wk-actions-end">' +
-          (routine.sessions.length ? '<button type="button" class="text-link" id="to-week" data-key="to-week">Your generated week →</button>' : '') +
-          '<button type="button" class="quiet-btn" id="reset-week" data-key="reset-week">Reset</button>' +
-        '</span>' +
-      '</div>' +
-    '</div>' +
-  '</div>';
+      '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="lm-soft-s" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="5"></feGaussianBlur></filter></defs></svg>' +
+    '</div>';
+  }
+
+  return { plate: '<div data-lm-hit style="position:absolute; inset:0; display:' + (wg ? "none" : "block") + '"></div>' + left + week, arc: lmArcTemplate(W, step) };
 }
 
-/* ------------------------------ shape your week ---------------------------- */
+/** The week's index in the footer: seven small suns, a day each, and the week. */
+function lmFootTemplate() {
+  const D = DayOfWeek.values, step = lm.step, draft = lmDraft(), byDay = lm.byDay;
+  const arcP = (r, a, b) => { const A = lmAng(a) * Math.PI / 180, B = lmAng(b) * Math.PI / 180;
+    return "M " + (14 + r * Math.cos(A)).toFixed(2) + " " + (16 + r * Math.sin(A)).toFixed(2) + " A " + r + " " + r + " 0 0 1 " + (14 + r * Math.cos(B)).toFixed(2) + " " + (16 + r * Math.sin(B)).toFixed(2); };
+  const seg = (d, stroke, w, op) => '<path d="' + d + '" style="fill:none; stroke:' + stroke + '; stroke-width:' + w + '; stroke-linecap:round; stroke-opacity:' + op + '"></path>';
+  const bead = (i, label, title, segs) => '<button type="button" data-lm="step" data-i="' + i + '" title="' + title + '" aria-label="' + title + '"' + (i === step ? ' aria-current="step"' : '') +
+    ' style="left:' + i * 46 + 'px"><svg width="28" height="18" viewBox="0 0 28 18" aria-hidden="true">' + segs + '</svg>' +
+    '<span style="color:' + (i === step ? "var(--ink)" : "var(--ink-faint)") + '">' + label + '</span></button>';
+  return D.map((d, i) => {
+    const off = routine.offDays.has(d), x = byDay[d];
+    let segs = seg(arcP(11, 6, 24), "var(--ink-faint)", 1, off ? 0.35 : 0.6);
+    if (!off) for (const [a, b] of busyRuns(d)) segs += seg(arcP(11, a + 0.3, b - 0.3), "var(--ink-soft)", 3, 0.45);
+    if (x && !off) segs += seg(arcP(11, x.start + 0.3, x.end - 0.3), "var(--" + lmFam(x) + ")", 4, draft ? 0.6 : 1);
+    return bead(i, DayOfWeek.label[d], DayOfWeek.name[d] + (x ? " · " + x.name : off ? " · off" : " · rest"), segs);
+  }).join("") +
+  bead(7, "Week", "The week", [4, 7.5, 11].map(r => seg(arcP(r, 6, 24), "var(--ink-faint)", 1.2, 0.7)).join("")) +
+  '<div aria-hidden="true" style="position:absolute; left:0; top:-2px; width:0; height:0; pointer-events:none; transform:translateX(' + (step * 46 + 14) + 'px); transition:transform .6s cubic-bezier(.16,1,.3,1)">' +
+    '<div style="position:absolute; left:-3.5px; top:0; width:7px; height:7px; transform:rotate(45deg); background:var(--ink)"></div></div>';
+}
 
-/** Row height for a calendar of `rows` hours that should fit the screen without scrolling. */
-const rowHeight = (rows, spare, lo, hi) => Math.max(lo, Math.min(hi, Math.floor((innerHeight - spare - WEEK_HEAD) / rows)));
-const px = v => Math.round(v) + "px";
+/* --------------------------------- drawing --------------------------------- */
 
-function shapeHTML() {
-  const pv = weekPreview(), [H0, H1] = WEEK_HOURS, rows = H1 - H0;
-  const rh = rowHeight(rows, 470, 18, 30);
-  const n = routine.nutrition, mealsOn = n.isValid() && n.showMeals;
-  // Meals as Generate will place them: busy hours keep them, the previewed
-  // sessions move them.
-  const mealPlan = mealsOn ? routine.mealPlan(slot => {
-    const p = pv.byDay.get(slot.day);
-    return !p || slot.hour < p.start || slot.hour >= p.end;
-  }) : { placed: [] };
-  const band = routine.preferredWindow === "any" ? null : WINDOWS[routine.preferredWindow];
-  const colW = (planEl.clientWidth - 96 - 44 - 36) / 7;
-  const note = fitNote(pv.fit);
-  const placed = pv.plan.placements.length;
-  const okLine = placed + (placed === 1 ? " session" : " sessions") + " of " + routine.sessionMinutes + " min, " +
-    (routine.preferredWindow === "any" ? "wherever your day is free." : windowWord().toLowerCase() + ".");
-  const warn = note && note.warn;
-  const hours = Array.from({ length: rows + 1 }, (_, k) => H0 + k).filter(h => h % 3 === 0 && h < H1)
-    .map(h => '<span style="top:' + px(WEEK_HEAD + 2 + (h - H0) * rh) + '">' + hourLabel(h) + '</span>').join("");
+/* The plate everything is set on; behind the figure, the sky and the ring. */
+weekEl.innerHTML = '<div class="lm-stage" id="lm-stage"></div>';
+const lmStage = $("lm-stage"), lmFoot = $("foot-week");
+const lmSkyEl = document.createElement("div");
+lmSkyEl.className = "lm-sky";
+lmSkyEl.setAttribute("aria-hidden", "true");
+lmSkyEl.innerHTML = '<div class="lm-sky-light"></div><div class="lm-grain"></div>';
+const lmArcEl = document.createElement("div");
+lmArcEl.className = "lm-arc";
+lmArcEl.setAttribute("aria-hidden", "true");
+{
+  const stage = document.getElementById("anatomy-stage");
+  stage.insertBefore(lmArcEl, stage.firstChild);
+  stage.insertBefore(lmSkyEl, stage.firstChild);
+}
+/* The day's name under the figure, in the ground the Targets words use, so
+   flow-front.js weaves it through the legs as theirs are. */
+const lmWordEl = document.createElement("div");
+lmWordEl.className = "lm-word";
+document.querySelector(".flow-ground").appendChild(lmWordEl);
 
-  const days = DayOfWeek.values.map(d => {
-    const off = routine.isDayUnavailable(d), p = pv.byDay.get(d);
-    const fams = p ? blockFamilies(p.block) : [];
-    const head = '<button type="button" class="cal-head" data-dayoff="' + d + '" data-key="off-' + d + '" aria-pressed="' + off + '" ' +
-        'title="' + (off ? "Make " + DAY_NAME[d] + " available" : "Take " + DAY_NAME[d] + " off") + '">' +
-        '<span class="cal-day">' + DayOfWeek.label[d] + '</span>' +
-        '<span class="cal-name">' + (off ? "Off" : p ? esc(blockName(p.block)) : "Rest") + '</span>' +
-        '<span class="cal-meta">' + familyDots(fams) + '<span>' +
-          (off ? "Click to train" : p ? hourRange(p.start, p.end) : "Free day") + '</span></span>' +
-      '</button>';
-    if (off) return '<div class="cal-col off" data-day="' + d + '">' + head + '<div class="cal-body" style="height:' + px(rows * rh) + '"></div></div>';
-    const restCls = p ? "" : " rest";
-    const rules = Array.from({ length: rows - 1 }, (_, k) => H0 + k + 1).filter(h => h % 3 === 0)
-      .map(h => '<i class="rule" style="top:' + px((h - H0) * rh) + '"></i>').join("");
-    const bandEl = band ? '<i class="band" style="top:' + px((Math.max(band.from, H0) - H0) * rh) + ';height:' +
-      px((Math.min(band.to, H1) - Math.max(band.from, H0)) * rh) + '"></i>' : "";
-    const ghost = p ? (() => {
-      const h = Math.max(26, p.block.sessionMinutes / 60 * rh - 4), tall = h >= 48;
-      return '<div class="plan-ghost' + (tall ? ' tall' : '') + '" style="top:' + px((p.start - H0) * rh + 2) + ';height:' + px(h) + '">' +
-        '<span class="plan-ghost-name">' + esc(blockName(p.block)) + '</span><span class="plan-ghost-time">' + hourRange(p.start, p.end) + '</span></div>';
-    })() : "";
-    // Each meal where Generate will put it this day (mealPlan): its usual
-    // hour, over a busy block too, or the nearest one a session leaves.
-    const meals = mealsOn ? mealPlan.placed.filter(x => x.day === d && x.hour >= H0 && x.hour < H1).map(({ meal: m, hour }) =>
-      '<span class="meal-pill' + (m.role === "snack" ? " snack" : "") + '" style="top:' + px((hour - H0) * rh + rh / 2) + '" ' +
-        'title="' + esc(m.name) + ' · ' + hourLabel(hour) + ' · ≈ ' + m.kcal + ' kcal"><i></i>' +
-        (colW >= 128 ? (m.role === "snack" ? "Snack" : esc(m.name)) : "") + '</span>').join("") : "";
-    const cells = Array.from({ length: rows }, (_, k) =>
-      // One hour to paint. The keyboard reaches the grid through one cell
-      // at a time (paint.js): arrows move, Space or Enter toggles busy.
-      '<div class="paint" role="button" data-day="' + d + '" data-hour="' + (H0 + k) + '" data-key="paint-' + d + '-' + (H0 + k) + '" ' +
-        'tabindex="' + (paintCellKey() === "paint-" + d + "-" + (H0 + k) ? 0 : -1) + '" ' +
-        'aria-pressed="' + (routine.slot(d, H0 + k).state === SlotState.BUSY) + '" ' +
-        'aria-label="' + DAY_NAME[d] + ' ' + hourLabel(H0 + k) + ', busy" style="top:' + px(k * rh) + ';height:' + px(rh) + '"></div>').join("");
-    return '<div class="cal-col' + restCls + '" data-day="' + d + '" aria-label="' + DAY_NAME[d] + (busyRuns(d).length ? ", busy " +
-        busyRuns(d).map(([a, b]) => hourRange(a, b)).join(", ") : ", free") + '">' + head +
-      '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + bandEl +
-        '<div class="day-busy" data-busy="' + d + '">' + busyHTML(d, rh, [H0, H1]) + '</div>' +
-        ghost + meals + cells + '</div></div>';
+/** The week's message (what Generate did, what an edit changed); null to clear. */
+function setStatus(text, kind = "") {
+  lm.status = text ? { text, kind } : null;
+  announce(text);
+  if (Stages.current === "plan") renderWeek();
+}
+
+function renderWeek() {
+  const wg = lm.step === 7 && !lmDraft();
+  if (wg && !lm.wgOn) { lm.wgOn = true; lm.wkIn = false; clearTimeout(lm.wkT); lm.wkT = setTimeout(() => { lm.wkIn = true; renderWeek(); }, 70); }
+  else if (!wg && lm.wgOn) { lm.wgOn = false; lm.wkIn = false; clearTimeout(lm.wkT); }
+  const t = lmTemplate();
+  pvMorph(lmStage, t.plate);
+  pvMorph(lmArcEl, t.arc);
+  pvMorph(lmFoot, lmFootTemplate());
+  lmFoot.hidden = Stages.narrow;
+  planEl.dataset.view = wg ? "week" : lm.step === 7 ? "rings" : "day";
+  lmWordText(lm.F.word, lm.F.fams);
+  lm.needleEl = null;
+  if (lm.scrubH != null && lm.step < 7) lmNeedle(lm.scrubH);
+  Stages.refresh();
+}
+
+/** Fits the 1440 × 900 plate to the screen, centred. */
+function lmFit() {
+  const vw = planEl.clientWidth, vh = planEl.clientHeight, k = Math.min(vw / 1440, vh / 900);
+  lm.vw = vw; lm.vh = vh; lm.k = k; lm.ox = (vw - 1440 * k) / 2; lm.oy = (vh - 900 * k) / 2;
+  const t = "translate(" + lm.ox + "px," + lm.oy + "px) scale(" + k + ")";
+  lmStage.style.transform = t;
+  lmArcEl.style.transform = t;
+  lm.css = "";
+}
+
+/** The day's word: its letters, each in the hue between the session's first family and its last. */
+function lmWordText(word, fams) {
+  const key = word + "|" + fams.join();
+  if (key === lm.word) return;
+  const was = lm.word.split("|")[0];
+  lm.word = key;
+  const a = fams[0] || null, b = fams[fams.length - 1] || a, L = word.length;
+  lmWordEl.innerHTML = [...word].map((c, j) => {
+    const t = Math.max(0, Math.min(1, (L > 1 ? j / (L - 1) : 0) * 1.4 - 0.2));
+    const color = a ? "color-mix(in oklab, var(--" + b + ") " + Math.round(t * 100) + "%, var(--" + a + "))" : "var(--ink)";
+    return '<i style="--j:' + j + '; color:' + color + '">' + esc(c) + '</i>';
   }).join("");
-
-  const presets = [["9-17", "Weekdays 9–5"], ["8-18", "Weekdays 8–6"], ["clear", "Clear all"]];
-  return '<div class="wk-wide">' +
-    '<div class="wide-head" data-reveal="0">' +
-      '<button type="button" class="quiet-btn back" id="close-shape-back" data-key="close-shape-back">← Week plan</button>' +
-      '<div class="wide-title">' +
-        '<h1 class="display" id="plan-title" tabindex="-1">Shape your week</h1>' +
-        '<p class="status-line' + (warn ? ' warn' : '') + '" aria-live="polite"><i></i><span>' +
-          esc(warn ? note.text : okLine + (note ? " " + note.text : "")) + '</span></p>' +
-        // Painting over a generated session takes it out of that week: said
-        // here, where it happened, not only once the user leaves.
-        (wk.status && /^Your week now has/.test(wk.status.text)
-          ? '<p class="warn-line">' + esc(wk.status.text) + '</p>' : '') +
-      '</div>' +
-      '<button type="button" class="btn primary" id="close-shape" data-key="close-shape">Done</button>' +
-    '</div>' +
-    '<div class="toolbar" data-reveal="1">' +
-      '<div class="kv-col"><span class="eyebrow small">Session length</span>' +
-        '<span class="segmented" role="radiogroup" aria-label="Session length">' + SESSION_LENGTH_OPTIONS.map(m =>
-          '<button type="button" role="radio" aria-checked="' + (routine.sessionMinutes === m) + '" data-len="' + m + '" data-key="len-' + m + '">' + m + '</button>').join("") +
-        '</span></div>' +
-      '<div class="kv-col"><span class="eyebrow small">Preferred time</span>' +
-        '<span class="segmented" role="radiogroup" aria-label="Preferred time">' + ["morning", "midday", "evening", "any"].map(k =>
-          '<button type="button" role="radio" aria-checked="' + (routine.preferredWindow === k) + '" data-window="' + k + '" data-key="win-' + k + '">' +
-            (k === "any" ? "Any" : WINDOWS[k].label) + '</button>').join("") +
-        '</span></div>' +
-      '<div class="kv-col"><span class="eyebrow small">Fill busy hours</span>' +
-        '<span class="presets">' + presets.map(([k, label]) =>
-          '<button type="button" class="preset" data-preset="' + k + '" data-key="preset-' + k + '">' + label + '</button>').join("") + '</span></div>' +
-      '<span class="toolbar-gap"></span>' +
-      '<div class="kv-col"><span class="eyebrow small">Meals</span>' + (n.isValid()
-        ? '<span class="switch-row"><button type="button" role="switch" class="switch" id="meals-switch" data-key="meals-switch" ' +
-            'aria-checked="' + n.showMeals + '" aria-label="Show meals in the week"><i></i></button>' +
-            '<span>' + (n.showMeals ? n.mealsPerDay + " a day, " + hourRange(n.hours[0], n.hours[n.hours.length - 1]) : "Hidden") + '</span></span>'
-        : '<button type="button" class="text-link switch-row" data-goto="nutrition">Set up nutrition</button>') +
-      '</div>' +
-    '</div>' +
-    '<div class="cal shape-cal" data-reveal="2">' +
-      '<div class="cal-hours" style="height:' + px(WEEK_HEAD + 2 + rows * rh) + '">' + hours + '</div>' + days +
-    '</div>' +
-    '<div class="legend" data-reveal="2">' +
-      '<span class="legend-keys">' +
-        '<span><i class="k-session"></i>Session</span><span><i class="k-busy"></i>Busy</span>' +
-        (band ? '<span><i class="k-band"></i>Preferred time</span>' : '') +
-        (mealsOn ? '<span><i class="k-meal"></i>Meal</span>' : '') +
-        '<span><i class="k-off"></i>Day off</span>' +
-      '</span>' +
-      '<span class="faint">Drag across a day to mark busy hours · drag again to clear · click a day\'s name to take it off</span>' +
-    '</div>' +
-  '</div>';
+  if (was !== word) { lmWordEl.classList.remove("swap"); void lmWordEl.offsetWidth; lmWordEl.classList.add("swap"); }
 }
 
-/** A day's busy hours as blocks, labelled where there is room. */
-/** The paint cell the keyboard enters the grid at: the last one it was on, else the first free day's first hour. */
-function paintCellKey() {
-  const day = wk.paintDay && !routine.offDays.has(wk.paintDay) ? wk.paintDay
-    : DayOfWeek.values.find(d => !routine.offDays.has(d));
-  return "paint-" + day + "-" + (wk.paintHour ?? WEEK_HOURS[0]);
+/* --------------------------------- the light -------------------------------- */
+
+const lmHex = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+const lmSkyTable = {};
+function lmSkyAt(list, h) {
+  h = Math.max(FIRST_HOUR, Math.min(24, h));
+  let i = 0; while (i < list.length - 2 && h > list[i + 1][0]) i++;
+  const a = list[i], b = list[i + 1]; let t = (h - a[0]) / (b[0] - a[0]); t = t * t * (3 - 2 * t);
+  return [0, 1, 2].map(j => a[1][j] + (b[1][j] - a[1][j]) * t);
+}
+/**
+ * Not one colour: the ground of the hour, a glow where the sun stands, a
+ * cooler light across from it; on the generated week, each day its own
+ * light, from the hour its session stands at.
+ */
+function lmSkyFrame(dt) {
+  const theme = lmDark() ? "dark" : "light";
+  const T = lmSkyTable[theme] || (lmSkyTable[theme] = Object.fromEntries(Object.entries(LM_SKY[theme]).map(([k, v]) => [k, v.map(([h, hex]) => [h, lmHex(hex)])])));
+  if (lm.theme !== theme) { lm.theme = theme; lm.sky = null; }
+  const F = lm.F, H = lm.hourF, bd = lm.byDay, D = DayOfWeek.values, { CX, CY, R, WX, WY, WR, COL } = LM;
+  const ang = h => lmAng(Math.max(FIRST_HOUR, Math.min(24, h))) * Math.PI / 180, tg = {};
+  if (F.wg) {
+    tg.cols = D.map(d => { const x = bd[d]; return lmSkyAt(T.base, x ? x.start + x.hours / 2 : 13); });
+    const x = lm.hoverDay && bd[lm.hoverDay];
+    if (x) { const i = D.indexOf(lm.hoverDay), hm = x.start + x.hours / 2, t = ang(hm); tg.g = lmSkyAt(T.glow, hm); tg.gp = [WX + COL / 2 + COL * i + Math.cos(t) * WR, WY + Math.sin(t) * WR, 520]; tg.gA = 1; }
+    else { tg.g = lm.sky ? lm.sky.g : lmSkyAt(T.glow, 13); tg.gp = lm.sky ? lm.sky.gp : [720, 300, 520]; tg.gA = 0; }
+    tg.f = lmSkyAt(T.far, 13); tg.fp = [720, 820, 900]; tg.fA = 0.35;
+  } else {
+    const b = lmSkyAt(T.base, H), t = ang(H); tg.cols = D.map(() => b);
+    tg.g = lmSkyAt(T.glow, H); tg.gp = [CX + Math.cos(t) * R, CY + Math.sin(t) * R, 800]; tg.gA = 1;
+    tg.f = lmSkyAt(T.far, H); tg.fp = [CX - Math.cos(t) * R * 1.15, CY + Math.sin(t) * R * 0.6 - 40, 860]; tg.fA = 0.8;
+  }
+  if (!lm.sky) lm.sky = JSON.parse(JSON.stringify(tg));
+  const e = Stages.still ? 1 : 1 - Math.exp(-dt * 3), L = (a, b) => a + (b - a) * e, LA = (a, b) => a.map((v, i) => L(v, b[i])), k = lm.sky;
+  k.cols = k.cols.map((c, i) => LA(c, tg.cols[i])); k.g = LA(k.g, tg.g); k.gp = LA(k.gp, tg.gp); k.gA = L(k.gA, tg.gA); k.f = LA(k.f, tg.f); k.fp = LA(k.fp, tg.fp); k.fA = L(k.fA, tg.fA);
+  const K = lm.k, px = v => Math.round(v) + "px";
+  const rgb = c => "rgb(" + c.map(v => Math.round(v)).join(",") + ")", rgba = (c, a) => "rgba(" + c.map(v => Math.round(v)).join(",") + "," + Math.max(0, a).toFixed(3) + ")";
+  const rad = (c, a, p, sq) => "radial-gradient(" + px(p[2] * K) + " " + px(p[2] * sq * K) + " at " + px(lm.ox + p[0] * K) + " " + px(lm.oy + p[1] * K) + ", " + rgba(c, a) + " 0%, " + rgba(c, a * 0.5) + " 38%, " + rgba(c, 0) + " 100%)";
+  const css = rad(k.g, k.gA, k.gp, 0.78) + ", " + rad(k.f, k.fA, k.fp, 0.7) + ", linear-gradient(90deg, " + k.cols.map((c, i) => rgb(c) + " " + px(lm.ox + (WX + COL / 2 + COL * i) * K)).join(", ") + ")";
+  if (css === lm.css) return;
+  lm.css = css;
+  lmSkyEl.firstChild.style.background = css;
+  const hex = "#" + k.cols[3].map(v => Math.round(v).toString(16).padStart(2, "0")).join("");
+  if (hex !== lm.bg) { lm.bg = hex; Stages.root.style.setProperty("--bg", hex); }
 }
 
-function busyHTML(day, rh, [H0, H1]) {
-  return busyRuns(day, [H0, H1]).map(([a, b]) =>
-    '<div class="busy" style="top:' + px((a - H0) * rh + 3) + ';height:' + px((b - a) * rh - 6) + '">' +
-      (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '<span class="visually-hidden">Busy</span>') +
-      ((b - a) * rh >= 30 ? '<span class="busy-time">' + hourRange(a, b) + '</span>' : '') + '</div>').join("");
+/* -------------------------------- each frame -------------------------------- */
+
+function lmFrame(now) {
+  const dt = Math.min(0.05, (now - (lm.lt || now)) / 1000); lm.lt = now;
+  if (planEl.clientWidth !== lm.vw || planEl.clientHeight !== lm.vh) lmFit();
+  const F = lm.F; if (!F) return;
+  const here = Stages.current === "plan", still = Stages.still;
+  if (lm.locked && now - lm.lastWheel > 260) lm.locked = false;
+  lm.acc *= Math.exp(-dt * 5);
+
+  // The hour of the light: the one pointed at, else the middle of the day's session.
+  const hT = lm.scrubH != null ? lm.scrubH : F.hour;
+  lm.hourF = lm.hourF == null || still ? hT : lm.hourF + (hT - lm.hourF) * (1 - Math.exp(-dt * (lm.scrubH != null ? 9 : 2.4)));
+  const h = Math.max(FIRST_HOUR, Math.min(24, lm.hourF)), deg = lmAng(h);
+
+  // The now-line stands on the ring at the hour of the light, and follows the pointer.
+  const sun = lmArcEl.querySelector("[data-lm-sun]");
+  if (sun) {
+    sun.setAttribute("transform", "translate(" + LM.CX + " " + LM.CY + ") rotate(" + deg.toFixed(2) + ")");
+    const o = F.sun ? "1" : "0"; if (sun.style.opacity !== o) sun.style.opacity = o;
+    const on = lm.scrubH != null;
+    lm.beadR += ((on ? 6.5 : 4.5) - lm.beadR) * (1 - Math.exp(-dt * 10));
+    sun.querySelector("[data-lm-bead]").setAttribute("r", lm.beadR.toFixed(2));
+    const p = still ? 0.35 : ((now / 1000) * 0.6) % 1, halo = sun.querySelector("[data-lm-halo]");
+    halo.setAttribute("r", (7 + p * 18).toFixed(2)); halo.style.strokeOpacity = ((on ? 0.55 : 0.35) * (1 - p)).toFixed(3);
+    const tp = lmArcEl.querySelector("[data-lm-needle-at]");
+    if (tp && on) tp.setAttribute("startOffset", Math.max(9, Math.min(91, (h - FIRST_HOUR) / 18 * 100)).toFixed(2) + "%");
+  }
+  lmSkyFrame(dt);
+  const flow = lmArcEl.querySelector("[data-lm-flow]");
+  if (flow && !still) flow.setAttribute("patternTransform", "rotate(45) translate(" + ((now / 1000 * 3.2) % 7).toFixed(2) + " 0)");
+
+  // The figure stands on the ring's centre; on the generated week it steps behind the day pointed at, and leaves when nothing is.
+  const D = DayOfWeek.values, hi = F.wg && lm.hoverDay ? D.indexOf(lm.hoverDay) : -1;
+  const ax = F.wg ? (hi >= 0 ? LM.WX + LM.COL / 2 + LM.COL * hi : lm.aimX) : LM.CX;
+  lm.aimX = lm.aimX == null || still ? ax : lm.aimX + (ax - lm.aimX) * (1 - Math.exp(-dt * (F.wg && lm.figOp > 0.05 ? 4.5 : 2.6)));
+  if (F.wg && hi >= 0 && lm.figOp < 0.03) lm.aimX = ax;
+  const flat = typeof figure !== "object" || !figure.moves;
+  const opT = !here || Stages.narrow || flat ? 0 : F.wg ? (hi >= 0 ? (lmDark() ? 0.34 : 0.3) : 0) : 1;
+  lm.figOp = still ? opT : lm.figOp + (opT - lm.figOp) * (1 - Math.exp(-dt * 2.2));
+  if (Math.abs(lm.figOp - opT) < 0.004) lm.figOp = opT;
+  if (here && !flat && !Stages.narrow) {
+    figure.setDim(lm.figOp);
+    const x = lm.ox + lm.k * lm.aimX, y = lm.oy + lm.k * LM.SOLE, tall = lm.k * LM.TALL;
+    figure.standAt({ x, y, h: tall, az: LM.AZ });
+    // The light comes from where the sun stands on the ring (view space: x right, y up, z toward the eye).
+    const th = deg * Math.PI / 180;
+    figure.setSun([Math.cos(th), -Math.sin(th) + 0.14, 0.62]);
+    // The word: low across the shins, as wide as the figure is tall would allow.
+    const T = LM_WORD[lmDark() ? "dark" : "light"];
+    const a = (F.fams.length ? T.hue : T.ink) * (F.off ? 0.6 : 1) * (F.wg ? 2.2 * lm.figOp : 1);
+    const ws = "left:" + x.toFixed(1) + "px; top:" + (y - tall * 0.043).toFixed(1) + "px; font-size:" + (tall * 0.335).toFixed(1) + "px; opacity:" + a.toFixed(3);
+    if (ws !== lm.ws) { lm.ws = ws; lmWordEl.setAttribute("style", ws); }
+  }
 }
 
-/** Repaints only the busy blocks, while a drag is under way: cheap, on every move. */
-function paintBusy() {
-  const [H0, H1] = WEEK_HOURS, rh = wk.view === "config" ? wk.rh : rowHeight(H1 - H0, 470, 18, 30);
-  for (const el of weekEl.querySelectorAll("[data-busy]")) el.innerHTML = busyHTML(el.dataset.busy, rh, WEEK_HOURS);
+function lmLoop(now) {
+  lm.raf = 0;
+  if (Stages.current !== "plan") {
+    if (!lm.leftAt) lm.leftAt = now;
+    if (now - lm.leftAt > 900) {
+      lm.leftAt = 0; lm.lt = 0;
+      Stages.root.style.removeProperty("--bg"); lm.bg = ""; lm.css = "";
+      if (typeof figure === "object" && figure.setSun) figure.setSun(null);
+      lmWordEl.removeAttribute("style"); lm.ws = "";
+      return;
+    }
+  } else lm.leftAt = 0;
+  lm.raf = requestAnimationFrame(lmLoop);
+  try { lmFrame(now); } catch (e) { if (!lm.err) { lm.err = 1; console.warn("Week plan: " + e.message); } }
+}
+const lmRun = () => { if (!lm.raf) lm.raf = requestAnimationFrame(lmLoop); };
+
+/* --------------------------------- pointing --------------------------------- */
+
+/** Where a pointer event lands on the plate. */
+function lmPlate(e) {
+  const r = planEl.getBoundingClientRect();
+  return { x: (e.clientX - r.left - lm.ox) / lm.k, y: (e.clientY - r.top - lm.oy) / lm.k };
+}
+/** A plate point round the ring: its distance, its angle, the hour there, and whether it lies over the ring's half. */
+function lmPolar(p) {
+  const dx = p.x - LM.CX, dy = p.y - LM.CY, rr = Math.hypot(dx, dy);
+  let a = Math.atan2(dy, dx) * 180 / Math.PI; if (a < 0) a += 360; if (a < 90) a += 360;
+  return { rr, a, h: Math.max(FIRST_HOUR, Math.min(24, FIRST_HOUR + (a - 180) / 10)), okA: a >= 172 && a <= 368 };
+}
+/** The week's ring under a point, as a day index, or -1. */
+function lmRingAt(q) {
+  const i = Math.round((q.rr - 278) / 22);
+  return q.okA && i >= 0 && i <= 6 && Math.abs(q.rr - (278 + i * 22)) <= 11 ? i : -1;
+}
+
+/** The now-line's words: the hour pointed at, and what it holds; null hides them. */
+function lmNeedle(h) {
+  const n = lmArcEl.querySelector("[data-lm-needle]"), sl = lmArcEl.querySelector("[data-lm-sesslabel]");
+  if (sl) sl.style.opacity = h == null ? "1" : "0";
+  if (!n) return;
+  if (h == null) { n.style.opacity = "0"; return; }
+  n.style.opacity = "1";
+  const d = DayOfWeek.values[lm.step], hh = Math.min(LAST_HOUR, Math.floor(h)), mm = Math.min(55, Math.floor((h - hh) * 12) * 5), g = lm.drag;
+  let st;
+  if (g && g.mode !== "move") { const a = Math.min(g.h0, hh), b = Math.max(g.h0, hh); st = (g.mode === "busy" ? "busy " : "free ") + lmPad(a) + "–" + lmPad(b + 1); }
+  else if (routine.offDays.has(d)) st = "day off";
+  else {
+    const x = lm.byDay[d], meal = (lm.meals[d] || []).find(m => m.hour === hh);
+    if (x && hh >= x.start && hh < x.end) st = x.name + (lmDraft() ? "" : " · drag to move");
+    else if (isBusy(d, hh)) st = "busy · drag to free";
+    else if (meal) st = meal.name.toLowerCase();
+    else st = lmDraft() ? "free · drag if busy" : "free";
+  }
+  n.querySelector("[data-lm-time]").textContent = lmPad(hh) + ":" + lmPad(mm);
+  n.querySelector("[data-lm-state]").textContent = st;
+}
+
+/** Paints the drag's hours on its day, from where it began to the hour now, and gives back what it has left. */
+function lmPaintStroke(h1) {
+  const g = lm.drag, [a, b] = [g.h0, h1].sort((x, y) => x - y);
+  for (let h = FIRST_HOUR; h <= LAST_HOUR; h++) {
+    const want = h >= a && h <= b ? g.mode === "busy" : g.before.has(h);
+    if (want && !isBusy(g.d, h)) routine.markBusy(g.d, h);
+    else if (!want && isBusy(g.d, h)) routine.clearSlot(g.d, h);
+  }
+  g.h1 = h1;
+}
+
+function lmArcMove(e, hit) {
+  if (Stages.current !== "plan" || (e.pointerType === "touch" && !lm.drag)) return;
+  const q = lmPolar(lmPlate(e)), D = DayOfWeek.values;
+  if (lm.drag) {
+    lm.scrubH = q.h; lmNeedle(q.h);
+    if (lm.drag.mode === "move") {
+      const s = lm.drag.session, st = Math.round(q.h - lm.drag.off);
+      if (st !== s.startHour && routine.startsFor(s, s.day).includes(st)) { routine.moveSession(s, s.day, st); renderWeek(); }
+      return;
+    }
+    const h = Math.min(LAST_HOUR, Math.floor(q.h));
+    if (h !== lm.drag.h1) { lmPaintStroke(h); renderWeek(); }
+    return;
+  }
+  if (lm.step === 7) {
+    const i = lmRingAt(q), d = i >= 0 ? D[i] : null;
+    lm.scrubH = d ? q.h : null; lmNeedle(null);
+    hit.style.cursor = d ? "pointer" : "default";
+    if (d !== lm.hoverDay) { lm.hoverDay = d; renderWeek(); }
+    return;
+  }
+  const on = q.okA && Math.abs(q.rr - LM.R) < 36, near = q.okA && q.rr > 150 && q.rr < LM.R + 120, d = D[lm.step];
+  lm.scrubH = near ? q.h : null; lmNeedle(near ? q.h : null);
+  let cur = "default";
+  if (on) {
+    if (lmDraft()) cur = routine.offDays.has(d) ? "not-allowed" : "crosshair";
+    else { const x = lm.byDay[d]; cur = x && q.h >= x.start && q.h < x.end ? "grab" : "default"; }
+  }
+  hit.style.cursor = cur;
+}
+
+function lmArcDown(e, hit) {
+  if (Stages.current !== "plan" || Stages.busy || e.button !== 0) return;
+  const q = lmPolar(lmPlate(e)), D = DayOfWeek.values;
+  if (lm.step === 7) { const i = lmRingAt(q); if (i >= 0) lmGoStep(i); return; }
+  if (!q.okA || Math.abs(q.rr - LM.R) >= 36) return;
+  const d = D[lm.step];
+  if (!lmDraft()) {
+    const x = lm.byDay[d];
+    if (x && q.h >= x.start && q.h < x.end) {
+      try { hit.setPointerCapture(e.pointerId); } catch (_) {}
+      lm.drag = { mode: "move", session: x.session, off: q.h - x.start };
+      hit.style.cursor = "grabbing";
+    }
+    return;
+  }
+  if (routine.offDays.has(d)) return;
+  try { hit.setPointerCapture(e.pointerId); } catch (_) {}
+  const h = Math.min(LAST_HOUR, Math.floor(q.h)), before = new Set();
+  for (let k = FIRST_HOUR; k <= LAST_HOUR; k++) if (isBusy(d, k)) before.add(k);
+  lm.drag = { d, h0: h, h1: null, mode: isBusy(d, h) ? "free" : "busy", before };
+  lm.scrubH = q.h;
+  lmPaintStroke(h);
+  renderWeek();
+}
+
+function lmArcUp() {
+  const g = lm.drag; if (!g) return;
+  lm.drag = null;
+  if (g.mode === "move") { render(); return; }
+  afterWeekChange();
+}
+
+function lmArcLeave() {
+  if (lm.drag) return;
+  lm.scrubH = null; lmNeedle(null);
+  if (lm.hoverDay && lm.step === 7 && lmDraft()) { lm.hoverDay = null; renderWeek(); }
+}
+
+const lmHit = () => lmStage.querySelector("[data-lm-hit]");
+lmStage.addEventListener("pointermove", e => { if (lm.drag || e.target.closest("[data-lm-hit]")) lmArcMove(e, lmHit()); });
+lmStage.addEventListener("pointerdown", e => { if (e.target.closest("[data-lm-hit]")) lmArcDown(e, lmHit()); });
+lmStage.addEventListener("pointerup", lmArcUp);
+lmStage.addEventListener("pointercancel", lmArcUp);
+lmStage.addEventListener("pointerout", e => { if (e.target.closest("[data-lm-hit]") && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-lm-hit]"))) lmArcLeave(); });
+
+/* What the pointer or the keyboard rests on: a muscle, a key of the arc, a chooser's option, a day to move to, a day of the week. */
+function lmPoint(e) {
+  const to = e.type === "pointerout" || e.type === "focusout" ? e.relatedTarget : e.target;
+  const el = to && to.closest && weekEl.contains(to) ? to : null;
+  const pick = (sel, attr) => { const x = el && el.closest(sel); return x ? x.getAttribute(attr) : null; };
+  const muscle = pick("[data-lm-muscle]", "data-lm-muscle"), key = pick("[data-lm-key]", "data-lm-key");
+  const opt = pick("[data-lm-opt]", "data-lm-opt"), move = pick("[data-lm-move]", "data-lm-move"), col = pick("[data-lm-col]", "data-lm-col");
+  const preview = opt ? { key: opt.split(":")[0], value: lmValue(opt.split(":")[0], opt.split(":").slice(1).join(":")) } : null;
+  const wg = lm.step === 7 && !lmDraft();
+  const hoverDay = wg ? col : lm.hoverDay;
+  const same = muscle === lm.hoverMuscle && key === lm.keyHot && move === lm.moveHover && hoverDay === lm.hoverDay &&
+    JSON.stringify(preview) === JSON.stringify(lm.preview);
+  if (same) return;
+  // Leaving a chooser's options keeps the chooser open, but stops the preview.
+  lm.hoverMuscle = muscle; lm.keyHot = key; lm.moveHover = move; lm.hoverDay = hoverDay; lm.preview = preview;
+  renderWeek();
+}
+for (const type of ["pointerover", "pointerout", "focusin", "focusout"]) weekEl.addEventListener(type, lmPoint);
+
+/** A chooser's value as the routine keeps it: a number of days or minutes, else the word. */
+const lmValue = (k, v) => k === "days" || k === "len" ? Number(v) : v;
+
+/* --------------------------------- changes ---------------------------------- */
+
+/** After a change to the hours, the days or the terms: redraw, save, and say what a generated week lost. */
+function afterWeekChange() {
+  render();
+  weekEdited() || warnIfStale();
 }
 
 /** Replaces every busy hour with a preset: weekdays from `a` to `b`, or none. */
@@ -454,370 +1021,153 @@ function fillBusy(preset) {
   }
 }
 
-/* --------------------------------- your week ------------------------------- */
-
-/** The hours the generated week needs on screen: its sessions and meals, an hour either side, at least seven. */
-function genHours() {
-  let lo = 24, hi = 0;
-  for (const s of routine.sessions) { lo = Math.min(lo, s.startHour); hi = Math.max(hi, s.endHour()); }
-  for (const m of routine.plannedMeals) { lo = Math.min(lo, m.hour); hi = Math.max(hi, m.hour + 1); }
-  if (lo > hi) { lo = 16; hi = 21; }
-  lo = Math.max(FIRST_HOUR, lo - 1); hi = Math.min(LAST_HOUR + 1, hi + 1);
-  while (hi - lo < 7) { if (lo > FIRST_HOUR) lo--; if (hi - lo < 7 && hi < LAST_HOUR + 1) hi++; if (lo === FIRST_HOUR && hi === LAST_HOUR + 1) break; }
-  return [lo, hi];
-}
-
-function genHTML() {
-  const sessions = [...routine.sessions].sort(byWeekOrder);
-  const minutes = sessions.reduce((t, s) => t + sessionMinutes(s), 0);
-  const sets = sessions.reduce((t, s) => t + s.workout.sets, 0);
-  const n = routine.nutrition;
-  const v = routine.weeklyVolume();
-  const counts = [...new Set(v.rows.filter(r => r.times > 0).map(r => r.times))].sort();
-  const freq = !counts.length ? "" : "each muscle " + (counts.length === 1 ? counts[0] : counts[0] + "–" + counts[counts.length - 1]) + "× a week";
-  const off = DayOfWeek.values.filter(d => routine.isDayUnavailable(d)).length;
-  const hrs = Math.round(minutes / 30) / 2;
-  const facts = [
-    (7 - sessions.length - off) + " rest" + (off ? " · " + off + " off" : ""),
-    freq,
-    n.isValid() ? "≈ " + n.kcal.toLocaleString("en-US") + " kcal · " + n.protein + " g protein a day" : ""
-  ].filter(Boolean);
-  const gaps = weekGaps();
-  const stale = weekIsStale(), outdated = !stale && mealsOutdated();
-  const status = wk.status;
-  const detail = routine.sessions.find(s => s.id === wk.sel);
-  const focus = routine.sessions.find(s => s.id === (wk.hover || wk.sel));
-
-  const head = '<div class="gen-head" data-reveal="0">' +
-      '<p class="eyebrow"><span class="n">' + STAGE_NUMERALS.plan + '</span> / Week plan</p>' +
-      '<div class="gen-title">' +
-        '<div class="gen-title-text">' +
-          '<h1 class="display" id="plan-title" tabindex="-1">Your week</h1>' +
-          '<p class="gen-summary' + (gaps.length || stale || outdated || (status && status.kind) ? ' warn' : '') +
-            '"><i></i><span>' + sessions.length + (sessions.length === 1 ? " session" : " sessions") +
-            ' · ≈ ' + hrs + ' h · ' + sets + ' hard sets</span><span class="pill-tag">Estimate</span></p>' +
-          '<p class="gen-facts">' + facts.map(esc).join('<span aria-hidden="true">·</span>') + '</p>' +
-        '</div>' +
-        '<div class="gen-actions">' +
-          (stale || outdated ? '<button type="button" class="btn primary" id="regen" data-key="regen">Generate again</button>' : '') +
-          '<button type="button" class="btn ghost" id="adjust" data-key="adjust">Adjust plan</button>' +
-        '</div>' +
-      '</div>' +
-      ((status || gaps.length || stale || outdated) ? '<div class="gen-notes">' +
-        (status ? '<p class="' + (status.kind || "soft") + '">' + esc(status.text) + '</p>' : '') +
-        (stale && !(status && /changed since/.test(status.text)) ? '<p class="warn">Your targets, training or nutrition changed since this week was generated. Generate again to plan for them.</p>' : '') +
-        (outdated && !(status && /generate again/i.test(status.text)) ? '<p class="warn">The meals on the calendar no longer match your daily targets. Generate again to update them.</p>' : '') +
-        gaps.map(g => '<p class="warn">' + esc(g) + '</p>').join("") +
-      '</div>' : '') +
-    '</div>';
-
-  if (Stages.narrow) return '<div class="wk-gen">' + head + agendaHTML(sessions) + '</div>';
-
-  const [H0, H1] = genHours(), rows = H1 - H0;
-  const rh = rowHeight(rows, 330 + (gaps.length + (status ? 1 : 0)) * 22, 28, 60);
-  const side = planEl.clientWidth >= 1180;
-  const colW = (planEl.clientWidth - 96 - 44 - 36 - (side ? 388 : 0)) / 7, narrow = colW < 110;
-  const hours = Array.from({ length: rows }, (_, k) => H0 + k).filter(h => h % 2 === 0)
-    .map(h => '<span style="top:' + px(WEEK_HEAD + 2 + (h - H0) * rh) + '">' + hourLabel(h) + '</span>').join("");
-  const days = DayOfWeek.values.map(d => {
-    const off = routine.isDayUnavailable(d), x = sessions.find(s => s.day === d);
-    const fams = x ? blockFamilies(x.block) : [];
-    const on = x && wk.sel === x.id, hov = x && wk.hover === x.id;
-    const worked = x ? x.block.muscles.filter(m => !x.block.riders.has(m)) : [];
-    const restText = !x ? restDayText(d) : "";
-    const headEl = '<div class="cal-head static"' + (restText ? ' title="' + esc(restText) + '"' : '') + '>' +
-        // The frieze, carried into the week: the day's figure, lit where it trains.
-        (x && !narrow ? '<canvas class="cal-plate" data-plate="' + d + '" data-ids="' + workedIds(x.block).join(",") + '" aria-hidden="true"></canvas>' : '') +
-        '<span class="cal-day">' + DayOfWeek.label[d] + '</span>' +
-        '<span class="cal-name">' + (off ? "Off" : x ? esc(blockName(x.block)) : "Rest") + '</span>' +
-        '<span class="cal-meta">' + familyDots(fams) + '<span>' + (narrow ? "" : off ? "Day off" : x ? worked.length +
-          (worked.length === 1 ? " muscle" : " muscles") : routine.recoveringOn(d).length ? "Recovering" : "Recovery") + '</span></span>' +
-      '</div>';
-    if (off) return '<div class="cal-col off">' + headEl + '<div class="cal-body" style="height:' + px(rows * rh) + '"></div></div>';
-    const rules = Array.from({ length: rows - 1 }, (_, k) => H0 + k + 1).filter(h => h % 2 === 0)
-      .map(h => '<i class="rule" style="top:' + px((h - H0) * rh) + '"></i>').join("");
-    const busy = busyRuns(d, [H0, H1]).map(([a, b]) =>
-      '<div class="busy" style="top:' + px((a - H0) * rh + 3) + ';height:' + px((b - a) * rh - 6) + '">' +
-        (b - a >= 2 ? '<span class="busy-label">Busy</span>' : '') +
-        (!narrow && (b - a) * rh >= 34 ? '<span class="busy-time">' + hourRange(a, b) + '</span>' : '') + '</div>').join("");
-    const meals = routine.plannedMeals.filter(m => m.day === d && m.hour >= H0 && m.hour < H1).map(m =>
-      '<span class="meal-pill' + (/snack/i.test(m.name) ? " snack" : "") + '" style="top:' + px((m.hour - H0) * rh + rh / 2) + '" ' +
-        'title="' + esc(m.name) + ' · ' + hourLabel(m.hour) + ' · ≈ ' + m.kcal + ' kcal · ' + m.protein + ' g protein"><i></i>' +
-        (colW >= 128 ? (/snack/i.test(m.name) ? "Snack" : esc(m.name)) : "") + '</span>').join("");
-    const sess = x ? (() => {
-      const h = Math.max(30, (x.endHour() - x.startHour) * rh - 6);
-      return '<button type="button" class="session' + (h < 44 ? ' tiny' : h < 58 ? ' short' : '') + (on ? ' on' : '') + (hov ? ' pointed' : '') + '" data-sess="' + x.id + '" ' +
-          'data-key="sess-' + x.id + '" aria-expanded="' + !!on + '" style="top:' + px((x.startHour - H0) * rh + 3) + ';height:' + px(h) + '" ' +
-          'aria-label="' + esc(DAY_NAME[d] + ", " + blockName(x.block) + ", " + hourRange(x.startHour, x.endHour()) + ". Open for the exercises.") + '">' +
-        '<span class="session-name">' + esc(blockName(x.block)) + '</span>' +
-        '<span class="session-time">' + (narrow ? hourLabel(x.startHour) : hourRange(x.startHour, x.endHour()) + ' · ' + sessionMinutes(x) + ' min') + '</span>' +
-        (h >= 84 ? '<span class="session-mus">' + esc(worked.map(m => m.name).join(", ")) + '</span>' : '') +
-      '</button>';
-    })() : "";
-    return '<div class="cal-col' + (x ? '' : ' rest') + (on ? ' on' : hov ? ' pointed' : '') + '">' + headEl +
-      '<div class="cal-body" style="height:' + px(rows * rh) + '">' + rules + busy + meals + sess + '</div></div>';
-  }).join("");
-
-  // With the SVG figure (no WebGL) nothing on screen lights up: no hint to point.
-  const flat = $("anatomy-stage").classList.contains("flat");
-  const idle = flat ? "" : '<div class="side-idle" data-reveal="2">' +
-      '<span class="eyebrow small">' + (focus ? esc(blockName(focus.block)) + " · " + DayOfWeek.label[focus.day] : "On the sculpture") + '</span>' +
-      '<span>' + (focus ? "Trains " + esc(nameList(focus.block.muscles.filter(m => !focus.block.riders.has(m)).map(m => m.name))) +
-        ". Click it to see the exercises." : "Point at a session to light up the muscles it trains. Click one for its exercises.") + '</span>' +
-    '</div>';
-  const aside = detail ? '<aside class="side-detail" data-scroll aria-label="Session details" data-reveal="2">' + sessionDetailHTML(detail) + '</aside>' : "";
-
-  return '<div class="wk-gen">' + head +
-    '<div class="gen-body' + (side ? ' with-side' : '') + '">' +
-      '<div class="gen-cal" data-reveal="1">' +
-        '<div class="cal">' +
-          '<div class="cal-hours" style="height:' + px(WEEK_HEAD + 2 + rows * rh) + '">' + hours + '</div>' + days +
-        '</div>' +
-        '<div class="legend">' +
-          '<span class="legend-keys"><span><i class="k-session"></i>Session</span><span><i class="k-busy"></i>Busy</span>' +
-            (routine.plannedMeals.length ? '<span><i class="k-meal"></i>Meal</span>' : '') +
-            '<span><i class="k-off"></i>Day off</span></span>' +
-          '<span class="faint">Point at a session to see what it trains · click it for the exercises</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="gen-side' + (detail ? ' open' : '') + '">' + (detail ? aside : side ? idle : '') + '</div>' +
-    '</div>' +
-  '</div>';
-}
-
-/** The phone's week: one line a day, a session opening in place with everything it has. */
-function agendaHTML(sessions) {
-  return '<ol class="agenda" data-reveal="1">' + DayOfWeek.values.map(d => {
-    const x = sessions.find(s => s.day === d), open = x && wk.sel === x.id;
-    const meals = routine.plannedMeals.filter(m => m.day === d).sort((a, b) => a.hour - b.hour);
-    return '<li>' +
-      '<div class="agenda-row">' +
-        '<span class="agenda-day">' + DayOfWeek.label[d] + '</span>' +
-        (x ? '<button type="button" class="agenda-sess" data-sess="' + x.id + '" data-key="sess-' + x.id + '" aria-expanded="' + !!open + '">' +
-              '<span><span class="agenda-name">' + esc(blockName(x.block)) + '</span>' +
-              '<span class="agenda-mus">' + esc(x.block.muscles.filter(m => !x.block.riders.has(m)).map(m => m.name).join(", ")) + '</span></span>' +
-              '<span class="agenda-time">' + hourRange(x.startHour, x.endHour()) + '</span></button>'
-           : '<span class="agenda-rest">' + esc(restDayText(d)) +
-              (meals.length ? '<span class="faint"> · meals ' + meals.map(m => hourLabel(m.hour)).join(", ") + '</span>' : '') + '</span>') +
-      '</div>' +
-      (open ? sessionDetailHTML(x, true) : '') +
-    '</li>';
-  }).join("") + '</ol>';
-}
-
-/* --------------------------------- the frieze ------------------------------- */
-
-/* The muscles read from behind: a day that mostly trains them turns its figure round. */
-const PLATE_BEHIND = new Set(["traps", "upper-back", "lats", "triceps", "hamstrings", "glutes", "calves", "lower-back"]);
-/* How far round each day's figure stands, Monday to Sunday: one figure turning through the week. */
-const PLATE_TURN = [-33, -22, -11, 0, 11, 22, 33];
-
-/**
- * Draws the week's plates (configHTML): the sculpture itself, once per day,
- * lit where that day's session trains. The stage's own figure steps out
- * while they stand (the view's dim). Where the sculpture cannot draw them
- * (no WebGL, or not ready yet) the days stay as names and dots.
- */
-function paintPlates(tries = 0) {
-  const canvases = [...weekEl.querySelectorAll("canvas[data-plate]")];
-  if (!canvases.length || typeof figure !== "object") return;
-  // The plates take their size from the frieze's layout, so that comes first.
-  const can = !!figure.moves && (tries < 20 || wk.plates);
-  if (can !== planEl.hasAttribute("data-plates")) planEl.toggleAttribute("data-plates", can);
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  const list = can ? canvases.map(canvas => {
-    const day = canvas.dataset.plate, ids = canvas.dataset.ids ? canvas.dataset.ids.split(",") : [];
-    const behind = ids.filter(id => PLATE_BEHIND.has(id)).length > ids.length / 2;
-    canvas.width = Math.round(canvas.clientWidth * dpr);
-    canvas.height = Math.round(canvas.clientHeight * dpr);
-    return { canvas, ids, az: PLATE_TURN[DayOfWeek.indexOf(day)] + (behind ? 180 : 0) };
-  }) : [];
-  const drawn = can && figure.plates(list);
-  if (drawn !== wk.plates) { wk.plates = drawn; Stages.refresh(); }
-  // The sculpture lays itself out a frame after the page: ask again, briefly.
-  if (can && !drawn) requestAnimationFrame(() => paintPlates(tries + 1));
-}
-/* The plates are drawn in the theme's stone and hues. */
-new MutationObserver(() => requestAnimationFrame(() => { if (Stages.current === "plan") paintPlates(); }))
-  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-
-/* --------------------------------- drawing --------------------------------- */
-
-function renderWeek() {
-  // Where each day's session stood on its staff, so it can travel from there.
-  const stood = new Map([...weekEl.querySelectorAll("[data-ghost]")].map(el => [el.dataset.ghost, parseFloat(el.style.top)]));
-  const active = document.activeElement;
-  const focusKey = active && weekEl.contains(active) ? active.dataset.key : null;
-  const top = planEl.scrollTop;
-  const sideEl = weekEl.querySelector(".side-detail"), sideTop = sideEl ? sideEl.scrollTop : 0;
-  // Once the last session is gone (removed, painted over, its day taken
-  // off) there is no week to show: back to the setup, camera and footer too.
-  if (wk.view === "gen" && !routine.sessions.length) wk.view = "config";
-  planEl.dataset.view = wk.view;
-  weekEl.innerHTML = wk.view === "shape" ? shapeHTML() : wk.view === "gen" ? genHTML() : configHTML();
-  planEl.scrollTop = top;
-  const side = weekEl.querySelector(".side-detail");
-  if (side) side.scrollTop = sideTop;
-  if (focusKey) focusAgain(weekEl.querySelector('[data-key="' + focusKey + '"]'));
-  Stages.refresh();
-  paintPlates();
-  if (!Stages.still) for (const el of weekEl.querySelectorAll("[data-ghost]")) {
-    const was = stood.get(el.dataset.ghost), now = parseFloat(el.style.top);
-    if (was === undefined) el.animate([{ opacity: 0, transform: "scaleY(.2)" }, { opacity: 1, transform: "none" }], { duration: 420, easing: "cubic-bezier(.2,.7,.2,1)" });
-    else if (Math.abs(was - now) > .5) el.animate([{ transform: "translateY(" + (was - now) + "px)" }, { transform: "none" }], { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" });
+/** Gives the days `targets` the hours and the day off of `src`. */
+function lmCopy(src, targets) {
+  for (const t of targets) {
+    if (routine.offDays.has(src) !== routine.offDays.has(t)) routine.setDayUnavailable(t, routine.offDays.has(src));
+    for (let h = FIRST_HOUR; h <= LAST_HOUR; h++) {
+      if (isBusy(src, h) && !isBusy(t, h)) routine.markBusy(t, h);
+      else if (!isBusy(src, h) && isBusy(t, h)) routine.clearSlot(t, h);
+    }
   }
 }
 
-/** Closes the open session, back to the week. */
-function closeSession() {
-  const was = wk.sel;
-  wk.sel = null;
-  render();
-  const again = was && weekEl.querySelector('[data-sess="' + was + '"]');
-  (again || $("plan-title")).focus({ preventScroll: true });
+/** Goes to step `i`: a day (0–6) or the week (7). */
+function lmGoStep(i) {
+  i = Math.max(0, Math.min(7, i));
+  if (i === lm.step) return;
+  lm.step = i; lm.notes = false; lm.chooser = null; lm.preview = null; lm.hoverDay = null; lm.hoverMuscle = null; lm.moveHover = null; lm.keyHot = null;
+  renderWeek();
+  Stages.remember();
+  announce(i === 7 ? "The week" : DayOfWeek.name[DayOfWeek.values[i]]);
+  const h = $("plan-title");
+  if (h && weekEl.contains(document.activeElement) && !document.activeElement.isConnected) h.focus({ preventScroll: true });
 }
 
-/** A change that rearranges the preview tiles: they settle again, one after another. */
-function shuffled(fn, key) {
-  fn();
-  wk.changed = key;
-  saveRoutine(routine);
+/** Generates the week; one with sessions shows on the week's step, one without stays here with the reason. */
+function generate() {
+  const r = generateWeek();
+  lm.status = { text: r.text, kind: r.kind };
+  lm.editing = !r.placed && lm.editing;
+  lm.hoverDay = null; lm.chooser = null; lm.preview = null;
+  lm.step = 7;
   renderWeek();
-  if (key === "shuffle") setTimeout(() => { wk.changed = wk.changed === "shuffle" ? null : wk.changed; }, 600);
+  announce(r.text);
 }
 
 weekEl.addEventListener("click", e => {
-  const b = e.target.closest("button");
-  if (!b || b.disabled || b.dataset.act) return;      // a session's own controls: workout-view.js
-  const d = b.dataset;
-  const [lo, hi] = TRAINING_DAYS_RANGE;
-  if (d.daysStep) {
-    shuffled(() => { routine.sessionsPerWeek = Math.max(lo, Math.min(hi, routine.sessionsPerWeek + Number(d.daysStep))); }, "days");
-    announce(routine.sessionsPerWeek + (routine.sessionsPerWeek === 1 ? " training day" : " training days") + " a week");
-  }
-  else if (d.split) shuffled(() => { routine.split = d.split; }, "shuffle");
-  else if (d.experience) shuffled(() => { routine.experience = d.experience; }, "shuffle");
-  else if (b.id === "open-shape" || d.shape) Stages.relayout(() => { wk.view = "shape"; wk.tile = null; }, 900);
-  else if (b.id === "close-shape" || b.id === "close-shape-back")
-    Stages.relayout(() => { wk.view = "config"; wk.changed = null; }, 900);
-  else if (d.len) { routine.sessionMinutes = Number(d.len); afterWeekChange(); }
-  else if (d.window) { routine.preferredWindow = d.window; afterWeekChange(); }
-  else if (d.preset) { fillBusy(d.preset); afterWeekChange(); }
-  else if (b.id === "meals-switch") { routine.nutrition.showMeals = !routine.nutrition.showMeals; afterWeekChange(); }
-  else if (d.dayoff) {
-    routine.setDayUnavailable(d.dayoff, !routine.isDayUnavailable(d.dayoff));
-    afterWeekChange();
-  }
-  else if (b.id === "generate" || b.id === "regen") generate();
-  else if (b.id === "reset-week") {
-    routine.reset();
-    generatedFor = null; placedCount = 0;
-    wk.status = { text: "Cleared: no busy hours, no days off, and the training settings back to their defaults.", kind: "" };
-    wk.changed = null;
-    render();
-  }
-  else if (b.id === "adjust") Stages.relayout(() => { wk.view = "config"; wk.sel = null; wk.hover = null; wk.changed = null; }, 900);
-  else if (b.id === "to-week") Stages.relayout(() => { wk.view = "gen"; }, 1000);
-  else if (d.sess) {
-    const id = Number(d.sess);
-    wk.sel = wk.sel === id ? null : id;
-    renderWeek();
-    const panel = weekEl.querySelector(".side-detail");
-    if (panel && wk.sel !== null && !Stages.narrow) {
-      const first = panel.querySelector("select");
-      if (e.detail === 0 && first) first.focus({ preventScroll: true });    // from the keyboard: into the panel
+  const b = e.target.closest("[data-lm]");
+  if (!b || b.disabled || Stages.busy) return;
+  const act = b.dataset.lm, D = DayOfWeek.values, d = D[lm.step];
+  const session = !lmDraft() && lm.byDay[d] ? lm.byDay[d].session : null;
+  switch (act) {
+    case "off": routine.setDayUnavailable(d, !routine.offDays.has(d)); afterWeekChange(); break;
+    case "copy": lmCopy(d === "MON" ? "MON" : lmPrevDay(d), d === "MON" ? ["TUE", "WED", "THU", "FRI"] : [d]); afterWeekChange(); break;
+    case "clear": for (const [a, z] of busyRuns(d)) for (let h = a; h < z; h++) routine.clearSlot(d, h); afterWeekChange(); break;
+    case "chooser": lm.chooser = lm.chooser === b.dataset.k ? null : b.dataset.k; lm.preview = null; renderWeek(); break;
+    case "pick": {
+      const k = b.dataset.k;
+      routine[LM_TERMS[k]] = lmValue(k, b.dataset.v);
+      lm.chooser = null; lm.preview = null;
+      afterWeekChange();
+      announce(b.textContent.trim());
+      break;
     }
+    case "preset": fillBusy(b.dataset.k); afterWeekChange(); break;
+    case "hour": {
+      const h = Number(b.dataset.h);
+      if (isBusy(d, h)) routine.clearSlot(d, h); else routine.markBusy(d, h);
+      afterWeekChange();
+      announce(hourRange(h, h + 1) + (isBusy(d, h) ? " busy" : " free"));
+      break;
+    }
+    case "meals": routine.nutrition.showMeals = !routine.nutrition.showMeals; afterWeekChange(); break;
+    case "return": lm.editing = false; renderWeek(); break;
+    case "notes": lm.notes = !lm.notes; renderWeek(); break;
+    case "edit-hours": lm.editing = true; renderWeek(); break;
+    case "remove":
+      if (session) { routine.removeSession(session); lm.moveHover = null; render(); weekEdited() || warnIfStale(); }
+      break;
+    case "swap": {
+      const w = session && session.workout, entry = w && w.entries[Number(b.dataset.i)];
+      if (!entry) break;
+      const pool = exercisesFor(entry.muscleId).filter(ex => ex === entry.exercise || !w.has(ex));
+      const next = pool[(pool.indexOf(entry.exercise) + 1) % pool.length];
+      if (next && next !== entry.exercise) { w.replace(entry, next); render(); announce(entry.exercise.name + " swapped for " + next.name); }
+      break;
+    }
+    case "move": {
+      const to = b.dataset.d;
+      if (!session || to === session.day || lmWhyNot(session, to)) break;
+      if (routine.moveSession(session, to)) { lm.step = D.indexOf(to); lm.moveHover = null; render(); Stages.remember(); announce("Moved to " + DayOfWeek.name[to]); }
+      break;
+    }
+    case "open": lmGoStep(Number(b.dataset.i)); break;
   }
 });
+lmFoot.addEventListener("click", e => { const b = e.target.closest('[data-lm="step"]'); if (b && !Stages.busy) lmGoStep(Number(b.dataset.i)); });
 
-/** After a change to the hours, the length or the days: redraw, save, and say what a generated week lost. */
-function afterWeekChange() {
-  render();
-  weekEdited() || warnIfStale();
-}
-
-/** Generates the week; a week with sessions takes the screen, one without stays here with the reason. */
-function generate() {
-  const r = generateWeek();
-  wk.status = { text: r.text, kind: r.kind };
-  wk.sel = null; wk.hover = null; wk.changed = null;
-  if (r.placed) Stages.relayout(() => { wk.view = "gen"; }, 1000);
-  else { wk.view = "config"; renderWeek(); }
-}
-
-/* Pointing: a day tile or a session lights its muscles on the sculpture. */
-weekEl.addEventListener("pointerover", e => {
-  const tile = e.target.closest("[data-tile]"), sess = e.target.closest("[data-sess]");
-  if (tile && wk.tile !== tile.dataset.tile) { wk.tile = tile.dataset.tile; paintPointed(); }
-  if (sess && !Stages.narrow && wk.hover !== Number(sess.dataset.sess)) { wk.hover = Number(sess.dataset.sess); paintPointed(); }
-});
-weekEl.addEventListener("pointerout", e => {
-  const to = e.relatedTarget;
-  if (e.target.closest("[data-tile]") && !(to && to.closest && to.closest("[data-tile]"))) { wk.tile = null; paintPointed(); }
-  if (e.target.closest("[data-sess]") && !(to && to.closest && to.closest("[data-sess]"))) { wk.hover = null; paintPointed(); }
-});
-
-/** What pointing changes, without redrawing the screen under the pointer. */
-function paintPointed() {
-  for (const t of weekEl.querySelectorAll("[data-tile]")) t.classList.toggle("pointed", t.dataset.tile === wk.tile);
-  for (const s of weekEl.querySelectorAll("[data-sess]")) {
-    s.classList.toggle("pointed", Number(s.dataset.sess) === wk.hover);
-    const col = s.closest(".cal-col");
-    if (col) col.classList.toggle("pointed", Number(s.dataset.sess) === wk.hover && !col.classList.contains("on"));
+/* The wheel walks the week a step a gesture, and leaves the stage before Monday. */
+weekEl.addEventListener("wheel", e => {
+  if (Stages.current !== "plan" || Stages.busy || Stages.narrow || lm.chooser || lm.drag || e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+  const now = performance.now(), dir = Math.sign(e.deltaY);
+  if (!dir) return;
+  if (lm.locked) { lm.lastWheel = now; return; }
+  if ((lm.step === 0 && dir < 0) || (lm.step === 7 && dir > 0)) {
+    if (now - lm.lastWheel > STAGE_WHEEL.gap || Math.sign(lm.edge) !== dir) lm.edge = 0;
+    lm.lastWheel = now;
+    lm.edge += e.deltaY;
+    if (dir < 0 && Math.abs(lm.edge) > STAGE_WHEEL.threshold) { lm.edge = 0; lm.locked = true; Stages.wheelAt = now; Stages.spent = true; Stages.back(); }
+    return;
   }
-  const idle = weekEl.querySelector(".side-idle");
-  if (idle) {
-    const focus = routine.sessions.find(s => s.id === wk.hover);
-    idle.children[0].textContent = focus ? blockName(focus.block) + " · " + DayOfWeek.label[focus.day] : "On the sculpture";
-    idle.children[1].textContent = focus ? "Trains " + nameList(focus.block.muscles.filter(m => !focus.block.riders.has(m)).map(m => m.name)) +
-      ". Click it to see the exercises." : "Point at a session to light up the muscles it trains. Click one for its exercises.";
-  }
-  Stages.refresh();
-}
+  lm.edge = 0;
+  if (Math.sign(lm.acc) !== dir) lm.acc = 0;
+  lm.acc += e.deltaY;
+  if (Math.abs(lm.acc) > 46) { lmGoStep(lm.step + dir); lm.acc = 0; lm.locked = true; lm.lastWheel = now; }
+}, { passive: true });
 
-/* The calendars fit the screen's height; redraw them when it changes. */
-let weekResize = 0;
-addEventListener("resize", () => {
-  clearTimeout(weekResize);
-  weekResize = setTimeout(() => {
-    if (Stages.current !== "plan") return;
-    renderWeek();
-  }, 120);
+addEventListener("keydown", e => {
+  if (Stages.current !== "plan" || Stages.busy || Stages.opening || Stages.narrow || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target, tag = (t && t.tagName) || "";
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t.closest && t.closest(".masthead"))) return;
+  if (e.key === "Escape") { if (lm.chooser || lm.notes) { lm.chooser = null; lm.preview = null; lm.notes = false; renderWeek(); } return; }
+  if (["ArrowDown", "ArrowRight", "PageDown"].includes(e.key)) { e.preventDefault(); lmGoStep(lm.step + 1); }
+  else if (["ArrowUp", "ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); lmGoStep(lm.step - 1); }
 });
 
 /* --------------------------------- the stage -------------------------------- */
 
-/** The muscles a block really works (riders get no work of their own). */
-const workedIds = block => block.muscles.filter(m => !block.riders.has(m)).map(m => m.id);
-
 Stages.register("plan", {
   arrive() {
-    // A week already generated opens on it; otherwise, on setting one up.
-    wk.view = routine.sessions.length ? "gen" : "config";
-    wk.sel = null; wk.hover = null; wk.tile = null; wk.changed = null;
-    if (wk.status && wk.status.kind !== "err" && !routine.sessions.length) wk.status = null;
+    const at = /^s(\d)$/.exec(Stages.at || "");
+    lm.step = at ? Math.min(7, Number(at[1])) : routine.sessions.length ? 7 : Stages.from === "nutrition" || Stages.from === null ? 0 : lm.step;
+    lm.editing = false; lm.hoverDay = null; lm.hoverMuscle = null; lm.keyHot = null; lm.chooser = null; lm.preview = null;
+    lm.moveHover = null; lm.drag = null; lm.scrubH = null; lm.hourF = null; lm.aimX = null; lm.figOp = 0;
+    if (lm.status && lm.status.kind !== "err" && !routine.sessions.length) lm.status = null;
   },
-  enter: renderWeek,
-  shot: () => wk.view === "shape" ? "plan-availability" : wk.view === "gen" ? "plan-generated" : "plan",
-  dim() {
-    if (wk.view === "shape") return 0;
-    // Setting up, the frieze's seven figures are the body; the stage's own steps out.
-    if (wk.view !== "gen") return wk.plates && !Stages.narrow ? 0 : 1;
-    if (Stages.narrow) return wk.sel !== null ? 1 : 0.5;
-    return wk.sel !== null ? 0.35 : 1;
+  enter() { lmFit(); renderWeek(); lmRun(); },
+  place: () => "s" + lm.step,
+  shot: () => Stages.narrow ? "plan" : "plan-ring",
+  dim: () => Stages.narrow ? 0 : lm.figOp,
+  highlight: () => lm.F && lm.F.ids.length ? lm.F.ids : null,
+  footer() {
+    const s = lm.step, name = i => i === 7 ? "The week" : DayOfWeek.name[DayOfWeek.values[i]];
+    return {
+      back: s === 0 ? "Nutrition" : name(s - 1),
+      next: s < 7 ? name(s + 1) : lmDraft() ? (routine.sessions.length ? "Generate again" : "Generate my week") : "Adjust plan",
+      hint: s < 7 ? "or scroll" : ""
+    };
   },
-  highlight() {
-    if (wk.view === "gen") {
-      const s = routine.sessions.find(x => x.id === (wk.hover !== null ? wk.hover : wk.sel));
-      return s ? workedIds(s.block) : null;
-    }
-    if (wk.view === "config" && wk.tile) {
-      const p = weekPreview().byDay.get(wk.tile);
-      return p ? workedIds(p.block) : null;
-    }
-    return null;
+  onNext() {
+    if (lm.step < 7) lmGoStep(lm.step + 1);
+    else if (lmDraft()) generate();
+    else { lm.editing = true; lm.hoverDay = null; renderWeek(); }
+    return true;
   },
-  footer: () => wk.view === "config" || Stages.narrow ? { back: "← Nutrition" } : {},
-  wheel: () => wk.view !== "shape",
+  onBack() { if (lm.step > 0) { lmGoStep(lm.step - 1); return true; } },
+  wheel: () => Stages.narrow,
   focus: () => $("plan-title")
 });
+
+/* A resize refits the plate. */
+addEventListener("resize", () => { if (Stages.current === "plan") { lmFit(); renderWeek(); } });
