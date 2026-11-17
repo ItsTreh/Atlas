@@ -275,7 +275,7 @@ function lmArcTemplate(W, step) {
     const glow = '<circle cx="' + CX + '" cy="' + CY + '" filter="url(#lm-soft)" style="r:' + r + 'px; fill:none; stroke:' + (x ? "var(--" + lmFam(x) + ")" : "transparent") +
       '; stroke-opacity:' + (gq ? (draft ? (f ? 0.18 : 0.12) : 0.38) : 0) + '; stroke-width:' + (gq ? sw + 12 : 0) + 'px; stroke-linecap:round; stroke-dasharray:' +
       (gq ? gq.dash : "0 " + c.toFixed(1)) + '; transform-origin:' + CX + 'px ' + CY + 'px; transform:' + (gq ? gq.rot : "rotate(" + lmAng(a0) + "deg)") +
-      '; transition:r ' + ease + ', stroke-width ' + ease + ', stroke-dasharray ' + ease + ', transform ' + ease + ', stroke-opacity .8s ease"></circle>';
+      '; transition:r ' + ease + ', stroke-width ' + ease + ', stroke-dasharray ' + ease + ', transform ' + ease + ', stroke-opacity .8s ease, opacity .5s ease 1.1s"></circle>';
     return '<g style="opacity:' + (off && !f ? op * 0.7 : op) + '; transition:opacity .7s ease">' +
       circle(r, "stroke:var(--ink-faint); stroke-opacity:.42; stroke-width:" + (f ? 1.2 : isWeek ? 1 : 0.8) + "px; stroke-dasharray:" + (c / 2).toFixed(1) + " " + c.toFixed(1) +
         "; transform:rotate(180deg); transition:r " + ease + ", stroke-dasharray " + ease + ", stroke-width .6s ease") +
@@ -718,12 +718,21 @@ function setStatus(text, kind = "") {
 }
 
 function renderWeek() {
-  const wg = lm.step === 7 && !lmDraft();
+  const wg = lm.step === 7 && !lmDraft(), fromWeek = !wg && lm.wgOn;
   if (wg && !lm.wgOn) { lm.wgOn = true; lm.wkIn = false; clearTimeout(lm.wkT); lm.wkT = setTimeout(() => { lm.wkIn = true; renderWeek(); }, 70); }
-  else if (!wg && lm.wgOn) { lm.wgOn = false; lm.wkIn = false; clearTimeout(lm.wkT); }
+  else if (fromWeek) { lm.wgOn = false; lm.wkIn = false; clearTimeout(lm.wkT); }
   const t = lmTemplate();
   pvMorph(lmStage, t.plate);
-  pvMorph(lmArcEl, t.arc);
+  // The generated week hides the ring (styles.css), so the ring doesn't
+  // follow it there: it keeps the day it showed as it fades, and is back on
+  // the day, unseen, before it fades in again. Moving its blurred glows
+  // under a fade cost Firefox 100–250 ms a frame.
+  if (!wg) {
+    if (fromWeek) lmArcEl.classList.add("lm-snap");
+    pvMorph(lmArcEl, t.arc);
+    // A layout flush applies the new geometry with no transition before they come back.
+    if (fromWeek) { void lmArcEl.getBoundingClientRect(); lmArcEl.classList.remove("lm-snap"); }
+  }
   pvMorph(lmFoot, lmFootTemplate());
   lmFoot.hidden = Stages.narrow;
   planEl.dataset.view = wg ? "week" : lm.step === 7 ? "rings" : "day";

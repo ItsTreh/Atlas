@@ -1738,6 +1738,11 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .atlas[data-stage="plan"] .lm-arc { opacity: 1; transition: opacity .8s ease .3s; }
 .atlas[data-stage="plan"]:has(.stage-plan[data-view="week"]) .lm-arc { opacity: 0; transition: opacity .8s ease; }
 .atlas[data-layout="mobile"] :is(.lm-sky, .lm-arc) { display: none; }
+/* Back from the generated week, the ring takes the day at once, while it is still unseen (week-view.js). */
+.lm-arc.lm-snap * { transition: none !important; }
+/* Its blurred glows step out while it fades to the generated week, and come
+   back once it has faded in again: a fade over them cost Firefox a blur a frame. */
+.atlas[data-stage="plan"]:has(.stage-plan[data-view="week"]) .lm-arc [filter] { opacity: 0; transition: none !important; }
 /* Once landed, the stage sets the figure's opacity every frame (the generated week's ghost). */
 .atlas[data-stage="plan"][data-phase="idle"] .anatomy-sculpture canvas { transition: none; }
 
