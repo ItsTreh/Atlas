@@ -912,6 +912,9 @@ function lmLoop(now) {
     }
   } else lm.leftAt = 0;
   lm.raf = requestAnimationFrame(lmLoop);
+  // While the start screen holds the page, the camera, the light and the
+  // ground are its own: the week waits, and takes them once it hands over.
+  if (Stages.opening) { lm.lt = 0; return; }
   try { lmFrame(now); } catch (e) { if (!lm.err) { lm.err = 1; console.warn("Week plan: " + e.message); } }
 }
 const lmRun = () => { if (!lm.raf) lm.raf = requestAnimationFrame(lmLoop); };
