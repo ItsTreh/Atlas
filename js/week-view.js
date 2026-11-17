@@ -290,14 +290,14 @@ function lmArcTemplate(W, step) {
   const fOff = !isWeek && routine.offDays.has(focus), fRuns = !isWeek && !fOff ? busyRuns(focus) : [];
   const fMeals = isWeek || fOff ? [] : (W.meals[focus] || []);
   const fx = !isWeek ? W.byDay[focus] : null;
-  const text = (path, off, style, body) => '<text style="' + style + '"><textPath href="#' + path + '" startOffset="' + off + '">' + body + '</textPath></text>';
+  const text = (path, off, style, body, cls = "") => '<text' + (cls ? ' class="' + cls + '"' : "") + ' style="' + style + '"><textPath href="#' + path + '" startOffset="' + off + '">' + body + '</textPath></text>';
   const mono = "font:500 10px/1 var(--mono); letter-spacing:.12em; fill:var(--ink-faint); text-anchor:middle";
   const curved =
     '<g style="opacity:' + (isWeek ? 0.55 : kOp("arc")) + '; transition:opacity .4s ease">' +
-      [6, 9, 12, 15, 18, 21, 24].map(h => text("lm-p-hours", h === 6 ? "2.4%" : h === 24 ? "97.6%" : pct(h), mono, lmPad(h) + ":00")).join("") + '</g>' +
+      [6, 9, 12, 15, 18, 21, 24].map(h => text("lm-p-hours", h === 6 ? "2.4%" : h === 24 ? "97.6%" : pct(h), mono, lmPad(h) + ":00", "lm-fine")).join("") + '</g>' +
     '<g style="opacity:' + kOp("busy") + '; transition:opacity .35s ease">' +
       (fOff ? [[50, "DAY OFF"]] : fRuns.filter(([a, b]) => b - a >= 2).map(([a, b]) => [((a + b) / 2 - FIRST_HOUR) / 18 * 100, "BUSY " + lmPad(a) + "–" + lmPad(b)]))
-        .map(([o, l]) => '<text dominant-baseline="central" style="font:500 9px/1 var(--mono); letter-spacing:.2em; fill:var(--ink-soft); text-anchor:middle"><textPath href="#lm-p-mid" startOffset="' + o.toFixed(2) + '%">' + l + '</textPath></text>').join("") + '</g>' +
+        .map(([o, l]) => '<text class="lm-fine" dominant-baseline="central" style="font:500 9px/1 var(--mono); letter-spacing:.2em; fill:var(--ink-soft); text-anchor:middle"><textPath href="#lm-p-mid" startOffset="' + o.toFixed(2) + '%">' + l + '</textPath></text>').join("") + '</g>' +
     '<g style="opacity:' + kOp("meal") + '; transition:opacity .35s ease">' +
       fMeals.map(m => text("lm-p-meal", pct(m.hour + 0.5), "font:italic 400 15px/1 var(--serif); fill:var(--ink-soft); text-anchor:middle", esc(m.name.toLowerCase()))).join("") + '</g>' +
     '<g data-lm-sesslabel style="transition:opacity .3s ease"><g style="opacity:' + kOp("sess") + '; transition:opacity .35s ease">' +
@@ -305,7 +305,7 @@ function lmArcTemplate(W, step) {
         '<tspan style="font:italic 400 25px/1 var(--serif)">' + esc(fx.name) + '</tspan><tspan dx="12" style="font:500 10px/1 var(--mono); letter-spacing:.14em">' +
         lmPad(fx.start) + "–" + lmPad(fx.end) + '</tspan></textPath></text>' : '') + '</g></g>' +
     '<g style="opacity:' + (isWeek ? 1 : 0) + '; transition:opacity .6s ease">' +
-      D.map((d, i) => '<text x="' + (CX - (278 + i * 22)) + '" y="' + (CY + 17) + '" style="font:500 9px/1 var(--mono); letter-spacing:.08em; text-anchor:middle; fill:' +
+      D.map((d, i) => '<text class="lm-fine" x="' + (CX - (278 + i * 22)) + '" y="' + (CY + 17) + '" style="font:500 9px/1 var(--mono); letter-spacing:.08em; text-anchor:middle; fill:' +
         (lm.hoverDay === d ? "var(--ink)" : "var(--ink-faint)") + '">' + DayOfWeek.label[d].slice(0, 2).toUpperCase() + '</text>').join("") + '</g>' +
     '<text data-lm-needle style="opacity:0; transition:opacity .25s ease; text-anchor:middle; fill:var(--ink); pointer-events:none"><textPath href="#lm-p-sess" startOffset="50%" data-lm-needle-at>' +
       '<tspan data-lm-time style="font:500 11px/1 var(--mono); letter-spacing:.1em"></tspan><tspan data-lm-state dx="10" style="font:italic 400 19px/1 var(--serif); fill:var(--ink-soft)"></tspan></textPath></text>';
@@ -695,7 +695,9 @@ lmArcEl.className = "lm-arc";
 lmArcEl.setAttribute("aria-hidden", "true");
 {
   const stage = document.getElementById("anatomy-stage");
-  stage.insertBefore(lmArcEl, stage.firstChild);
+  // The sky and the ring's bands lie under the ghost word (.flow-ground),
+  // the ring's words over it, the figure over them all.
+  stage.querySelector(".flow-ground").after(lmArcEl);
   stage.insertBefore(lmSkyEl, stage.firstChild);
 }
 
@@ -755,9 +757,29 @@ function lmDayWord() {
   el.style.left = Math.max(half, Math.min(span - half, col.offsetLeft + col.offsetWidth / 2)) + "px";
   el.style.top = (FLOOR - size * 0.92) + "px";
   el.style.fontSize = size.toFixed(1) + "px";
-  el.style.color = fam ? "color-mix(in srgb, var(--" + fam + ") 22%, var(--bg))" : "color-mix(in srgb, var(--ink) 10%, var(--bg))";
+  // A rest day has no family: it takes the ink, as strong as the families' hues read (on light stone the ink at 10% sank into the sky).
+  el.style.color = fam ? "color-mix(in srgb, var(--" + fam + ") 22%, var(--bg))" : "color-mix(in srgb, var(--ink) " + (lmDark() ? 10 : 20) + "%, var(--bg))";
   el.style.opacity = "1";
   if (lm.dw !== d) { lm.dw = d; el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); }
+}
+
+/**
+ * The small words on the ring that the day's ghost word lies under (an
+ * hour, a busy stretch, the days' letters) step up to the soft ink while
+ * they cross it, so they stay read over its letters; the ring's words sit
+ * above the ghost word (the order the stage is built in, below). Measured
+ * at most five times a second, since the word and the figure travel.
+ */
+function lmGhostOver(now) {
+  if (now - (lm.overAt || 0) < 200) return;
+  lm.overAt = now;
+  const word = document.querySelector(".flow-ground:not(.flow-front) .ghost-word");
+  const w = word && word.textContent && !lm.F.wg ? word.getBoundingClientRect() : null;
+  for (const el of lmArcEl.querySelectorAll("text.lm-fine")) {
+    const r = w && el.getBoundingClientRect();
+    const over = !!(r && r.width && r.right > w.left && r.left < w.right && r.bottom > w.top + w.height * 0.15 && r.top < w.bottom);
+    if (over !== el.hasAttribute("data-over")) el.toggleAttribute("data-over", over);
+  }
 }
 
 /** Fits the 1440 × 900 plate to the screen, centred. */
@@ -782,7 +804,7 @@ function lmFit() {
 const lmRingEl = document.createElement("canvas");
 lmRingEl.className = "lm-ring";
 lmRingEl.setAttribute("aria-hidden", "true");
-lmArcEl.before(lmRingEl);
+lmSkyEl.after(lmRingEl);
 const lmGlowEl = document.createElement("canvas");
 
 /** cubic-bezier(x1, y1, x2, y2) as a function of time 0…1. */
@@ -1028,6 +1050,7 @@ function lmFrame(now) {
       lm.ws = ws.join();
       ["--gx", "--gy", "--gyl", "--gs", "--gbw"].forEach((k, i) => Stages.root.style.setProperty(k, ws[i]));
     }
+    lmGhostOver(now);
   }
 }
 

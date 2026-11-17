@@ -1754,7 +1754,20 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   top: min(calc(var(--gyl, .7) * 100%), calc(100% - 96px - 17.2vh));
   flex-direction: column-reverse;
 }
-.atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
+.atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { position: relative; z-index: 1; transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
+/* The sky is no one colour, and the word mixed into the ground's (--bg)
+   washed out where the sky's glow stood lighter or warmer. In the light
+   theme it takes a little ink too, so it stands a shade under every hour;
+   the dark theme keeps Targets' mix, which reads. Solid, not blended, so
+   where it comes round in front of the leg it covers it. */
+.atlas[data-stage="plan"] .flow-ground .ghost-word { color: color-mix(in srgb, color-mix(in srgb, var(--fam) 24%, var(--bg)) 90%, var(--ink)); }
+[data-theme="dark"] .atlas[data-stage="plan"] .flow-ground .ghost-word { color: color-mix(in srgb, var(--fam) 20%, var(--bg)); }
+/* The ring's small words lie over it, and step up to the soft ink while
+   they cross it (week-view.js, lmGhostOver). */
+/* The session's line stands beside the legs, off the body: the copy in front
+   carries it too, over the word's tails that come round there. */
+.atlas[data-stage="plan"] .flow-front .ghost .ghost-meta { visibility: visible !important; }
+.lm-arc text[data-over] { fill: var(--ink-soft) !important; transition: fill .3s ease; }
 
 /* On the generated week, the day pointed at is named under its column, in
    the ghost word's hand (week-view.js, lmDayWord sets its place, size and tint). */
