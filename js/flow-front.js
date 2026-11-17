@@ -68,14 +68,22 @@
   /* The line and the axis, through the camera the sculpture holds right
      now (axisPoint), written only when they move. */
   let shown = null;
+  // Where the viewport sits, read only when it or the stage changes size:
+  // read each frame, it made the browser restyle and lay out the whole page
+  // every frame anything had changed (a stage's sky, its words, the figure).
+  let box = null;
+  const measure = () => { box = { top: mount.offsetTop, left: mount.offsetLeft, w: stage.clientWidth }; shown = null; };
+  const ro = new ResizeObserver(() => { box = null; });
+  ro.observe(stage); ro.observe(mount);
   (function tick() {
     requestAnimationFrame(tick);
     if (document.hidden) return;
     const r = typeof figure === "object" && figure.renderer;
     const a = r && r.axisPoint && r.axisPoint(LINE);
     if (!a || !isFinite(a.y)) return;
-    const y = mount.offsetTop + a.y, x = mount.offsetLeft + a.x;
-    const ax = a.side > 0 ? x : stage.clientWidth - x;
+    if (!box) measure();
+    const y = box.top + a.y, x = box.left + a.x;
+    const ax = a.side > 0 ? x : box.w - x;
     if (shown && Math.abs(y - shown.y) <= .5 && Math.abs(ax - shown.ax) <= .5 && a.side === shown.side) return;
     shown = { y, ax, side: a.side };
     front.style.setProperty("--knee", y.toFixed(1) + "px");
