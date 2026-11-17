@@ -1754,24 +1754,20 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   top: min(calc(var(--gyl, .7) * 100%), calc(100% - 96px - 17.2vh));
   flex-direction: column-reverse;
 }
-.atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
-/* It lies on the hour's sky, not the paper, and the sky is no one colour: in
-   the light theme it darkens whatever is behind it in the family's hue, so
-   it reads on every hour (the dark theme keeps Targets' mix, which does). */
-.atlas[data-stage="plan"] .flow-ground { mix-blend-mode: multiply; }
-.atlas[data-stage="plan"] .flow-ground .ghost-word { color: color-mix(in srgb, var(--fam) 16%, #fff); }
-[data-theme="dark"] .atlas[data-stage="plan"] .flow-ground { mix-blend-mode: normal; }
+.atlas[data-stage="plan"] .flow-ground .ghost .ghost-meta { position: relative; z-index: 1; transform: translateX(calc(50% + var(--gbw, 64px) + 14px)); }
+/* The sky is no one colour, and the word mixed into the ground's (--bg)
+   washed out where the sky's glow stood lighter or warmer. In the light
+   theme it takes a little ink too, so it stands a shade under every hour;
+   the dark theme keeps Targets' mix, which reads. Solid, not blended, so
+   where it comes round in front of the leg it covers it. */
+.atlas[data-stage="plan"] .flow-ground .ghost-word { color: color-mix(in srgb, color-mix(in srgb, var(--fam) 24%, var(--bg)) 90%, var(--ink)); }
 [data-theme="dark"] .atlas[data-stage="plan"] .flow-ground .ghost-word { color: color-mix(in srgb, var(--fam) 20%, var(--bg)); }
-/* And it gives way to the small words it would cover (the hours, the meals,
-   the session and its time), as it gives way to the near leg: week-view.js,
-   lmGhostHoles, opens a soft hole round each (--lm-holes). Its box reaches
-   past the letters' tails, at no change to where it stands, so the mask
-   keeps them. */
-.atlas[data-stage="plan"] .ghost-word {
-  padding: .3em .25em; margin: -.3em -.25em;
-  -webkit-mask-image: var(--lm-holes, none); -webkit-mask-composite: source-in;
-  mask-image: var(--lm-holes, none); mask-composite: intersect;
-}
+/* The ring's small words lie over it, and step up to the soft ink while
+   they cross it (week-view.js, lmGhostOver). */
+/* The session's line stands beside the legs, off the body: the copy in front
+   carries it too, over the word's tails that come round there. */
+.atlas[data-stage="plan"] .flow-front .ghost .ghost-meta { visibility: visible !important; }
+.lm-arc text[data-over] { fill: var(--ink-soft) !important; transition: fill .3s ease; }
 
 /* On the generated week, the day pointed at is named under its column, in
    the ghost word's hand (week-view.js, lmDayWord sets its place, size and tint). */
@@ -1782,12 +1778,6 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 }
 .lm-dayword i { display: inline-block; font-style: inherit; }
 .lm-dayword.swap i { animation: ghostIn .9s var(--ease-out) both; animation-delay: calc(var(--j) * 26ms); }
-
-/* A rest day on the generated week: its name, word and title. On light
-   stone they take an ink a step darker than in the dark theme, since the
-   figure stands faint behind the middle days and the faintest ink sank into it. */
-.atlas { --lm-rest: var(--ink-soft); --lm-rest-title: var(--ink); }
-[data-theme="dark"] .atlas { --lm-rest: var(--ink-faint); --lm-rest-title: var(--ink-soft); }
 
 /* The week's index in the footer: a small sun a day, and the week. */
 .foot-week { grid-column: 2; grid-row: 1; position: relative; width: 350px; height: 52px; pointer-events: auto; }

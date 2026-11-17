@@ -317,6 +317,17 @@ test("a session tints each of its muscles in its own family hue, mixed sessions 
   expect([...S.tintTargets.call(r)]).toEqual([0, 0, 0]);
 });
 
+test("a marked highlight draws stronger the further off the body stands than on Training focus, within bounds", () => {
+  const S = AnatomySculpture.prototype;
+  const at = (d, marked = {}) => S.markWeight.call({ marked, live: () => ({ d, fov: 20 }),
+    shotParams: () => ({ d: 540, fov: 20 }) });
+  expect(at(640, null)).toBe(1);                 // nothing marked: as before
+  expect(at(540)).toBeCloseTo(1.5, 6);
+  expect(at(640)).toBeCloseTo(1.5 * 640 / 540, 6);
+  expect(at(2000)).toBe(2.2);
+  expect(at(200)).toBe(1);
+});
+
 test("traces scale with the body's size on screen against Targets, within bounds", () => {
   const S = AnatomySculpture.prototype;
   const at = d => S.traceScale.call({ live: () => ({ d, fov: 20 }),

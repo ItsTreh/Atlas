@@ -485,6 +485,18 @@ class AnatomySculpture {
     return Math.min(2.5, Math.max(0.7, span(ref) / span(now)));
   }
 
+  /**
+   * How much stronger a marked highlight (the Week plan's day) draws its
+   * traces: as much as the body shows smaller than on Training focus, where
+   * the muscles were chosen, times 1.5, since there it also stands in the
+   * hour's coloured light. A design choice, not a measure. 1 for anything else.
+   */
+  markWeight() {
+    if (!this.marked) return 1;
+    const span = s => s.d * Math.tan(s.fov * Math.PI / 360);
+    return Math.min(2.2, Math.max(1, 1.5 * span(this.live()) / span(this.shotParams("targets-train-front"))));
+  }
+
   /** The camera now: the shot, turned by any drag. */
   live() { return this.cur ? { ...this.cur, az: this.cur.az + this.off } : this.shotParams(); }
 
@@ -1069,6 +1081,7 @@ class AnatomySculpture {
     gl.uniform1f(u.uTraceVivid, c.vivid);
     gl.uniform1f(u.uBorder, this.interactive || this.marked ? 1 : 0);
     gl.uniform1f(u.uTraceScale, this.traceScale());
+    gl.uniform1f(u.uMarkWeight, this.markWeight());
     this.uploadData();
     const k = this.castOf, { min, max } = this.model.bounds, tall = max[1] - min[1];
     gl.uniform2f(u.uTechnique, this.tech[0], this.tech[1]);
@@ -1870,6 +1883,7 @@ uniform highp sampler2D uData;           // per region and guide (SCULPTURE_DATA
 uniform float uTraceVivid;              // 1 where tinted lines need help to keep their hue (light theme)
 uniform float uBorder;                   // 1 on Targets: chosen muscles draw their border
 uniform float uTraceScale;               // the body's size on screen against Targets (traceScale)
+uniform float uMarkWeight;               // a marked highlight's traces, stronger as the body stands further off (markWeight)
 uniform vec2 uMapPointer, uMapSize;
 uniform float uMapPointerActive, uMapInfluence, uPointedRegion, uDetailed, uFlowTime, uDpr;
 uniform float uSelectedGain;
@@ -2027,7 +2041,7 @@ void main() {
   // Engraved weight: lines swell in shadow and thin in the light, so the
   // traces model the form instead of laying a pattern over it.
   float dark = 1.0 - smoothstep(0.35, 0.95, shade);
-  float weight = mix(0.75, 1.35, dark) * max(1.0, sqrt(uTraceScale));
+  float weight = mix(0.75, 1.35, dark) * max(1.0, sqrt(uTraceScale)) * mix(1.0, sqrt(uMarkWeight), selected);
   float trace = 1.0 - smoothstep(0.25 * uDpr * weight, 0.85 * uDpr * weight, linePx);
   // Tapered accents travel together along the field. They reveal short arcs
   // instead of drawing a fixed set of stripes across the entire muscle.
@@ -2045,7 +2059,7 @@ void main() {
   float ahead = (along - front) / 0.22;
   float head = exp(-ahead * ahead) * (1.0 - reveal);
   float etched = trace * visible * min(0.8,
-    selected * mix(0.07, 0.26, dark) +
+    selected * mix(0.07, 0.26, dark) * uMarkWeight +
     lit * (drawn * mix(0.24, 0.5, dark) + head * 0.3) +
     pointed * drift * 0.48);
   // A family's hue keeps its chroma: on a light sculpture it darkens less in
@@ -2064,7 +2078,7 @@ void main() {
   // compete with the shared curves in overview; retain them in detail mode.
   border *= vFlowGuide < 0.0 ? mix(0.2, 1.0, uDetailed) : 1.0;
   c = mix(c, ink,
-          border * max(selected * 0.32, lit * mix(0.3, 0.6, drawn)));
+          border * max(selected * 0.32 * min(uMarkWeight, 1.5), lit * mix(0.3, 0.6, drawn)));
 
   // Keyboard focus keeps a strong edge independent of point density.
   float ring = (1.0 - smoothstep(2.4 * uLineWidth - 0.6, 2.4 * uLineWidth + 0.6, px)) *
