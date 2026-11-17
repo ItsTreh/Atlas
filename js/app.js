@@ -200,12 +200,13 @@ routine.selection.onChange(() => saveRoutine(routine));
 if (restored) saveRoutine(routine);
 
 paintThemeButton();
-/* The page opens where the user was (storage.js, loadPlace): a first visit
-   on Targets, at How it works. A new visit is greeted by the start screen
-   (start.js) when the sculpture can move its camera: the stage is drawn
-   beneath it, held, and comes in as it hands over. A reload goes straight
-   back. */
-const savedPlace = restored ? loadPlace() : null;
-Stages.start(savedPlace ? savedPlace.stage : "targets", StartScreen.plays(newVisit()), savedPlace && savedPlace.at);
+/* A reload opens where the user was (storage.js, loadPlace). A new visit,
+   closing ATLAS and opening it again included, opens on Targets, at How it
+   works, with everything entered still there; it is greeted by the start
+   screen (start.js) when the sculpture can move its camera: the stage is
+   drawn beneath it, held, and comes in as it hands over. */
+const freshVisit = newVisit();
+const savedPlace = restored && !freshVisit ? loadPlace() : null;
+Stages.start(savedPlace ? savedPlace.stage : "targets", StartScreen.plays(freshVisit), savedPlace && savedPlace.at);
 StartScreen.play();
 root.dataset.booted = "";   /* index.html keeps its hidden states from here on, whatever fails later */

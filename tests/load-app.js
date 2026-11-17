@@ -42,7 +42,7 @@ const EXPORTS = [
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
   "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
   "BodyMeasure", "MEASURE_LIMITS", "romanNumeral", "feetInches", "poundsOf",
-  "ANATOMY_MODEL", "ANATOMY_REGIONS"
+  "ANATOMY_MODEL", "ANATOMY_REGIONS", "isReload", "RELOAD_GAP_MS"
 ];
 
 /** The logic scripts, in index.html order. */
