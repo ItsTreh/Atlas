@@ -129,6 +129,8 @@ function busyRuns(day) {
 
 /** True while the week is being set up rather than shown generated. */
 const lmDraft = () => !routine.sessions.length || lm.editing;
+/** True when the way on from the rings must build the week: none yet, or something it was built from has changed. Else it goes back to the week as it is, edits and all. */
+const lmRebuild = () => !routine.sessions.length || weekIsStale() || mealsOutdated();
 
 /** A day's session as the ring draws it: a placement the planner would make, or a generated session. */
 function lmSession(block, start, end, session = null) {
@@ -344,7 +346,7 @@ function lmArcTemplate(W, step) {
 const lmEyebrow = tail => '<p style="margin:0; font-size:11px; font-weight:600; line-height:1.3; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint)">' +
   '<span style="font:600 13px/1 var(--serif); letter-spacing:.06em; color:var(--ink)">' + STAGE_NUMERALS.plan + '</span> / Week plan · ' + tail + '</p>';
 const lmLabel = (t, color = "var(--ink-faint)", style = "") => '<p style="margin:0; font:500 10px/1 var(--mono); letter-spacing:.16em; color:' + color + '; ' + style + '">' + t + '</p>';
-const lmLink = (act, label, extra = "", color = "var(--ink)", size = "13px") => '<button type="button" class="lm-link" data-lm="' + act + '"' + extra +
+const lmLink = (act, label, extra = "", color = "var(--ink)", size = "14px") => '<button type="button" class="lm-link" data-lm="' + act + '"' + extra +
   ' style="font-size:' + size + '; color:' + color + '">' + label + '</button>';
 
 function lmTemplate() {
@@ -385,7 +387,7 @@ function lmTemplate() {
         note = routine.preferredWindow === "any" ? "The best free hour this day has, clear of your meals."
           : inWin ? "In your " + LM_WIN[routine.preferredWindow][0].toLowerCase() + ", clear of your meals."
           : "Outside your " + LM_WIN[routine.preferredWindow][0].toLowerCase() + ": the best hour this day has left.";
-        muscles = x.muscles.map(m => '<button type="button" data-lm-muscle="' + m.id + '" style="display:inline-flex; align-items:center; gap:7px; padding:3px 0; background:none; border:0; cursor:default; font-size:13px; color:' +
+        muscles = x.muscles.map(m => '<button type="button" data-lm-muscle="' + m.id + '" style="display:inline-flex; align-items:center; gap:7px; padding:3px 0; background:none; border:0; cursor:default; font-size:14px; color:' +
           (lm.hoverMuscle === m.id ? "var(--ink)" : "var(--ink-soft)") + '; transition:color .25s ease"><span style="width:6px; height:6px; border-radius:50%; background:var(--' + m.family + ')"></span>' + esc(m.name) + '</button>').join("");
       } else {
         eyebrow = "REST"; name = "A day to recover";
@@ -393,7 +395,7 @@ function lmTemplate() {
       }
       const key = (l, icon, body) => '<div data-lm-key="' + l + '" style="display:grid; grid-template-columns:40px minmax(0,1fr); gap:14px; align-items:center; padding:8px 0; border-top:1px solid var(--line-soft)">' +
         '<svg width="40" height="22" viewBox="0 0 40 22" style="display:block; overflow:visible" aria-hidden="true">' + icon + '</svg>' +
-        '<span style="font-size:13.5px; line-height:1.4; color:' + kc(l) + '; transition:color .25s ease">' + body + '</span></div>';
+        '<span style="font-size:14.5px; line-height:1.4; color:' + kc(l) + '; transition:color .25s ease">' + body + '</span></div>';
       const mealsOn = n.isValid() && n.showMeals;
       left +=
         '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">Where does <em>' + dn + '</em> go?</h1>' +
@@ -427,7 +429,7 @@ function lmTemplate() {
             '<span style="font:italic 400 34px/1 var(--serif); color:var(--ink)">' + esc(name) + '</span>' +
             '<span style="font:500 10.5px/1 var(--mono); letter-spacing:.1em; color:var(--ink-faint)">' + time + '</span></div>' +
           (muscles ? '<div data-lm-muscles style="display:flex; flex-wrap:wrap; gap:2px 16px; margin-top:10px">' + muscles + '</div>' : '') +
-          '<p style="margin:10px 0 0; font-size:12.5px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty">' + esc(note) + '</p>' +
+          '<p style="margin:10px 0 0; font-size:13.5px; line-height:1.5; color:var(--ink-soft); text-wrap:pretty">' + esc(note) + '</p>' +
         '</div>';
     }
 
@@ -445,9 +447,9 @@ function lmTemplate() {
             return '<div data-lm-muscle="' + e.muscleId + '" style="display:grid; grid-template-columns:8px minmax(0,1fr) 72px 52px; gap:12px; align-items:center; padding:6px 0; border-top:1px solid var(--line-soft); background:' +
               (lm.hoverMuscle === e.muscleId ? "color-mix(in oklab, var(--" + fam + ") 9%, transparent)" : "transparent") + '; transition:background .25s ease">' +
               '<span style="width:7px; height:7px; border-radius:50%; background:var(--' + fam + ')"></span>' +
-              '<span style="min-width:0; font-size:14px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="' + esc(e.exercise.name + (m ? " · " + m.name : "")) + '">' + esc(e.exercise.name) + '</span>' +
+              '<span style="min-width:0; font-size:15px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis" title="' + esc(e.exercise.name + (m ? " · " + m.name : "")) + '">' + esc(e.exercise.name) + '</span>' +
               '<span style="font:500 11px/1 var(--mono); letter-spacing:.04em; color:var(--ink-soft)">' + e.sets + ' × ' + e.reps + '</span>' +
-              '<button type="button" class="lm-link" data-lm="swap" data-i="' + i + '" style="justify-self:end; font-size:12px; color:var(--ink-soft)" aria-label="Swap ' + esc(e.exercise.name) + ' for another ' + esc(m ? m.name.toLowerCase() : "") + ' exercise">Swap ↻</button>' +
+              '<button type="button" class="lm-link" data-lm="swap" data-i="' + i + '" style="justify-self:end; font-size:13px; color:var(--ink-soft)" aria-label="Swap ' + esc(e.exercise.name) + ' for another ' + esc(m ? m.name.toLowerCase() : "") + ' exercise">Swap ↻</button>' +
             '</div>';
           }).join("") + '</div>';
         const mh = lm.moveHover, why = D.map(d => lmWhyNot(s, d));
@@ -460,9 +462,9 @@ function lmTemplate() {
               '; cursor:' + (ok ? "pointer" : "default") + '; font-size:11px; font-weight:500; opacity:' + (cur || ok ? 1 : 0.55) + '; transition:background .25s ease, color .25s ease">' + DayOfWeek.label[d] + '</button>';
           }).join("") + '</div>';
         const mi = mh ? D.indexOf(mh) : -1, at = mh && !why[mi] && mh !== s.day ? lmStartOn(s, mh) : null;
-        body += '<p style="margin:8px 0 0; min-height:18px; font-size:12px; color:' + (mh && mh !== s.day && why[mi] ? "var(--warn)" : "var(--ink-faint)") + '">' +
+        body += '<p style="margin:8px 0 0; min-height:18px; font-size:13px; color:' + (mh && mh !== s.day && why[mi] ? "var(--warn)" : "var(--ink-faint)") + '">' +
           (mh ? (mh === s.day ? "Where it is now." : why[mi] ? DayOfWeek.name[mh] + ": " + why[mi].toLowerCase() + "." : "Move it to " + DayOfWeek.name[mh] + ", " + lmPad(at) + ":00.") : "Point at a day to see if it fits.") + '</p>' +
-          '<p style="margin:4px 0 0; font-size:12px; color:var(--ink-faint)">Or drag the band along the arc to change its hour.</p>';
+          '<p style="margin:4px 0 0; font-size:13px; color:var(--ink-faint)">Or drag the band along the arc to change its hour.</p>';
       } else {
         const pd = lmPrevDay(focus), pv = W.byDay[pd];
         sub = off ? "No training on " + dn + "." : pv ? "Recovering from " + DayOfWeek.name[pd] + ": " + pv.muscles.map(m => m.name).join(", ") + "." : "Nothing to recover from yet.";
@@ -471,13 +473,13 @@ function lmTemplate() {
         '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">' + dn + ', <em>' + h1b + '</em></h1>' +
         '<p style="margin:16px 0 0; font:italic 400 22px/1.3 var(--serif); color:var(--ink-soft); text-wrap:pretty">' + esc(sub) + '</p>' + body +
         '<div style="display:flex; gap:18px; margin-top:16px">' +
-          lmLink("edit-hours", "Change " + dn + "’s hours", "", "var(--ink)", "12.5px") +
-          (x ? lmLink("remove", "Remove session", "", "var(--warn)", "12.5px") : "") +
+          lmLink("edit-hours", "Change " + dn + "’s hours", "", "var(--ink)", "13.5px") +
+          (x ? lmLink("remove", "Remove session", "", "var(--warn)", "13.5px") : "") +
         '</div>';
     }
 
     if (isWeek) {
-      // The week, told.
+      // The week, at once.
       const ch = lm.chooser, cur = k => lm.preview && lm.preview.key === k ? lm.preview.value : routine[LM_TERMS[k]];
       const exp = routine.experience || DEFAULT_EXPERIENCE;
       const word = (k, label) => '<button type="button" data-lm="chooser" data-k="' + k + '" aria-expanded="' + (ch === k) + '" style="padding:0 2px; background:none; border:0; cursor:pointer; font:italic 400 25px/1.32 var(--serif); color:var(--ink); text-decoration:underline; text-decoration-color:' +
@@ -504,7 +506,7 @@ function lmTemplate() {
       const hd = lm.hoverDay, hx = hd ? W.byDay[hd] : null;
       const mealsOn = n.isValid() && n.showMeals;
       left +=
-        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>told.</em></h1>' +
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>at once.</em></h1>' +
         '<div style="position:relative">' +
           '<p style="margin:20px 0 0; font:400 25px/1.32 var(--serif); color:var(--ink-soft)">' +
             word("days", LM_NUM[days]) + ' ' + (days === 1 ? "day a week" : "days a week") + ', ' + word("len", LM_LEN[len] || len + " minutes") + ' each, ' +
@@ -512,23 +514,23 @@ function lmTemplate() {
           (ch && ch !== "exp" ? '<div data-lm-chooser style="position:absolute; left:-12px; top:calc(100% + 8px); z-index:20; display:flex; align-items:flex-end; gap:20px; padding:12px 18px 10px; background:var(--bg); box-shadow:0 0 28px 18px var(--bg); white-space:nowrap">' + CH[ch]().join("") + '</div>' : '') +
         '</div>' +
         '<div style="position:relative">' +
-          '<p style="margin:10px 0 0; font-size:13.5px; color:var(--ink-soft)">' + (LM_NUM[routine.selection.size] || String(routine.selection.size)).replace(/^None$/, "No") + (routine.selection.size === 1 ? " muscle group" : " muscle groups") +
-            ' from Targets, for someone training <button type="button" data-lm="chooser" data-k="exp" aria-expanded="' + (ch === "exp") + '" style="padding:0 1px; background:none; border:0; cursor:pointer; font-size:13.5px; font-weight:500; color:var(--ink); text-decoration:underline; text-decoration-color:' +
+          '<p style="margin:10px 0 0; font-size:14.5px; color:var(--ink-soft)">' + (LM_NUM[routine.selection.size] || String(routine.selection.size)).replace(/^None$/, "No") + (routine.selection.size === 1 ? " muscle group" : " muscle groups") +
+            ' from Targets, for someone training <button type="button" data-lm="chooser" data-k="exp" aria-expanded="' + (ch === "exp") + '" style="padding:0 1px; background:none; border:0; cursor:pointer; font-size:14.5px; font-weight:500; color:var(--ink); text-decoration:underline; text-decoration-color:' +
             (ch === "exp" ? "var(--ink)" : "var(--ink-faint)") + '; text-underline-offset:3px">' + LM_EXP[cur("exp") || exp][1] + '</button>.</p>' +
           (ch === "exp" ? '<div data-lm-chooser style="position:absolute; left:-12px; top:calc(100% + 8px); z-index:20; display:flex; align-items:flex-end; gap:20px; padding:12px 18px 10px; background:var(--bg); box-shadow:0 0 28px 18px var(--bg); white-space:nowrap">' + CH.exp().join("") + '</div>' : '') +
         '</div>' +
-        (status ? '<p style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:13px; line-height:1.45; color:var(--warn)"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:var(--warn); transform:translateY(-1px)"></span><span>' + esc(status.text) + '</span></p>'
-          : fit ? '<p aria-live="polite" style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:13px; line-height:1.45; color:' + (fit.warn ? "var(--warn)" : "var(--ink-soft)") + '"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:' +
+        (status ? '<p style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:14px; line-height:1.45; color:var(--warn)"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:var(--warn); transform:translateY(-1px)"></span><span>' + esc(status.text) + '</span></p>'
+          : fit ? '<p aria-live="polite" style="margin:12px 0 0; display:flex; align-items:baseline; gap:9px; font-size:14px; line-height:1.45; color:' + (fit.warn ? "var(--warn)" : "var(--ink-soft)") + '"><span style="flex:none; width:6px; height:6px; border-radius:50%; background:' +
             (fit.warn ? "var(--warn)" : "var(--legs)") + '; transform:translateY(-1px)"></span><span>' + esc(fit.text) + '</span></p>' : '') +
-        '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-top:16px; font-size:12px; color:var(--ink-faint)">' +
-          '<span>Fill busy</span>' + [["9-17", "Weekdays 9–5"], ["8-18", "8–6"], ["clear", "Clear all"]].map(([k, l]) => lmLink("preset", l, ' data-k="' + k + '"', "var(--ink-soft)", "12px")).join("") +
+        '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-top:16px; font-size:13px; color:var(--ink-faint)">' +
+          '<span>Fill busy</span>' + [["9-17", "Weekdays 9–5"], ["8-18", "8–6"], ["clear", "Clear all"]].map(([k, l]) => lmLink("preset", l, ' data-k="' + k + '"', "var(--ink-soft)", "13px")).join("") +
           '<span style="width:1px; height:12px; background:var(--line)"></span>' +
           (n.isValid()
-            ? '<button type="button" data-lm="meals" aria-pressed="' + n.showMeals + '" style="display:inline-flex; align-items:center; gap:7px; padding:0; background:none; border:0; cursor:pointer; font-size:12px; font-weight:500; color:var(--ink-soft)">' +
-                '<span style="display:block; width:7px; height:7px; border-radius:50%; background:' + (mealsOn ? "var(--ink-faint)" : "transparent") + '; box-shadow:0 0 0 1px var(--ink-faint)"></span>' + (mealsOn ? "Meals shown" : "Meals hidden") + '</button>'
-            : '<button type="button" class="lm-link" data-goto="nutrition" style="font-size:12px; color:var(--ink-soft)">Set up meals in Nutrition</button>') +
+            ? '<button type="button" data-lm="meals" aria-pressed="' + n.showMeals + '" style="display:inline-flex; align-items:center; gap:7px; padding:0; background:none; border:0; cursor:pointer; font-size:13px; font-weight:500; color:var(--ink-soft)">' +
+                '<span style="display:block; width:7px; height:7px; border-radius:50%; background:' + (mealsOn ? "var(--ink-faint)" : "transparent") + '; box-shadow:0 0 0 1px var(--ink-faint)"></span><span class="lm-link-text">' + (mealsOn ? "Meals shown" : "Meals hidden") + '</span></button>'
+            : '<button type="button" class="lm-link" data-goto="nutrition" style="font-size:13px; color:var(--ink-soft)">Set up meals in Nutrition</button>') +
         '</div>' +
-        (routine.sessions.length && lm.editing ? '<button type="button" class="lm-link" data-lm="return" style="margin-top:12px; font-size:12.5px">Keep the week as it was</button>' : '') +
+        (routine.sessions.length && lm.editing ? '<button type="button" class="lm-link" data-lm="return" style="margin-top:12px; font-size:13.5px">Keep the week as it was</button>' : '') +
         '<div style="margin-top:34px; padding-top:16px; border-top:1px solid var(--line)">' +
           lmLabel(hd ? DayOfWeek.name[hd].toUpperCase() + (routine.offDays.has(hd) ? " · OFF" : hx ? " · " + esc(hx.name.toUpperCase()) + " · " + lmPad(hx.start) + ":00" : " · REST") : "SEVEN RINGS, MONDAY AT THE CENTRE",
             hx ? "var(--" + lmFam(hx) + "-trace)" : "var(--ink-faint)") +
@@ -555,8 +557,8 @@ function lmTemplate() {
     // What the week falls short of, in one line; the reasons open under it.
     const said = lm.status && lm.status.kind ? lm.status.text.replace(/ Some muscles get less than they usually need this week — see the notes below\./, "") : "";
     const notes = [
-      stale && !/changed since/.test(said) ? "Your targets, training or nutrition changed since this week was generated. Generate again to plan for them." : "",
-      outdated ? "The meals no longer match your daily targets. Generate again to update them." : "",
+      stale && !/changed since/.test(said) ? "Your targets, training or nutrition changed since this week was generated. To plan for them, adjust the plan and build your new week." : "",
+      outdated ? "The meals no longer match your daily targets. To update them, adjust the plan and build your new week." : "",
       said, ...gaps
     ].filter(Boolean);
     const short = stale ? "Your targets or settings changed since this week was generated." : outdated ? "The meals no longer match your daily targets."
@@ -1361,7 +1363,8 @@ addEventListener("keydown", e => {
 Stages.register("plan", {
   arrive() {
     const at = /^s(\d)$/.exec(Stages.at || "");
-    lm.step = at ? Math.min(7, Number(at[1])) : routine.sessions.length ? 7 : Stages.from === "nutrition" || Stages.from === null ? 0 : lm.step;
+    // A reload opens where the user was; any other arrival starts the path at Monday, a week already built or not (the footer's index reaches it).
+    lm.step = at ? Math.min(7, Number(at[1])) : 0;
     lm.editing = false; lm.hoverDay = null; lm.hoverMuscle = null; lm.keyHot = null; lm.chooser = null; lm.preview = null;
     lm.moveHover = null; lm.drag = null; lm.scrubH = null; lm.hourF = null; lm.aimX = null; lm.az = null; lm.figOp = 0;
     if (lm.status && lm.status.kind !== "err" && !routine.sessions.length) lm.status = null;
@@ -1375,18 +1378,27 @@ Stages.register("plan", {
   footer() {
     const s = lm.step, name = i => i === 7 ? "The week" : DayOfWeek.name[DayOfWeek.values[i]];
     return {
-      back: s === 0 ? "Nutrition" : name(s - 1),
-      next: s < 7 ? name(s + 1) : lmDraft() ? (routine.sessions.length ? "Generate again" : "Generate my week") : "Adjust plan",
+      // Each way names where it leads. The ring of the whole week leads on to
+      // the week itself (Generate builds it, again after an adjustment); the
+      // week is the end, and its way back is to adjust it.
+      back: s === 0 ? "Nutrition" : s === 7 && !lmDraft() ? "Adjust plan" : name(s - 1),
+      next: s < 7 ? name(s + 1) : lmDraft() ? (lmRebuild() ? "Your new week" : "Your week") : "",
       hint: s < 7 ? "or scroll" : ""
     };
   },
   onNext() {
-    if (lm.step < 7) lmGoStep(lm.step + 1);
-    else if (lmDraft()) generate();
-    else { lm.editing = true; lm.hoverDay = null; renderWeek(); }
+    // From Sunday the way on is always the seven rings, the week built or
+    // not (a day opened from the built week would otherwise go straight to it).
+    if (lm.step === 6 && !lmDraft()) { lm.editing = true; lmGoStep(7); }
+    else if (lm.step < 7) lmGoStep(lm.step + 1);
+    else if (lmRebuild()) generate();
+    else if (lmDraft()) { lm.editing = false; lm.hoverDay = null; renderWeek(); }
     return true;
   },
-  onBack() { if (lm.step > 0) { lmGoStep(lm.step - 1); return true; } },
+  onBack() {
+    if (lm.step === 7 && !lmDraft()) { lm.editing = true; lm.hoverDay = null; renderWeek(); return true; }
+    if (lm.step > 0) { lmGoStep(lm.step - 1); return true; }
+  },
   wheel: () => Stages.narrow,
   focus: () => $("plan-title")
 });

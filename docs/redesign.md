@@ -281,7 +281,7 @@ camera travels, in. A very large, quiet word behind the body names each
    Every muscle by family with a three-way dial (Maintain · Normal · Focus)
    and the weekly sets it starts from. Resting on a row lights its muscle
    and turns the body to the side that shows it; pointing at a muscle on
-   the body marks its row. Coming back from a later stage lands here.
+   the body marks its row. Stepping back from Measure lands here.
 
 **Movements as pages** (design "ATLAS Start", 2026-10-24). On a wide screen
 with the sculpture's camera, a movement can be one page, scrolled, in place
@@ -466,7 +466,8 @@ side. There are three screens, one at a time:
 - **Every Generate message**: why fewer days than asked, which split would
   fit better, blocks left without a day, muscles under their weekly
   minimum, and what would close the gap. It also says when an edit removed
-  a session, and when the week is out of date ("Generate again").
+  a session, and when the week is out of date (adjust the plan, then
+  *Your new week*).
 - *Reset* (all hours, days off and training settings back to defaults),
   and *Your generated week →* after *Adjust plan*.
 - Painting fills the rectangle between where a drag started and ended, as

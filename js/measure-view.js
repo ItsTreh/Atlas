@@ -917,7 +917,8 @@
     arrive() { from = Stages.from; openAt = Stages.at === "seal" ? "dial" : Stages.at; },
     enter() {
       paint();
-      const at = KEYS.includes(openAt) ? openAt : M.complete || from === "nutrition" ? "dial" : firstMissing();
+      // Stepping back from Nutrition lands on the mark; any other arrival starts the path, at the first ring still to set.
+      const at = KEYS.includes(openAt) ? openAt : from === "nutrition" ? "dial" : M.complete ? KEYS[0] : firstMissing();
       // The rings come down into the room one after another, the highest first; from above they are already there.
       RING_KEYS.forEach((k, i) => {
         const s = st[k];
