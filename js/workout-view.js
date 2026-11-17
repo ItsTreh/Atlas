@@ -101,7 +101,7 @@ function weekGaps() {
   return [
     leftOutText(),
     missing.length ? "Not trained this week: " + nameList(missing) + " — " +
-      (missing.length === 1 ? "its session was" : "their sessions were") + " removed. Generate again to fit " +
+      (missing.length === 1 ? "its session was" : "their sessions were") + " removed. Adjust the plan and build your new week to fit " +
       (missing.length === 1 ? "it" : "them") + " back in." : "",
     volumeNote(sessions, v)
   ].filter(Boolean);

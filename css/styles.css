@@ -282,7 +282,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .stage-foot .quiet-btn { text-shadow: 0 0 3px var(--bg), 0 0 8px var(--bg), 0 0 14px var(--bg); }
 .foot-start { grid-column: 1; display: flex; align-items: center; }
 .foot-dots { grid-column: 2; }
-.foot-end { grid-column: 3; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.foot-end { grid-column: 3; display: flex; justify-content: flex-end; align-items: center; gap: 16px; min-height: 56px; }   /* the way on's height, kept where there is none (the generated week), so back stays put */
 /* The hint beside the way on speaks in the inscription's voice. */
 .foot-hint { font: italic 400 16px/1.2 var(--serif); letter-spacing: .01em; color: var(--ink-faint); white-space: nowrap; }
 .foot-hint:empty { display: none; }
@@ -1713,11 +1713,15 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .lm-stage [data-lm-hit] { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; }
 .wk button { font: inherit; }
 .wk button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
-.lm-link {
+/* The Week plan's optional ways (a day off, the same hours, the meals): an
+   underline in the faint ink, which reads on every hour's sky (the hairline
+   colour sank into it), at no more weight than before. */
+.lm-link, .lm-link-text {
   padding: 0; background: none; border: 0; cursor: pointer; font-weight: 500;
-  text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink-faint) 70%, transparent);
+  text-decoration-thickness: 1px; text-underline-offset: 3px;
 }
-.lm-link:hover { color: var(--ink) !important; text-decoration-color: var(--ink); }
+.lm-link:hover, button:hover > .lm-link-text { color: var(--ink) !important; text-decoration-color: var(--ink); }
 /* The ring's hours for the keyboard: out of sight until one has the focus. */
 .lm-hours { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; }
 .lm-hours:not(:focus-within) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

@@ -52,7 +52,7 @@ function weekEdited() {
 function warnIfStale() {
   if (weekIsStale())
     setStatus("Your targets, training or nutrition changed since this week was generated. " +
-              "Generate again to plan for them.", "warn");
+              "To plan for them, adjust the plan and build your new week.", "warn");
 }
 
 /**
