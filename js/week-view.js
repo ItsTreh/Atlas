@@ -613,11 +613,11 @@ function lmTemplate() {
           sess + dm +
           '<circle cx="' + sx + '" cy="' + sy + '" r="4.2" style="fill:var(--ink); stroke:var(--bg); stroke-width:1.6; opacity:' + (x && wkIn ? 1 : 0) + '; transition:opacity .6s ease ' + (0.9 + i * 0.07).toFixed(2) + 's"></circle>' +
         '</svg>' +
-        '<div style="position:absolute; left:0; width:192px; top:54px; text-align:center; font:italic 400 36px/1 var(--serif); color:' + (x ? "var(--ink)" : "var(--ink-faint)") + '; opacity:' + inOp + '; transform:' + inTf +
+        '<div style="position:absolute; left:0; width:192px; top:54px; text-align:center; font:italic 400 36px/1 var(--serif); color:' + (x ? "var(--ink)" : "var(--lm-rest)") + '; opacity:' + inOp + '; transform:' + inTf +
           '; transition:opacity .8s ease ' + (0.25 + i * 0.06).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.25 + i * 0.06).toFixed(2) + 's, color .3s ease">' + DayOfWeek.label[d] + '</div>' +
         '<div style="position:relative; padding:22px 16px 0 16px; opacity:' + inOp + '; transform:' + inTf + '; transition:opacity .8s ease ' + (0.4 + i * 0.06).toFixed(2) + 's, transform 1s cubic-bezier(.16,1,.3,1) ' + (0.4 + i * 0.06).toFixed(2) + 's">' +
-          '<p style="margin:0; font:500 10px/1 var(--mono); letter-spacing:.14em; color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--ink-faint)") + '">' + (x ? lmPad(x.start) + ":00 – " + lmPad(x.end) + ":00" : off ? "OFF" : "REST") + '</p>' +
-          '<p style="margin:9px 0 0; font:italic 400 26px/1.05 var(--serif); color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--ink-soft)") + '; text-wrap:balance">' + esc(x ? x.name : off ? "Left to you" : "Rest") + '</p>' +
+          '<p style="margin:0; font:500 10px/1 var(--mono); letter-spacing:.14em; color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--lm-rest)") + '">' + (x ? lmPad(x.start) + ":00 – " + lmPad(x.end) + ":00" : off ? "OFF" : "REST") + '</p>' +
+          '<p style="margin:9px 0 0; font:italic 400 26px/1.05 var(--serif); color:' + (x ? "var(--" + lmFam(x) + "-trace)" : "var(--lm-rest-title)") + '; text-wrap:balance">' + esc(x ? x.name : off ? "Left to you" : "Rest") + '</p>' +
           (x ? '<div style="display:flex; gap:3px; height:5px; margin-top:14px">' + bar + '</div>' +
                '<div style="display:flex; flex-direction:column; margin-top:12px">' + items + '</div>' +
                '<p style="margin:8px 0 0; padding-top:8px; border-top:1px solid var(--line); font-size:11.5px; color:var(--ink-soft)">' + total + '</p>'
@@ -758,6 +758,37 @@ function lmDayWord() {
   el.style.color = fam ? "color-mix(in srgb, var(--" + fam + ") 22%, var(--bg))" : "color-mix(in srgb, var(--ink) 10%, var(--bg))";
   el.style.opacity = "1";
   if (lm.dw !== d) { lm.dw = d; el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); }
+}
+
+/**
+ * Opens the day's ghost word round the small words it would cover: the
+ * ring's hours, meals and session, and the session's line under the word
+ * itself. A soft hole for each that crosses the word (--lm-holes, a mask
+ * on it, styles.css), in its box. Measured at most five times a second,
+ * since the word and the figure travel, and the words come and go.
+ */
+function lmGhostHoles(now) {
+  if (now - (lm.holesAt || 0) < 200) return;
+  lm.holesAt = now;
+  const word = document.querySelector(".flow-ground:not(.flow-front) .ghost-word");
+  let v = "none";
+  if (word && word.textContent && !lm.F.wg) {
+    const w = word.getBoundingClientRect(), holes = [];
+    const seen = el => { let o = 1; for (let n = el; n && n !== lmArcEl; n = n.parentNode) o *= n.style ? parseFloat(n.style.opacity || "1") : 1; return o > 0.1; };
+    const small = [...lmArcEl.querySelectorAll("text")].filter(seen);
+    const meta = word.parentNode.querySelector(".ghost-meta");
+    if (meta && meta.textContent) small.push(meta);
+    for (const el of small) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.right < w.left || r.left > w.right || r.bottom < w.top || r.top > w.bottom) continue;
+      // An ellipse that clears the word's whole box, its edge soft.
+      const rx = r.width + 12, ry = r.height + 10;
+      holes.push("radial-gradient(" + rx.toFixed(0) + "px " + ry.toFixed(0) + "px at " + (r.left + r.width / 2 - w.left).toFixed(0) + "px " +
+        (r.top + r.height / 2 - w.top).toFixed(0) + "px, transparent 72%, #000 100%)");
+    }
+    if (holes.length) v = holes.join(", ");
+  }
+  if (v !== lm.holes) { lm.holes = v; Stages.root.style.setProperty("--lm-holes", v); }
 }
 
 /** Fits the 1440 × 900 plate to the screen, centred. */
@@ -1028,6 +1059,7 @@ function lmFrame(now) {
       lm.ws = ws.join();
       ["--gx", "--gy", "--gyl", "--gs", "--gbw"].forEach((k, i) => Stages.root.style.setProperty(k, ws[i]));
     }
+    lmGhostHoles(now);
   }
 }
 

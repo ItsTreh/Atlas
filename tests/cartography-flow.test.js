@@ -311,6 +311,8 @@ test("a session tints each of its muscles in its own family hue, mixed sessions 
   expect([...S.tintTargets.call(r)]).toEqual([1, 1, 0]);
   S.setHighlight.call(r, ["lats", "quads"]);
   expect([...S.tintTargets.call(r)]).toEqual([1, 0, 1]);
+  S.setHighlight.call(r, ["lats", "quads"], { selected: true, pointed: "lats" });   // the Week plan's day
+  expect([...S.tintTargets.call(r)]).toEqual([1, 0, 1]);
   S.setHighlight.call(r, null);
   expect([...S.tintTargets.call(r)]).toEqual([0, 0, 0]);
 });

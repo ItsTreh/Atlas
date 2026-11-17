@@ -921,9 +921,9 @@ class AnatomySculpture {
   /**
    * Lights these muscles whatever the stage; null for none. By default they
    * draw as a selected group hovered on Targets, in their families' hues.
-   * With `{ selected: true, pointed }` they are marked exactly as Targets
-   * marks a selection (the deeper modelling, the quiet traces, the border),
-   * still, and `pointed` (a muscle id, or null) as a selected muscle pointed
+   * With `{ selected: true, pointed }` they are marked as Targets marks a
+   * selection (the deeper modelling, the quiet traces, the border), still,
+   * their traces in their families' hues, and `pointed` (a muscle id, or null) as a selected muscle pointed
    * at there, its traces moving.
    */
   setHighlight(ids, { selected = false, pointed = null } = {}) {
@@ -1288,7 +1288,8 @@ class AnatomySculpture {
   /**
    * Per region, 1 where its traces take its family's hue: a family row in
    * the summary, or a session the page highlights, each muscle in its own
-   * family's hue (a mixed session shows its families side by side).
+   * family's hue (a mixed session shows its families side by side), marked
+   * as a selection (the Week plan's day) or not.
    */
   tintTargets() {
     const n = this.model.regions.length;
@@ -1296,7 +1297,7 @@ class AnatomySculpture {
     for (let r = 0; r < n; r++) {
       const id = this.muscleOf[r];
       out[r] = id && ((this.interactive && this.previewFamily && this.previewing.has(id)) ||
-        (this.highlighting && !this.marked && this.highlighting.has(id))) ? 1 : 0;
+        (this.highlighting && this.highlighting.has(id))) ? 1 : 0;
     }
     return out;
   }
