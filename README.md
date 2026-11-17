@@ -20,7 +20,7 @@ It runs entirely in your browser. There is no account, no server and no build st
 
 ## The four stages
 
-Each new visit opens on the sculpture in one of five ways: the figure from below, the chest rising from the bottom edge, the name carved out of the ground with the camera diving through the T, the back of the shoulder up close, or the whole figure standing before the five letters. You see each one once before any repeats. Closing ATLAS and opening it again starts at Targets, with everything you entered still there; a reload skips the opening and returns you to where you were.
+Each new visit opens on the sculpture in one of five ways: the figure from below, the chest rising from the bottom edge, the name carved out of the ground with the camera diving through the T, the back of the shoulder up close, or the whole figure standing before the five letters. You see each one once before any repeats. Closing ATLAS and opening it again starts at Targets, with everything you entered still there, and each stage opens at its own start (a built week is one step past the rings); a reload skips the opening and returns you to where you were.
 
 | | Stage | What you do there | State |
 |:-:|---|---|---|

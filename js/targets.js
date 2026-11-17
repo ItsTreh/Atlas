@@ -790,13 +790,13 @@ selection.onChange(() => {
 
 Stages.register("targets", {
   arrive() {
-    // The page opens where the user was (Stages.at), else on How it works;
-    // coming back from a later stage lands on Training focus, unless
-    // nothing is chosen any more.
-    const back = !!Stages.from, empty = selection.isEmpty();
+    // A reload opens where the user was (Stages.at). Stepping back from the
+    // Measure lands on Training focus, unless nothing is chosen any more
+    // (its way back then said Your muscles); any other arrival starts the
+    // path, on How it works.
+    const back = !!Stages.from, empty = selection.isEmpty(), stepBack = Stages.from === "measure";
     const at = FLOW_SUBS.includes(Stages.at) && !(Stages.at === "train" && empty) ? Stages.at : null;
-    // Back from the Measure with nothing chosen, its way back said Your muscles.
-    flow.sub = at || (back && !empty ? "train" : back && Stages.from === "measure" ? "focus" : "how");
+    flow.sub = at || (stepBack ? (empty ? "focus" : "train") : "how");
     flow.chapter = 0;
     setFlowDir(back ? -1 : 1);
     paintSub();

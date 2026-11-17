@@ -129,6 +129,8 @@ function busyRuns(day) {
 
 /** True while the week is being set up rather than shown generated. */
 const lmDraft = () => !routine.sessions.length || lm.editing;
+/** True when the way on from the rings must build the week: none yet, or something it was built from has changed. Else it goes back to the week as it is, edits and all. */
+const lmRebuild = () => !routine.sessions.length || weekIsStale() || mealsOutdated();
 
 /** A day's session as the ring draws it: a placement the planner would make, or a generated session. */
 function lmSession(block, start, end, session = null) {
@@ -477,7 +479,7 @@ function lmTemplate() {
     }
 
     if (isWeek) {
-      // The week, told.
+      // The week, at once.
       const ch = lm.chooser, cur = k => lm.preview && lm.preview.key === k ? lm.preview.value : routine[LM_TERMS[k]];
       const exp = routine.experience || DEFAULT_EXPERIENCE;
       const word = (k, label) => '<button type="button" data-lm="chooser" data-k="' + k + '" aria-expanded="' + (ch === k) + '" style="padding:0 2px; background:none; border:0; cursor:pointer; font:italic 400 25px/1.32 var(--serif); color:var(--ink); text-decoration:underline; text-decoration-color:' +
@@ -504,7 +506,7 @@ function lmTemplate() {
       const hd = lm.hoverDay, hx = hd ? W.byDay[hd] : null;
       const mealsOn = n.isValid() && n.showMeals;
       left +=
-        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>told.</em></h1>' +
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>at once.</em></h1>' +
         '<div style="position:relative">' +
           '<p style="margin:20px 0 0; font:400 25px/1.32 var(--serif); color:var(--ink-soft)">' +
             word("days", LM_NUM[days]) + ' ' + (days === 1 ? "day a week" : "days a week") + ', ' + word("len", LM_LEN[len] || len + " minutes") + ' each, ' +
@@ -1361,7 +1363,8 @@ addEventListener("keydown", e => {
 Stages.register("plan", {
   arrive() {
     const at = /^s(\d)$/.exec(Stages.at || "");
-    lm.step = at ? Math.min(7, Number(at[1])) : routine.sessions.length ? 7 : Stages.from === "nutrition" || Stages.from === null ? 0 : lm.step;
+    // A reload opens where the user was; any other arrival starts the path at Monday, a week already built or not (the footer's index reaches it).
+    lm.step = at ? Math.min(7, Number(at[1])) : 0;
     lm.editing = false; lm.hoverDay = null; lm.hoverMuscle = null; lm.keyHot = null; lm.chooser = null; lm.preview = null;
     lm.moveHover = null; lm.drag = null; lm.scrubH = null; lm.hourF = null; lm.aimX = null; lm.az = null; lm.figOp = 0;
     if (lm.status && lm.status.kind !== "err" && !routine.sessions.length) lm.status = null;
@@ -1379,13 +1382,17 @@ Stages.register("plan", {
       // the week itself (Generate builds it, again after an adjustment); the
       // week is the end, and its way back is to adjust it.
       back: s === 0 ? "Nutrition" : s === 7 && !lmDraft() ? "Adjust plan" : name(s - 1),
-      next: s < 7 ? name(s + 1) : lmDraft() ? (routine.sessions.length ? "Your new week" : "Your week") : "",
+      next: s < 7 ? name(s + 1) : lmDraft() ? (lmRebuild() ? "Your new week" : "Your week") : "",
       hint: s < 7 ? "or scroll" : ""
     };
   },
   onNext() {
-    if (lm.step < 7) lmGoStep(lm.step + 1);
-    else if (lmDraft()) generate();
+    // From Sunday the way on is always the seven rings, the week built or
+    // not (a day opened from the built week would otherwise go straight to it).
+    if (lm.step === 6 && !lmDraft()) { lm.editing = true; lmGoStep(7); }
+    else if (lm.step < 7) lmGoStep(lm.step + 1);
+    else if (lmRebuild()) generate();
+    else if (lmDraft()) { lm.editing = false; lm.hoverDay = null; renderWeek(); }
     return true;
   },
   onBack() {
