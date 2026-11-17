@@ -851,7 +851,9 @@ function lmTint(k, theme, h) {
 
 function lmFrame(now) {
   const dt = Math.min(0.05, (now - (lm.lt || now)) / 1000); lm.lt = now;
-  if (planEl.clientWidth !== lm.vw || planEl.clientHeight !== lm.vh) lmFit();
+  // The plate's size comes from a ResizeObserver (below), not a read here:
+  // a read each frame made the browser restyle and lay out the whole page.
+  if (lm.refit) { lm.refit = false; lmFit(); }
   const F = lm.F; if (!F) return;
   const here = Stages.current === "plan", still = Stages.still;
   if (lm.locked && now - lm.lastWheel > 260) lm.locked = false;
@@ -899,7 +901,7 @@ function lmFrame(now) {
     // Where the ghost word stands, as Targets' pages say it (holdFigure): the
     // figure's axis, its middle, low at the shins (--gyl), how large the
     // space beside it allows (--gs), how far its legs reach (--gbw).
-    const vw = planEl.clientWidth || innerWidth, vh = planEl.clientHeight || innerHeight, sx = x / vw, mid = (y - tall / 2) / vh;
+    const vw = lm.vw || innerWidth, vh = lm.vh || innerHeight, sx = x / vw, mid = (y - tall / 2) / vh;
     const ws = [sx.toFixed(4), mid.toFixed(4), (mid + tall / vh * .2).toFixed(4), (2 * Math.min(sx, 1 - sx) * 100 / 3.9).toFixed(2) + "vw", Math.round(tall * .13) + "px"];
     if (ws.join() !== lm.ws) {
       lm.ws = ws.join();
@@ -1244,3 +1246,5 @@ Stages.register("plan", {
 
 /* A resize refits the plate. */
 addEventListener("resize", () => { if (Stages.current === "plan") { lmFit(); renderWeek(); } });
+/* The stage changing size any other way (the plate is measured before the next frame draws it). */
+new ResizeObserver(() => { lm.refit = true; }).observe(planEl);
