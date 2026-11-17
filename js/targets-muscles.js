@@ -15,10 +15,12 @@
                its mix by family, the opening's mirror
 
    Down from the programs needs something chosen (or a skip). Once a
-   program is chosen the reel ends at it: scrolling on goes straight to
-   refine, and the programs after it are a click away (the ticks, or the
-   next name on the reel). Past the end the wheel goes on to Training
-   focus, and the way on only shows there.
+   program is chosen the reel ends at it: scrolling the page on goes
+   straight to refine. With the pointer on the reel, though, the wheel turns
+   the whole reel, end to end, and the page stays; leaving it, the reel ends
+   at the program it was turned to, and off it the page moves past the
+   programs either way. Past the end the wheel goes on to Training focus,
+   and the way on only shows there.
    ========================================================================= */
 (() => {
   const SECS = ["intro", "programs", "refine", "chosen"];
@@ -217,7 +219,6 @@
     for (const n of P.querySelectorAll(".px-n")) {
       const p = progOf(n);
       n.classList.toggle("on", p === on);
-      n.classList.toggle("edited", p === on && src.kind === "modified");
       n.setAttribute("aria-pressed", String(p === on));
     }
     if (rosterP) paintRoster(src, on);
@@ -482,6 +483,12 @@
     snapTimer = setTimeout(() => { target = Math.min(limit(), keyY[nearestKey(target)]); wake(); }, 200);
     wake();
   }
+  /* Off the reel, once a program is chosen, it ends at the program it was turned to: the page scrolls on from there. */
+  P.querySelector(".pxr").addEventListener("pointerleave", () => {
+    if (!applied() || !live()) return;
+    const i = RKEYS.indexOf(nearestKey(target));
+    if (i >= 0) setFold(i);
+  });
   /* Going to a program past the fold opens the reel as far as it. */
   function goProgram(i) {
     if (i > fold) setFold(i);
@@ -496,6 +503,17 @@
     if (!live() || Stages.busy || e.ctrlKey) return;
     const d = wheelDelta(e);
     if (!d) return;
+    // On the reel, the wheel turns it, every program, and holds at either end.
+    if (cur === "programs" && e.target instanceof Element && e.target.closest(".pxr")) {
+      owns = true;
+      setFold(LAST);
+      const lo = keyY[firstKey("programs")], hi = keyY[lastKey("programs")];
+      const to = Math.max(lo, Math.min(hi, target + d));
+      if (Math.abs(to - target) > .5) go(to);
+      return;
+    }
+    // Off it, with a program chosen, the page goes up past the programs, not back through them.
+    if (cur === "programs" && d < 0 && applied()) { owns = true; go(keyY.intro); return; }
     const lim = limit(), can = d > 0 ? target < lim - .5 : target > .5;
     if (d > 0 && !can && lim < max) nudge();
     owns = can || performance.now() - movedAt < 650 || (d > 0 && lim < max);

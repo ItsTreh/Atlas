@@ -1106,7 +1106,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* ----- Your muscles · the programs: every program on one reel, turned by
    the scroll. The names are cut, not printed: outlined is on offer, the
-   one in view fills with ink, italic is where you started. Under it the
+   one in view fills with ink, italic with a dot of ink is where you started. Under it the
    body's sixteen muscles stand as bars, risen where it trains them. */
 .ds-programs { display: flex; align-items: center; justify-content: flex-end; }
 .px { width: min(50vw, 660px); display: flex; flex-direction: column; gap: 14px; pointer-events: auto; }
@@ -1125,8 +1125,11 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .px-nc::after { font-size: 18px; }
 .px-n.on .px-nw { -webkit-text-stroke-color: var(--ink); font-style: italic; }
 .px-n.on .px-nc { color: var(--ink); }
-.px-n.on .px-nc::after { content: " ✓"; }
-.px-n.edited .px-nc::after { content: " ✎"; }
+/* The one started from (edited or not) keeps a dot of ink after its name, as its tick does above. */
+.px-n.on .px-nc::after {
+  content: ""; display: block; width: 7px; height: 7px; margin-top: calc(var(--pxr-size) * .34);
+  border-radius: 50%; background: var(--ink);
+}
 .px-n:is(.cur, :hover, :focus-visible) .px-nw { background-position: 0 0; -webkit-text-stroke-color: var(--ink); }
 .px-n:is(:hover, :focus-visible) .px-nc { color: var(--ink); }
 .px-why {

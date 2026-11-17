@@ -304,8 +304,12 @@ the panels above stay.
   what changed from the program); and What you have chosen, in one sentence
   with its mix by family. Down from the programs needs something chosen
   (or a skip). **Once a program is chosen the reel ends at it**
-  (the user's call): scrolling on goes straight to Refine, and the programs
-  after it are a click away (the ticks, or the next name).
+  (the user's call): scrolling the page on goes straight to Refine. With
+  the pointer on the reel the wheel turns the whole reel and the page stays
+  (the user's call, 2026-11-17); leaving it, the reel ends at the program
+  turned to, and off it the page moves past the programs either way. The
+  program started from is italic with a dot of ink after its name, as its
+  tick has; there is no ✓ or ✎.
 - *Training focus* (`js/targets-train.js`, framings `targets-tdoc-…`): an
   opening with the three ways a set is drawn; one section per family, each
   muscle a ladder of its weekly sets against its range, with its priority
