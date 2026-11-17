@@ -84,3 +84,23 @@ test("a snapshot from a newer version is left alone, not read as this one", () =
   r.restore({ version: 2, sessionsPerWeek: 2, selection: { muscleIds: ["chest"] } });
   expect(r.snapshot()).toEqual(new app.WeeklyRoutine().snapshot());
 });
+
+/* A reload (Cmd+R) keeps the user's place; closing ATLAS and opening it
+   again, even as a restored tab, starts over at the start screen. */
+describe("a reload or a new visit", () => {
+  const now = 1_000_000;
+  test("a reload moments after the page went keeps the place", () => {
+    expect(app.isReload("reload", now - 2000, now)).toBe(true);
+  });
+  test("a page opened afresh is a new visit, however soon", () => {
+    expect(app.isReload("navigate", now - 2000, now)).toBe(false);
+    expect(app.isReload("back_forward", now - 2000, now)).toBe(false);
+  });
+  test("a 'reload' long after the page went (a restored tab) is a new visit", () => {
+    expect(app.isReload("reload", now - app.RELOAD_GAP_MS - 1, now)).toBe(false);
+  });
+  test("with no record of the page going, or of how it loaded, it is a new visit", () => {
+    expect(app.isReload("reload", null, now)).toBe(false);
+    expect(app.isReload(undefined, now - 2000, now)).toBe(false);
+  });
+});

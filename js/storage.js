@@ -74,16 +74,26 @@ function loadPlace() {
   }
 }
 
-/* A new visit or a reload: the tab keeps a mark (sessionStorage) until it
-   is closed. The start screen greets a new visit; a reload goes straight
-   back to where the user was. */
-const VISIT_KEY = "atlas.visit";
+/* A new visit or a reload. A reload (Cmd+R) goes straight back to where the
+   user was; closing ATLAS and opening it again is a new visit: the start
+   screen, then Targets, with everything entered still there. A tab mark
+   can't tell them apart (Firefox restores a closed tab's sessionStorage),
+   so a reload is the browser saying "reload" while the page went only
+   moments ago: the moment it went is kept as it goes. */
+const LEFT_KEY = "atlas.left";
+/* How soon after the page went a reload is still a reload, in ms. */
+const RELOAD_GAP_MS = 60 * 1000;
 
-/** True on the first load in this tab; marks the tab, so its reloads are not. */
+/** True for a reload: `navType` "reload" and the page gone less than RELOAD_GAP_MS before `now`. */
+function isReload(navType, leftAt, now) {
+  return navType === "reload" && typeof leftAt === "number" && leftAt > 0 && now - leftAt >= 0 && now - leftAt < RELOAD_GAP_MS;
+}
+
+/** True when this load is a new visit, not a reload; from here on, notes when the page goes. */
 function newVisit() {
-  try {
-    if (sessionStorage.getItem(VISIT_KEY)) return false;
-    sessionStorage.setItem(VISIT_KEY, "1");
-  } catch {}
-  return true;
+  let navType, leftAt = null;
+  try { navType = performance.getEntriesByType("navigation")[0].type; } catch {}
+  try { leftAt = Number(localStorage.getItem(LEFT_KEY)) || null; } catch {}
+  addEventListener("pagehide", () => { try { localStorage.setItem(LEFT_KEY, String(Date.now())); } catch {} });
+  return !isReload(navType, leftAt, Date.now());
 }

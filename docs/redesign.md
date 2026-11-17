@@ -269,9 +269,9 @@ camera travels, in. A very large, quiet word behind the body names each
    fills as it is read, then the next plays, and the camera goes where that
    stage will put it (`targets-how0…2`). Pointing at or focusing a chapter
    plays it. The figure is shown, not picked (`interactive()` false), and
-   its controls are away. A first visit opens here; after that the page
-   opens where the user was (a reload skips the start screen, a new visit
-   is greeted by it first).
+   its controls are away. Every new visit opens here, after the start
+   screen, with what was entered kept; a reload skips the start screen and
+   opens where the user was.
 2. **Your muscles.** The figure in the middle, the programs on the left (as
    above), and on the right what is chosen: the count, where it came from
    (a program, edited, or your own), a bar of the families, and each
