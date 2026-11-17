@@ -1696,7 +1696,8 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* The day as the sun's path (js/week-view.js). The stage's words are set in
    a 1440 × 900 plate scaled to the screen; behind the figure, in the
-   anatomy stage, the ring of the day's hours (.lm-arc, on the same plate)
+   anatomy stage, the ring of the day's hours (.lm-arc's words on the same
+   plate, its bands drawn on .lm-ring under them)
    and behind everything the sky of the hour pointed at (.lm-sky). */
 .atlas {
   --lm-busy: rgba(36,32,27,.085); --lm-busy-line: rgba(36,32,27,.15); --lm-off: rgba(36,32,27,.05); --lm-sun: #d9a84a;
@@ -1725,7 +1726,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .lm-hours button[aria-pressed="true"] { background: var(--lm-busy-line); color: var(--ink); }
 
 /* Behind the figure: the sky, then the ring. */
-.lm-sky, .lm-arc { position: absolute; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
+.lm-sky, .lm-arc, .lm-ring { position: absolute; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
 .lm-sky { inset: 0; }
 .lm-sky-light { position: absolute; inset: 0; background: var(--bg); }
 .lm-grain {
@@ -1735,14 +1736,10 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 [data-theme="dark"] .lm-grain { opacity: .55; }
 .lm-arc { left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
 .atlas[data-stage="plan"] .lm-sky { opacity: 1; transition: opacity .9s ease .15s; }
-.atlas[data-stage="plan"] .lm-arc { opacity: 1; transition: opacity .8s ease .3s; }
-.atlas[data-stage="plan"]:has(.stage-plan[data-view="week"]) .lm-arc { opacity: 0; transition: opacity .8s ease; }
-.atlas[data-layout="mobile"] :is(.lm-sky, .lm-arc) { display: none; }
-/* Back from the generated week, the ring takes the day at once, while it is still unseen (week-view.js). */
-.lm-arc.lm-snap * { transition: none !important; }
-/* Its blurred glows step out while it fades to the generated week, and come
-   back once it has faded in again: a fade over them cost Firefox a blur a frame. */
-.atlas[data-stage="plan"]:has(.stage-plan[data-view="week"]) .lm-arc [filter] { opacity: 0; transition: none !important; }
+.atlas[data-stage="plan"] :is(.lm-arc, .lm-ring) { opacity: 1; transition: opacity .8s ease .3s; }
+.atlas[data-stage="plan"]:has(.stage-plan[data-view="week"]) :is(.lm-arc, .lm-ring) { opacity: 0; transition: opacity .8s ease; }
+.atlas[data-layout="mobile"] :is(.lm-sky, .lm-arc, .lm-ring) { display: none; }
+.lm-ring { left: 0; top: 0; }
 /* Once landed, the stage sets the figure's opacity every frame (the generated week's ghost). */
 .atlas[data-stage="plan"][data-phase="idle"] .anatomy-sculpture canvas { transition: none; }
 
@@ -1775,7 +1772,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .foot-week svg { display: block; overflow: visible; }
 .foot-week span { font-size: 10px; line-height: 1; letter-spacing: .04em; transition: color .3s ease; }
 @media (prefers-reduced-motion: reduce) {
-  .wk *, .lm-sky, .lm-arc, .lm-arc *, .foot-week * { transition: none !important; }
+  .wk *, .lm-sky, .lm-arc, .lm-arc *, .lm-ring, .foot-week * { transition: none !important; }
   .lm-dayword.swap i { animation: none; }
 }
 
