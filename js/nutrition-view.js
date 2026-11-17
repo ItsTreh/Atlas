@@ -645,6 +645,9 @@ function pvLoop(now) {
     if (now - pv.leftAt > 900) { pv.leftAt = 0; pv.lt = 0; return; }
   } else pv.leftAt = 0;
   pv.raf = requestAnimationFrame(pvLoop);
+  // While the start screen holds the page, the camera is its own: the room
+  // waits, and takes the figure into the niche once it hands over.
+  if (Stages.opening) { pv.lt = 0; return; }
   try { pvFrame(now); } catch (e) { if (!pv.err) { pv.err = 1; console.warn("Nutrition room: " + e.message); } }
 }
 const pvRun = () => { if (!pv.raf) pv.raf = requestAnimationFrame(pvLoop); };
