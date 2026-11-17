@@ -234,7 +234,7 @@ function lmStartOn(session, day) {
 /** A rounded arc from hour a to b on radius r, `w` wide: its caps inside the hours, a small gap at each end. */
 function lmCap(r, w, a, b, gap) {
   const c = 2 * Math.PI * r, raw = Math.max(0, b - a) * c / 36, len = Math.max(0, raw - w - gap), off = (w / 2 + gap / 2) / r * 180 / Math.PI;
-  return { c, dash: len.toFixed(1) + " " + c.toFixed(1), rot: "rotate(" + (lmAng(a) + off).toFixed(2) + "deg)" };
+  return { c, len, ang: lmAng(a) + off, dash: len.toFixed(1) + " " + c.toFixed(1), rot: "rotate(" + (lmAng(a) + off).toFixed(2) + "deg)" };
 }
 
 /** The ring behind the figure: the dial, the seven days, the busy hours, the sessions, the meals, the words along it, the sun. */
@@ -242,47 +242,43 @@ function lmArcTemplate(W, step) {
   const { CX, CY, R } = LM, isWeek = step === 7, D = DayOfWeek.values, focus = isWeek ? null : D[step];
   const draft = W.draft, kOp = l => !lm.keyHot || lm.keyHot === l ? 1 : 0.2;
   const others = D.filter(d => d !== focus);
-  const circle = (r, style) => '<circle cx="' + CX + '" cy="' + CY + '" style="r:' + r + 'px; fill:none; transform-origin:' + CX + 'px ' + CY + 'px; ' + style + '"></circle>';
-  const ease = ".9s cubic-bezier(.16,1,.3,1)";
+  // Each stroke of the ring, as the canvas draws it (lmRing): its radius r, width w, the
+  // length len of its arc from the angle rot (degrees), its colour (a CSS variable, or
+  // "flow" for the busy hatching), its opacity a, its day's opacity go and its group's io;
+  // and for each, the transition it takes, as CSS would: [seconds, delay, curve].
+  const ring = [], E = [0.9, 0, "out"], T = (s, d = 0, c = "ease") => [s, d, c];
+  const add = (key, v, tr, extra) => ring.push(Object.assign({ key, v, tr }, extra));
+  const win = routine.preferredWindow, W0 = WINDOWS[win], winR = isWeek ? 344 : R, winC = 2 * Math.PI * winR;
+  add("win", { r: winR, w: isWeek ? 150 : 52, len: (W0.to - W0.from) * winC / 36, rot: lmAng(W0.from), a: win === "any" ? 0 : (lmDark() ? 0.06 : 0.045) * (isWeek ? 1 : kOp("arc")), go: 1, io: 1 },
+    { r: E, w: E, len: E, rot: E, a: T(0.5) }, { color: "--ink", cap: "butt" });
 
-  const rings = D.map((d, i) => {
+  D.forEach((d, i) => {
     const f = d === focus, off = routine.offDays.has(d);
     let r, w, op, sessOn;
     if (isWeek) { r = 278 + i * 22; w = 10; op = lm.hoverDay && lm.hoverDay !== d ? 0.38 : 1; sessOn = true; }
     else if (f) { r = R; w = 22; op = 1; sessOn = true; }
     else { r = R - 66 - others.indexOf(d) * 11; w = 3; op = 0.32; sessOn = false; }
-    const c = 2 * Math.PI * r, gap = f ? 4 : 2.5;
+    const c = 2 * Math.PI * r, gap = f ? 4 : 2.5, go = off && !f ? op * 0.7 : op, GO = T(0.7);
     const runs = off ? [[FIRST_HOUR, 24]] : busyRuns(d), last = runs.length ? runs[runs.length - 1][1] : FIRST_HOUR;
-    const dur = lm.drag ? ".32s" : ".75s";
-    const busy = [0, 1, 2, 3, 4].map(k => {
-      const run = runs[k];
-      if (!run) return circle(r, "stroke:var(--lm-busy); stroke-width:0px; stroke-linecap:round; stroke-dasharray:0 " + c.toFixed(1) +
-        "; transform:rotate(" + lmAng(last) + "deg); transition:r " + ease + ", stroke-width .55s cubic-bezier(.16,1,.3,1), stroke-dasharray " + dur + " cubic-bezier(.16,1,.3,1), transform " + dur + " cubic-bezier(.16,1,.3,1)");
-      const q = lmCap(r, w, run[0], run[1], gap);
-      return circle(r, "stroke:" + (off ? "var(--lm-off)" : "url(#lm-flow)") + "; stroke-width:" + w + "px; stroke-linecap:round; stroke-dasharray:" + q.dash +
-        "; transform:" + q.rot + "; transition:r " + ease + ", stroke-width .55s cubic-bezier(.16,1,.3,1), stroke-dasharray " + dur + " cubic-bezier(.16,1,.3,1), transform " + dur + " cubic-bezier(.16,1,.3,1)");
-    }).join("");
+    const dur = lm.drag ? 0.32 : 0.75, bio = f ? kOp("busy") : 1, sio = f ? kOp("sess") : 1;
+    add(d + "-base", { r, w: f ? 1.2 : isWeek ? 1 : 0.8, len: c / 2, rot: 180, a: 0.42, go, io: 1 },
+      { r: E, len: E, w: T(0.6), go: GO }, { color: "--ink-faint", cap: "butt" });
+    for (let k = 0; k < 5; k++) {
+      const run = runs[k], q = run && lmCap(r, w, run[0], run[1], gap);
+      add(d + "-busy" + k, { r, w: run ? w : 0, len: run ? q.len : 0, rot: run ? q.ang : lmAng(last), a: 1, go, io: bio },
+        { r: E, w: [0.55, 0, "out"], len: [dur, 0, "out"], rot: [dur, 0, "out"], go: GO, io: T(0.35) }, { color: off ? "--lm-off" : "flow", cap: "round" });
+    }
     const x = W.byDay[d], fams = x ? x.fams : [], n = fams.length, sw = w + (isWeek ? 3 : 4), sg = isWeek ? 1.2 : 2;
     const stw = n ? (sw - (n - 1) * sg) / n : 0, a0 = x ? x.start : 18, a1 = x ? x.end : 18;
-    const sess = [0, 1, 2, 3].map(j => {
-      const on = !!x && sessOn && j < n, rr = on ? r - sw / 2 + stw / 2 + j * (stw + sg) : r, q = lmCap(rr, on ? stw : 0, a0, a1, gap);
-      return circle(rr.toFixed(2), "stroke:" + (on ? "var(--" + fams[j] + ")" : "transparent") + "; stroke-opacity:" + (on ? (draft ? 0.6 : 1) : 0) +
-        "; stroke-width:" + (on ? stw.toFixed(2) : 0) + "px; stroke-linecap:round; stroke-dasharray:" + (on ? q.dash : "0 " + q.c.toFixed(1)) +
-        "; transform:" + q.rot + "; transition:r " + ease + ", stroke-width " + ease + ", stroke-dasharray " + ease + ", transform " + ease +
-        ", stroke-opacity 1s ease " + (draft ? 0 : i * 0.09 + j * 0.05).toFixed(2) + "s");
-    }).join("");
     const gq = x && sessOn ? lmCap(r, sw, a0, a1, gap) : null;
-    const glow = '<circle cx="' + CX + '" cy="' + CY + '" filter="url(#lm-soft)" style="r:' + r + 'px; fill:none; stroke:' + (x ? "var(--" + lmFam(x) + ")" : "transparent") +
-      '; stroke-opacity:' + (gq ? (draft ? (f ? 0.18 : 0.12) : 0.38) : 0) + '; stroke-width:' + (gq ? sw + 12 : 0) + 'px; stroke-linecap:round; stroke-dasharray:' +
-      (gq ? gq.dash : "0 " + c.toFixed(1)) + '; transform-origin:' + CX + 'px ' + CY + 'px; transform:' + (gq ? gq.rot : "rotate(" + lmAng(a0) + "deg)") +
-      '; transition:r ' + ease + ', stroke-width ' + ease + ', stroke-dasharray ' + ease + ', transform ' + ease + ', stroke-opacity .8s ease"></circle>';
-    return '<g style="opacity:' + (off && !f ? op * 0.7 : op) + '; transition:opacity .7s ease">' +
-      circle(r, "stroke:var(--ink-faint); stroke-opacity:.42; stroke-width:" + (f ? 1.2 : isWeek ? 1 : 0.8) + "px; stroke-dasharray:" + (c / 2).toFixed(1) + " " + c.toFixed(1) +
-        "; transform:rotate(180deg); transition:r " + ease + ", stroke-dasharray " + ease + ", stroke-width .6s ease") +
-      '<g style="opacity:' + (f ? kOp("busy") : 1) + '; transition:opacity .35s ease">' + busy + '</g>' +
-      '<g style="opacity:' + (f ? kOp("sess") : 1) + '; transition:opacity .35s ease">' + glow + sess + '</g>' +
-    '</g>';
-  }).join("");
+    add(d + "-glow", { r, w: gq ? sw + 12 : 0, len: gq ? gq.len : 0, rot: gq ? gq.ang : lmAng(a0), a: gq ? (draft ? (f ? 0.18 : 0.12) : 0.38) : 0, go, io: sio },
+      { r: E, w: E, len: E, rot: E, a: T(0.8), go: GO, io: T(0.35) }, { color: x ? "--" + lmFam(x) : null, cap: "round", glow: true });
+    for (let j = 0; j < 4; j++) {
+      const on = !!x && sessOn && j < n, rr = on ? r - sw / 2 + stw / 2 + j * (stw + sg) : r, q = lmCap(rr, on ? stw : 0, a0, a1, gap);
+      add(d + "-sess" + j, { r: rr, w: on ? stw : 0, len: on ? q.len : 0, rot: q.ang, a: on ? (draft ? 0.6 : 1) : 0, go, io: sio },
+        { r: E, w: E, len: E, rot: E, a: T(1, draft ? 0 : i * 0.09 + j * 0.05), go: GO, io: T(0.35) }, { color: on ? "--" + fams[j] : null, cap: "round" });
+    }
+  });
 
   const ticks = Array.from({ length: 19 }, (_, k) => {
     const h = FIRST_HOUR + k, t = lmAng(h) * Math.PI / 180, a = R + 16, b = R + (h % 3 === 0 ? 28 : 22);
@@ -294,7 +290,6 @@ function lmArcTemplate(W, step) {
   const fOff = !isWeek && routine.offDays.has(focus), fRuns = !isWeek && !fOff ? busyRuns(focus) : [];
   const fMeals = isWeek || fOff ? [] : (W.meals[focus] || []);
   const fx = !isWeek ? W.byDay[focus] : null;
-  const win = routine.preferredWindow, W0 = WINDOWS[win], winR = isWeek ? 344 : R, winC = 2 * Math.PI * winR;
   const text = (path, off, style, body) => '<text style="' + style + '"><textPath href="#' + path + '" startOffset="' + off + '">' + body + '</textPath></text>';
   const mono = "font:500 10px/1 var(--mono); letter-spacing:.12em; fill:var(--ink-faint); text-anchor:middle";
   const curved =
@@ -321,22 +316,16 @@ function lmArcTemplate(W, step) {
       '<circle cx="' + cx + '" cy="' + cy + '" r="2.8" style="fill:var(--ink-soft)"></circle></g>';
   }).join("");
 
-  return '<svg width="1440" height="900" viewBox="0 0 1440 900" style="position:absolute; left:0; top:0; display:block; overflow:visible">' +
+  return { ring, svg: '<svg width="1440" height="900" viewBox="0 0 1440 900" style="position:absolute; left:0; top:0; display:block; overflow:visible">' +
     '<defs>' +
-      '<pattern id="lm-flow" data-lm-flow patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><rect width="7" height="7" style="fill:var(--lm-busy)"></rect><rect width="1.3" height="7" style="fill:var(--lm-busy-line)"></rect></pattern>' +
       '<radialGradient id="lm-glow"><stop offset="0" style="stop-color:var(--lm-sun); stop-opacity:.5"></stop><stop offset=".4" style="stop-color:var(--lm-sun); stop-opacity:.15"></stop><stop offset="1" style="stop-color:var(--lm-sun); stop-opacity:0"></stop></radialGradient>' +
       '<linearGradient id="lm-ray" gradientUnits="userSpaceOnUse" x1="398" y1="0" x2="214" y2="0"><stop offset="0" style="stop-color:var(--lm-sun); stop-opacity:.9"></stop><stop offset="1" style="stop-color:var(--lm-sun); stop-opacity:0"></stop></linearGradient>' +
-      '<filter id="lm-soft" x="-7%" y="-7%" width="114%" height="114%"><feGaussianBlur stdDeviation="7"></feGaussianBlur></filter>' +
       '<path id="lm-p-hours" d="M 530 640 A 450 450 0 0 1 1430 640"></path>' +
       '<path id="lm-p-sess" d="M 506 640 A 474 474 0 0 1 1454 640"></path>' +
       '<path id="lm-p-mid" d="M 570 640 A 410 410 0 0 1 1390 640"></path>' +
       '<path id="lm-p-meal" d="M 612 640 A 368 368 0 0 1 1348 640"></path>' +
     '</defs>' +
-    circle(winR, "stroke:var(--ink); stroke-opacity:" + (win === "any" ? 0 : (lmDark() ? 0.06 : 0.045) * (isWeek ? 1 : kOp("arc"))) + "; stroke-width:" + (isWeek ? 150 : 52) +
-      "px; stroke-dasharray:" + ((W0.to - W0.from) * winC / 36).toFixed(1) + " " + winC.toFixed(1) + "; transform:rotate(" + lmAng(W0.from) + "deg); transition:r " + ease +
-      ", stroke-width " + ease + ", stroke-dasharray " + ease + ", transform " + ease + ", stroke-opacity .5s ease") +
     '<g style="opacity:' + (isWeek ? 0.55 : kOp("arc")) + '; transition:opacity .5s ease">' + ticks + '</g>' +
-    rings +
     '<g style="opacity:' + kOp("meal") + '; transition:opacity .35s ease">' + mealDots + '</g>' +
     '<g>' + curved + '</g>' +
     // The now-line: the hour pointed at, and the light it sends to the body.
@@ -347,7 +336,7 @@ function lmArcTemplate(W, step) {
       '<circle data-lm-halo data-p cx="410" cy="0" r="10" style="fill:none; stroke:var(--ink); stroke-opacity:.3; stroke-width:1"></circle>' +
       '<circle data-lm-bead cx="410" cy="0" r="' + lm.beadR.toFixed(2) + '" style="fill:var(--ink); stroke:var(--bg); stroke-width:2"></circle>' +
     '</g>' +
-  '</svg>';
+  '</svg>' };
 }
 
 /* ------------------------------- the template ------------------------------ */
@@ -718,12 +707,19 @@ function setStatus(text, kind = "") {
 }
 
 function renderWeek() {
-  const wg = lm.step === 7 && !lmDraft();
+  const wg = lm.step === 7 && !lmDraft(), fromWeek = !wg && lm.wgOn;
   if (wg && !lm.wgOn) { lm.wgOn = true; lm.wkIn = false; clearTimeout(lm.wkT); lm.wkT = setTimeout(() => { lm.wkIn = true; renderWeek(); }, 70); }
-  else if (!wg && lm.wgOn) { lm.wgOn = false; lm.wkIn = false; clearTimeout(lm.wkT); }
+  else if (fromWeek) { lm.wgOn = false; lm.wkIn = false; clearTimeout(lm.wkT); }
   const t = lmTemplate();
   pvMorph(lmStage, t.plate);
-  pvMorph(lmArcEl, t.arc);
+  // The generated week hides the ring (styles.css), so the ring doesn't
+  // follow it there: it keeps the day it showed as it fades, and is back on
+  // the day, unseen, before it fades in again. Its glows step out meanwhile.
+  if (!wg) {
+    pvMorph(lmArcEl, t.arc.svg);
+    lmRingSet(t.arc.ring, fromWeek);
+  }
+  lmRingGlows(!wg);
   pvMorph(lmFoot, lmFootTemplate());
   lmFoot.hidden = Stages.narrow;
   planEl.dataset.view = wg ? "week" : lm.step === 7 ? "rings" : "day";
@@ -772,6 +768,141 @@ function lmFit() {
   lmStage.style.transform = t;
   lmArcEl.style.transform = t;
   lm.css = "";
+}
+
+/* ------------------------------ the ring, drawn ----------------------------- */
+
+/*
+ * The ring's bands are drawn on a canvas under its words (lmRingEl), each
+ * frame, from lm.ring: what lmArcTemplate asks for, each value travelling
+ * as a CSS transition would (from where it is, over its duration, after its
+ * delay, on its curve). As SVG, Firefox redrew the whole ring for every
+ * frame of a change of day: 70–130 ms a frame.
+ */
+const lmRingEl = document.createElement("canvas");
+lmRingEl.className = "lm-ring";
+lmRingEl.setAttribute("aria-hidden", "true");
+lmArcEl.before(lmRingEl);
+const lmGlowEl = document.createElement("canvas");
+
+/** cubic-bezier(x1, y1, x2, y2) as a function of time 0…1. */
+function lmBezier(x1, y1, x2, y2) {
+  const B = (t, a, b) => 3 * (1 - t) * (1 - t) * t * a + 3 * (1 - t) * t * t * b + t * t * t;
+  return x => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    let lo = 0, hi = 1, t = x;
+    for (let i = 0; i < 24; i++) { const v = B(t, x1, x2); if (Math.abs(v - x) < 1e-5) break; if (v < x) lo = t; else hi = t; t = (lo + hi) / 2; }
+    return B(t, y1, y2);
+  };
+}
+const LM_CURVE = { ease: lmBezier(0.25, 0.1, 0.25, 1), out: lmBezier(0.16, 1, 0.3, 1) };
+
+/* key → { v: { prop: { from, to, t0, tr } }, color, cap, glow } */
+lm.ring = new Map();
+lm.glowVis = { from: 1, to: 1, t0: 0, tr: [0.5, 1.1, "ease"] };
+
+function lmTweenAt(p, now) {
+  const [dur, delay, curve] = p.tr || [0, 0, "ease"], t = (now - p.t0) / 1000 - delay;
+  if (t <= 0) return p.from;
+  if (!dur || t >= dur) return p.to;
+  return p.from + (p.to - p.from) * LM_CURVE[curve](t / dur);
+}
+function lmTweenTo(p, to, tr, now, snap) {
+  if (snap) { p.from = p.to = to; p.t0 = now; p.tr = tr; return; }
+  if (to === p.to) return;
+  p.from = lmTweenAt(p, now); p.to = to; p.t0 = now; p.tr = tr;
+}
+
+/** Takes the ring's new strokes; `snap` puts them there at once (unseen, or with reduced motion). */
+function lmRingSet(list, snap) {
+  const now = performance.now(), still = snap || Stages.still || !lm.ring.size;
+  for (const it of list) {
+    let e = lm.ring.get(it.key);
+    if (!e) { e = { v: {} }; lm.ring.set(it.key, e); }
+    // Colour isn't transitioned, as in CSS: a band switched off is gone at once.
+    e.color = it.color; e.cap = it.cap; e.glow = !!it.glow;
+    for (const [k, to] of Object.entries(it.v)) {
+      const p = e.v[k] || (e.v[k] = { from: to, to, t0: now, tr: null });
+      lmTweenTo(p, to, it.tr[k] || [0, 0, "ease"], now, still);
+    }
+  }
+}
+
+/** The glows step out at once while the ring fades to the generated week, and come back after it. */
+function lmRingGlows(on) {
+  lmTweenTo(lm.glowVis, on ? 1 : 0, [0.5, 1.1, "ease"], performance.now(), !on || Stages.still);
+}
+
+/* A colour from the theme, resolved once per theme. */
+const lmColorProbe = document.createElement("i");
+lmColorProbe.style.display = "none";
+lmRingEl.after(lmColorProbe);
+let lmColors = {}, lmColorsFor = "";
+function lmColor(v) {
+  const th = document.documentElement.dataset.theme || "";
+  if (th !== lmColorsFor) { lmColors = {}; lmColorsFor = th; }
+  if (!(v in lmColors)) { lmColorProbe.style.color = "var(" + v + ")"; lmColors[v] = getComputedStyle(lmColorProbe).color; }
+  return lmColors[v];
+}
+
+/* The busy hours' hatching: a 7-unit tile, a line in it, turned 45°, drifting. */
+let lmFlowTile = null, lmFlowFor = "";
+function lmFlow(ctx, s, now) {
+  const busy = lmColor("--lm-busy"), line = lmColor("--lm-busy-line"), n = Math.max(2, Math.round(7 * s)), key = n + busy + line;
+  if (key !== lmFlowFor) {
+    const c = document.createElement("canvas"); c.width = c.height = n;
+    const x = c.getContext("2d"); x.fillStyle = busy; x.fillRect(0, 0, n, n); x.fillStyle = line; x.fillRect(0, 0, 1.3 * n / 7, n);
+    lmFlowTile = ctx.createPattern(c, "repeat"); lmFlowFor = key;
+  }
+  const drift = Stages.still ? 0 : (now / 1000 * 3.2) % 7;
+  lmFlowTile.setTransform(new DOMMatrix().rotateSelf(45).translateSelf(drift, 0).scaleSelf(7 / n));
+  return lmFlowTile;
+}
+
+/** Draws the ring as it stands at `now`. */
+function lmRingDraw(now) {
+  const c = lmRingEl, dpr = Math.min(devicePixelRatio || 1, 2), W = Math.round(lm.vw * dpr), H = Math.round(lm.vh * dpr);
+  if (!W || !H) return;
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; c.style.width = lm.vw + "px"; c.style.height = lm.vh + "px"; lm.glowSig = ""; }
+  const ctx = c.getContext("2d"), s = dpr * lm.k, { CX, CY } = LM, gv = lmTweenAt(lm.glowVis, now);
+  const val = e => { const o = {}; for (const k in e.v) o[k] = lmTweenAt(e.v[k], now); return o; };
+  const arc = (x, o) => { const len = Math.min(o.len, 2 * Math.PI * o.r - 0.01), a = o.rot * Math.PI / 180; x.beginPath(); x.arc(CX, CY, Math.max(0, o.r), a, a + len / Math.max(1e-3, o.r)); };
+  const shown = o => o.w > 0.01 && o.len > 0.01 && o.r > 0;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // The glows: blurred once on their own canvas, again only when they change.
+  const glows = [], parts = [];
+  for (const e of lm.ring.values()) { const o = val(e); (e.glow ? glows : parts).push([e, o]); }
+  const sig = glows.map(([e, o]) => e.color + [o.r, o.w, o.len, o.rot, o.a * o.go * o.io].map(v => v.toFixed(2)).join()).join("|") + gv.toFixed(3) + lmColorsFor + W;
+  if (sig !== lm.glowSig) {
+    lm.glowSig = sig;
+    const g = lmGlowEl;
+    if (g.width !== W || g.height !== H) { g.width = W; g.height = H; }
+    const x = g.getContext("2d");
+    x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H);
+    x.filter = "blur(" + (7 * s).toFixed(1) + "px)";
+    x.setTransform(s, 0, 0, s, lm.ox * dpr, lm.oy * dpr);
+    for (const [e, o] of glows) {
+      const al = o.a * o.go * o.io * gv;
+      if (!e.color || al < 0.002 || !shown(o)) continue;
+      x.globalAlpha = al; x.strokeStyle = lmColor(e.color); x.lineWidth = o.w; x.lineCap = e.cap;
+      arc(x, o); x.stroke();
+    }
+    x.filter = "none";
+  }
+  ctx.drawImage(lmGlowEl, 0, 0);
+
+  ctx.setTransform(s, 0, 0, s, lm.ox * dpr, lm.oy * dpr);
+  for (const [e, o] of parts) {
+    const al = o.a * o.go * o.io;
+    if (!e.color || al < 0.002 || !shown(o)) continue;
+    ctx.globalAlpha = al;
+    ctx.strokeStyle = e.color === "flow" ? lmFlow(ctx, s, now) : lmColor(e.color);
+    ctx.lineWidth = o.w; ctx.lineCap = e.cap;
+    arc(ctx, o); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
 }
 
 /* --------------------------------- the light -------------------------------- */
@@ -842,7 +973,9 @@ function lmTint(k, theme, h) {
 
 function lmFrame(now) {
   const dt = Math.min(0.05, (now - (lm.lt || now)) / 1000); lm.lt = now;
-  if (planEl.clientWidth !== lm.vw || planEl.clientHeight !== lm.vh) lmFit();
+  // The plate's size comes from a ResizeObserver (below), not a read here:
+  // a read each frame made the browser restyle and lay out the whole page.
+  if (lm.refit) { lm.refit = false; lmFit(); }
   const F = lm.F; if (!F) return;
   const here = Stages.current === "plan", still = Stages.still;
   if (lm.locked && now - lm.lastWheel > 260) lm.locked = false;
@@ -867,8 +1000,7 @@ function lmFrame(now) {
     if (tp && on) tp.setAttribute("startOffset", Math.max(9, Math.min(91, (h - FIRST_HOUR) / 18 * 100)).toFixed(2) + "%");
   }
   lmSkyFrame(dt);
-  const flow = lmArcEl.querySelector("[data-lm-flow]");
-  if (flow && !still) flow.setAttribute("patternTransform", "rotate(45) translate(" + ((now / 1000 * 3.2) % 7).toFixed(2) + " 0)");
+  lmRingDraw(now);
 
   // The figure stands on the ring's centre; the generated week has the screen to itself.
   lm.aimX = LM.CX;
@@ -890,7 +1022,7 @@ function lmFrame(now) {
     // Where the ghost word stands, as Targets' pages say it (holdFigure): the
     // figure's axis, its middle, low at the shins (--gyl), how large the
     // space beside it allows (--gs), how far its legs reach (--gbw).
-    const vw = planEl.clientWidth || innerWidth, vh = planEl.clientHeight || innerHeight, sx = x / vw, mid = (y - tall / 2) / vh;
+    const vw = lm.vw || innerWidth, vh = lm.vh || innerHeight, sx = x / vw, mid = (y - tall / 2) / vh;
     const ws = [sx.toFixed(4), mid.toFixed(4), (mid + tall / vh * .2).toFixed(4), (2 * Math.min(sx, 1 - sx) * 100 / 3.9).toFixed(2) + "vw", Math.round(tall * .13) + "px"];
     if (ws.join() !== lm.ws) {
       lm.ws = ws.join();
@@ -1238,3 +1370,5 @@ Stages.register("plan", {
 
 /* A resize refits the plate. */
 addEventListener("resize", () => { if (Stages.current === "plan") { lmFit(); renderWeek(); } });
+/* The stage changing size any other way (the plate is measured before the next frame draws it). */
+new ResizeObserver(() => { lm.refit = true; }).observe(planEl);
