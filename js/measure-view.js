@@ -51,8 +51,11 @@
   const PIG = { stature: "push", mass: "pull", years: "core", physis: "legs" };
   /* The plate's geometry: the figure's axis, where its soles stand, the
      height the rings are hung against and the figure's own; the mark's
-     centre and radius. */
-  const G = { X: 712, SOLE: 760, TALL: 520, FIG: 500, MX: 712, MY: 456, MR: 146 };
+     centre and radius. The axis stands a little right of the page's middle
+     (720) because the body leans left of it: so the body itself lands
+     under the masthead and the footer's coins. The figure is larger than
+     the design's (500), the rings hung higher with it, not wider. */
+  const G = { X: 724, SOLE: 760, TALL: 603, FIG: 580, MX: 724, MY: 456, MR: 146 };
   /* Per ring, resting / in hand / the four together: its radius; the
      sticks' full height by the same three. The ring in hand is larger than
      the design's (280–310) by the user's word, up to what the two columns
