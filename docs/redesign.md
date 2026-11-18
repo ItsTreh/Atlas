@@ -168,7 +168,7 @@ How each is built:
     gilt with the first letter of the name, the name and the day. Five
     stones to choose from. Nothing on it depends on the chosen muscles or
     on a symbol the app picked.
-- **Nutrition** (`js/nutrition-view.js`): *the day, in perspective*,
+- **Nutrition** (`js/nutrition-view.js`): *the day in perspective*,
   from the user's Claude Design file "Nutrition - Perspectiva" (2026-11-14),
   which replaced the balance and the urn. A room drawn each frame in a 2D
   canvas under the sculpture: a marble floor laid to a vanishing point, a

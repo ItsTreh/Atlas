@@ -123,7 +123,7 @@ function pvTemplate() {
 
   const sumLeft = '<div data-p="sum" data-r="0" style="position:absolute; left:48px; top:104px; width:372px; transform-origin:0 0">' +
     '<p style="margin:0; font-size:11px; font-weight:600; line-height:1.3; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint)"><span style="font:600 13px/1 ' + pvSerif + '; letter-spacing:.06em; color:var(--ink)">' + STAGE_NUMERALS.nutrition + '</span> / Nutrition · Optional</p>' +
-    '<h1 id="nutrition-title" tabindex="-1" style="margin:14px 0 0; font:400 64px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink); text-wrap:balance">The day, in <em>perspective.</em></h1>' +
+    '<h1 id="nutrition-title" tabindex="-1" style="margin:14px 0 0; font:400 64px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink); text-wrap:balance">The day in <em>perspective.</em></h1>' +
     '<p style="margin:18px 0 0; font-size:14px; line-height:1.55; color:var(--ink-soft); max-width:34ch; text-wrap:pretty">Calories and protein for ' + trainingLine + ', then the day they make, walked one meal at a time.</p>' +
     label("Eating for", "margin-top:40px") +
     '<div data-goals role="group" aria-label="Eating for" style="display:flex; flex-direction:column; margin-top:8px">' + goals + '</div>' +
@@ -311,7 +311,7 @@ function pvTemplate() {
   const endHTML = !ok ? "" : '<div data-p="end" style="position:absolute; left:720px; top:378px; width:0; height:0; transform-origin:0 0; opacity:0; visibility:hidden; pointer-events:none">' +
     '<div style="position:absolute; left:-360px; top:-252px; width:720px; text-align:center">' +
       '<p style="margin:0; font:600 13px/1 ' + pvSerif + '; letter-spacing:.42em; color:var(--gilt)">PER · DIEM</p>' +
-      '<h2 style="margin:14px 0 0; font:italic 400 62px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink)">The day, laid.</h2></div>' +
+      '<h2 style="margin:14px 0 0; font:italic 400 62px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink)">The day laid out.</h2></div>' +
     '<div style="position:absolute; left:-628px; top:-120px; width:330px">' + label("Calories, a day") +
       '<div style="display:flex; align-items:flex-end; gap:12px; margin-top:8px"><span style="font:400 128px/.86 ' + pvSerif + '; letter-spacing:-.03em; font-variant-numeric:lining-nums tabular-nums">' + fmtK(n.kcal) + '</span>' +
         '<span style="font:italic 400 28px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:10px">kcal</span></div>' +

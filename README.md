@@ -52,7 +52,7 @@ Nutrition is a room in perspective: a marble floor laid to a vanishing point, a 
 - **The sum:** your goal (fat loss, muscle gain, maintenance or general fitness, each showing the change it makes for this training), the calories and protein to eat, steppers for both, and how it's worked out, line by line. Your body weight comes from Measure.
 - **The day in one sentence:** how many meals, from which hour to which, eating what. Each word opens its own chooser.
 - **Each meal:** its hour (move it earlier or later), its calories and protein with the day's running total, and an example plate portioned to it. Point at a food to see what it brings, or turn to other ideas.
-- **The day, laid:** every meal's calories and protein together, with the figure in the niche behind.
+- **The day laid out:** every meal's calories and protein together, with the figure in the niche behind.
 
 ### IV · Week plan
 
