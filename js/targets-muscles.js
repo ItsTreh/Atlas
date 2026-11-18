@@ -417,9 +417,9 @@
 
   function gist(fams, n) {
     const ns = fams.map(f => FAMILIES[f.k].name.toLowerCase());
-    if (fams.length === 4) return ", <em>across the whole body.</em>";
-    if (fams.length === 1) return ", <em>all " + ns[0] + ".</em>";
-    if (fams[0].ms.length / n >= .6) return ", <em>mostly " + ns[0] + ".</em>";
+    if (fams.length === 4) return " <em>across the whole body.</em>";
+    if (fams.length === 1) return " from <em>" + ns[0] + " alone.</em>";
+    if (fams[0].ms.length / n >= .6) return " <em>mostly from " + ns[0] + ".</em>";
     return " of <em>" + andList(ns) + ".</em>";
   }
   function renderBoard() {
@@ -428,7 +428,7 @@
     const ranked = [...fams].sort((a, z) => z.ms.length - a.ms.length);
     const total = ms.reduce((a, m) => a + startingSets(m), 0);
     q(".cb").toggleAttribute("data-empty", !n);
-    q(".cb-say").innerHTML = !n ? "Nothing chosen, <em>yet.</em>" :
+    q(".cb-say").innerHTML = !n ? "Nothing chosen <em>yet.</em>" :
       countWord(n) + " muscle " + (n === 1 ? "group" : "groups") + gist(ranked, n);
     const by = src.kind === "program" ? " · " + esc(src.program.name) : src.kind === "modified" ? " · " + esc(src.program.name) + ", made yours" : "";
     q(".cb-of").innerHTML = !n ? "Scroll up to start from a program, or click muscles on the figure." :

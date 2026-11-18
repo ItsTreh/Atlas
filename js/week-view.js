@@ -470,7 +470,7 @@ function lmTemplate() {
         sub = off ? "No training on " + dn + "." : pv ? "Recovering from " + DayOfWeek.name[pd] + ": " + pv.muscles.map(m => m.name).join(", ") + "." : "Nothing to recover from yet.";
       }
       left +=
-        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">' + dn + ', <em>' + h1b + '</em></h1>' +
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink); text-wrap:balance">' + dn + ' <em>' + h1b + '</em></h1>' +
         '<p style="margin:16px 0 0; font:italic 400 22px/1.3 var(--serif); color:var(--ink-soft); text-wrap:pretty">' + esc(sub) + '</p>' + body +
         '<div style="display:flex; gap:18px; margin-top:16px">' +
           lmLink("edit-hours", "Change " + dn + "’s hours", "", "var(--ink)", "13.5px") +
@@ -506,7 +506,7 @@ function lmTemplate() {
       const hd = lm.hoverDay, hx = hd ? W.byDay[hd] : null;
       const mealsOn = n.isValid() && n.showMeals;
       left +=
-        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days, <em>at once.</em></h1>' +
+        '<h1 id="plan-title" tabindex="-1" style="margin:14px 0 0; font:400 56px/.98 var(--serif); letter-spacing:-.015em; color:var(--ink)">Seven days <em>at once.</em></h1>' +
         '<div style="position:relative">' +
           '<p style="margin:20px 0 0; font:400 25px/1.32 var(--serif); color:var(--ink-soft)">' +
             word("days", LM_NUM[days]) + ' ' + (days === 1 ? "day a week" : "days a week") + ', ' + word("len", LM_LEN[len] || len + " minutes") + ' each, ' +

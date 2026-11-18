@@ -276,7 +276,7 @@
   function leftHtml() {
     const s = ui.step, key = STEPS[s], K = KEYS[s], all = key === "four", mark = key === "mark";
     const eyebrow = K ? NAMES[K] + ", " + NUM[s] + " of IV" : NAMES[key];
-    const title = mark ? ["Your ", "mark."] : all ? ["Your measure, ", "entire."] : ["Take your ", "measure."];
+    const title = mark ? ["Your ", "mark."] : all ? ["Your whole ", "measure."] : ["Take your ", "measure."];
     const lede = mark ? "A stone of your own, set in the four rings." : all ? "Four rings round the marble, every one read at the front." : "Four rings of sticks round the marble, one a fact. Turn one, and the sticks you reach stand up in colour.";
     let legend = "", how, howLabel, factNum, factName, factColor;
     if (K) {
