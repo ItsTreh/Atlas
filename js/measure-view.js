@@ -313,15 +313,15 @@
     '</div>';
   }
 
-  /* The reading at the right, larger than the design's by the user's word: 184 px numbers, 48 px coins. */
-  const NUM_PX = 184, PAIR_PX = 128, DIGITS = "0123456789".split("").map(d => "<span>" + d + "</span>").join("");
+  /* The reading at the right, flush to the right margin and much larger than the design's, by the user's word: 280 px numbers, 48 px coins. */
+  const NUM_PX = 280, PAIR_PX = 200, DIGITS = "0123456789".split("").map(d => "<span>" + d + "</span>").join("");
   function factHtml(K) {
     const s = ui.step, rd = reading(K), given = !!rd, imp = M.imperial, dark = document.documentElement.dataset.theme === "dark";
     const numColor = given ? "color-mix(in srgb, var(--" + PIG[K] + "-trace) " + (dark ? 82 : 78) + "%, var(--bg))" : "var(--line)";
     const cap = '<p style="margin:0; font:500 11px/1 var(--mono); letter-spacing:.18em; color:' + traceOf(K) + '">' + NUM[s] + " · " + NAMES[K].toUpperCase() + '</p>';
     if (K === "physis") {
       return cap +
-        '<p style="margin:12px 0 0; font:italic 400 96px/1 var(--serif); letter-spacing:-.02em; white-space:nowrap; color:' + numColor + '; transition:color .5s ease">' + (given ? MEASURE_SEX[M.sex] : "Not given") + '</p>' +
+        '<p style="margin:12px 0 0; font:italic 400 136px/1 var(--serif); letter-spacing:-.02em; white-space:nowrap; color:' + numColor + '; transition:color .5s ease">' + (given ? MEASURE_SEX[M.sex] : "Not given") + '</p>' +
         '<p aria-live="polite" style="margin:12px 0 0; font:500 11px/1.5 var(--mono); letter-spacing:.1em; color:var(--ink-faint)">' + SEX_NOTE[M.sex || "none"] + '</p>' +
         '<div role="radiogroup" aria-label="Physiology for the estimate" style="display:flex; flex-wrap:wrap; gap:4px 22px; margin-top:18px">' +
           SEX_STOPS.map(sx => { const on = M.sex === sx; return '<button type="button" role="radio" class="mz-stop" data-sex="' + sx + '" aria-checked="' + on + '" tabindex="' + (on || (!M.sex && sx === "female") ? 0 : -1) + '" style="font:' + (on ? "italic " : "") + '400 27px/1 var(--serif); color:' + (on ? "var(--ink)" : "var(--ink-faint)") + '">' + MEASURE_SEX[sx] +
@@ -333,7 +333,7 @@
     const pair = K === "stature" && imp, size = pair ? PAIR_PX : NUM_PX;
     const field = (f, val, ph, unit, aria) => { const t = ty(f), shown = t !== null ? t : val; return '<label style="display:flex; align-items:baseline; gap:6px; cursor:text">' +
       '<input class="mz-in" data-f="' + f + '" value="' + esc(shown) + '" placeholder="' + ph + '" inputmode="decimal" autocomplete="off" spellcheck="false" aria-label="' + aria + '" style="width:' + (Math.max(1, String(shown || ph).length) * .5 + .08).toFixed(2) + 'em; font:italic 400 ' + size + 'px/1 var(--serif); font-variant-numeric:lining-nums tabular-nums">' +
-      '<span style="font:italic 400 34px/1 var(--serif)">' + unit + '</span></label>'; };
+      '<span style="font:italic 400 52px/1 var(--serif)">' + unit + '</span></label>'; };
     const [ft, inch] = M.cm !== null ? feetInches(M.cm) : ["", ""];
     const ph = { stature: imp ? "5′2" : String(MARBLE_CM), mass: imp ? "154" : "70", years: "30" }[K];
     const shown = given ? rd.num : ph;
@@ -355,13 +355,13 @@
       '<div style="display:flex; align-items:baseline; gap:10px; margin-top:8px; color:' + numColor + '; transition:color .5s ease">' +
         (ui.editing ? fields
           : '<button type="button" class="mz-roll" data-act="edit" aria-label="' + NAMES[K] + ", " + (given ? rd.big : "not given") + '. Type it" title="Click to type" style="font:italic 400 ' + size + 'px/1 var(--serif); font-variant-numeric:lining-nums tabular-nums">' + roll + '</button>' +
-            '<span style="font:italic 400 50px/1 var(--serif)">' + unit + '</span>') +
+            '<span style="font:italic 400 72px/1 var(--serif)">' + unit + '</span>') +
       '</div>' +
       '<p style="margin:8px 0 0; font:500 11px/1.5 var(--mono); letter-spacing:.1em; color:var(--ink-faint)">' + esc(alt) + '</p>' +
       '<div style="display:flex; align-items:center; gap:8px; margin-top:18px">' +
+        '<span style="margin-right:8px; font:italic 400 17px/1.2 var(--serif); color:var(--ink-faint)">or click the number to type it</span>' +
         '<button type="button" class="mz-coin" data-step="-1" aria-label="Turn ' + what + ' down">' + coinSvg("M19 26h14") + '</button>' +
         '<button type="button" class="mz-coin" data-step="1" aria-label="Turn ' + what + ' up">' + coinSvg("M19 26h14M26 19v14") + '</button>' +
-        '<span style="margin-left:8px; font:italic 400 17px/1.2 var(--serif); color:var(--ink-faint)">or click the number to type it</span>' +
       '</div>' +
       (given ? '<button type="button" class="mz-link" data-act="clear" style="margin-top:14px">Clear ' + what + '</button>' : "");
   }
