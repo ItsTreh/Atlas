@@ -130,45 +130,44 @@ moved through. The marble is one mesh, one renderer and one material.
 | Stage | The room | How it is laid out | How it is moved |
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
-| II Measure | an instrument: four rings round the figure, one a fact, each its own metal | the figure in the middle; each ring carries a tag (its name, reading and gauge), and what the ring in hand says goes round the body with it | turn a ring (drag, a sideways swipe, its coins, or type); the scroll goes from fact to fact, each with its own camera, and ends on your mark |
+| II Measure | an instrument: four rings of sticks round the figure, one a fact, each in a pigment | the figure in the middle, swaying a little; the reading large at the right, and what the ring in hand says goes round the body with it | turn a ring (drag, scroll on it, its coins, the arrows, or type); the scroll goes from fact to fact, to the four together, and ends on your mark |
 | III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the figure in a niche at the end | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the wall | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
 | IV Week plan | the sun's path: the day as a ring of hours behind the figure, in the hour's light | a day at a time on its ring, then the week as seven rings and one sentence; generated, seven arches on one horizon | drag along a day's ring over busy hours (the session moves); scroll, the arrow keys or the footer's suns from day to day |
 
 How each is built:
 
-- **Measure** (`js/measure-view.js`). The rings are drawn in two 2D
-  canvases, one under the sculpture's and one over it, so each passes
-  behind the body. Their place, size and tilt come from the live camera
-  (`room()`), so they follow every move of it. A ring's scale is engraved
-  round its face and read under an index at the front. On a phone there
-  are no rings; the facts stack.
-  - *Each fact has its own shot*, framed so no ring reaches the top bar.
-  - *Each ring is its own metal* (`METAL`), all four close to the bronze:
-    pale gold, bronze, copper, verdigris. Its tag, its rule and its words
-    take that tone (`--m-…`), which is how the page's colour ties a word
-    to its ring. The scale is inlaid bright from its low end up to the
-    reading, and each tag carries the same thing as a gauge.
-  - *The reading goes round the body* (`drawOrbit`). What the ring in hand
-    says (its reading, the other unit, one phrase) is set letter by letter
-    on a wider circle in the ring's plane: the near half crosses the body
-    and is read, the far half passes behind it. It turns as the ring is
-    turned and drifts when left alone. The same words stay in the page for
-    a screen reader. The typed number and its rule (bronze, graduated)
-    stay at the side.
-  - *The room moves.* The rings come down one after another on entering
-    and sway when left alone; the body turns with the ring in hand.
-    Reduced motion stills all of it.
-  - *Your mark* (first "the seal", then the rings seen from above, which
-    the user found too plain to keep in a profile). The camera still rises
-    to look straight down, but that is now only the way in: the four rings
-    close into the rim of a medal, each leaving a bead where its scale
-    begins, and the mark is struck as they meet. Its face is a disc of
-    polished stone whose veining is drawn from a seed kept with the
-    measure (`BodyMeasure.seed`: cut once, unchanged when a reading
-    changes, recut only on request), inscribed in gilt with the first
-    letter of the name, the name and the day. Five stones to choose from
-    (the keys the seal's inks had). Nothing on it depends on the chosen
-    muscles or on a symbol the app picked.
+- **Measure** (`js/measure-view.js`): from the user's Claude Design file
+  "Measure v4" (2026-11-17), which replaced the bronze rings, with their
+  changes: the live marble in the middle, the rings not in hand alive, and
+  the reading and the ring in hand larger. The words are set in a
+  1440 × 900 plate scaled to the screen (as Nutrition's and the Week
+  plan's); the marble is stood on the rings' axis each frame
+  (`AnatomySculpture.standAt`); the rings are drawn in two 2D canvases,
+  one under the sculpture's and one over it, so each passes behind the
+  body. On a phone the rings are left out for now.
+  - *A ring is a scale of sticks*, a stick a unit, in the fact's pigment
+    (`PIG`): reached, they stand up softened, every major one and the
+    reading in full; the rest stand low and outlined, as Targets' empty
+    places do. Physiology's three stops are three clumps; "Not said" is
+    hatched. The ring in hand grows and its scale is numbered.
+  - *The reading at the right* rolls its digits to the value; pressed, it
+    becomes the field it is typed in. Two coins step it.
+  - *The reading goes round the body* (`drawOrbit`): its reading, the
+    other unit and one phrase, letter by letter on a wider circle in the
+    ring's plane, the far half behind the body.
+  - *Nothing is paused.* The rings come down one after another on
+    entering; the rings not in hand breathe (a slow swell of width and
+    sticks, a soft wave round them, a little rise and fall, their scales
+    drifting); the marble sways ±4° over 16 s and turns with the ring in
+    hand. Reduced motion stills all of it.
+  - *Your mark*, after the four together. The rings close round a disc of
+    polished stone as rims, their sticks turned outward, each filled as
+    far as its reading, and the marble steps back. The stone's veining is
+    drawn from a seed kept with the measure (`BodyMeasure.seed`: cut once,
+    unchanged when a reading changes, recut only on request), inscribed in
+    gilt with the first letter of the name, the name and the day. Five
+    stones to choose from. Nothing on it depends on the chosen muscles or
+    on a symbol the app picked.
 - **Nutrition** (`js/nutrition-view.js`): *the day, in perspective*,
   from the user's Claude Design file "Nutrition - Perspectiva" (2026-11-14),
   which replaced the balance and the urn. A room drawn each frame in a 2D
