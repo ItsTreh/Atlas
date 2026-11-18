@@ -25,7 +25,7 @@ Each new visit opens on the sculpture in one of five ways: the figure from below
 | | Stage | What you do there | State |
 |:-:|---|---|---|
 | **I** | Targets | Pick muscles on the sculpture, then set each to Focus, Normal or Maintain. | Redesigned. The maths isn't evidenced yet. |
-| **II** | Measure | Give your stature, mass, years and physiology on four bronze rings round the figure, then strike your mark. | Redesigned. Nutrition reads the weight. |
+| **II** | Measure | Give your stature, mass, years and physiology on four rings of sticks round the figure, then see your mark. | Redesigned. Nutrition reads the weight. |
 | **III** | Nutrition | Get calorie and protein targets worked out from the training, then walk the day meal by meal. | Redesigned. The maths isn't evidenced yet. |
 | **IV** | Week plan | Mark your busy hours on each day's ring of hours, then get sessions, exercises and meals placed in what's left. | Redesigned. The maths isn't evidenced yet. |
 
@@ -41,7 +41,7 @@ On the start screen, Targets and Measure, the light on the sculpture follows you
 
 ### II · Measure
 
-Measure is an instrument: four bronze rings hang round the figure, one for each fact, each read at the front under its index. A ring over the crown for your height, one at the waist for your weight, the widest, leaning, for your years, and one round the feet for the physiology the resting-burn equation uses. Turn a ring by dragging it, with its coins or by typing; the body turns with the ring in hand. Scroll to go from fact to fact, each with its own camera. Last, the camera rises to look straight down, the four rings close into the rim of a medal, and **your mark** is struck: a disc of polished stone inscribed with your name and the day.
+Measure is an instrument: four rings of sticks hang round the figure, one for each fact, each in one of the app's pigments and read at the front under its index. A stick is a unit of the ring's scale: those reached stand up in colour, the rest stand low. A ring over the crown for your height, one at the waist for your weight, the widest, leaning, for your years, and one round the feet for the physiology the resting-burn equation uses. Turn a ring by dragging or scrolling on it, with its coins, the arrow keys or by typing the large number at the right; what it reads travels round the body. The rings not in hand breathe, and the marble sways a few degrees. Scroll or use the footer's coins to go from fact to fact, then to the four together. Last, the four rings close round a disc of polished stone, **your mark**, inscribed with your name and the day.
 
 Nutrition plans from the weight given here. The rest of Measure doesn't affect the plan yet: wiring it into training and the resting-burn maths is next on the roadmap.
 
