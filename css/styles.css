@@ -1506,15 +1506,8 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 #atlas[data-opening] .mz-canvas { opacity: 0; transition: none; }
 /* Once landed, the stage sets the figure's haze every frame (the mark dims it). */
 .atlas[data-stage="measure"][data-phase="idle"] .anatomy-sculpture canvas { transition: none; }
-/* The reading at the right, flush to the right margin and very large, by
-   the user's word. It may reach over the rings, so only its controls take
-   the pointer; the rings under it stay in reach. */
-.mz-read { position: absolute; right: 48px; top: 196px; width: 600px; text-align: right; pointer-events: none; }
-.mz-read :is(button, input, label, [role=radiogroup]) { pointer-events: auto; }
-.mz-read > div, .mz-read [role=radiogroup], .mz-own { justify-content: flex-end; }
-.mz-read[data-k="four"] > *, .mz-read[data-k="mark"] > * { max-width: 380px; margin-left: auto !important; }
-.mz-read p[style*="display:flex"] { justify-content: flex-end; }
-.mz-read .mz-row { width: 100%; }
+/* The reading at the right: larger than the design's, by the user's word. */
+.mz-read { position: absolute; left: 1072px; top: 214px; width: 330px; }
 .mz-stick { display: block; width: 9px; height: 20px; border-radius: 2px; transform-origin: bottom; }
 .mz-link {
   padding: 0; background: none; border: 0; cursor: pointer; font-size: 13px !important; font-weight: 500 !important; color: var(--ink-soft);
@@ -1552,7 +1545,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
   background: none; border: 0; border-top: 1px solid var(--line-soft); cursor: pointer; text-align: left;
 }
 .mz-own { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; }
-.mz-own .own-name, .mz-own .own-ink-w { align-items: flex-end; }
+.mz-own .own-name, .mz-own .own-ink-w { align-items: flex-start; }
 /* The footer's coins: a ring each, the four, your mark. */
 .foot-measure { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: center; gap: 10px; pointer-events: auto; }
 .atlas:not([data-stage="measure"]) .foot-measure { display: none; }
