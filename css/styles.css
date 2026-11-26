@@ -45,6 +45,8 @@
   --accent-ink:   #faf8f4;
   --accent-soft:  #e6e0d5;
   --warn:         #8a5212;
+  --warm:         #dca545;   /* Measure's resting burn, its light */
+  --grain: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%220 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');
   --err:          #a3452f;
 
   /* anatomy: body < muscle < selected, stepping in lightness */
@@ -96,6 +98,7 @@
   --accent-ink:   #14120f;
   --accent-soft:  #2e2923;
   --warn:         #e0a458;
+  --warm:         #eab456;
   --err:          #e8846a;
 
   --body:        #29251f;
@@ -1490,100 +1493,94 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 
 /* -------------------------------- measure --------------------------------- */
 
-/* Four facts for Nutrition (js/measure-view.js), from the Claude Design
-   file "Measure v4". The words are set in a 1440 × 900 plate scaled to the
-   screen; four rings of sticks round the marble are drawn on two canvases,
-   one under the sculpture and one over it. */
+/* Four facts for Nutrition and the resting burn they make (js/measure-view.js),
+   from the Claude Design file "Measure v13". The words are set in a 1440 × 900
+   plate scaled to the screen; the plinth and the rings are drawn on two
+   canvases, one under the sculpture and one over it, and behind them all the
+   sky the burn breathes. */
 .stage-measure { inset: 0; overflow: hidden; }
 .arm { position: absolute; inset: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
 .mz-plate { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
 .mz-plate button { font: inherit; }
-.mz-plate :is(button, input):focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
-.mz-hit { position: absolute; left: 380px; top: 96px; width: 700px; height: 714px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.mz-plate :is(button, input, a):focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.mz-pad { position: absolute; left: 0; top: 72px; width: 1440px; height: 748px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .mz-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; transition: opacity .25s ease; }
 .atlas[data-stage="measure"][data-shown] .mz-canvas { opacity: 1; transition: opacity .9s ease .15s; }
-.atlas[data-layout="mobile"] .mz-canvas, .anatomy-stage.flat .mz-canvas { display: none; }
-#atlas[data-opening] .mz-canvas { opacity: 0; transition: none; }
-/* Once landed, the stage sets the figure's haze every frame (the mark dims it). */
+.atlas[data-layout="mobile"] :is(.mz-canvas, .mz-sky), .anatomy-stage.flat .mz-canvas { display: none; }
+#atlas[data-opening] :is(.mz-canvas, .mz-sky) { opacity: 0; transition: none; }
+.mz-sky { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .45s ease; }
+.atlas[data-stage="measure"] .mz-sky { opacity: 1; transition: opacity .9s ease .15s; }
+.mz-sky-light { position: absolute; inset: 0; background: var(--bg); }
+.mz-grain { position: absolute; inset: 0; opacity: .3; background-image: var(--grain); }
+[data-theme="dark"] .mz-grain { opacity: .55; }
+/* Once landed, the stage films the figure every frame. */
 .atlas[data-stage="measure"][data-phase="idle"] .anatomy-sculpture canvas { transition: none; }
-/* The reading at the right: larger than the design's, by the user's word. */
-.mz-read { position: absolute; left: 1072px; top: 214px; width: 330px; }
-.mz-stick { display: block; width: 9px; height: 20px; border-radius: 2px; transform-origin: bottom; }
-.mz-link {
-  padding: 0; background: none; border: 0; cursor: pointer; font-size: 13px !important; font-weight: 500 !important; color: var(--ink-soft);
-  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink-faint) 70%, transparent); text-underline-offset: 3px;
-}
-.mz-link[aria-pressed="true"] { color: var(--ink); }
-.mz-link:hover { color: var(--ink); }
-/* The number, its digits rolling to the value; pressed, it is typed. */
-.mz-roll {
-  display: flex; padding: 0; margin: 0; background: none; border: 0; cursor: text; color: inherit;
-  letter-spacing: -.03em; font-variant-numeric: lining-nums tabular-nums;
-}
-.mz-digit { display: inline-block; height: 1em; overflow: hidden; }
-.mz-digit > span { display: flex; flex-direction: column; transition: transform .8s cubic-bezier(.16, 1, .3, 1); }
-.mz-in {
-  box-sizing: content-box; padding: 0; margin: 0; letter-spacing: -.03em; font-variant-numeric: lining-nums tabular-nums;
-  color: inherit; caret-color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; outline: none;
-}
-.mz-in::placeholder { color: var(--line); opacity: 1; }
-.mz-coin {
-  display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: transparent;
-  color: var(--ink-soft); cursor: pointer; transition: background .35s cubic-bezier(.16, 1, .3, 1), color .35s cubic-bezier(.16, 1, .3, 1);
-}
-.mz-coin svg, .foot-measure svg { width: 100%; height: 100%; display: block; overflow: visible; fill: none; stroke: currentColor; }
-.mz-beads { stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 0 1; }
-.mz-coin:hover { background: var(--ink); color: var(--bg); }
-.mz-coin:active { transform: scale(.94); }
-.mz-stop { position: relative; padding: 2px 0 8px; background: none; border: 0; cursor: pointer; transition: color .3s ease; }
-.mz-stop span {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--ink);
-  transform-origin: left; transition: transform .55s cubic-bezier(.16, 1, .3, 1);
-}
-.mz-row {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0 8px;
-  background: none; border: 0; border-top: 1px solid var(--line-soft); cursor: pointer; text-align: left;
-}
-.mz-own { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px 28px; margin-top: 22px; }
-.mz-own .own-name, .mz-own .own-ink-w { align-items: flex-start; }
-/* The footer's coins: a ring each, the four, your mark. */
-.foot-measure { grid-column: 2; grid-row: 1; display: flex; align-items: center; justify-content: center; gap: 10px; pointer-events: auto; }
-.atlas:not([data-stage="measure"]) .foot-measure { display: none; }
-.foot-measure button {
-  position: relative; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
-  background: transparent; color: var(--ink-soft); font: 500 12px/1 var(--serif); letter-spacing: .02em; transition: background .35s ease, color .35s ease;
-}
-.foot-measure button svg { position: absolute; inset: 0; }
-.foot-measure button span { position: relative; }
-.foot-measure button[aria-current="step"] { background: var(--ink); color: var(--bg); }
-.foot-measure .mz-stone { display: block; width: 9px; height: 9px; border-radius: 50%; background: var(--sw); }
-.foot-measure .mz-stone[data-ink="core"], .own-ink [data-ink="core"] { --sw: radial-gradient(circle at 35% 30%, #b0595a, #8a3a3c 55%, #4f1b22); }
-.foot-measure .mz-stone[data-ink="pull"], .own-ink [data-ink="pull"] { --sw: radial-gradient(circle at 35% 30%, #4f6da8, #2b4884 55%, #15264d); }
-.foot-measure .mz-stone[data-ink="legs"], .own-ink [data-ink="legs"] { --sw: radial-gradient(circle at 35% 30%, #4f7d66, #2c5943 55%, #122d21); }
-.foot-measure .mz-stone[data-ink="push"], .own-ink [data-ink="push"] { --sw: radial-gradient(circle at 35% 30%, #e2ba68, #c0913c 55%, #7a5116); }
-.foot-measure .mz-stone[data-ink="ink"], .own-ink [data-ink="ink"] { --sw: radial-gradient(circle at 35% 30%, #575350, #242221 55%, #0a0909); }
-@media (prefers-reduced-motion: reduce) { .arm *, .foot-measure * { transition: none !important; } }
-.own-name, .own-ink-w { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.own-name { cursor: text; }
-.own-l { font: 500 10px/1 var(--font); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-faint); }
-.own-in {
-  width: 8.5em; padding: 2px 0 5px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none;
-  text-align: center; font: italic 400 26px/1 var(--serif); color: var(--ink); outline: none; transition: border-color .3s ease;
-}
-.own-in::placeholder { color: var(--ink-faint); opacity: 1; }
-.own-in:hover { border-bottom-color: var(--ink-faint); }
-.own-in:focus { border-bottom-color: var(--ink); }
-.own-ink { display: flex; gap: 8px; }
-.own-ink button {
-  display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
-  box-shadow: 0 0 0 1px var(--line); transition: box-shadow .3s ease, transform .2s ease;
-}
-.own-ink i { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--sw); }
-/* The stones the mark is cut from (STONES in measure-view.js). */
-.own-ink button:hover { transform: scale(1.08); }
-.own-ink button[aria-checked="true"] { box-shadow: 0 0 0 1.5px var(--ink); }
-.own-ink button:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
+/* The reading, in its own column at the right; placed each frame. */
+.mz-ro { position: absolute; left: 0; top: 0; z-index: 4; width: 530px; display: flex; flex-direction: column; transform-origin: 0 0; opacity: 0; }
+.mz-ro-head { display: flex; align-items: center; gap: 16px; }
+.mz-ro-num { font: italic 400 46px/1 var(--serif); }
+.mz-ro-name { font: 500 11px/1 var(--mono); letter-spacing: .3em; color: var(--ink); }
+.mz-ro-line { flex: 1; height: 1px; background: color-mix(in oklab, var(--ink-faint) 45%, transparent); }
+.mz-ro-of { font: 500 10px/1 var(--mono); letter-spacing: .2em; }
+.mz-ro-q { margin: 16px 0 0; max-width: 520px; font: italic 400 46px/1.04 var(--serif); letter-spacing: -.01em; color: var(--ink-soft); text-wrap: balance; outline: none; }
+.mz-val { position: relative; display: flex; flex-wrap: wrap; }
+.mz-val-num { align-items: baseline; gap: 0 18px; margin-top: 6px; padding-bottom: 14px; }
+.mz-val-phys { align-items: flex-end; gap: 30px; margin-top: 24px; }
+.mz-rule { position: absolute; left: -18px; right: 0; bottom: 0; height: 1.5px; opacity: calc(.45 + .55 * var(--flare, 0)); }
+.mz-field { display: inline-flex; align-items: baseline; gap: 10px; cursor: text; }
+.mz-in {
+  box-sizing: content-box; padding: 0; margin: 0; font: 400 200px/.9 var(--serif); letter-spacing: -.035em; font-variant-numeric: lining-nums;
+  color: var(--ink); caret-color: var(--ink); background: none; border: 0; border-radius: 0; outline: none;
+}
+.mz-plate .mz-in:focus-visible { outline: none; }   /* the caret and the rule show it, as in the design */
+.mz-in::placeholder { color: color-mix(in oklab, var(--ink-faint) 45%, var(--bg)); opacity: 1; }
+.mz-unit { font: italic 400 52px/1 var(--serif); }
+.mz-unit-rest { font-size: 40px; }
+.mz-total { font: 400 164px/.9 var(--serif); letter-spacing: -.035em; font-variant-numeric: lining-nums; color: var(--ink); }
+.mz-stop {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 0 2px 16px;
+  background: none; border: 0; cursor: pointer; transition: color .25s ease;
+}
+.mz-stop-l { font: 400 54px/1 var(--serif); white-space: nowrap; }
+.mz-stop-t { font: 500 10px/1 var(--mono); letter-spacing: .14em; color: var(--ink-faint); }
+.mz-stop-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 1px; background: var(--legs); transform-origin: left; transition: transform .45s cubic-bezier(.16, 1, .3, 1); }
+.mz-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px 28px; margin-top: 24px; }
+.mz-fact { display: flex; flex-direction: column; gap: 9px; padding-top: 12px; border-top: 1px solid color-mix(in oklab, var(--ink-faint) 35%, transparent); }
+.mz-fact span:first-child { font: 500 10px/1.3 var(--mono); letter-spacing: .18em; }
+.mz-fact span:last-child { font: 400 32px/1 var(--serif); font-variant-numeric: lining-nums; color: var(--ink); white-space: nowrap; }
+.mz-terms { display: flex; flex-direction: column; margin-top: 20px; }
+.mz-term {
+  display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 16px; align-items: baseline; padding: 8px 0; margin: 0;
+  background: none; border: 0; border-bottom: 1px solid var(--line-soft); cursor: pointer; text-align: left; color: var(--ink);
+}
+.mz-term:hover { color: var(--ink-soft); }
+.mz-dot { width: 9px; height: 9px; border-radius: 50%; }
+.mz-term-n { display: flex; align-items: baseline; gap: 12px; font: italic 400 28px/1.1 var(--serif); }
+.mz-term-n span { font: 500 10px/1 var(--mono); font-style: normal; letter-spacing: .1em; color: var(--ink-faint); }
+.mz-term-v { font: 400 28px/1 var(--serif); font-variant-numeric: lining-nums tabular-nums; }
+.mz-source { margin: 12px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink-faint); }
+.mz-source a { color: var(--ink-soft); text-underline-offset: 3px; }
+.mz-source a:hover { color: var(--ink); }
+.mz-hint { margin-top: 22px; font: italic 400 23px/1.3 var(--serif); color: var(--ink-faint); }
+.mz-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 28px; margin-top: 10px; }
+.mz-units { display: flex; align-items: center; gap: 18px; }
+.mz-link {
+  padding: 10px 0; background: none; border: 0; cursor: pointer; font: 500 11.5px/1 var(--mono) !important; letter-spacing: .18em;
+  color: var(--ink-soft); text-decoration-thickness: 1px; text-underline-offset: 7px;
+}
+.mz-units .mz-link { color: var(--ink-faint); }
+.mz-units .mz-link[aria-pressed="true"] { color: var(--ink); text-decoration-line: underline; }
+.mz-link:hover { color: var(--ink) !important; }
+
+/* The footer's index: a bead a fact, filled once given; the sum, a warm light. */
+.foot-measure { grid-column: 2; grid-row: 1; display: flex; align-items: flex-start; justify-content: center; gap: 4px; pointer-events: auto; }
+.atlas:not([data-stage="measure"]) .foot-measure { display: none; }
+.foot-measure button { display: flex; flex-direction: column; align-items: center; gap: 7px; width: 66px; padding: 4px 0 0; background: none; border: 0; cursor: pointer; }
+.foot-measure svg { display: block; overflow: visible; }
+.foot-measure span { font-size: 10px; line-height: 1; letter-spacing: .04em; white-space: nowrap; color: var(--ink-faint); transition: color .3s ease; }
+.foot-measure button[aria-current="step"] span, .foot-measure button:hover span { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .arm *, .foot-measure * { transition: none !important; } }
 /* ------------------------------- nutrition -------------------------------- */
 
 /* The day in perspective (js/nutrition-view.js). A room drawn in a canvas
@@ -1681,7 +1678,7 @@ h1[tabindex]:focus-visible { outline: none; }   /* the heading focus lands on af
 .lm-sky-light { position: absolute; inset: 0; background: var(--bg); }
 .lm-grain {
   position: absolute; inset: 0; opacity: .3;
-  background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%22.85%22 numOctaves=%222%22 stitchTiles=%22stitch%22/%3E%3CfeColorMatrix values=%220 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22/%3E%3C/svg%3E');
+  background-image: var(--grain);
 }
 [data-theme="dark"] .lm-grain { opacity: .55; }
 .lm-arc { left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }

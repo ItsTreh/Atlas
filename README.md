@@ -25,7 +25,7 @@ Each new visit opens on the sculpture in one of five ways: the figure from below
 | | Stage | What you do there | State |
 |:-:|---|---|---|
 | **I** | Targets | Pick muscles on the sculpture, then set each to Focus, Normal or Maintain. | Redesigned. The maths isn't evidenced yet. |
-| **II** | Measure | Give your stature, mass, years and physiology on four rings of sticks round the figure, then see your mark. | Redesigned. Nutrition reads the weight. |
+| **II** | Measure | Give your stature, mass, years and physiology on four rings round the figure on its plinth, then see the resting burn they make. | Redesigned. Nutrition reads the weight. |
 | **III** | Nutrition | Get calorie and protein targets worked out from the training, then walk the day meal by meal. | Redesigned. The maths isn't evidenced yet. |
 | **IV** | Week plan | Mark your busy hours on each day's ring of hours, then get sessions, exercises and meals placed in what's left. | Redesigned. The maths isn't evidenced yet. |
 
@@ -41,9 +41,9 @@ On the start screen, Targets and Measure, the light on the sculpture follows you
 
 ### II · Measure
 
-Measure is an instrument: four rings of sticks hang round the figure, one for each fact, each in one of the app's pigments and read at the front under its index. A stick is a unit of the ring's scale: those reached stand up in colour, the rest stand low. A ring over the crown for your height, one at the waist for your weight, the widest, leaning, for your years, and one round the feet for the physiology the resting-burn equation uses. Turn a ring by dragging or scrolling on it, with its coins, the arrow keys or by typing the large number at the right; what it reads travels round the body. The rings not in hand breathe, and the marble sways a few degrees. Scroll or use the footer's coins to go from fact to fact, then to the four together. Last, the four rings close round a disc of polished stone, **your mark**, inscribed with your name and the day.
+Measure stands the marble on a plinth of two steps, with four rings round it, one for each fact, each in one of the app's pigments. Press a ring to take it up and a camera moves round the body to look at it: a ring at the crown for your height, read off a rod; a girdle at the waist as wide as your weight; the dial round the plinth's edge for your years, a bead a year; a ring at the hips for the physiology the resting-burn equation uses. Drag the ring, use the arrow keys, or type the large number at the right. Scroll or use the footer's index to go from fact to fact. Last, the four close into one ring at the chest: **your estimated resting burn**, by the Mifflin–St Jeor equation, worked out term by term. Everything moves at the pace of that burn.
 
-Nutrition plans from the weight given here. The rest of Measure doesn't affect the plan yet: wiring it into training and the resting-burn maths is next on the roadmap.
+Nutrition plans from the weight given here. The resting-burn estimate is shown on Measure only; wiring it into Nutrition and training is next on the roadmap.
 
 ### III · Nutrition *(optional)*
 
@@ -143,7 +143,7 @@ js/                      ── data and logic: no page code, all tested ──
   routine.js             WeeklyRoutine, the shared plan; places the week and its meals
   scheduler.js           finds the days and hours for the sessions
   nutrition.js, foods.js calorie and protein targets; foods, diets, example meals
-  measure.js             the measure's four facts and your mark
+  measure.js             the measure's four facts and the resting-burn estimate
   storage.js             saves your inputs in the browser, and restores them
 
                          ── the figure ──
@@ -163,7 +163,7 @@ js/                      ── data and logic: no page code, all tested ──
   targets-muscles.js, targets-train.js
                          Your muscles and Training focus as scrolled pages, on a wide screen
   flow-front.js          the words behind the body, woven in front of the nearer leg
-  measure-view.js        Measure: the four rings and your mark
+  measure-view.js        Measure: the plinth, the four rings and the resting burn
   nutrition-view.js      Nutrition: the room in perspective, the sum and the walk through the day
   week-view.js           the Week plan: the day's ring, the hour's light, the week
   workout-view.js        what a generated week is missing, and how a session is named
@@ -193,7 +193,7 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 - [x] Front and Back, with a limited drag orbit, and a lamp that follows the pointer
 - [x] The start screen and its five openings
 - [x] Targets in three movements: How it works, Your muscles, Training focus
-- [x] Measure, as four bronze rings round the figure and your mark
+- [x] Measure, as four rings round the figure on its plinth, and the resting burn
 - [x] Nutrition, as the day in perspective: the sum, each meal in its arch, the day laid out at the figure's niche
 - [x] The Week plan, as the day's ring of hours in the hour's light: a day at a time, then the week
 - [x] An evidence register that labels where every planner value comes from

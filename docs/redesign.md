@@ -130,44 +130,38 @@ moved through. The marble is one mesh, one renderer and one material.
 | Stage | The room | How it is laid out | How it is moved |
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
-| II Measure | an instrument: four rings of sticks round the figure, one a fact, each in a pigment | the figure in the middle, swaying a little; the reading large at the right, and what the ring in hand says goes round the body with it | turn a ring (drag, scroll on it, its coins, the arrows, or type); the scroll goes from fact to fact, to the four together, and ends on your mark |
+| II Measure | the marble on a plinth of two steps, four rings round it, one a fact, each in a pigment, in a sky that breathes with the resting burn | the figure at the left, filmed by a camera that moves round it to each ring; the reading in its own column at the right, a thread to it from the ring | take a ring up (press it) and drag it, the arrows, or type; the scroll goes from fact to fact and ends on the resting burn, the four closed into one ring |
 | III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the figure in a niche at the end | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the wall | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
 | IV Week plan | the sun's path: the day as a ring of hours behind the figure, in the hour's light | a day at a time on its ring, then the week as seven rings and one sentence; generated, seven arches on one horizon | drag along a day's ring over busy hours (the session moves); scroll, the arrow keys or the footer's suns from day to day |
 
 How each is built:
 
 - **Measure** (`js/measure-view.js`): from the user's Claude Design file
-  "Measure v4" (2026-11-17), which replaced the bronze rings, with their
-  changes: the live marble in the middle, the rings not in hand alive, and
-  the reading and the ring in hand larger. The words are set in a
-  1440 × 900 plate scaled to the screen (as Nutrition's and the Week
-  plan's); the marble is stood on the rings' axis each frame
-  (`AnatomySculpture.standAt`); the rings are drawn in two 2D canvases,
-  one under the sculpture's and one over it, so each passes behind the
-  body. On a phone the rings are left out for now.
-  - *A ring is a scale of sticks*, a stick a unit, in the fact's pigment
-    (`PIG`): reached, they stand up softened, every major one and the
-    reading in full; the rest stand low and outlined, as Targets' empty
-    places do. Physiology's three stops are three clumps; "Not said" is
-    hatched. The ring in hand grows and its scale is numbered.
-  - *The reading at the right* rolls its digits to the value; pressed, it
-    becomes the field it is typed in. Two coins step it.
-  - *The reading goes round the body* (`drawOrbit`): its reading, the
-    other unit and one phrase, letter by letter on a wider circle in the
-    ring's plane, the far half behind the body.
-  - *Nothing is paused.* The rings come down one after another on
-    entering; the rings not in hand breathe (a slow swell of width and
-    sticks, a soft wave round them, a little rise and fall, their scales
-    drifting); the marble sways ±4° over 16 s and turns with the ring in
-    hand. Reduced motion stills all of it.
-  - *Your mark*, after the four together. The rings close round a disc of
-    polished stone as rims, their sticks turned outward, each filled as
-    far as its reading, and the marble steps back. The stone's veining is
-    drawn from a seed kept with the measure (`BodyMeasure.seed`: cut once,
-    unchanged when a reading changes, recut only on request), inscribed in
-    gilt with the first letter of the name, the name and the day. Five
-    stones to choose from. Nothing on it depends on the chosen muscles or
-    on a symbol the app picked.
+  "Measure v13" (2026-11-26), which replaced the rings of sticks and the
+  mark, with one change of the user's: the sum is not called "the four,
+  at rest". The words are set in a 1440 × 900 plate scaled to the screen;
+  the plinth, the rings and their words are drawn through the design's
+  own perspective camera on two 2D canvases, one under the sculpture and
+  one over it, each point on the side of the body it passes; the marble
+  is filmed through the same camera each frame
+  (`AnatomySculpture.filmAt`, which takes a roll), scaled to the height
+  given. Behind them all, the sky (`.mz-sky`). On a phone the rings and
+  the sky are left out for now.
+  - *A shot a fact* (`SHOT`): stature from the floor, looking up at a ring
+    at the crown read off a rod on the lower step; mass over the shoulder
+    onto a girdle as wide as the kilos, read off a rule running out level;
+    years from above onto the dial cut round the plinth, a bead a year;
+    physiology level with the hips, three stops on a ring, the one turned
+    to face you counting. At rest the camera walks slowly round.
+  - *At rest* the four close into one ring at the chest, each term an arc
+    as long as what it adds to the resting-burn estimate
+    (`restingBurn`, Mifflin–St Jeor), what takes away hatched back from
+    where they close. The reading lists the equation term by term, with
+    its source; a fact not given counts as the marble's, and says so.
+  - *Nothing is paused.* Everything orbits at the pace of the burn; a
+    light (the sweep) runs round the ring in hand and lights its reading
+    as it passes; the sky and the marble breathe with it. Reduced motion
+    stills all of it.
 - **Nutrition** (`js/nutrition-view.js`): *the day in perspective*,
   from the user's Claude Design file "Nutrition - Perspectiva" (2026-11-14),
   which replaced the balance and the urn. A room drawn each frame in a 2D
@@ -236,8 +230,9 @@ Open, for the user:
   (`SCULPTURE_TECHNIQUES`, `setTechnique`, `setCast`) and
   `tests/sculpture-technique.test.js` tests them. Nothing calls them now:
   to delete, once this direction is accepted.
-- The rings, the mark and the room have no tests of their own beyond
-  the mark's seed (`tests/measure.test.js`).
+- Measure's room has no tests of its own; its maths has
+  (`tests/measure.test.js`), and the camera it films the figure through
+  is held to its own (`tests/sculpture-film.test.js`).
 - The phone keeps plain versions of all three rooms.
 
 ### Type
