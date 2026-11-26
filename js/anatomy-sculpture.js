@@ -460,7 +460,7 @@ class AnatomySculpture {
 
   /** A shot's camera in this figure's units, framed for the layout. */
   shotParams(name = this.shotName) {
-    const s = { ...(SCULPTURE_SHOTS[name] || SCULPTURE_SHOTS["targets-front"]) };
+    const s = { roll: 0, ...(SCULPTURE_SHOTS[name] || SCULPTURE_SHOTS["targets-front"]) };
     if (this.mobile) {
       const fit = SCULPTURE_MOBILE[/^(targets|measure)/.test(name) ? "targets" : name] || {};
       s.sx = 0.5; s.sy = 0.5;
@@ -543,10 +543,13 @@ class AnatomySculpture {
     const t = Math.tan(s.fov * r / 2), aspect = W / H;
     const near = Math.max(1, s.d - this.reach), far = s.d + this.reach;
     const ox = 2 * (s.sx - 0.5), oy = -2 * (s.sy - 0.5);
+    // A roll turns the picture round the aim point, clockwise on screen for
+    // a positive angle, measured in pixels (so the aspect comes into it).
+    const rc = Math.cos((s.roll || 0) * r), rs = Math.sin((s.roll || 0) * r);
     // Projection, with the aim point shifted to (sx, sy): x' = x + ox·w.
     const P = [
-      1 / (aspect * t), 0, 0, 0,
-      0, 1 / t, 0, 0,
+      rc / (aspect * t), -rs / t, 0, 0,
+      rs / (aspect * t), rc / t, 0, 0,
       -ox, -oy, (far + near) / (near - far), -1,
       0, 0, 2 * far * near / (near - far), 0
     ];
@@ -774,6 +777,34 @@ class AnatomySculpture {
     const c = this.cur;
     if (c && Math.abs(c.d - s.d) < c.d * 1e-4 && Math.abs(c.sx - s.sx) < 1e-4 && Math.abs(c.sy - s.sy) < 1e-4 &&
         c.az === s.az && c.el === 0 && c.ty === s.ty && c.fov === s.fov && !this.off) return;
+    this.cur = s;
+    this.off = 0;
+    this.schedule();
+  }
+
+  /**
+   * Films the figure through a camera the page works out each frame: the
+   * eye `d` from the aim point `ty` up the axis from the soles (both in the
+   * shots' units), `az` round, `el` up and `roll` about the aim point (all
+   * degrees); the aim point at (`x`, `y`) CSS px of the canvas, through a
+   * lens of `focal` px. Measure's rings are drawn through the same camera,
+   * so they pass round the body exactly. Like standAt, while a move to the
+   * stage's shot runs this is where the move ends.
+   */
+  filmAt({ az, el, ty, d, x, y, focal, roll = 0 }) {
+    if (!this.size || !(d > 0) || !(focal > 0)) return;
+    const { cw, ch } = this.size;
+    const s = { az, el, ty: ty * this.scale, d: d * this.scale, sx: x / cw, sy: y / ch,
+                fov: 2 * Math.atan(ch / 2 / focal) * 180 / Math.PI, roll };
+    if (this.tween) {
+      const to = this.tween.to;
+      this.tween.from.roll = this.tween.from.roll || 0;
+      this.tween.to = { ...s, az: to.az + (((az - to.az) % 360 + 540) % 360 - 180) };
+      return;
+    }
+    if (this.drag || this.offTween || this.between) return;
+    const c = this.cur;
+    if (c && !this.off && Object.keys(s).every(k => Math.abs(c[k] - s[k]) < 1e-5)) return;
     this.cur = s;
     this.off = 0;
     this.schedule();
