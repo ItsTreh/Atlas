@@ -23,34 +23,24 @@ describe("the measure", () => {
     expect([m.cm, m.sex, m.given]).toEqual([null, null, 2]);
   });
 
-  test("the mark's stone is cut once, kept through a reload, and forgotten by clear()", () => {
+  test("clear() keeps the units", () => {
     const m = new app.BodyMeasure();
-    expect(m.seed).toBe(null);
-    const seed = m.recut(() => .5);
-    expect(Number.isInteger(seed) && seed > 0).toBe(true);
-    m.set("kg", 80);                      // a fact changing does not recut it
-    expect(m.seed).toBe(seed);
-    const back = new app.BodyMeasure();
-    back.restore(json(m.snapshot()));
-    expect(back.seed).toBe(seed);
-    back.restore({ seed: -4 }); back.restore({ seed: "x" }); back.restore({ seed: 1.5 });
-    expect(back.seed).toBe(seed);
+    m.units = "imperial";
+    m.set("kg", 70); m.set("sex", "male");
     m.clear();
-    expect(m.seed).toBe(null);
+    expect([m.kg, m.sex, m.given, m.units]).toEqual([null, null, 0, "imperial"]);
   });
 
-  test("clear() keeps the units and the ink", () => {
+  test("the mark's old name, stone and day are dropped from a stored measure", () => {
     const m = new app.BodyMeasure();
-    Object.assign(m, { units: "imperial", ink: "pull", name: "Ada", sealed: "2026-10-27" });
-    m.set("kg", 70);
-    m.clear();
-    expect([m.kg, m.name, m.sealed, m.units, m.ink]).toEqual([null, null, null, "imperial", "pull"]);
+    m.restore({ kg: 70, ink: "pull", name: "Ada", sealed: "2026-10-27", seed: 42 });
+    expect(m.snapshot()).toEqual({ cm: null, kg: 70, age: null, sex: null, units: "metric" });
   });
 
   test("a stored measure comes back whole", () => {
     const m = new app.BodyMeasure();
     m.set("cm", 181); m.set("kg", 82.5); m.set("age", 41); m.set("sex", "unspecified");
-    Object.assign(m, { units: "imperial", ink: "legs", name: "Ada", sealed: "2026-10-27" });
+    m.units = "imperial";
     const back = new app.BodyMeasure();
     back.restore(json(m.snapshot()));
     expect(back.snapshot()).toEqual(m.snapshot());

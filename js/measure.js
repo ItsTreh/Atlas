@@ -7,32 +7,22 @@
    user's own. So far Nutrition reads the weight (NutritionPlan.weightKg);
    Measure itself shows the resting-burn estimate the four make
    (restingBurn), which Nutrition does not read yet. Kept in this
-   browser only (storage.js, saveMeasure), with the seal's name and ink.
+   browser only (storage.js, saveMeasure).
    ========================================================================= */
 
 /* What the page accepts, in cm, kg and years. The weights match Nutrition's
    (WEIGHT_KG_RANGE). */
 const MEASURE_LIMITS = { cm: [120, 230], kg: [30, 250], age: [14, 99] };
 const MEASURE_SEX = { female: "Female", male: "Male", unspecified: "Not said" };
-/* The stones the mark can be cut from, under the keys the seal's inks had. */
-const MEASURE_INKS = { core: "Rosso antico", pull: "Lapis", legs: "Verde antico", push: "Giallo antico", ink: "Nero" };
-const MEASURE_NAME_MAX = 18;
 
 class BodyMeasure {
   constructor() {
     this.units = "metric";
-    this.ink = "core";
     this.clear();
   }
 
-  /** Forgets the four facts, the mark's name, its stone's veining and the day it was struck; the units and ink stay. */
-  clear() {
-    this.cm = null; this.kg = null; this.age = null; this.sex = null;
-    this.sealed = null; this.name = null; this.seed = null;
-  }
-
-  /** Cuts a new stone for the mark: `seed` is what its veining is drawn from, and nothing else about the user. */
-  recut(random = Math.random) { this.seed = 1 + Math.floor(random() * 0x7ffffffe); return this.seed; }
+  /** Forgets the four facts; the units stay. */
+  clear() { this.cm = null; this.kg = null; this.age = null; this.sex = null; }
 
   get imperial() { return this.units === "imperial"; }
   /** How many of the four facts are given. */
@@ -55,20 +45,16 @@ class BodyMeasure {
   }
 
   snapshot() {
-    const { cm, kg, age, sex, units, sealed, name, ink, seed } = this;
-    return { cm, kg, age, sex, units, sealed, name, ink, seed };
+    const { cm, kg, age, sex, units } = this;
+    return { cm, kg, age, sex, units };
   }
 
-  /** Takes back only what the page could have set; anything else keeps its default. */
+  /** Takes back only what the page could have set; anything else keeps its default (the mark's old name, stone and day are dropped). */
   restore(s) {
     if (!s || typeof s !== "object") return;
     for (const f of ["cm", "kg", "age"]) if (typeof s[f] === "number" && BodyMeasure.fits(f, s[f])) this.set(f, s[f]);
     if (Object.hasOwn(MEASURE_SEX, s.sex)) this.sex = s.sex;
     if (s.units === "metric" || s.units === "imperial") this.units = s.units;
-    if (Object.hasOwn(MEASURE_INKS, s.ink)) this.ink = s.ink;
-    if (typeof s.name === "string" && s.name.trim()) this.name = s.name.trim().slice(0, MEASURE_NAME_MAX);
-    if (Number.isInteger(s.seed) && s.seed > 0 && s.seed <= 0x7fffffff) this.seed = s.seed;
-    if (typeof s.sealed === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s.sealed)) this.sealed = s.sealed;
   }
 }
 

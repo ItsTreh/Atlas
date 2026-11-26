@@ -43,7 +43,7 @@ function loadRoutine(routine) {
   }
 }
 
-/* The measure (measure.js): the four facts and the seal, kept beside the
+/* The measure (measure.js): the four facts and the units, kept beside the
    routine. The routine's nutrition reads the weight from it live. */
 const MEASURE_KEY = "atlas.measure.v1";
 
