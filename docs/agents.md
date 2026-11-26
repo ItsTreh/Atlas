@@ -61,7 +61,7 @@ to that view's owner.
 
 ## Driving the page
 
-- The page is `file:///Users/tred/Documents/Atlas/index.html`. No server.
+- The page is `file:///Users/tred/Developer/Atlas/index.html`. No server.
 - Playwright: in your scratch directory, `npm init -y && npm i playwright-core`.
   Keep it out of the repo's `package.json`. The newest Playwright may not
   match the cached browser, so launch the cached one directly:

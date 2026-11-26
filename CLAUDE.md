@@ -58,7 +58,7 @@ The regions painted so far are listed at the start of each session by a SessionS
 
 **Other files:**
 - `Male_Body.blend1` is Blender's backup and is git-ignored.
-- `Male_Body_rigged.blend` is the newest model, the posing baseline being prepared for animation: both armpits repaired, `ATLAS_Rig` (59 bones) and weights. The app doesn't use it yet. See `docs/male-body-rig.md`. Rig work happens on scratch copies in `~/Documents/SD-Routine-scratch/`; commit only results and short notes, never study scripts.
+- `Male_Body_rigged.blend` is the newest model, the posing baseline being prepared for animation: both armpits repaired, `ATLAS_Rig` (59 bones) and weights. The app doesn't use it yet. See `docs/male-body-rig.md`. Rig work happens on scratch copies in `~/Developer/Atlas-scratch/` (outside the repo and out of iCloud); commit only results and short notes, never study scripts.
 
 ## Anatomy rules (from the user)
 

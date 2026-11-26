@@ -53,6 +53,6 @@ The cut vertices are duplicated in place, so Blender's "Merge by distance" would
 
 ## Working on it
 
-Work on scratch copies in `~/Documents/SD-Routine-scratch/<study>/`, never on the production files. Each study keeps its scripts, reports, metrics and renders there; they aren't committed.
+Work on scratch copies in `~/Developer/Atlas-scratch/<study>/`, never on the production files. Each study keeps its scripts, reports, metrics and renders there; they aren't committed.
 
 Commit only results (the `.blend`, at milestones) and short notes like this one. Each version of the rigged file adds about 16 MB to the history.
