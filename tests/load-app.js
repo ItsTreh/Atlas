@@ -41,7 +41,7 @@ const EXPORTS = [
   "exercisesFor", "tierRank", "SET_CREDIT", "CREDIT_STEPS", "setCredit",
   "WORKOUT", "WorkoutBuilder", "Workout", "LIFT_KINDS", "COMPOUND_MOVEMENTS",
   "WeeklyRoutine", "Scheduler", "TRAINING_DAYS_RANGE", "SPLITS",
-  "BodyMeasure", "MEASURE_LIMITS", "romanNumeral", "feetInches", "poundsOf",
+  "BodyMeasure", "MEASURE_LIMITS", "RESTING_BURN", "restingBurn", "romanNumeral", "feetInches", "poundsOf",
   "ANATOMY_MODEL", "ANATOMY_REGIONS", "isReload", "RELOAD_GAP_MS"
 ];
 

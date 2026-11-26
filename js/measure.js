@@ -5,7 +5,8 @@
 
    They are meant to turn Nutrition's estimates from an average into the
    user's own. So far Nutrition reads the weight (NutritionPlan.weightKg);
-   height, age and physiology wait for the resting-burn maths. Kept in this
+   Measure itself shows the resting-burn estimate the four make
+   (restingBurn), which Nutrition does not read yet. Kept in this
    browser only (storage.js, saveMeasure), with the seal's name and ink.
    ========================================================================= */
 
@@ -72,6 +73,39 @@ class BodyMeasure {
 }
 
 const bodyMeasure = new BodyMeasure();
+
+/* ------------------------------ resting burn ------------------------------ */
+/* An estimate of what the body burns at rest, in kcal a day, by the
+   Mifflin–St Jeor equation: 10 × kg + 6.25 × cm − 5 × years + a constant
+   for physiology (+5 male, −161 female). The equation and its constants are
+   the paper's; two things here are ATLAS's own design choices, not findings:
+     - "Not said" takes the midpoint of the two constants (−78);
+     - a fact not given counts as the marble's own (158 cm, 70 kg, thirty
+       years), and the page says so beside every term it fills.
+   Shown on Measure only; Nutrition's daily burn does not read it yet. */
+const RESTING_BURN = Object.freeze({
+  source: "Mifflin MD, St Jeor ST, et al. A new predictive equation for resting energy expenditure in healthy individuals. Am J Clin Nutr. 1990;51(2):241–7.",
+  url: "https://doi.org/10.1093/ajcn/51.2.241",
+  perKg: 10, perCm: 6.25, perYear: -5,
+  constant: Object.freeze({ male: 5, female: -161, unspecified: -78 }),
+  marble: Object.freeze({ cm: 158, kg: 70, age: 30 })
+});
+
+/**
+ * The resting-burn estimate for a measure, term by term. Each term says
+ * whether its fact was given (`own`) or the marble's stood in for it.
+ * @returns {{ parts: { k: string, v: number, own: boolean }[], total: number }}
+ */
+function restingBurn({ cm = null, kg = null, age = null, sex = null } = {}) {
+  const R = RESTING_BURN, m = R.marble;
+  const parts = [
+    { k: "stature", v: R.perCm * (cm ?? m.cm), own: cm !== null },
+    { k: "mass", v: R.perKg * (kg ?? m.kg), own: kg !== null },
+    { k: "years", v: R.perYear * (age ?? m.age), own: age !== null },
+    { k: "physis", v: R.constant[sex ?? "unspecified"] ?? R.constant.unspecified, own: sex !== null }
+  ];
+  return { parts, total: parts.reduce((a, p) => a + p.v, 0) };
+}
 
 const ROMAN_DIGITS = [[1000, "M"], [900, "CM"], [500, "D"], [400, "CD"], [100, "C"], [90, "XC"],
   [50, "L"], [40, "XL"], [10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]];

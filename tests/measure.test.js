@@ -78,3 +78,30 @@ describe("the measure", () => {
     expect(app.poundsOf(70)).toBe(154);
   });
 });
+
+/* The resting-burn estimate (Mifflin–St Jeor, 1990), and what stands in for a fact not given. */
+describe("the resting-burn estimate", () => {
+  test("is the paper's equation for a measure given in full", () => {
+    const b = app.restingBurn({ cm: 178, kg: 74, age: 31, sex: "male" });
+    expect(b.total).toBeCloseTo(10 * 74 + 6.25 * 178 - 5 * 31 + 5, 9);
+    expect(app.restingBurn({ cm: 165, kg: 60, age: 40, sex: "female" }).total).toBeCloseTo(600 + 1031.25 - 200 - 161, 9);
+    expect(b.parts.map(p => p.own)).toEqual([true, true, true, true]);
+  });
+
+  test("not said takes the midpoint of the two constants", () => {
+    const c = app.RESTING_BURN.constant;
+    expect(c.unspecified).toBe(Math.round((c.male + c.female) / 2));
+    expect(app.restingBurn({ cm: 170, kg: 70, age: 30, sex: "unspecified" }).parts[3]).toEqual({ k: "physis", v: -78, own: true });
+  });
+
+  test("a fact not given counts as the marble's, and says so", () => {
+    const b = app.restingBurn({ kg: 80 });
+    expect(b.parts.map(p => p.own)).toEqual([false, true, false, false]);
+    expect(b.total).toBeCloseTo(6.25 * 158 + 800 - 150 - 78, 9);
+    expect(app.restingBurn(new app.BodyMeasure()).total).toBeCloseTo(6.25 * 158 + 700 - 150 - 78, 9);
+  });
+
+  test("cites its source by DOI", () => {
+    expect(app.RESTING_BURN.url).toBe("https://doi.org/10.1093/ajcn/51.2.241");
+  });
+});
