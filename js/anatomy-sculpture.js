@@ -1966,14 +1966,13 @@ void main() {
   c *= ((0.2 + 0.12 * sky + 0.12 * f) * uFillTint + 0.74 * k * uKeyTint) / max(light, 1e-3);
   c = mix(c, uHaze.rgb, uHaze.a * mix(0.55, 1.0, 1.0 - max(n.z, 0.0)));
 
-  // Anatomical seams: a thin, darker line where regions meet, the same
-  // width on screen at any size.
+  // Where regions meet, in px on screen: the traces, the border and the
+  // focus edge are measured from it. The marble itself draws no line there
+  // (the user's call, 2026-11-26): it stays clean, and hover and selection
+  // show the muscles. seam is the line only the drawing technique inks.
   float px = vSeam / max(fwidth(vSeam), 1e-4);
   float near = 1.0 - smoothstep(0.2, 0.45, vSeam);
   float seam = (1.0 - smoothstep(uLineWidth - 0.6, uLineWidth + 0.6, px)) * near;
-  // Deepest in real creases; only a trace where the surface runs smooth
-  // across a boundary, so it never reads as a panel line.
-  c *= 1.0 - mix(0.12, 0.05, smoothstep(0.85, 1.0, vOcclusion)) * seam;
 
   // A region that is not selected, lit, pointed at or focused draws no
   // traces, border or focus edge: each would mix in with weight exactly 0,
