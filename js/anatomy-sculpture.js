@@ -764,7 +764,7 @@ class AnatomySculpture {
   /**
    * Stands the whole figure `h` CSS px tall with its soles at (`x`, `y`) on
    * the canvas, seen level from `az`: for a page that draws its own room
-   * round the figure each frame (Nutrition's niche at the end of the day).
+   * round the figure each frame (the Week plan's ring of hours).
    * Its shot stays the one set; while a move to it runs, this is where the
    * move ends, so the figure travels into its place rather than jumping.
    */

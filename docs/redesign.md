@@ -131,7 +131,7 @@ moved through. The marble is one mesh, one renderer and one material.
 |---|---|---|---|
 | I Targets | the sculpture hall | the figure and the pages scrolled past it | scroll; point at the body |
 | II Measure | the marble on a plinth of two steps, four rings round it, one a fact, each in a pigment, in a sky that breathes with the resting burn | the figure at the left, filmed by a camera that moves round it to each ring; the reading in its own column at the right, a thread to it from the ring | take a ring up (press it) and drag it, the arrows, or type; the scroll goes from fact to fact and ends on the resting burn, the four closed into one ring |
-| III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the figure in a niche at the end | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the wall | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
+| III Nutrition | the day in perspective: a marble floor to a vanishing point, a gilt meridian of the hours, an arch a meal, the floor running on into the haze | the sum at the threshold; each meal's figures and plate in its arch; the day laid out at the end | walk the day: scroll, the arrow keys, the footer's beads, or press an arch |
 | IV Week plan | the sun's path: the day as a ring of hours behind the figure, in the hour's light | a day at a time on its ring, then the week as seven rings and one sentence; generated, seven arches on one horizon | drag along a day's ring over busy hours (the session moves); scroll, the arrow keys or the footer's suns from day to day |
 
 How each is built:
@@ -168,14 +168,16 @@ How each is built:
   canvas under the sculpture: a marble floor laid to a vanishing point, a
   gilt meridian inlaid with the hours from six to eleven (their Roman
   numerals in the floor), an arch over each meal at its hour, a sun that
-  crosses the sky as the day goes, and at the end a wall whose niche holds
-  the figure. The user walks the day: the wheel, the arrow keys, the
+  crosses the sky as the day goes. The arches have thickness (a shaded
+  soffit, voussoir joints, panelled piers), each stands on a threshold
+  slab, and a gilt-edged runner leads down the meridian; past the last
+  meal there is no wall, the floor runs on into the haze. The user walks the day: the wheel, the arrow keys, the
   footer's way on or its beads (the day's index, `#foot-day`), or a press
-  on an arch. Stations: the sum; a meal each; the day laid out at the wall.
-  - *The figure is the marble.* `AnatomySculpture.standAt` stands the live
-    sculpture in the niche each frame (its soles on the niche's floor, as
-    tall as the niche allows), fading with the room's haze; a change of
-    stage travels to it. No render or image of the figure is shipped.
+  on an arch. Stations: the sum; a meal each; the day laid out at the end
+  (the day's kcal and protein, then each meal on its hour with its dish).
+  From the user's Claude Design file "Nutrition stage polish" (2026-11-27).
+  - *The room keeps no figure.* The sculpture is dimmed out on this stage
+    (`dim: () => 0`); the day's end holds its sum alone.
   - *The words are set in the room.* A 1440 × 900 plate scaled to the
     screen; each station's words (`data-p`) are placed at its depth each
     frame, so walking carries them. The template is merged into the page
@@ -186,7 +188,7 @@ How each is built:
     Pointing at a goal previews what it would come to; "How it's worked
     out" is the sum line by line. Body weight is asked only on Measure.
   - On a phone the plate is only scaled down for now (the phone gets its
-    own redesign later), and without WebGL the niche stands empty.
+    own redesign later).
 - **Week plan** (`js/week-view.js`), from the user's Claude Design file
   "Week Plan - Lumen v3" (2026-11-15), with the user's changes on top. A
   1440 × 900 plate as Nutrition's; behind the figure, in the anatomy stage,
