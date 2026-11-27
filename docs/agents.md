@@ -94,7 +94,7 @@ One fixed screen (`.atlas`), nothing scrolls the page, panes with
 the sculpture `#anatomy-stage` sits behind them all.
 
 - **Targets:** family tabs `.tab[data-group]`, program arrows
-  `.round-btn[data-step]`, dots `.pip[data-program]`, `#program-action`,
+  `.sign-btn[data-step]`, dots `.pip[data-program]`, `#program-action`,
   `#focus-summary` (`#clear-sel`, `.fam-toggle[data-family-toggle]`),
   `#turn` (Front/Back), keyboard checkboxes `.hit[data-muscle][data-view]`
   (no pointer events: click the canvas; `figure.renderer.muscleAt(x, y)`

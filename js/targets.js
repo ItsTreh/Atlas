@@ -157,9 +157,9 @@ function buildPrograms() {
       '<div class="slider-head">' +
         '<span class="eyebrow">Starting from</span>' +
         '<div class="slider-ctl">' +
-          '<button type="button" class="round-btn" data-step="-1">←</button>' +
+          '<button type="button" class="sign-btn" data-step="-1">' + signGlyph("earlier") + '</button>' +
           '<div class="pips" id="program-pips"></div>' +
-          '<button type="button" class="round-btn" data-step="1">→</button>' +
+          '<button type="button" class="sign-btn" data-step="1">' + signGlyph("later") + '</button>' +
         '</div>' +
       '</div>' +
       '<div class="program" id="program" tabindex="-1" aria-live="polite">' +
@@ -199,7 +199,7 @@ function paintPrograms() {
   for (const pip of pips.children)
     if (pip.dataset.program === shown.id) pip.setAttribute("aria-current", "true");
     else pip.removeAttribute("aria-current");
-  const [back, on] = programsEl.querySelectorAll(".round-btn");
+  const [back, on] = programsEl.querySelectorAll(".sign-btn[data-step]");
   back.disabled = !prev; on.disabled = !next;
   back.setAttribute("aria-label", prev ? "Previous: " + prev.name : "First program");
   on.setAttribute("aria-label", next ? "Next: " + next.name : "Last program");
@@ -294,14 +294,14 @@ programsEl.addEventListener("keydown", e => {
 /* Pointing at the action, an arrow or a pip previews that program on the
    sculpture; leaving it goes back to the selection. */
 const previewFrom = el => {
-  const b = el.closest && el.closest(".round-btn, .pip, #program-action");
+  const b = el.closest && el.closest(".sign-btn, .pip, #program-action");
   if (!b || b.disabled) return;
   const p = programAt(b);
   if (p && (b.id === "program-action" || p !== rail.program)) figure.preview(p.muscles);
 };
 programsEl.addEventListener("pointerover", e => previewFrom(e.target));
 programsEl.addEventListener("pointerout", e => {
-  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest(".round-btn, .pip, #program-action"))
+  if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest(".sign-btn, .pip, #program-action"))
     figure.preview(null);
 });
 programsEl.addEventListener("focusin", e => { if (e.target.matches(":focus-visible")) previewFrom(e.target); });

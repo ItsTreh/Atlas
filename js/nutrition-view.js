@@ -63,15 +63,12 @@ const pvHH = h => (h < 10 ? "0" : "") + h + ":00";
 const pvSigned = v => (v < 0 ? "− " : "+ ") + fmtK(Math.abs(v));
 const pvSerif = "var(--serif)";
 
-/* A coin to step with: a beaded rim, a fine ring, the sign `d` struck in it. */
-const pvCoin = (d, w = 2.2) => '<svg viewBox="0 0 52 52" aria-hidden="true">' +
-  '<circle cx="26" cy="26" r="24.2" style="stroke-width:2.4; stroke-linecap:round; stroke-dasharray:0 3.8"></circle>' +
-  '<circle cx="26" cy="26" r="20.5" style="stroke-width:1; opacity:.4"></circle>' +
-  '<path d="' + d + '" style="stroke-width:' + w + '; stroke-linecap:round; stroke-linejoin:round"></path></svg>';
-const PV_SIGN = { earlier: "M33 26H19M24 21l-5 5 5 5", later: "M19 26h14M28 21l5 5-5 5", less: "M18 26h16", more: "M18 26h16M26 18v16" };
+/* A step: the sign bare (signGlyph, render.js). */
 const pvStep = (act, sign, label, off = false, extra = "") =>
-  '<button type="button" class="pv-coin' + (extra ? " " + extra : "") + '" data-act="' + act + '" title="' + label + '" aria-label="' + label + '"' +
-  (off ? " disabled" : "") + '>' + pvCoin(PV_SIGN[sign], extra ? 1.8 : 2.2) + '</button>';
+  '<button type="button" class="sign-btn' + (extra ? " " + extra : "") + '" data-act="' + act + '" title="' + label + '" aria-label="' + label + '"' +
+  (off ? " disabled" : "") + '>' + signGlyph(sign) + '</button>';
+/* Less and more, paired after their figure. */
+const pvPair = (less, text, more) => text + '<span class="sign-pair">' + less + '<i aria-hidden="true"></i>' + more + '</span>';
 
 /* ------------------------------- the model -------------------------------- */
 
@@ -193,7 +190,7 @@ function pvTemplate() {
         '<span style="font:400 112px/.86 ' + pvSerif + '; letter-spacing:-.03em; font-variant-numeric:lining-nums tabular-nums; color:' + (preview ? "var(--ink-faint)" : "var(--ink)") + '; transition:color .3s ease">' + fmtK(PV.kcal) + '</span>' +
         '<span style="font:italic 400 28px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:9px">kcal</span></div>' +
       '<div style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--ink-soft)">' +
-        pvStep("kcal-less", "less", "Eat less", !!preview) + '<span style="font-variant-numeric:tabular-nums">' + adjustText + '</span>' + pvStep("kcal-more", "more", "Eat more", !!preview) +
+        pvPair(pvStep("kcal-less", "less", "Eat less", !!preview), '<span style="font-variant-numeric:tabular-nums">' + adjustText + '</span>', pvStep("kcal-more", "more", "Eat more", !!preview)) +
         (preview ? '' : n.adjustIsRecommended ? '<span style="margin-left:auto; font-size:12px; color:var(--ink-faint)">Recommended</span>'
           : '<button type="button" class="pv-link" data-act="reset-adjust" style="margin-left:auto; font-size:12px">Use ' + pvPct(rec.adjust) + '</button>') +
       '</div>' +
@@ -202,7 +199,7 @@ function pvTemplate() {
         '<span style="font:400 84px/.86 ' + pvSerif + '; letter-spacing:-.03em; font-variant-numeric:lining-nums tabular-nums; color:' + (preview ? "var(--ink-faint)" : "var(--ink)") + '; transition:color .3s ease">' + PV.protein + '</span>' +
         '<span style="font:italic 400 26px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:6px">g protein</span></div>' +
       '<div style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:13px; color:var(--ink-soft)">' +
-        pvStep("protein-less", "less", "Less protein", !!preview) + '<span style="font-variant-numeric:tabular-nums">' + PV.ppk.toFixed(1) + ' g per kg of ' + w + ' kg</span>' + pvStep("protein-more", "more", "More protein", !!preview) +
+        pvPair(pvStep("protein-less", "less", "Less protein", !!preview), '<span style="font-variant-numeric:tabular-nums">' + PV.ppk.toFixed(1) + ' g per kg of ' + w + ' kg</span>', pvStep("protein-more", "more", "More protein", !!preview)) +
         (preview ? '' : n.proteinIsRecommended ? '<span style="margin-left:auto; font-size:12px; color:var(--ink-faint)">Recommended</span>'
           : '<button type="button" class="pv-link" data-act="reset-protein" style="margin-left:auto; font-size:12px">Use ' + rec.protein.toFixed(1) + ' g/kg</button>') +
       '</div>' +
@@ -366,11 +363,10 @@ document.head.insertAdjacentHTML("beforeend", '<style>@media (min-width: 760px) 
   '.atlas[data-stage="nutrition"] .stage-foot { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }' +
   '.atlas[data-stage="nutrition"] .foot-start, .atlas[data-stage="nutrition"] .foot-end { min-width: 0; }' +
   '.atlas[data-stage="nutrition"] #foot-back .fx-label, .atlas[data-stage="nutrition"] #foot-next .fx-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }' +
-  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { min-width: 0; flex-shrink: 1; }' +
-  '.atlas[data-stage="nutrition"] #foot-next .fx-coin, .atlas[data-stage="nutrition"] #foot-back .fx-coin { flex-shrink: 0; } }' +
+  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { min-width: 0; flex-shrink: 1; } }' +
   '@media (max-width: 1239px) and (min-width: 760px) and (orientation: landscape), (min-width: 1000px) and (max-width: 1239px) {' +
-  '.atlas[data-stage="nutrition"] #foot-skip, .atlas[data-stage="nutrition"] .foot-hint, .atlas[data-stage="nutrition"] #foot-next .fx-key { display: none; }' +
-  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { letter-spacing: .12em; gap: 10px; } }' +
+  '.atlas[data-stage="nutrition"] #foot-skip, .atlas[data-stage="nutrition"] .foot-hint { display: none; }' +
+  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { letter-spacing: .12em; } }' +
   '@media (min-width: 1240px) {' +
   '.atlas[data-stage="nutrition"] .foot-hint { display: none; } }</style>');
 pvCanvas.setAttribute("aria-hidden", "true");
