@@ -9,6 +9,10 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
+/* A sign to step with (css/styles.css, .sign-btn): earlier and later, less and more. */
+const SIGN_PATHS = { earlier: "M13.5 7.5 9 12l4.5 4.5", later: "M10.5 7.5 15 12l-4.5 4.5", less: "M7.5 12h9", more: "M7.5 12h9M12 7.5v9" };
+const signGlyph = k => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + SIGN_PATHS[k] + '"></path></svg>';
+
 /**
  * Puts focus back on a control drawn again under it. One that came back
  * disabled (a stepper at its end, the last meal's "next") hands focus to
