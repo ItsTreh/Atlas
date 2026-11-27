@@ -47,12 +47,12 @@ Nutrition plans from the weight given here. The resting-burn estimate is shown o
 
 ### III · Nutrition *(optional)*
 
-Nutrition is a room in perspective: a marble floor laid to a vanishing point, a gilt meridian inlaid with the hours, an arch over each meal at its hour, and at the far wall a niche where the sculpture stands. Scroll, use the arrow keys or the footer's beads to walk the day.
+Nutrition is a room in perspective: a marble floor laid to a vanishing point, a gilt meridian inlaid with the hours, an arch over each meal at its hour, and past the last meal the floor running on into the haze. Scroll, use the arrow keys or the footer's beads to walk the day.
 
 - **The sum:** your goal (fat loss, muscle gain, maintenance or general fitness, each showing the change it makes for this training), the calories and protein to eat, steppers for both, and how it's worked out, line by line. Your body weight comes from Measure.
 - **The day in one sentence:** how many meals, from which hour to which, eating what. Each word opens its own chooser.
 - **Each meal:** its hour (move it earlier or later), its calories and protein with the day's running total, and an example plate portioned to it. Point at a food to see what it brings, or turn to other ideas.
-- **The day laid out:** every meal's calories and protein together, with the figure in the niche behind.
+- **The day laid out:** the day's calories and protein, then every meal on its hour with its calories, protein and dish.
 
 ### IV · Week plan
 
@@ -194,7 +194,7 @@ ATLAS is a website first, with no backend yet. A backend comes next, and a nativ
 - [x] The start screen and its five openings
 - [x] Targets in three movements: How it works, Your muscles, Training focus
 - [x] Measure, as four rings round the figure on its plinth, and the resting burn
-- [x] Nutrition, as the day in perspective: the sum, each meal in its arch, the day laid out at the figure's niche
+- [x] Nutrition, as the day in perspective: the sum, each meal in its arch, the day laid out at the end
 - [x] The Week plan, as the day's ring of hours in the hour's light: a day at a time, then the week
 - [x] An evidence register that labels where every planner value comes from
 - [x] The anatomical cartography: engraved traces for hover and selection

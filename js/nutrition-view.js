@@ -3,9 +3,9 @@
 
    A room drawn in a canvas under the sculpture: a marble floor laid to a
    vanishing point, a gilt meridian inlaid with the hours from six to
-   eleven, an arch over each meal at its hour, and at the end a wall whose
-   niche holds the figure (the live marble, stood there each frame by
-   standAt). The user walks the day: the wheel, the arrow keys, the
+   eleven, an arch over each meal at its hour, and past the last the floor
+   running on into the haze. The figure does not stand in the room. The
+   user walks the day: the wheel, the arrow keys, the
    footer's way on, its beads, or a press on an arch moves the eye along
    the meridian from station to station:
 
@@ -14,7 +14,7 @@
                 (meals, first and last hour, diet) open their choosers
      1 … n      each meal in its arch: its hour (moved there), its
                 calories and protein beside it, and the plate under it
-     n + 1      the day laid out at the wall, the figure behind
+     n + 1      the day laid out at the end: the sum, and each meal on the hours
 
    The stage's words are set in a 1440 × 900 plate scaled to the screen;
    those of each station are placed at its depth in the room each frame
@@ -36,21 +36,25 @@ const fmtK = n => Math.round(n).toLocaleString("en-US");
    arch's outer and inner radius and the height of its piers (R, RI, YS),
    the floor's half-width and its tiles (XR, TW). Plate px at depth 1. */
 const PV_ROOM = { K: 0.62, EY: 405, R: 400, RI: 372, YS: 300, XR: 1260, TW: 180 };
+/* The room's materials: the ink's lines, a warm stone for the floor and its runner, and the gilt,
+   its body and its shade in the arches. */
 const PV_PAL = {
-  light: { ink: [36, 32, 27], tileA: .045, lineA: .11, gilt: [185, 138, 60], deep: [138, 92, 30], hi: [244, 220, 164], glowA: .2 },
-  dark:  { ink: [237, 230, 217], tileA: .035, lineA: .09, gilt: [205, 160, 80], deep: [217, 178, 106], hi: [248, 216, 145], glowA: .12 }
+  light: { ink: [36, 32, 27], tileA: .06, lineA: .11, gilt: [185, 138, 60], deep: [138, 92, 30], hi: [244, 220, 164], glowA: .2,
+           stone: [126, 98, 62], floorA: .09, runA: .075, bodyA: .16, soffit: [138, 92, 30], soffitA: .16 },
+  dark:  { ink: [237, 230, 217], tileA: .05, lineA: .09, gilt: [205, 160, 80], deep: [217, 178, 106], hi: [248, 216, 145], glowA: .12,
+           stone: [222, 190, 140], floorA: .05, runA: .06, bodyA: .12, soffit: [205, 160, 80], soffitA: .05 }
 };
 const PV_WORDS = { 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six" };
-/* The figure in the niche: how far it is turned, and how much of the niche's height it stands. */
-const PV_NICHE = { az: -8, fill: .88 };
-/* The camera a change of stage travels to; standAt moves its end into the niche as it goes. */
-SCULPTURE_SHOTS["nutrition-niche"] = { az: PV_NICHE.az, el: 0, ty: 79, d: 3400, sx: .5, sy: .62, fov: 20 };
+/* How thick a meal's arch is, front face to back, in the room's depth (a tile is 0.167). */
+const PV_DEPTH = 0.07;
+/* The camera a change of stage travels to (the figure is not shown in the room). */
+SCULPTURE_SHOTS["nutrition-niche"] = { az: -16, el: 0, ty: 79, d: 3400, sx: .5, sy: .62, fov: 20 };
 
 /* Where the walk is, and what is open or pointed at. */
 const pv = {
   station: 0, target: 0, cam: -0.6, cv: 0, acc: 0, edge: 0, locked: false, lastWheel: 0, lockDir: 0, peak: 0, low: 0,
   dh: [], ap: [], mx: -1e4, my: -1e4, overHit: false, hoverArch: -1,
-  k: 1, ox: 0, oy: 0, vw: 0, vh: 0, t0: 0, lt: 0, raf: 0, leftAt: 0, figOp: 0,
+  k: 1, ox: 0, oy: 0, vw: 0, vh: 0, t0: 0, lt: 0, raf: 0, leftAt: 0,
   chooser: null, hoverGoal: null, hoverFood: null, ledger: false, shift: {}
 };
 
@@ -278,7 +282,7 @@ function pvTemplate() {
         pc(prevK, n.kcal), here ? pc(m.kcal, n.kcal) : "0%", cumK.slice(0, -1).map(c => pc(c, n.kcal)), "By its end · " + fmtK(cumK[i]) + " of " + fmtK(n.kcal)) +
       side(1, String(m.protein), "g", hv ? hv.name + " · " + hv.protein + " g" : Math.round(m.protein / n.protein * 100) + "% of the day’s protein",
         pc(prevP, n.protein), here ? pc(m.protein, n.protein) : "0%", cumP.slice(0, -1).map(c => pc(c, n.protein)), "By its end · " + cumP[i] + " of " + n.protein + " g") +
-      '<div style="position:absolute; left:-276px; top:138px; width:552px; background:color-mix(in oklab, var(--bg) 84%, transparent); box-shadow:0 0 36px 30px color-mix(in oklab, var(--bg) 84%, transparent)">' +
+      '<div style="position:absolute; left:-280px; top:136px; width:560px; text-shadow:0 0 3px var(--bg), 0 0 10px var(--bg), 0 0 20px var(--bg)">' +
         '<div style="display:flex; align-items:baseline; justify-content:space-between; gap:16px">' + label("The plate · " + esc(m.focus)) +
           (m.list.length > 1 ? '<button type="button" class="pv-link" data-act="idea" data-i="' + i + '" style="font-size:12.5px">Other ideas ↻ <span style="color:var(--ink-faint); font-variant-numeric:tabular-nums">' + (m.at + 1) + ' of ' + m.list.length + '</span></button>' : '') +
         '</div>' +
@@ -287,8 +291,8 @@ function pvTemplate() {
           '<span style="font:italic 400 17px/1 ' + pvSerif + '; color:var(--ink-soft); white-space:nowrap">' + (pick ? "as served ≈ " + fmtK(pick.kcal) + " kcal · " + pick.protein + " g" : "") + '</span>' +
         '</div>' +
         '<div style="margin-top:10px; display:flex; flex-direction:column">' + foods.map((f, j) =>
-          '<div data-food="' + i + ':' + j + '" style="display:grid; grid-template-columns:84px 1fr auto; gap:14px; align-items:baseline; padding:7px 8px; margin:0 -8px; border-top:1px solid var(--line-soft); background:' +
-            (hf === j ? "color-mix(in oklab, var(--gilt-line) 14%, transparent)" : "transparent") + '; transition:background .25s ease; cursor:default">' +
+          '<div data-food="' + i + ':' + j + '" style="display:grid; grid-template-columns:84px 1fr auto; gap:14px; align-items:baseline; padding:7px 0; border-top:1px solid var(--line-soft); color:' +
+            (hf === j ? "var(--gilt)" : "var(--ink)") + '; transition:color .25s ease; cursor:default">' +
             '<span style="font-weight:600; font-size:14px; font-variant-numeric:tabular-nums">' + f.amount + '</span>' +
             '<span style="font-size:14.5px">' + esc(f.name) + '</span>' +
             '<span style="font-size:12.5px; color:var(--ink-faint); font-variant-numeric:tabular-nums">' + f.kcal + ' kcal · ' + f.protein + ' g</span></div>').join("") +
@@ -305,23 +309,29 @@ function pvTemplate() {
     '</div></div>').join("");
 
   /* ----------------------------- the day, laid ----------------------------- */
-  const dayList = (val) => '<div style="margin-top:22px; display:flex; flex-direction:column">' + meals.map(m =>
-    '<div style="display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:baseline; padding:6px 0; border-top:1px solid var(--line-soft); font-size:13.5px">' +
-      '<span style="font:italic 400 19px/1 ' + pvSerif + '">' + esc(m.name) + '</span>' + val(m) + '</div>').join("") + '</div>';
+  const fw = Math.min(980, Math.max(560, meals.length * 200));
   const endHTML = !ok ? "" : '<div data-p="end" style="position:absolute; left:720px; top:378px; width:0; height:0; transform-origin:0 0; opacity:0; visibility:hidden; pointer-events:none">' +
-    '<div style="position:absolute; left:-360px; top:-252px; width:720px; text-align:center">' +
+    '<div style="position:absolute; left:-490px; top:-252px; width:980px; display:flex; flex-direction:column; align-items:center; text-align:center; text-shadow:0 0 3px var(--bg), 0 0 10px var(--bg), 0 0 20px var(--bg)">' +
       '<p style="margin:0; font:600 13px/1 ' + pvSerif + '; letter-spacing:.42em; color:var(--gilt)">PER · DIEM</p>' +
-      '<h2 style="margin:14px 0 0; font:italic 400 62px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink)">The day laid out.</h2></div>' +
-    '<div style="position:absolute; left:-628px; top:-120px; width:330px">' + label("Calories, a day") +
-      '<div style="display:flex; align-items:flex-end; gap:12px; margin-top:8px"><span style="font:400 128px/.86 ' + pvSerif + '; letter-spacing:-.03em; font-variant-numeric:lining-nums tabular-nums">' + fmtK(n.kcal) + '</span>' +
-        '<span style="font:italic 400 28px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:10px">kcal</span></div>' +
-      dayList(m => '<span style="color:var(--ink-faint); font-size:12px; font-variant-numeric:tabular-nums">' + pvHH(m.hour) + '</span><span style="font-variant-numeric:tabular-nums">' + fmtK(m.kcal) + '</span>') +
-      '<p style="margin:14px 0 0; font:italic 400 16px/1.35 ' + pvSerif + '; color:var(--ink-soft)">Estimates to eat against. The week plan places each meal around your sessions.</p></div>' +
-    '<div style="position:absolute; left:298px; top:-120px; width:330px">' + label("Protein, a day") +
-      '<div style="display:flex; align-items:flex-end; gap:12px; margin-top:8px"><span style="font:400 128px/.86 ' + pvSerif + '; letter-spacing:-.03em; font-variant-numeric:lining-nums tabular-nums">' + n.protein + '</span>' +
-        '<span style="font:italic 400 28px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:10px">g</span></div>' +
-      dayList(m => '<span style="color:var(--ink-faint); font-size:12px">' + (m.pick ? esc(m.pick.idea.name) : "") + '</span><span style="font-variant-numeric:tabular-nums">' + m.protein + ' g</span>') +
-      '<button type="button" class="pv-link" data-act="sum" style="margin-top:14px">Walk it again</button></div>' +
+      '<h2 style="margin:14px 0 0; font:italic 400 62px/.95 ' + pvSerif + '; letter-spacing:-.015em; color:var(--ink)">The day laid out.</h2>' +
+      '<div style="display:flex; align-items:flex-end; gap:14px; margin-top:34px">' +
+        '<span style="font:400 148px/.84 ' + pvSerif + '; letter-spacing:-.035em; font-variant-numeric:lining-nums tabular-nums; color:var(--ink)">' + fmtK(n.kcal) + '</span>' +
+        '<span style="font:italic 400 32px/1 ' + pvSerif + '; color:var(--gilt); padding-bottom:12px">kcal</span></div>' +
+      '<p style="margin:18px 0 0; font:italic 400 30px/1.2 ' + pvSerif + '; color:var(--ink-soft)">with <span style="font-style:normal; font-size:40px; color:var(--ink); font-variant-numeric:lining-nums">' + n.protein + ' g</span> of protein, over ' + (PV_WORDS[meals.length] || meals.length).toString().toLowerCase() + ' meals</p>' +
+      '<div style="position:relative; width:' + fw + 'px; margin-top:40px; display:grid; grid-template-columns:repeat(' + meals.length + ', minmax(0,1fr))">' +
+        '<div aria-hidden="true" style="position:absolute; left:calc(50% / ' + meals.length + '); right:calc(50% / ' + meals.length + '); top:5px; height:1px; background:var(--gilt-line)"></div>' +
+        meals.map(m => '<div style="position:relative; display:flex; flex-direction:column; align-items:center; gap:0; min-width:0">' +
+          '<span aria-hidden="true" style="width:9px; height:9px; margin-top:1px; transform:rotate(45deg); background:var(--bg); box-shadow:0 0 0 1px var(--gilt)"></span>' +
+          '<span style="margin-top:14px; font:600 12px/1 ' + pvSerif + '; letter-spacing:.22em; color:var(--gilt)">' + romanNumeral(m.hour) + ' · ' + pvHH(m.hour) + '</span>' +
+          '<span style="margin-top:8px; font:italic 400 26px/1.05 ' + pvSerif + '; color:var(--ink); white-space:nowrap">' + esc(m.name) + '</span>' +
+          '<span style="margin-top:6px; font-size:12.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; white-space:nowrap">' + fmtK(m.kcal) + ' kcal · ' + m.protein + ' g</span>' +
+          (m.pick ? '<span style="margin-top:4px; max-width:100%; padding:0 8px; box-sizing:border-box; font:italic 400 15px/1.25 ' + pvSerif + '; color:var(--ink-faint); text-wrap:balance">' + esc(m.pick.idea.name) + '</span>' : '') +
+        '</div>').join("") +
+      '</div>' +
+      '<div style="display:flex; align-items:baseline; gap:18px; margin-top:30px">' +
+        '<span style="font:italic 400 16px/1.35 ' + pvSerif + '; color:var(--ink-faint)">Estimates to eat against; the week plan places each meal around your sessions.</span>' +
+        '<button type="button" class="pv-link" data-act="sum">Walk it again</button></div>' +
+    '</div>' +
   '</div>';
 
   return endHTML + mealHTML + farHTML + sumLeft + sumRight + sentence;
@@ -351,6 +361,18 @@ nutritionEl.innerHTML = '<div class="pv-stage" id="pv-stage"><div class="pv-hit"
 const pvStage = $("pv-stage"), pvHit = $("pv-hit"), pvLive = $("pv-live"), pvFoot = $("foot-day");
 const pvCanvas = document.createElement("canvas");
 pvCanvas.className = "pv-room";
+// The day's index holds the footer's centre whatever the labels either side of it say.
+document.head.insertAdjacentHTML("beforeend", '<style>@media (min-width: 760px) and (orientation: landscape), (min-width: 1000px) {' +
+  '.atlas[data-stage="nutrition"] .stage-foot { grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); }' +
+  '.atlas[data-stage="nutrition"] .foot-start, .atlas[data-stage="nutrition"] .foot-end { min-width: 0; }' +
+  '.atlas[data-stage="nutrition"] #foot-back .fx-label, .atlas[data-stage="nutrition"] #foot-next .fx-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }' +
+  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { min-width: 0; flex-shrink: 1; }' +
+  '.atlas[data-stage="nutrition"] #foot-next .fx-coin, .atlas[data-stage="nutrition"] #foot-back .fx-coin { flex-shrink: 0; } }' +
+  '@media (max-width: 1239px) and (min-width: 760px) and (orientation: landscape), (min-width: 1000px) and (max-width: 1239px) {' +
+  '.atlas[data-stage="nutrition"] #foot-skip, .atlas[data-stage="nutrition"] .foot-hint, .atlas[data-stage="nutrition"] #foot-next .fx-key { display: none; }' +
+  '.atlas[data-stage="nutrition"] #foot-next:not([hidden]) { letter-spacing: .12em; gap: 10px; } }' +
+  '@media (min-width: 1240px) {' +
+  '.atlas[data-stage="nutrition"] .foot-hint { display: none; } }</style>');
 pvCanvas.setAttribute("aria-hidden", "true");
 document.querySelector("#anatomy-stage .anatomy-viewport").before(pvCanvas);
 
@@ -399,10 +421,51 @@ function pvFit() {
   pvStage.style.transform = "translate(" + pv.ox + "px," + pv.oy + "px) scale(" + k + ")";
 }
 
-/** One arch, or the niche: two piers, their capitals and bases, the archivolt and its keystone, beads round it. */
-function pvArch(ctx, cx, hy, d, R, r, ys, col, lw, beads) {
+/**
+ * One arch: two piers, their capitals and bases, the
+ * archivolt and its keystone, beads round it. Options: `body` washes the
+ * piers and the archivolt; `depth` (in z) shows the arch's thickness, its
+ * soffit and the piers' inner faces shaded `soffit`; `fine` draws the
+ * voussoirs' joints and a sunk panel on each pier; `key` fills the
+ * keystone and the imposts.
+ */
+function pvArch(ctx, cx, hy, d, R, r, ys, col, lw, beads, o = {}) {
   const s = 1 / d, EY = PV_ROOM.EY;
   const xL = cx - R * s, xl = cx - r * s, xr = cx + r * s, xRR = cx + R * s, yF = hy + EY * s, yS = hy + (EY - ys) * s;
+  if (o.depth) {
+    const s2 = 1 / (d + o.depth), xb = r * s2, yS2 = hy + (EY - ys) * s2, yF2 = hy + EY * s2;
+    const opening = (x, y, f) => { ctx.moveTo(cx - x, f); ctx.lineTo(cx - x, y); ctx.arc(cx, y, x, Math.PI, 2 * Math.PI); ctx.lineTo(cx + x, f); ctx.closePath(); };
+    ctx.fillStyle = o.soffit; ctx.beginPath(); opening(r * s, yS, yF); opening(xb, yS2, yF2); ctx.fill("evenodd");
+    ctx.strokeStyle = o.fine || col; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.moveTo(cx - xb, yF2); ctx.lineTo(cx - xb, yS2); ctx.arc(cx, yS2, xb, Math.PI, 2 * Math.PI); ctx.lineTo(cx + xb, yF2);
+    ctx.moveTo(xl, yS); ctx.lineTo(cx - xb, yS2); ctx.moveTo(xr, yS); ctx.lineTo(cx + xb, yS2);
+    ctx.moveTo(xl, yF); ctx.lineTo(cx - xb, yF2); ctx.moveTo(xr, yF); ctx.lineTo(cx + xb, yF2);
+    ctx.stroke();
+  }
+  if (o.body) {
+    ctx.fillStyle = o.body; ctx.beginPath();
+    ctx.rect(xL, yS, xl - xL, yF - yS); ctx.rect(xr, yS, xRR - xr, yF - yS);
+    ctx.moveTo(xRR, yS); ctx.arc(cx, yS, R * s, 0, Math.PI, true); ctx.lineTo(xl, yS); ctx.arc(cx, yS, r * s, Math.PI, 2 * Math.PI); ctx.closePath();
+    ctx.fill();
+  }
+  if (o.key) {
+    ctx.fillStyle = o.key; ctx.beginPath();
+    ctx.moveTo(cx - 13 * s, yS - r * s); ctx.lineTo(cx - 19 * s, yS - (R + 12) * s); ctx.lineTo(cx + 19 * s, yS - (R + 12) * s); ctx.lineTo(cx + 13 * s, yS - r * s); ctx.closePath();
+    ctx.rect(xL - 12 * s, yS, xl - xL + 14 * s, 8 * s); ctx.rect(xr - 2 * s, yS, xRR - xr + 14 * s, 8 * s);
+    ctx.fill();
+  }
+  if (o.fine) {
+    ctx.strokeStyle = o.fine; ctx.lineWidth = 1; ctx.beginPath();
+    for (let t = 15; t < 180; t += 15) {
+      if (t > 80 && t < 100) continue;
+      const th = Math.PI + t * Math.PI / 180, c = Math.cos(th), n = Math.sin(th);
+      ctx.moveTo(cx + c * r * s, yS + n * r * s); ctx.lineTo(cx + c * R * s, yS + n * R * s);
+    }
+    const ins = (R - r) * 0.26 * s, top = yS + 24 * s, bot = yF - 28 * s;
+    if (bot > top) { ctx.rect(xL + ins, top, xl - xL - 2 * ins, bot - top); ctx.rect(xr + ins, top, xRR - xr - 2 * ins, bot - top); }
+    ctx.moveTo(xL - 14 * s, yF - 10 * s); ctx.lineTo(xl + 2 * s, yF - 10 * s); ctx.moveTo(xr - 2 * s, yF - 10 * s); ctx.lineTo(xRR + 14 * s, yF - 10 * s);
+    ctx.stroke();
+  }
   ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
   ctx.beginPath();
   ctx.moveTo(xL, yF); ctx.lineTo(xL, yS); ctx.moveTo(xl, yF); ctx.lineTo(xl, yS);
@@ -456,16 +519,14 @@ function pvFrame(now) {
   else if (ct >= last) camZ = cams[last] + (ct - last);
   else { const a = Math.floor(ct); camZ = cams[a] + (cams[a + 1] - cams[a]) * (ct - a); }
 
-  // The eye looks straight down the meridian: the room holds still, as the figure at its end does.
+  // The eye looks straight down the meridian: the room holds still.
   const cx = 720, hy = 378;
   const P = (X, Y, z) => { const d = z - camZ; return [cx + X / d, hy + (EY - Y) / d]; };
 
-  // What the pointer is over: the farthest arch it falls inside, or the niche.
+  // What the pointer is over: the farthest arch it falls inside.
   let hov = -1;
   if (pv.overHit && here) {
-    const dW = zW - camZ;
-    if (dW > 1.5 && Math.abs(pv.mx - cx) < 170 / dW && pv.my > hy + (EY - 540) / dW && pv.my < hy + EY / dW) hov = cnt;
-    else for (let i = cnt - 1; i >= 0; i--) {
+    for (let i = cnt - 1; i >= 0; i--) {
       const d = zm[i] + 0.18 - camZ; if (d < 1.5) continue;
       if (Math.abs(pv.mx - cx) < (R + 10) / d && pv.my > hy + (EY - YS - R - 50) / d && pv.my < hy + EY / d) { hov = i; break; }
     }
@@ -493,26 +554,33 @@ function pvFrame(now) {
   gg.addColorStop(0, rgba(pal.hi, pal.glowA * sunUp)); gg.addColorStop(1, rgba(pal.hi, 0));
   ctx.fillStyle = gg; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
   ctx.strokeStyle = rgba(pal.ink, pal.lineA * 0.9); ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x0, hy); ctx.lineTo(x1, hy); ctx.stroke();
+  // The horizon, where the far wall doesn't stand in front of it.
+  // At the day's end the horizon parts behind the sum, so no line runs through its words.
+  const gap = 520 * pvSS(last - 0.7, last, ct);
+  if (gap > 1) {
+    const hg = ctx.createLinearGradient(cx - gap, 0, cx + gap, 0), base = ctx.strokeStyle;
+    hg.addColorStop(0, base); hg.addColorStop(0.3, "rgba(0,0,0,0)"); hg.addColorStop(0.7, "rgba(0,0,0,0)"); hg.addColorStop(1, base);
+    ctx.beginPath(); ctx.moveTo(x0, hy); ctx.lineTo(cx - gap, hy); ctx.moveTo(cx + gap, hy); ctx.lineTo(x1, hy); ctx.stroke();
+    ctx.strokeStyle = hg; ctx.beginPath(); ctx.moveTo(cx - gap, hy); ctx.lineTo(cx + gap, hy); ctx.stroke(); ctx.strokeStyle = base;
+  } else { ctx.beginPath(); ctx.moveTo(x0, hy); ctx.lineTo(x1, hy); ctx.stroke(); }
 
-  // The far wall and its niche, where the figure stands.
-  const dW = zW - camZ;
-  if (dW > 0.3) {
-    const [wx0, wy0] = P(-XR, 1030, zW), [wx1, wy1] = P(XR, 0, zW);
-    ctx.fillStyle = rgba(pal.ink, 0.028); ctx.fillRect(wx0, wy0, wx1 - wx0, wy1 - wy0);
-    ctx.strokeStyle = rgba(pal.ink, pal.lineA * 1.2); ctx.strokeRect(wx0, wy0, wx1 - wx0, wy1 - wy0);
-    pvArch(ctx, cx, hy, dW, 160, 136, 360, rgba(pal.gilt, 0.8 * pvFog(dW) * (hov === cnt ? 1.3 : 1)), hov === cnt ? 1.5 : 1, false);
+  // No far wall: past the day the floor runs on and dissolves into the haze.
+  // The floor, a shade deeper than the air, deepening toward you.
+  const zN = camZ + 0.4, zF = zW + 3, fade = z => pvSS(zF, zW - 0.5, z);
+  {
+    const [f0x, f0y] = P(-XR, 0, zN), [f1x] = P(XR, 0, zN), [f2x, f2y] = P(XR, 0, zF), [f3x] = P(-XR, 0, zF);
+    const fl = ctx.createLinearGradient(0, f2y, 0, Math.min(f0y, y1));
+    fl.addColorStop(0, rgba(pal.stone, 0)); fl.addColorStop(1, rgba(pal.stone, pal.floorA));
+    ctx.fillStyle = fl; ctx.beginPath(); ctx.moveTo(f0x, f0y); ctx.lineTo(f1x, f0y); ctx.lineTo(f2x, f2y); ctx.lineTo(f3x, f2y); ctx.closePath(); ctx.fill();
   }
-  pvStand(here, dW, cx, hy, now);
 
   // The pavement, laid to the vanishing point.
-  const zN = camZ + 0.4, zF = zW;
   for (let j = Math.floor(zN / TD); j * TD < zF; j++) {
     const za = Math.max(j * TD, zN), zb = Math.min((j + 1) * TD, zF); if (zb <= za) continue;
-    const fa = pvFog((za + zb) / 2 - camZ) * (0.35 + 0.65 * pvSS(0.4, 1.6, (za + zb) / 2 - camZ));
-    ctx.fillStyle = rgba(pal.ink, pal.tileA * fa); ctx.beginPath();
+    const fa = pvFog((za + zb) / 2 - camZ) * (0.35 + 0.65 * pvSS(0.4, 1.6, (za + zb) / 2 - camZ)) * fade((za + zb) / 2);
+    ctx.fillStyle = rgba(pal.stone, pal.tileA * fa); ctx.beginPath();
     for (let c = -7; c < 7; c++) {
-      if (((j + c) & 1) === 0) continue;
+      if (((j + c) & 1) === 0 || c === -1 || c === 0) continue;
       const [ax, ay] = P(c * TW, 0, za), [bx] = P((c + 1) * TW, 0, za), [qx, qy] = P((c + 1) * TW, 0, zb), [dx] = P(c * TW, 0, zb);
       ctx.moveTo(ax, ay); ctx.lineTo(bx, ay); ctx.lineTo(qx, qy); ctx.lineTo(dx, qy); ctx.closePath();
     }
@@ -524,10 +592,34 @@ function pvFrame(now) {
   }
   const [, ny] = P(0, 0, zN), [, fy] = P(0, 0, zF);
   const og = ctx.createLinearGradient(0, ny, 0, fy);
-  og.addColorStop(0, rgba(pal.ink, pal.lineA * 1.1)); og.addColorStop(1, rgba(pal.ink, pal.lineA * 0.3));
+  og.addColorStop(0, rgba(pal.ink, pal.lineA * 1.1)); og.addColorStop(Math.max(0, Math.min(1, (P(0, 0, zW - 0.5)[1] - ny) / (fy - ny))), rgba(pal.ink, pal.lineA * 0.3)); og.addColorStop(1, rgba(pal.ink, 0));
   ctx.strokeStyle = og; ctx.beginPath();
   for (let c = -7; c <= 7; c++) { const [ax, ay] = P(c * TW, 0, zN), [bx, by] = P(c * TW, 0, zF); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
   ctx.stroke();
+
+  // Under each arch, its threshold: a slab between the piers, its edges inlaid.
+  for (let i = 0; i < cnt; i++) {
+    const z0 = zm[i] + 0.18, z1 = z0 + PV_DEPTH; if (z0 - camZ < 0.4 || z1 > zF) continue;
+    const a = pvFog(z0 - camZ) * pvSS(0.55, 1.05, z0 - camZ) * pv.ap[i];
+    const [t0x, t0y] = P(-RI, 0, z0), [t1x] = P(RI, 0, z0), [t2x, t2y] = P(RI, 0, z1), [t3x] = P(-RI, 0, z1);
+    ctx.fillStyle = rgba(pal.stone, pal.tileA * 1.6 * a); ctx.beginPath();
+    ctx.moveTo(t0x, t0y); ctx.lineTo(t1x, t0y); ctx.lineTo(t2x, t2y); ctx.lineTo(t3x, t2y); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = rgba(pal.gilt, 0.55 * a); ctx.beginPath();
+    ctx.moveTo(t0x, t0y); ctx.lineTo(t1x, t0y); ctx.moveTo(t3x, t2y); ctx.lineTo(t2x, t2y); ctx.stroke();
+  }
+
+  // A runner down the meridian, two tiles wide, edged with a double gilt fillet, running on into the haze.
+  {
+    const [r0x, r0y] = P(-TW, 0, zN), [r1x] = P(TW, 0, zN), [r2x, r2y] = P(TW, 0, zF), [r3x] = P(-TW, 0, zF);
+    const rg = ctx.createLinearGradient(0, r0y, 0, r2y);
+    rg.addColorStop(0, rgba(pal.gilt, pal.runA)); rg.addColorStop(1, rgba(pal.gilt, 0));
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.moveTo(r0x, r0y); ctx.lineTo(r1x, r0y); ctx.lineTo(r2x, r2y); ctx.lineTo(r3x, r2y); ctx.closePath(); ctx.fill();
+    const fg = ctx.createLinearGradient(0, r0y, 0, r2y);
+    fg.addColorStop(0, rgba(pal.gilt, 0.6)); fg.addColorStop(1, rgba(pal.gilt, 0));
+    ctx.strokeStyle = fg; ctx.beginPath();
+    for (const X of [-TW, -TW + 16, TW - 16, TW]) { const [ax, ay] = P(X, 0, zN), [bx, by] = P(X, 0, zF); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+    ctx.stroke();
+  }
 
   // The meridian: a gilt line inlaid with the hours.
   const zE = Math.min(zh(LAST_HOUR) + 0.06, zF);
@@ -560,17 +652,12 @@ function pvFrame(now) {
     ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(qx, ay); ctx.lineTo(bx, dy); ctx.closePath(); ctx.fill(); ctx.stroke();
   }
 
-  // The sun's spot on the line, where you stand.
-  ctx.save(); ctx.translate(cx, hy + EY); ctx.scale(1, 0.375);
-  const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
-  sg.addColorStop(0, rgba(pal.hi, 0.6 * sunUp)); sg.addColorStop(1, rgba(pal.hi, 0));
-  ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-
   // The arches, far to near.
   for (let i = cnt - 1; i >= 0; i--) {
     const d = zm[i] + 0.18 - camZ; if (d < 0.4) continue;
     const lit = i === hov ? 1.35 : 1, a = pvFog(d) * pvSS(0.55, 1.05, d) * pv.ap[i] * (d < 1.5 ? 0.55 : 0.9) * lit;
-    pvArch(ctx, cx, hy, d, R, RI, YS, rgba(pal.gilt, a), i === hov ? 1.6 : 1, true);
+    pvArch(ctx, cx, hy, d, R, RI, YS, rgba(pal.gilt, a), i === hov ? 1.6 : 1, true,
+      { body: rgba(pal.gilt, a * pal.bodyA), depth: PV_DEPTH, soffit: rgba(pal.soffit, a * pal.soffitA), fine: rgba(pal.gilt, a * 0.42), key: rgba(pal.gilt, a * 0.34) });
     if (d > 1.5 && i !== named) {
       ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
       ctx.font = "600 " + Math.max(9, 24 / d) + "px 'Cormorant Garamond', Georgia, serif";
@@ -615,27 +702,10 @@ function pvFrame(now) {
   // The marker on the footer's meridian.
   const mark = $("fd-mark");
   if (mark) {
-    const xs = [0, ...pv.dh.map(h => 30 + (h - FIRST_HOUR) / (LAST_HOUR - FIRST_HOUR) * 300), 360];
+    const xs = [6, ...pv.dh.map(h => 30 + (h - FIRST_HOUR) / (LAST_HOUR - FIRST_HOUR) * 300), 354];
     const c2 = Math.max(0, Math.min(last, ct)), a2 = Math.min(last - 1, Math.floor(c2));
     mark.style.transform = "translateX(" + (last ? xs[a2] + (xs[a2 + 1] - xs[a2]) * (c2 - a2) : 0) + "px)";
   }
-}
-
-/**
- * The figure in the niche: the live sculpture stood on the niche's floor,
- * as tall as the niche allows, fading with the room's haze as the wall
- * recedes. `dW` is how far the wall is; (cx, hy) the room's centre and
- * horizon on the plate. Nothing when the sculpture cannot be stood (a flat
- * figure, a phone, another stage).
- */
-function pvStand(here, dW, cx, hy) {
-  const op = here && !Stages.narrow && dW > 0.3 ? pvFog(dW) * pvSS(0.5, 0.9, dW) : 0;
-  if (typeof figure !== "object" || !here || Stages.narrow) return;
-  if (Math.abs(op - pv.figOp) > 0.015 || (op === 0) !== (pv.figOp === 0)) { pv.figOp = op; figure.setDim(op); }
-  if (dW <= 0.3) return;
-  // The niche on the plate: centred under its arch, 496 tall from 91 above the horizon's mark to the floor.
-  const s = 1 / dW, tall = 496 * s * pv.k, floor = pv.oy + pv.k * (hy + 405 * s);
-  figure.standAt({ x: pv.ox + pv.k * cx, y: floor - tall * 0.012, h: tall * PV_NICHE.fill, az: PV_NICHE.az });
 }
 
 function pvLoop(now) {
@@ -646,7 +716,7 @@ function pvLoop(now) {
   } else pv.leftAt = 0;
   pv.raf = requestAnimationFrame(pvLoop);
   // While the start screen holds the page, the camera is its own: the room
-  // waits, and takes the figure into the niche once it hands over.
+  // waits until it hands over.
   if (Stages.opening) { pv.lt = 0; return; }
   try { pvFrame(now); } catch (e) { if (!pv.err) { pv.err = 1; console.warn("Nutrition room: " + e.message); } }
 }
@@ -734,7 +804,7 @@ addEventListener("pointermove", e => {
 pvHit.addEventListener("click", () => {
   if (pv.chooser) { pv.chooser = null; renderNutritionStage(); return; }
   const cnt = nutrition().isValid() ? nutrition().mealsPerDay : 0;
-  if (pv.hoverArch >= 0) pvGoTo(pv.hoverArch === cnt ? cnt + 1 : pv.hoverArch + 1);
+  if (pv.hoverArch >= 0) pvGoTo(pv.hoverArch + 1);
 });
 
 /* -------------------------------- changes --------------------------------- */
@@ -816,7 +886,6 @@ Stages.register("nutrition", {
     pv.cam = pv.station - 0.6; pv.cv = 0; pv.acc = 0; pv.edge = 0;
     pv.dh = []; pv.ap = [];
     pv.chooser = null; pv.hoverGoal = null; pv.hoverFood = null; pv.ledger = false;
-    pv.figOp = 0;
     // The room comes in as the stage's words do: after the change's settle.
     pv.t0 = performance.now() + (Stages.from === null ? 0 : Stages.still ? STAGE_TIMING.settleStill : STAGE_TIMING.settle);
   },
@@ -828,8 +897,8 @@ Stages.register("nutrition", {
   },
   place: () => "s" + pv.station,
   shot: () => Stages.narrow ? "nutrition" : "nutrition-niche",
-  // The figure shows in the niche as the room's haze lets it; on a phone the stage has the screen.
-  dim: () => Stages.narrow ? 0 : pv.figOp,
+  // The room keeps no figure: the day's end holds its sum alone.
+  dim: () => 0,
   focus: () => $("nutrition-title"),
   // The wheel walks the day, and leaves the stage at either end (above).
   wheel: () => Stages.narrow,
